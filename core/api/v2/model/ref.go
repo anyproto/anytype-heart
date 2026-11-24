@@ -58,6 +58,7 @@ var operations = map[string]operation{
 	OpGetSchema:            {"GET", "/v2/schemas/{kind}"},
 	OpSearchGlobal:         {"POST", "/v2/search"},
 	OpListSpaces:           {"GET", "/v2/spaces"},
+	OpStreamSpaces:         {"GET", "/v2/spaces/stream"},
 	OpCreateSpace:          {"POST", "/v2/spaces"},
 	OpGetSpace:             {"GET", "/v2/spaces/{space_id}"},
 	OpUpdateSpace:          {"PATCH", "/v2/spaces/{space_id}"},
@@ -121,6 +122,7 @@ const (
 	OpGetSchema            = "get_schema"
 	OpSearchGlobal         = "search_global"
 	OpListSpaces           = "list_spaces"
+	OpStreamSpaces         = "stream_spaces"
 	OpCreateSpace          = "create_space"
 	OpGetSpace             = "get_space"
 	OpUpdateSpace          = "update_space"

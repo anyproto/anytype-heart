@@ -14,6 +14,8 @@ import (
 	"github.com/anyproto/any-store/v2/anyenc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoremigrate"
 )
 
 func testManifest() Manifest {
@@ -103,6 +105,44 @@ func TestCreateOpen(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.True(t, IsCorrupted(err))
+	})
+
+	t.Run("a run db written by any-store v1 is migrated in place on open", func(t *testing.T) {
+		// given — a run started before the move to any-store v2
+		ctx := context.Background()
+		dir := filepath.Join(t.TempDir(), "run-1")
+		copyDir(t, filepath.Join("testdata", "frozen-v1"), dir)
+		dbPath := filepath.Join(dir, "run.db")
+		isV1, err := anystoremigrate.IsV1File(dbPath)
+		require.NoError(t, err)
+		require.True(t, isV1, "the fixture is a v1 file")
+
+		// when
+		store, err := Open(ctx, dir)
+
+		// then
+		require.NoError(t, err)
+		require.NoError(t, store.Close())
+		isV1, err = anystoremigrate.IsV1File(dbPath)
+		require.NoError(t, err)
+		assert.False(t, isV1)
+		assert.NoFileExists(t, dbPath+".v1", "the verified copy replaces the v1 file")
+	})
+
+	t.Run("the status reader does not migrate a v1 run db", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		dir := filepath.Join(t.TempDir(), "run-1")
+		copyDir(t, filepath.Join("testdata", "frozen-v1"), dir)
+
+		// when
+		_, err := OpenStatusReader(ctx, dir)
+
+		// then
+		require.ErrorIs(t, err, anystore.ErrV1Database)
+		isV1, err := anystoremigrate.IsV1File(filepath.Join(dir, "run.db"))
+		require.NoError(t, err)
+		assert.True(t, isV1, "a status read writes nothing")
 	})
 
 	t.Run("an unreadable but intact db is NOT corrupted", func(t *testing.T) {
@@ -336,18 +376,21 @@ func TestEffectLedger(t *testing.T) {
 }
 
 func TestActiveRegistry(t *testing.T) {
-	t.Run("the registry refcounts holders, and Close is idempotent", func(t *testing.T) {
+	t.Run("a refused second open leaves the holder's guard armed, and Close is idempotent", func(t *testing.T) {
 		// given — Invariant 3: a set-not-refcount registry is disarmed for
 		// the still-live holder by any double open (confirmed by review).
+		// any-store v2 refuses the second handle itself, so the open fails;
+		// the guard it took on the way must not take the holder's with it.
 		ctx := context.Background()
 		dir := filepath.Join(t.TempDir(), "run-1")
 		first := createStore(t, dir)
-		second, err := Open(ctx, dir)
-		require.NoError(t, err)
 
-		// when / then
-		assert.True(t, IsActive(dir))
-		require.NoError(t, second.Close())
+		// when
+		second, err := Open(ctx, dir)
+
+		// then
+		require.Error(t, err)
+		assert.Nil(t, second)
 		assert.True(t, IsActive(dir), "the first holder is still live")
 		require.NoError(t, first.Close())
 		require.NoError(t, first.Close()) // double close must not underflow
@@ -673,6 +716,9 @@ func TestFrozenCoreRawFields(t *testing.T) {
 			name := fmt.Sprintf("frozen-v%d", version)
 			workDir := filepath.Join(t.TempDir(), name)
 			copyDir(t, filepath.Join("testdata", name), workDir)
+			// the fixture was written by any-store v1; read what Open
+			// reads, the migrated file
+			require.NoError(t, migrateV1(ctx, filepath.Join(workDir, "run.db")))
 			assertFrozenFields(t, filepath.Join(workDir, "run.db"))
 		})
 	}

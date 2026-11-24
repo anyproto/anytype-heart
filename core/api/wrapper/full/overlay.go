@@ -46,6 +46,7 @@ var overlays = map[string]overlay{
 	"stream_chat_messages":  {Exclude: reasonStream},
 	"stream_space_chats":    {Exclude: reasonStream},
 	"stream_space_search":   {Exclude: reasonStream},
+	"stream_spaces":         {Exclude: reasonStream},
 	"head_file":             {Exclude: reasonBinary},
 	"download_file":         {Exclude: reasonBinary},
 	"publish_chat_status":   {Exclude: reasonStatus},

@@ -13,6 +13,7 @@ package v2service
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -28,6 +29,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -43,20 +45,159 @@ const spaceIconOptions = 13
 // Counted in Unicode code points, matching JSON Schema maxLength.
 const maxSpaceFieldLength = 4096
 
-// isLiveSpaceView reports whether a space view describes a live, usable
-// space — v1's ListSpaces predicate (service/space.go): local status
-// Unknown/Ok AND account status Unknown/SpaceActive. Deleted, left,
-// removing and still-joining spaces fail it. A missing status field reads
-// as Unknown (0) and passes. Shared by the v2 spaces list, GET-one,
-// global-search fan-out and ensureSpace so discovery and every nested route
-// agree on what a space IS.
-func isLiveSpaceView(details *domain.Details) bool {
-	local := model.SpaceStatus(details.GetInt64(bundle.RelationKeySpaceLocalStatus))
-	if local != model.SpaceStatus_Unknown && local != model.SpaceStatus_Ok {
-		return false
+// spaceViewLiveness classifies a space view: whether the space it describes
+// is usable through this API and, when it is not, why.
+type spaceViewLiveness uint8
+
+const (
+	// spaceViewLive: the space is served. Local status Unknown, Loading or Ok
+	// and account status Unknown or SpaceActive; a missing status field reads
+	// as Unknown (0).
+	spaceViewLive spaceViewLiveness = iota + 1
+	// spaceViewUnavailable: the account still holds the space, but it is not
+	// usable on this device — its load failed, its deletion is pending on the
+	// network, or the account is still joining it. It can come back.
+	spaceViewUnavailable
+	// spaceViewGone: the account no longer holds the space — deleted, left,
+	// removed from it, a declined join, or deleted on the network.
+	spaceViewGone
+)
+
+// spaceViewState is the ONE liveness definition of API v2
+// (APIV2_SPACE_STREAM.md §3.2–3.6). Every surface reads it, through
+// isLiveSpaceView or visibleSpaces — the spaces list and the spaces stream,
+// GET-one, ensureSpace and with it every per-space route, short-reference
+// resolution and spelling, whoami's names and the global-search fan-out — so
+// discovery and every nested route agree on what a space IS.
+//
+// A LOADING space is live. The loader publishes Loading for a space that was
+// not on disk and Ok last session: every space on a new device's first
+// start, a space created or joined during its first load, a failed load
+// retried at the next start. Refusing it made a new space flap in and out of
+// the visible set while it loaded. What a request into a loading space costs
+// is bounded by ensureSpaceLoaded; /v1 keeps its own filter and still
+// excludes it.
+//
+// The other two states only name why a view is not live; the spaces stream
+// reports them as a removal's reason. Account Deleted or Removing decides
+// first: SpaceDeleted is written the same way for a delete, a leave, a
+// removal from the ACL and a declined join, so no finer reason exists.
+func spaceViewState(details *domain.Details) spaceViewLiveness {
+	local := spaceStatus(details, bundle.RelationKeySpaceLocalStatus)
+	account := spaceStatus(details, bundle.RelationKeySpaceAccountStatus)
+	remote := spaceStatus(details, bundle.RelationKeySpaceRemoteStatus)
+	switch {
+	case account == model.SpaceStatus_SpaceDeleted, account == model.SpaceStatus_SpaceRemoving:
+		return spaceViewGone
+	case local == model.SpaceStatus_Missing && remote == model.SpaceStatus_RemoteDeleted:
+		// the loader writes both in one change when it finds the space
+		// deleted on the network
+		return spaceViewGone
 	}
-	account := model.SpaceStatus(details.GetInt64(bundle.RelationKeySpaceAccountStatus))
-	return account == model.SpaceStatus_Unknown || account == model.SpaceStatus_SpaceActive
+	localLive := local == model.SpaceStatus_Unknown || local == model.SpaceStatus_Loading || local == model.SpaceStatus_Ok
+	accountLive := account == model.SpaceStatus_Unknown || account == model.SpaceStatus_SpaceActive
+	if localLive && accountLive {
+		return spaceViewLive
+	}
+	return spaceViewUnavailable
+}
+
+// spaceViewOf returns the space view one space is JUDGED by — on GET-one and
+// in ensureSpace, and so on every per-space route. Of the views whose target
+// is the space it is the one visibleSpaces names the row by: the first live
+// one by view id. With no live view it is the first by view id, whose state
+// says why the space is not served.
+//
+// A view id is derived from its space, so a second view of one target exists
+// only in damaged data. But the list and the spaces stream skip a dead view
+// when a live one follows it, and a lookup that judged the space by whichever
+// record the store returned first answered 404 for a space the list had just
+// served. A space with no view is an error.
+func (s *Service) spaceViewOf(spaceId string) (*domain.Details, error) {
+	records, err := s.store.SpaceIndex(s.techSpaceId).Query(database.Query{
+		Filters: append(spaceViewFilters(), database.FilterRequest{
+			RelationKey: bundle.RelationKeyTargetSpaceId,
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       domain.String(spaceId),
+		}),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("query the space views of %s: %w", spaceId, err)
+	}
+	views := make([]*domain.Details, len(records))
+	for i, record := range records {
+		views[i] = record.Details
+	}
+	view := judgedSpaceView(views)
+	if view == nil {
+		return nil, fmt.Errorf("no space view of %s", spaceId)
+	}
+	return view, nil
+}
+
+// judgedSpaceView picks, among the views of ONE target, the view the space
+// is judged by: the first live one by view id, else the first by view id;
+// nil for no views.
+func judgedSpaceView(views []*domain.Details) *domain.Details {
+	var judged *domain.Details
+	for _, view := range views {
+		switch {
+		case judged == nil:
+			judged = view
+		case isLiveSpaceView(view) != isLiveSpaceView(judged):
+			if isLiveSpaceView(view) {
+				judged = view
+			}
+		case view.GetString(bundle.RelationKeyId) < judged.GetString(bundle.RelationKeyId):
+			judged = view
+		}
+	}
+	return judged
+}
+
+// isLiveSpaceView reports whether a space view describes a live, usable
+// space (spaceViewState). Deleted, left, removing and still-joining spaces
+// fail it, and so does one whose load failed; a loading one passes.
+func isLiveSpaceView(details *domain.Details) bool {
+	return spaceViewState(details) == spaceViewLive
+}
+
+// LoadingSpaceWarnings is the warning a STORE read of one space carries
+// while the space's view says it is still loading on this device: the read
+// answers from what is indexed so far — empty or partial — and never waits,
+// so it has to say so. Empty for a loaded space, the tech space and a space
+// with no view. The space is named in the spelling this request is served.
+func (s *Service) LoadingSpaceWarnings(ctx context.Context, spaceId string) []v2model.Issue {
+	if spaceId == "" || spaceId == s.techSpaceId {
+		return nil
+	}
+	details, err := s.spaceViewOf(spaceId)
+	if err != nil || !isLoadingSpaceView(details) {
+		return nil
+	}
+	return []v2model.Issue{spaceLoadingWarning(s.servedSpaceRef(ctx, spaceId))}
+}
+
+// isLoadingSpaceView reports whether a live view's space is still loading.
+func isLoadingSpaceView(details *domain.Details) bool {
+	return isLiveSpaceView(details) &&
+		spaceStatus(details, bundle.RelationKeySpaceLocalStatus) == model.SpaceStatus_Loading
+}
+
+// spaceStatus reads one of a space view's status details. They hold
+// model.SpaceStatus values, so the narrowing cannot overflow.
+func spaceStatus(details *domain.Details, key domain.RelationKey) model.SpaceStatus {
+	return model.SpaceStatus(details.GetInt64(key)) //nolint:gosec
+}
+
+// spaceLoadingWarning is the one wording of the store-read warning; spelling
+// is the space as the request is served it.
+func spaceLoadingWarning(spelling string) v2model.Issue {
+	return v2model.Issue{
+		Path:    "space_id",
+		Message: fmt.Sprintf("space %q is still loading on this device; results can be incomplete", spelling),
+		Hint:    "repeat the request once the space has loaded for the complete result",
+	}
 }
 
 func spaceUnavailableError(spaceId string) error {
@@ -83,7 +224,7 @@ func spaceNotFoundError(spaceId string) error {
 // one store query and zero RPCs. Only LIVE spaces are served
 // (isLiveSpaceView) — a deleted or left space's row is indistinguishable
 // from a live one and an agent picking it would then write into a space
-// that can never load.
+// that can never load. A space that is still loading is live and served.
 func (s *Service) GetSpace(ctx context.Context, spaceId string) (v2model.Space, error) {
 	if spaceId == "" {
 		return v2model.Space{}, v2model.NotFound("space id is required")
@@ -93,7 +234,7 @@ func (s *Service) GetSpace(ctx context.Context, spaceId string) (v2model.Space, 
 	if err := s.ensureSpaceGranted(ctx, spaceId); err != nil {
 		return v2model.Space{}, err
 	}
-	details, err := s.store.GetSpaceViewDetails(spaceId)
+	details, err := s.spaceViewOf(spaceId)
 	if err != nil {
 		return v2model.Space{}, spaceNotFoundError(spaceId)
 	}
@@ -272,6 +413,11 @@ func (s *Service) UpdateSpace(ctx context.Context, spaceId string, req v2model.U
 		return &next, nil
 	}
 
+	// WorkspaceSetInfo ignores its context and waits for a loading space
+	// until the load ends or the app stops; the bounded wait comes first
+	if err := s.ensureSpaceLoaded(ctx, spaceId); err != nil {
+		return nil, err
+	}
 	resp := s.mw.WorkspaceSetInfo(ctx, &pb.RpcWorkspaceSetInfoRequest{
 		SpaceId: spaceId,
 		Details: &types.Struct{Fields: fields},
@@ -319,4 +465,31 @@ func v2SpaceRpcError(op string, code, badInputCode int32, description string) er
 		msg += ": " + description
 	}
 	return v2model.NewError(http.StatusInternalServerError, v2model.CodeInternalError, msg)
+}
+
+// dryRunLoadingNote marks a refusal a DRY RUN concluded from the index of a
+// space that is still loading. A dry run does not wait for the load (it
+// sends nothing), so its "no such property", or "that key is taken", is read
+// from an index that may be partial: the refusal carries the store-read
+// warning, so that it is not taken as final. A real write never gets here —
+// it waited for the load before it read the index — and a refusal of the
+// request itself is not passed through this.
+//
+// For a loaded space, a real write, or an error that is not a v2 refusal,
+// err is returned as it is.
+func (s *Service) dryRunLoadingNote(ctx context.Context, spaceId string, dryRun bool, err error) error {
+	if !dryRun || err == nil {
+		return err
+	}
+	var refusal *v2model.Error
+	if !errors.As(err, &refusal) {
+		return err
+	}
+	warnings := s.LoadingSpaceWarnings(ctx, spaceId)
+	if len(warnings) == 0 {
+		return err
+	}
+	noted := *refusal
+	noted.Issues = append(append([]v2model.Issue{}, refusal.Issues...), warnings...)
+	return &noted
 }

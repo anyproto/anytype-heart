@@ -1163,7 +1163,47 @@ func TestFilterDate(t *testing.T) {
 		assertFilter(t, f, objYesterday, true)
 		assertFilter(t, f, objToday, true)
 		assertFilter(t, f, objTomorrow, false)
-		// Object with no date has zero value which is less than today's end timestamp
-		assertFilter(t, f, objNoDate, true)
+		// an object with no date is not before today: the store query never
+		// matches a missing field with an ordering condition
+		assertFilter(t, f, objNoDate, false)
 	})
+}
+
+func TestFilterEq_OrderingIsTypeBracketed(t *testing.T) {
+	// FilterObject (live updates) must agree with AnystoreFilter (the query
+	// that builds the set); assertFilter checks both. any-store v2 compares
+	// <, <=, >, >= only within one type, and a missing field is null.
+	key := domain.RelationKey("key")
+	missing := domain.NewDetails()
+	withNull := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{key: domain.Null()})
+	withNumber := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{key: domain.Int64(3)})
+	withString := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{key: domain.String("a")})
+	withBool := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{key: domain.Bool(true)})
+	withNumbers := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{key: domain.Float64List([]float64{10, 3})})
+
+	for _, tc := range []struct {
+		name  string
+		cond  model.BlockContentDataviewFilterCondition
+		value domain.Value
+		obj   *domain.Details
+		want  bool
+	}{
+		{"< number, missing", model.BlockContentDataviewFilter_Less, domain.Int64(5), missing, false},
+		{"<= number, missing", model.BlockContentDataviewFilter_LessOrEqual, domain.Int64(5), missing, false},
+		{"<= number, null", model.BlockContentDataviewFilter_LessOrEqual, domain.Int64(5), withNull, false},
+		{"< number, a smaller number", model.BlockContentDataviewFilter_Less, domain.Int64(5), withNumber, true},
+		{"< number, a string", model.BlockContentDataviewFilter_Less, domain.Int64(5), withString, false},
+		{"> number, a string", model.BlockContentDataviewFilter_Greater, domain.Int64(5), withString, false},
+		{"> number, a bool", model.BlockContentDataviewFilter_Greater, domain.Int64(5), withBool, false},
+		{">= string, a number", model.BlockContentDataviewFilter_GreaterOrEqual, domain.String("0"), withNumber, false},
+		{"< number, a list with a smaller element", model.BlockContentDataviewFilter_Less, domain.Int64(5), withNumbers, true},
+		{"<= null, missing", model.BlockContentDataviewFilter_LessOrEqual, domain.Null(), missing, true},
+		{">= null, null", model.BlockContentDataviewFilter_GreaterOrEqual, domain.Null(), withNull, true},
+		{"< null, missing", model.BlockContentDataviewFilter_Less, domain.Null(), missing, false},
+		{"!= number, a string", model.BlockContentDataviewFilter_NotEqual, domain.Int64(5), withString, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assertFilter(t, FilterEq{Key: key, Cond: tc.cond, Value: tc.value}, tc.obj, tc.want)
+		})
+	}
 }

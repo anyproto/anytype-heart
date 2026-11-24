@@ -189,6 +189,29 @@ REQUEST_BODY_LIMITED_OPERATIONS = {
 }
 
 
+# Operations that need the space LOADED on this device — every write into a
+# space, and the reads of a live object, a chat, a list's target, the widget
+# roots or a file's deletion mark. They wait a bounded time for a space that is
+# still loading and then answer 503 space_loading with Retry-After
+# (ensureSpaceLoaded). Store reads (lists, search) never wait and are not here,
+# with one exception: list_templates narrowed to a built-in type the space has
+# not installed derives that type's id in the space.
+SPACE_LOAD_GATED_OPERATIONS = (WRITE_LIMITED_OPERATIONS - {"create_space"}) | {
+    "get_object",
+    "get_type",
+    "get_chat_messages",
+    "stream_chat_messages",
+    "get_query_objects",
+    "get_query_views",
+    "get_collection_objects",
+    "get_collection_views",
+    "list_widgets",
+    "list_templates",
+    "download_file",
+    "head_file",
+}
+
+
 def response_ref(name: str) -> dict:
     return {"$ref": f"#/components/responses/{name}"}
 
@@ -225,6 +248,11 @@ def response_components() -> dict:
         },
         "RequestTooLarge": {
             "description": "Request body exceeds this operation's documented cap",
+            "content": {"application/json": {"schema": v2_error}},
+        },
+        "SpaceLoading": {
+            "description": "The space is still loading on this device (space_loading); retry after Retry-After",
+            "headers": {"Retry-After": {"description": "Seconds to wait before retrying", "schema": {"type": "integer"}}},
             "content": {"application/json": {"schema": v2_error}},
         },
         "RateLimited": {
@@ -286,13 +314,15 @@ def apply_response_policies(doc: dict) -> None:
                 "description": "Too many streams held at once; close one, retrying cannot succeed",
                 "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}},
             }
+        if operation_id in SPACE_LOAD_GATED_OPERATIONS:
+            responses["503"] = response_ref("SpaceLoading")
         if operation_id in DRY_RUN_CREATES:
             if "201" not in responses:
                 raise ValueError(f"dry-run create {operation_id} has no 201 response to mirror")
             responses["200"] = deepcopy(responses["201"])
             responses["200"]["description"] = "Dry run; validation result without committing"
 
-    governed = DRY_RUN_CREATES | IDEMPOTENT_OPERATIONS | REQUEST_BODY_LIMITED_OPERATIONS
+    governed = DRY_RUN_CREATES | IDEMPOTENT_OPERATIONS | REQUEST_BODY_LIMITED_OPERATIONS | SPACE_LOAD_GATED_OPERATIONS
     missing = governed - seen
     if missing:
         raise ValueError(f"response policy names missing operations: {sorted(missing)}")
@@ -317,7 +347,7 @@ SCHEMA_REQUIRED = {
 # swag emits application/json alongside the declared @Produce for a plain
 # string success, so the stream's 200 advertised a JSON body it never sends.
 # The route answers text/event-stream and nothing else.
-STREAM_OPERATIONS = {"stream_chat_messages", "stream_space_chats", "stream_space_search"}
+STREAM_OPERATIONS = {"stream_chat_messages", "stream_space_chats", "stream_space_search", "stream_spaces"}
 
 # Operations that answer 429 for a RESOURCE they cap rather than a rate they
 # throttle. Until the chat stream there was no such thing, so "declares 429"
@@ -651,6 +681,17 @@ RESPONSES_YAML = """  responses:
           schema:
             $ref: '#/components/schemas/Error'
       description: Request body exceeds this operation's documented cap
+    SpaceLoading:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+      description: The space is still loading on this device (space_loading); retry after Retry-After
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying
+          schema:
+            type: integer
     RateLimited:
       content:
         application/json:
@@ -697,7 +738,7 @@ def apply_yaml_response_policies(lines: list[str]) -> list[str]:
         if match:
             operation_ids.append(match.group(1))
 
-    governed = DRY_RUN_CREATES | IDEMPOTENT_OPERATIONS | REQUEST_BODY_LIMITED_OPERATIONS
+    governed = DRY_RUN_CREATES | IDEMPOTENT_OPERATIONS | REQUEST_BODY_LIMITED_OPERATIONS | SPACE_LOAD_GATED_OPERATIONS
     missing = governed - set(operation_ids)
     if missing:
         raise ValueError(f"response policy names missing YAML operations: {sorted(missing)}")
@@ -743,6 +784,8 @@ def apply_yaml_response_policies(lines: list[str]) -> list[str]:
                 "                $ref: '#/components/schemas/Error'\n",
                 "          description: Too many streams held at once; close one, retrying cannot succeed\n",
             ]
+        if operation_id in SPACE_LOAD_GATED_OPERATIONS:
+            blocks["503"] = yaml_response_ref("503", "SpaceLoading")
         if operation_id in DRY_RUN_CREATES:
             if "201" not in blocks:
                 raise ValueError(f"dry-run create {operation_id} has no YAML 201 response to mirror")

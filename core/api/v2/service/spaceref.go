@@ -111,6 +111,10 @@ func spaceIdTail(id string) string {
 // short form (mintedSuffixLabels' `counts[suffix] == 1` guard). The census
 // runs over the WHOLE visible set before anything is served, so a paginated
 // page cannot hand out a tail that a space on another page also claims.
+//
+// A tail that spells a reserved static segment (reservedSpaceRefTails) is
+// never served either: the space keeps its full id, so every spelling this
+// API hands out routes to the space it names.
 func shortSpaceRefs(ids []string) map[string]string {
 	counts := make(map[string]int, len(ids))
 	for _, id := range ids {
@@ -119,13 +123,20 @@ func shortSpaceRefs(ids []string) map[string]string {
 	out := make(map[string]string, len(ids))
 	for _, id := range ids {
 		tail := spaceIdTail(id)
-		if tail == id || counts[tail] != 1 {
+		if tail == id || counts[tail] != 1 || reservedSpaceRefTails[tail] {
 			continue
 		}
 		out[id] = tail
 	}
 	return out
 }
+
+// reservedSpaceRefTails are the static path segments that sit where a space
+// reference goes. GET /v2/spaces/stream is the spaces stream, so a space
+// served as "stream" could not be read back through GET /v2/spaces/{id}. A
+// tail is six characters of [a-z2-7] whose last has eight possible values,
+// "m" among them, so "stream" is a possible tail — about one space in 2^28.
+var reservedSpaceRefTails = map[string]bool{"stream": true}
 
 // shortSpaceRef is shortSpaceRefs for one id against a census set: the
 // short form when it is unambiguous, the full id otherwise.

@@ -76,6 +76,8 @@ func (srv *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.Eve
 		CacheInit:            srv.ensureCacheInitialized(),
 		TechSpaceId:          srv.techSpaceId,
 		WriteRateLimit:       writeRateLimitMW,
+		WatchKey:             srv.watchKey(mw),
+		RefuseKey:            refuseKey,
 		AnalyticsEvent: func(code string) gin.HandlerFunc {
 			return ensureAnalyticsEvent(code, eventService)
 		},

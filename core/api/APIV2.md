@@ -1834,7 +1834,17 @@ Design: `docs/superpowers/specs/2026-10-06-apiv2-space-chat-stream-design.md`.
 GET   /v2/spaces/{space_id}      # RPC-free tech-space-view read
 POST  /v2/spaces                 # ONE WorkspaceCreate call
 PATCH /v2/spaces/{space_id}
+GET   /v2/spaces/stream          # SSE: GET /v2/spaces held open; when enabled
 ```
+
+- **The spaces stream** (`APIV2_SPACE_STREAM.md`) serves the list's row set
+  over Server-Sent Events and keeps it current: `space_added`,
+  `space_updated`, `space_removed` with a reason, `not_granted_updated`. It
+  calls the list's own `visibleSpaces` over a subscription to the tech
+  space's views, with the key's CURRENT grant: a grant edit reaches an open
+  stream as removals and additions, a revoked or expired key ends it with
+  `stream_closed`. Ids are always full; its own cap is 16 streams
+  (`core/api/v2/service/spaces_stream.go`, `core/api/server/keywatch.go`).
 
 - **`PATCH /v2/spaces/{space_id}` requires at least one of
   `name`/`description`** — an accepted empty update would let a caller believe
@@ -1849,7 +1859,11 @@ PATCH /v2/spaces/{space_id}
   two-axis view predicate (local status and account status): the single-space
   read, the spaces list, the global-search fan-out and every space-scoped
   route. A retained view for a deleted, left or still-joining space 404s or is
-  filtered out rather than exposing stale nested data. The one asymmetry is
+  filtered out rather than exposing stale nested data. A space that is still
+  **loading** on this device is live (`spaceViewState`,
+  `APIV2_SPACE_STREAM.md` §3.3): it is listed and served, its store reads
+  carry a warning, and a write or a live read into it waits a bounded time
+  and then answers 503 `space_loading` (§3.4). The one asymmetry is
   that internal space-scoped calls may address the tech space, which the
   single-space read never advertises (`core/api/v2/service/space.go:100`).
 - **Workspace RPC failures are classified on their description**, like chat

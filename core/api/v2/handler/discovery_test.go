@@ -156,3 +156,50 @@ func TestGetTypeHandler(t *testing.T) {
 		assert.Contains(t, w.Body.String(), "invalid ids value")
 	})
 }
+
+// TestStoreReadsWarnWhileLoading pins the envelope of the store-read lists:
+// a list of a space still loading on this device answers from what is
+// indexed so far and carries one warning; a loaded space, the control,
+// carries none.
+func TestStoreReadsWarnWhileLoading(t *testing.T) {
+	routes := map[string]func(fx *v2HandlerFixture) gin.HandlerFunc{
+		"/objects":    func(fx *v2HandlerFixture) gin.HandlerFunc { return ListObjectsHandler(fx.svc) },
+		"/types":      func(fx *v2HandlerFixture) gin.HandlerFunc { return ListTypesHandler(fx.svc) },
+		"/properties": func(fx *v2HandlerFixture) gin.HandlerFunc { return ListPropertiesHandler(fx.svc) },
+		"/members":    func(fx *v2HandlerFixture) gin.HandlerFunc { return ListMembersHandler(fx.svc) },
+		"/templates":  func(fx *v2HandlerFixture) gin.HandlerFunc { return ListTemplatesHandler(fx.svc) },
+	}
+	for route, handler := range routes {
+		t.Run(route, func(t *testing.T) {
+			// given: space1 is the fixture's loaded space; space2 is loading
+			fx := newV2HandlerFixture(t)
+			fx.store.AddObjects(t, objectstore.TestTechSpaceId, []objectstore.TestObject{{
+				bundle.RelationKeyId:                 domain.String("spaceView_space2"),
+				bundle.RelationKeyResolvedLayout:     domain.Int64(int64(model.ObjectType_spaceView)),
+				bundle.RelationKeyTargetSpaceId:      domain.String("space2"),
+				bundle.RelationKeySpaceLocalStatus:   domain.Int64(int64(model.SpaceStatus_Loading)),
+				bundle.RelationKeySpaceAccountStatus: domain.Int64(int64(model.SpaceStatus_SpaceActive)),
+			}})
+			fx.router.GET("/v2/spaces/:space_id"+route, func(c *gin.Context) {
+				c.Set(pagination.QueryParamLimit, 25)
+			}, handler(fx))
+			list := func(spaceId string) map[string]json.RawMessage {
+				w := httptest.NewRecorder()
+				fx.router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/v2/spaces/"+spaceId+route, nil))
+				require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+				var body map[string]json.RawMessage
+				require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+				return body
+			}
+
+			// when
+			loading := list("space2")
+			loaded := list("space1")
+
+			// then
+			assert.JSONEq(t, `[{"path":"space_id","message":"space \"space2\" is still loading on this device; results can be incomplete","hint":"repeat the request once the space has loaded for the complete result"}]`,
+				string(loading["warnings"]))
+			assert.NotContains(t, loaded, "warnings", "a loaded space carries no warning")
+		})
+	}
+}

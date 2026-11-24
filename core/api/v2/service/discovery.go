@@ -25,7 +25,8 @@ import (
 // LIVE spaces only (isLiveSpaceView, the predicate shared with GET-one and
 // the global-search fan-out): a deleted or left space's row is
 // indistinguishable from a live one, and an agent picking it would write
-// into a space that can never load. The row carries description too — it
+// into a space that can never load. A space that is still loading on this
+// device is live and listed. The row carries description too — it
 // sits in the same record for free, and withholding it forced a 1+N of
 // GET-one calls on the canonical "list my spaces, pick one" trace.
 //
@@ -60,7 +61,7 @@ func (s *Service) ListSpaces(ctx context.Context, offset, limit int) (rows []v2m
 
 // liveSpaceRows is the ONE enumeration of the spaces a caller can SEE: the
 // tech space's space views, filtered to live ones (isLiveSpaceView) and
-// intersected with the ctx grant, sorted by full id. Every surface that
+// intersected with the ctx grant, sorted by full id (visibleSpaces). Every surface that
 // needs the caller's space set reads it here — the spaces list, the
 // global-search fan-out (spaceRefs), whoami's name resolution and the
 // §8.35 short-reference census and resolution — so the set a short
@@ -77,28 +78,77 @@ func (s *Service) liveSpaceRows(ctx context.Context) ([]v2model.SpaceRow, error)
 
 // liveSpaceRowsWithGrantInfo also reports whether the grant hid any live
 // user spaces. Their identities and count remain outside the response.
+//
+// It is the store query plus visibleSpaces. Each record is projected to
+// spaceViewKeys first — the keys the spaces stream subscribes with — so the
+// definition cannot start reading a detail the stream does not carry.
 func (s *Service) liveSpaceRowsWithGrantInfo(ctx context.Context) ([]v2model.SpaceRow, bool, error) {
-	grant := util.ApiGrantFromCtx(ctx)
-	records, err := s.store.SpaceIndex(s.techSpaceId).Query(database.Query{
-		Filters: []database.FilterRequest{{
-			RelationKey: bundle.RelationKeyResolvedLayout,
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       domain.Int64(int64(model.ObjectType_spaceView)),
-		}},
-	})
+	records, err := s.store.SpaceIndex(s.techSpaceId).Query(database.Query{Filters: spaceViewFilters()})
 	if err != nil {
 		return nil, false, fmt.Errorf("query space views: %w", err)
 	}
+	views := make([]*domain.Details, len(records))
+	for i, record := range records {
+		views[i] = record.Details.CopyOnlyKeys(spaceViewKeys...)
+	}
+	rows, hasNotGrantedSpaces := visibleSpaces(views, util.ApiGrantFromCtx(ctx), s.techSpaceId)
+	return rows, hasNotGrantedSpaces, nil
+}
 
-	rows := make([]v2model.SpaceRow, 0, len(records))
+// spaceViewKeys are the details the definition of a visible space reads —
+// identity, target, the three statuses and the served row — and nothing
+// else. The list projects its records to them and the spaces stream
+// subscribes with them.
+var spaceViewKeys = []domain.RelationKey{
+	bundle.RelationKeyId,
+	bundle.RelationKeyTargetSpaceId,
+	bundle.RelationKeySpaceLocalStatus,
+	bundle.RelationKeySpaceAccountStatus,
+	bundle.RelationKeySpaceRemoteStatus,
+	bundle.RelationKeyName,
+	bundle.RelationKeyDescription,
+	bundle.RelationKeyIconImage,
+}
+
+// spaceViewFilters is the query both the list and the spaces stream start
+// from: every space view of the tech space. The store adds its default
+// filters (not archived, not deleted) on both paths.
+func spaceViewFilters() []database.FilterRequest {
+	return []database.FilterRequest{{
+		RelationKey: bundle.RelationKeyResolvedLayout,
+		Condition:   model.BlockContentDataviewFilter_Equal,
+		Value:       domain.Int64(int64(model.ObjectType_spaceView)),
+	}}
+}
+
+// visibleSpaces is the ONE definition of the spaces a key can see
+// (APIV2_SPACE_STREAM.md §3.2): of the given space views, the live ones
+// (spaceViewState) the grant admits, one row per target space, sorted by full
+// id — and whether the grant hid any live user space. The list calls it with
+// the views it just queried; the spaces stream calls it with its view map
+// after every change.
+//
+// It is pure. The grant is a PARAMETER, never read from a context: the
+// stream's grant changes while it is open, and a helper reading the request
+// context would keep serving the grant the stream was opened with.
+//
+// Between two live, granted views of one target the first by VIEW ID names
+// the row. A view id is derived from its space, so two views of one target
+// exist only in damaged data; the rule is what makes the answer the same for
+// every input order (the stream's map has none).
+func visibleSpaces(views []*domain.Details, grant *util.ApiGrant, techSpaceId string) (rows []v2model.SpaceRow, hasNotGrantedSpaces bool) {
+	ordered := append([]*domain.Details(nil), views...)
+	sort.SliceStable(ordered, func(i, j int) bool {
+		return ordered[i].GetString(bundle.RelationKeyId) < ordered[j].GetString(bundle.RelationKeyId)
+	})
+	rows = make([]v2model.SpaceRow, 0, len(ordered))
 	seen := map[string]bool{}
-	hasNotGrantedSpaces := false
-	for _, record := range records {
-		id := record.Details.GetString(bundle.RelationKeyTargetSpaceId)
+	for _, view := range ordered {
+		id := view.GetString(bundle.RelationKeyTargetSpaceId)
 		if id == "" || seen[id] {
 			continue
 		}
-		if !isLiveSpaceView(record.Details) {
+		if !isLiveSpaceView(view) {
 			continue
 		}
 		// The same shared check the route gate and the ensureSpaceGranted
@@ -110,8 +160,8 @@ func (s *Service) liveSpaceRowsWithGrantInfo(ctx context.Context) ([]v2model.Spa
 		// did, ListSpaces and whoami would advertise a space the gate
 		// refuses — the mirror/gate divergence the anti-drift test exists
 		// to catch.
-		if grant != nil && util.SpaceGrantRefusal(grant, id, s.techSpaceId) != "" {
-			if id != s.techSpaceId {
+		if grant != nil && util.SpaceGrantRefusal(grant, id, techSpaceId) != "" {
+			if id != techSpaceId {
 				hasNotGrantedSpaces = true
 			}
 			continue
@@ -119,13 +169,13 @@ func (s *Service) liveSpaceRowsWithGrantInfo(ctx context.Context) ([]v2model.Spa
 		seen[id] = true
 		rows = append(rows, v2model.SpaceRow{
 			Id:          id,
-			Name:        record.Details.GetString(bundle.RelationKeyName),
-			Description: record.Details.GetString(bundle.RelationKeyDescription),
-			IconImage:   record.Details.GetString(bundle.RelationKeyIconImage),
+			Name:        view.GetString(bundle.RelationKeyName),
+			Description: view.GetString(bundle.RelationKeyDescription),
+			IconImage:   view.GetString(bundle.RelationKeyIconImage),
 		})
 	}
 	sort.Slice(rows, func(i, j int) bool { return rows[i].Id < rows[j].Id })
-	return rows, hasNotGrantedSpaces, nil
+	return rows, hasNotGrantedSpaces
 }
 
 // ListMembers returns minimal member rows (active participants) — agents

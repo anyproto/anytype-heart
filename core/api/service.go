@@ -83,6 +83,7 @@ type apiService struct {
 	objectMutator        apicore.ObjectMutator
 	objectProvenance     apicore.ObjectProvenance
 	widgets              apicore.Widgets
+	spaceLoads           apicore.SpaceLoads
 	objectStore          objectstore.ObjectStore
 
 	listenAddr string
@@ -147,6 +148,7 @@ func (s *apiService) Init(a *app.App) error {
 	s.objectMutator = newObjectMutateAdapter(app.MustComponent[cache.ObjectGetterComponent](a))
 	s.objectProvenance = newObjectProvenanceAdapter(app.MustComponent[space.Service](a), a.MustComponent(account.CName).(account.Service))
 	s.widgets = newWidgetAdapter(app.MustComponent[cache.ObjectGetterComponent](a), app.MustComponent[space.Service](a))
+	s.spaceLoads = newSpaceLoadsAdapter(app.MustComponent[space.Service](a))
 	return nil
 }
 
@@ -237,7 +239,7 @@ func (s *apiService) bindLocked(listenAddr string) *pb.EventAccountJsonApiStatus
 		s.crossSpaceSubService,
 		s.chatSubService,
 		s.fileObjectService,
-		server.V2Deps{Reader: s.objectReader, Creator: s.objectCreator, Mutator: s.objectMutator, Provenance: s.objectProvenance, Widgets: s.widgets, ChatSub: s.chatSubService, ObjectSearch: s.objectSearch, Store: s.objectStore, FullTable: FullTable, AccountId: s.accountId()},
+		server.V2Deps{Reader: s.objectReader, Creator: s.objectCreator, Mutator: s.objectMutator, Provenance: s.objectProvenance, Widgets: s.widgets, ChatSub: s.chatSubService, ObjectSearch: s.objectSearch, SpaceLoads: s.spaceLoads, Store: s.objectStore, FullTable: FullTable, AccountId: s.accountId()},
 		listenAddr,
 		server.OpenApiDocs{
 			V1YAML: openapiV1YAML,
@@ -302,7 +304,8 @@ func (s *apiService) publishStatus(status *pb.EventAccountJsonApiStatus) {
 // already registered with the server, and the Serve goroutine bindLocked
 // starts may not have run yet by the time this is called — without this,
 // that still-unregistered listener would keep accepting connections
-// indefinitely.
+// indefinitely. The open spaces streams of the server being closed are
+// ended first (Server.CloseStreams).
 func (s *apiService) shutdownLocked(ctx context.Context) error {
 	httpSrv := s.httpSrv
 	listener := s.listener
@@ -313,15 +316,31 @@ func (s *apiService) shutdownLocked(ctx context.Context) error {
 		return nil
 	}
 
+	// Shutdown does not interrupt an active connection, and its deadline
+	// here is a millisecond: an open spaces stream would outlive the server
+	// it was accepted by. RevokeToken reaches only the server bound NEXT
+	// (it reads s.srv under this same lock), so such a stream would never
+	// hear its key revoked. The streams of the server being replaced are
+	// told to end first — a revoke either reaches them or arrives after.
+	if s.srv != nil {
+		s.srv.CloseStreams()
+	}
+
 	shutdownCtx, cancel := context.WithTimeout(ctx, shutdownTimeout)
 	defer cancel()
 
-	err := httpSrv.Shutdown(shutdownCtx)
+	// Shutdown waits for every connection to go idle, and the grace here is
+	// a millisecond: a request still in flight, or a stream held open,
+	// outlasts it. Returning that as an error left the caller with the old
+	// listener closed and the new address never bound. What the grace did
+	// not drain is cut instead — the server is being replaced either way.
+	if err := httpSrv.Shutdown(shutdownCtx); err != nil {
+		if closeErr := httpSrv.Close(); closeErr != nil {
+			log.Warnf("close previous http server after %v: %v", err, closeErr)
+		}
+	}
 	if listener != nil {
 		_ = listener.Close()
-	}
-	if err != nil {
-		return fmt.Errorf("close previous http server: %w", err)
 	}
 	return nil
 }

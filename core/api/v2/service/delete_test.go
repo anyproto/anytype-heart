@@ -619,7 +619,7 @@ func TestDeleteObjectPermanently(t *testing.T) {
 
 	t.Run("a nil provenance dependency refuses and never deletes", func(t *testing.T) {
 		fx := newV2Fixture(t)
-		fx.Service = NewService(fx.mwMock, fx.readerMock, fx.creatorMock, fx.mutatorMock, nil, fx.widgetsMock, nil, nil, nil, fx.objectStore, objectstore.TestTechSpaceId, testAccountId)
+		fx.Service = NewService(fx.mwMock, fx.readerMock, fx.creatorMock, fx.mutatorMock, nil, fx.widgetsMock, nil, nil, nil, nil, fx.objectStore, objectstore.TestTechSpaceId, testAccountId)
 		fx.registerSpace(t, testSpaceId)
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, deleteObjId).Return(deleteRead(model.SmartBlockType_Page), nil).Once()
 		fx.readerMock.EXPECT().InBin(mock.Anything, testSpaceId, deleteObjId).Return(false, nil).Maybe()

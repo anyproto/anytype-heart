@@ -72,7 +72,7 @@ func ListChatsHandler(s *v2service.Service) gin.HandlerFunc {
 			RespondError(c, err)
 			return
 		}
-		c.JSON(http.StatusOK, v2model.NewListResponse(rows, total, offset, limit, hasMore,
+		c.JSON(http.StatusOK, storeListResponse(c, s, rows, total, offset, limit, hasMore,
 			"request the next offset"))
 	}
 }

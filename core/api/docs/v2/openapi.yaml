@@ -44,6 +44,17 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
       description: Request body exceeds this operation's documented cap
+    SpaceLoading:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+      description: The space is still loading on this device (space_loading); retry after Retry-After
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying
+          schema:
+            type: integer
     RateLimited:
       content:
         application/json:
@@ -1508,6 +1519,7 @@ info:
     | Task | Request |
     | --- | --- |
     | Find available spaces | `GET /v2/spaces` |
+    | Watch for new and removed spaces | `GET /v2/spaces/stream` |
     | Search within a space | `POST /v2/spaces/{space_id}/search` |
     | Search across spaces | `POST /v2/search` |
     | Read a document | `GET /v2/spaces/{space_id}/objects/{object_id}` |
@@ -1566,7 +1578,8 @@ info:
 
     A short reference is only unique among the spaces currently visible to the
     key. Joining another space can make it ambiguous. Use `?ids=full` whenever a
-    space reference will be stored outside the API.
+    space reference will be stored outside the API. The spaces stream serves full
+    ids only, for the same reason.
 
     ## Read and search efficiently
 
@@ -1675,6 +1688,21 @@ info:
 
     A read does not fail because it encounters content its representation
     cannot express. Such content is reported in `warnings` beside the result.
+
+    A space can still be loading on this device, for example right after a first
+    sign-in. A write into it, or a read of one object, chat, query, collection,
+    widget list, or file, waits up to ten seconds for the load and then returns
+    `503` with code `space_loading` and a `Retry-After` header. Nothing was read
+    or written. Send the same request again after that delay. A template list
+    narrowed to a built-in type the space has not used yet can wait the same way.
+
+    A request refused for its own content, such as a missing field, is refused at
+    once and never waits. A dry run of a type delete or of a property create,
+    update or delete does not wait either: it answers from what is indexed so
+    far. While the space is loading, that answer carries a warning that results
+    can be incomplete, including when it is a refusal such as a `404`. Treat such
+    a refusal as provisional. The real write waits for the load first, so it
+    returns `503` in that case.
 
     ## Write chat messages
 
@@ -1815,6 +1843,47 @@ info:
     `{"filter":"unread_mention_count > 0","fields":["name","discussion"]}` watches
     every chat that mentions you and every object whose discussion does, and a hit
     leaves the set once you mark those mentions read.
+
+    ## Watch your spaces
+
+    `GET /v2/spaces/stream` holds the spaces list open over Server-Sent Events,
+    so a client learns about a new space without polling. It serves the same rows
+    as `GET /v2/spaces`, always with full ids: `ids=compact` returns `400`.
+
+    It opens with one `space_added` event per space, in id order, then
+    `snapshot_complete`, also for an empty set. Live events follow:
+
+    - `space_added` with the space row when a space becomes visible: created,
+      joined, loaded after a failed load, or newly granted to the key
+    - `space_updated` with the whole row when its name, description, or icon
+      changes
+    - `space_removed` with `space_id` and a `reason` when a space leaves the set
+    - `not_granted_updated` when `has_not_granted_spaces` changes
+    - `stream_closed` with a `reason`, as the last event before the server ends
+      the stream
+
+    `snapshot_complete` and `not_granted_updated` carry `has_not_granted_spaces`,
+    with the meaning it has on the list.
+
+    A `space_removed` reason is one of:
+
+    - `access_removed`: the key's grant no longer covers the space
+    - `gone`: the account no longer holds the space. It was deleted or left
+    - `unavailable`: the account still holds the space, but it did not load on
+      this device or the account is still joining it. It can return as
+      `space_added`. If it is deleted or the key loses it first, a second
+      `space_removed` carries that final reason
+
+    Editing the key's grant changes the stream in place: spaces leave with
+    `access_removed` and arrive with `space_added`, with no reconnect. Revoking
+    the key ends the stream with `stream_closed` and reason `key_revoked`. An
+    expiring key ends it with `key_expired`. After either, a new request with the
+    same key returns `401`, so do not reconnect. A stream that ends with no
+    `stream_closed` can be reopened.
+
+    Events carry no id and nothing replays. After a reconnect the stream opens
+    with a fresh snapshot, and a space you hold that is absent from it has left
+    the set.
 
     ## Download files and icons
 
@@ -2195,11 +2264,12 @@ paths:
       - Search
   /v2/spaces:
     get:
-      description: 'Returns only live spaces accessible to this API key. A space that
-        is deleted, left, or still joining does not appear. has_not_granted_spaces
-        is true when other live user spaces are excluded by the key''s grant; if a
-        requested space is missing, ask the user to grant access. This flag is independent
-        of pagination: total and has_more describe only accessible spaces.'
+      description: 'Returns the live spaces this API key can access, including one
+        still loading on this device. A deleted, left, or still-joining space does
+        not appear. has_not_granted_spaces is true when the key''s grant excludes
+        other live user spaces; if a requested space is missing, ask the user to grant
+        access. The flag is independent of pagination: total and has_more describe
+        only accessible spaces.'
       operationId: list_spaces
       parameters:
       - description: compact (default) is the short space reference; full is the whole
@@ -2306,7 +2376,7 @@ paths:
   /v2/spaces/{space_id}:
     get:
       description: Only live spaces are served. A space that is deleted, left, or
-        still joining is a 404.
+        still joining is a 404; one still loading on this device is served.
       operationId: get_space
       parameters:
       - description: Space id, from GET /v2/spaces
@@ -2410,6 +2480,8 @@ paths:
           $ref: '#/components/responses/RequestTooLarge'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Update a space
@@ -2543,6 +2615,8 @@ paths:
           $ref: '#/components/responses/RequestTooLarge'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Create a chat
@@ -2616,6 +2690,8 @@ paths:
           description: Chat not found
         "410":
           $ref: '#/components/responses/Gone'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: List chat messages
@@ -2695,6 +2771,8 @@ paths:
           $ref: '#/components/responses/RequestTooLarge'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Send a chat message
@@ -2762,6 +2840,8 @@ paths:
           $ref: '#/components/responses/Gone'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Delete a chat message
@@ -2842,6 +2922,8 @@ paths:
           $ref: '#/components/responses/RequestTooLarge'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Update chat message text
@@ -2921,6 +3003,8 @@ paths:
           $ref: '#/components/responses/RequestTooLarge'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Toggle a chat reaction
@@ -2994,6 +3078,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Too many streams held at once; close one, retrying cannot succeed
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Stream chat messages
@@ -3069,6 +3155,8 @@ paths:
           $ref: '#/components/responses/RequestTooLarge'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Mark chat activity as read
@@ -3163,6 +3251,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Publication failed
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Publish chat status
@@ -3309,6 +3399,8 @@ paths:
           $ref: '#/components/responses/RequestTooLarge'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Create a collection
@@ -3385,6 +3477,8 @@ paths:
           description: Space, collection or view not found
         "410":
           $ref: '#/components/responses/Gone'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: List collection objects
@@ -3443,6 +3537,8 @@ paths:
           description: Space or collection not found
         "410":
           $ref: '#/components/responses/Gone'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: List collection views
@@ -3523,6 +3619,8 @@ paths:
           $ref: '#/components/responses/RequestTooLarge'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Upload a file
@@ -3681,6 +3779,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: File content could not be read
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Get file content
@@ -3774,6 +3874,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: File content could not be read
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Get file headers
@@ -4042,6 +4144,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Create an object
@@ -4110,6 +4214,8 @@ paths:
           $ref: '#/components/responses/Gone'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Delete an object
@@ -4187,6 +4293,8 @@ paths:
           description: Object or space not found
         "410":
           $ref: '#/components/responses/Gone'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Get an object
@@ -4313,6 +4421,8 @@ paths:
             edit
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Update an object
@@ -4386,6 +4496,8 @@ paths:
           $ref: '#/components/responses/Gone'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Start an object's discussion
@@ -4445,6 +4557,8 @@ paths:
           $ref: '#/components/responses/Gone'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Restore an object
@@ -4594,6 +4708,8 @@ paths:
           $ref: '#/components/responses/RequestTooLarge'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Create a property
@@ -4644,6 +4760,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Delete a property
@@ -4715,6 +4833,8 @@ paths:
           $ref: '#/components/responses/RequestTooLarge'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Update a property
@@ -5051,6 +5171,8 @@ paths:
           $ref: '#/components/responses/RequestTooLarge'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Create a query
@@ -5128,6 +5250,8 @@ paths:
           description: Space, query or view not found
         "410":
           $ref: '#/components/responses/Gone'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: List query results
@@ -5186,6 +5310,8 @@ paths:
           description: Space or query not found
         "410":
           $ref: '#/components/responses/Gone'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: List query views
@@ -5476,6 +5602,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Space not found or unavailable
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: List templates
@@ -5561,6 +5689,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Create a template
@@ -5845,6 +5975,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Create a type
@@ -5895,6 +6027,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Delete a type
@@ -5941,6 +6075,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Type not found
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Get a type
@@ -6356,6 +6492,8 @@ paths:
           $ref: '#/components/responses/RequestTooLarge'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Update a type
@@ -6415,6 +6553,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Space not found or unavailable
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: List widgets
@@ -6546,6 +6686,8 @@ paths:
           $ref: '#/components/responses/RequestTooLarge'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Create a widget
@@ -6613,6 +6755,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Delete a widget
@@ -6741,11 +6885,63 @@ paths:
           $ref: '#/components/responses/RequestTooLarge'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Update a widget
       tags:
       - Widgets
+  /v2/spaces/stream:
+    get:
+      description: 'The spaces list, held open. Opens with a space_added per space
+        and snapshot_complete, then space_added, space_updated, space_removed and
+        not_granted_updated as the answer changes, a grant edit included. Space ids
+        are always full. stream_closed is the last event when the key is revoked or
+        expires. Events carry no id: a reconnect is a fresh snapshot.'
+      operationId: stream_spaces
+      parameters:
+      - description: full, the only shape this stream serves; compact is refused
+        in: query
+        name: ids
+        schema:
+          type: string
+      - description: Keepalive cadence in seconds
+        in: query
+        name: heartbeat
+        schema:
+          default: 30
+          maximum: 60
+          minimum: 1
+          type: integer
+      responses:
+        "200":
+          content:
+            text/event-stream:
+              schema:
+                type: string
+          description: Server-Sent Events stream
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ids=compact (validation_failed)
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Too many streams held at once; close one, retrying cannot succeed
+      security:
+      - bearerauth: []
+      summary: Stream your spaces
+      tags:
+      - Spaces
   /v2/validate:
     post:
       description: 'Structure and format rules only. Nothing is resolved against a

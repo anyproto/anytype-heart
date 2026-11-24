@@ -23,20 +23,14 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// registerGrantTestSpace adds a spaceView for spaceId to BOTH tech-space
-// indexes the fixture wires differently: the store's own tech space
-// (objectstore.TestTechSpaceId — what GetSpaceViewDetails/ensureSpace
-// resolve against) and the v2 service's configured one (mockedTechSpaceId —
-// what ListSpaces/spaceRefs enumerate).
+// registerGrantTestSpace adds a spaceView for spaceId to the tech space.
 func registerGrantTestSpace(t *testing.T, fx *fixture, spaceId, name string) {
-	for _, techSpace := range []string{objectstore.TestTechSpaceId, mockedTechSpaceId} {
-		fx.objectStore.AddObjects(t, techSpace, []objectstore.TestObject{{
-			bundle.RelationKeyId:             domain.String("spaceView_" + spaceId + "_" + techSpace),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_spaceView)),
-			bundle.RelationKeyTargetSpaceId:  domain.String(spaceId),
-			bundle.RelationKeyName:           domain.String(name),
-		}})
-	}
+	fx.objectStore.AddObjects(t, objectstore.TestTechSpaceId, []objectstore.TestObject{{
+		bundle.RelationKeyId:             domain.String("spaceView_" + spaceId),
+		bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_spaceView)),
+		bundle.RelationKeyTargetSpaceId:  domain.String(spaceId),
+		bundle.RelationKeyName:           domain.String(name),
+	}})
 }
 
 // grantedSession caches a JsonAPI session entry carrying the given grant.
@@ -253,13 +247,13 @@ func TestV2SpaceGrantGate(t *testing.T) {
 		fx := newV2ServerFixture(t)
 		grantedSession(fx, "scopedKey", readWrite("spaceA"))
 
-		denied := serveWithKey(fx, "GET", "/v2/spaces/"+mockedTechSpaceId+"/types", "scopedKey")
+		denied := serveWithKey(fx, "GET", "/v2/spaces/"+objectstore.TestTechSpaceId+"/types", "scopedKey")
 		require.Equal(t, http.StatusForbidden, denied.Code)
 		require.Contains(t, denied.Body.String(), `"space_not_granted"`)
 
 		fx.eventMock.On("Broadcast", mock.Anything).Return(nil).Maybe()
-		grantedSession(fx, "scopedKey", readWrite("spaceA", mockedTechSpaceId))
-		granted := serveWithKey(fx, "GET", "/v2/spaces/"+mockedTechSpaceId+"/types", "scopedKey")
+		grantedSession(fx, "scopedKey", readWrite("spaceA", objectstore.TestTechSpaceId))
+		granted := serveWithKey(fx, "GET", "/v2/spaces/"+objectstore.TestTechSpaceId+"/types", "scopedKey")
 		require.Equal(t, http.StatusOK, granted.Code)
 	})
 
@@ -288,7 +282,7 @@ func TestV2SpaceGrantGate(t *testing.T) {
 		fx := newV2ServerFixture(t)
 		grantedSession(fx, "allKey", &util.ApiGrant{AllSpaces: true, Perms: util.GrantPermsReadWrite})
 
-		denied := serveWithKey(fx, "GET", "/v2/spaces/"+mockedTechSpaceId+"/types", "allKey")
+		denied := serveWithKey(fx, "GET", "/v2/spaces/"+objectstore.TestTechSpaceId+"/types", "allKey")
 
 		require.Equal(t, http.StatusForbidden, denied.Code)
 		body := denied.Body.String()

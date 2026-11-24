@@ -284,6 +284,55 @@ func TestPathArgumentsCannotChangeTheRoute(t *testing.T) {
 	}
 }
 
+// TestPathArgumentCannotShadowALiteralRoute: the router matches a static
+// segment before a parameter, so GET /v2/spaces/stream is the spaces stream,
+// not the space whose id is "stream" — and the in-process transport would
+// hold that stream open until the caller's deadline. The guarded case sits
+// beside its neighbours, so a guard that refuses everything, or nothing,
+// fails.
+func TestPathArgumentCannotShadowALiteralRoute(t *testing.T) {
+	t.Run("get_space with the stream's own segment is refused and nothing is sent", func(t *testing.T) {
+		// given
+		ex, api := newExecutorFixture(t)
+
+		// when
+		_, err := ex.Run(context.Background(), "get_space", map[string]any{"space_id": "stream"})
+
+		// then
+		var ae wrapper.ArgumentError
+		require.ErrorAs(t, err, &ae)
+		assert.Contains(t, err.Error(), "GET /v2/spaces/stream is the stream_spaces operation")
+		assert.Empty(t, api.requests)
+	})
+
+	t.Run("any other space id is sent", func(t *testing.T) {
+		// given
+		ex, api := newExecutorFixture(t)
+
+		// when
+		_, err := ex.Run(context.Background(), "get_space", map[string]any{"space_id": "streamx"})
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, api.requests, 1)
+		assert.Equal(t, "/v2/spaces/streamx", api.requests[0].Path)
+	})
+
+	t.Run("another method on the same path is a different route and is sent", func(t *testing.T) {
+		// given
+		ex, api := newExecutorFixture(t)
+
+		// when
+		_, err := ex.Run(context.Background(), "update_space", map[string]any{"space_id": "stream", "name": "Renamed"})
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, api.requests, 1)
+		assert.Equal(t, http.MethodPatch, api.requests[0].Method)
+		assert.Equal(t, "/v2/spaces/stream", api.requests[0].Path)
+	})
+}
+
 // TestIdempotencyKeyArgumentIsBounded: the executor applies the server's
 // bound before sending.
 func TestIdempotencyKeyArgumentIsBounded(t *testing.T) {

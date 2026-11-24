@@ -27,7 +27,7 @@ import (
 // and names the stored object; empty leaves the name the pipeline derives
 // from the source (Content-Disposition, else the URL's last segment).
 func (s *Service) UploadFile(ctx context.Context, spaceId, localPath, url, name string, dryRun bool) (*v2model.FileUploadResult, error) {
-	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
+	if err := s.ensureSpaceWritable(ctx, spaceId); err != nil {
 		return nil, err
 	}
 	if (localPath == "") == (url == "") {
@@ -47,6 +47,10 @@ func (s *Service) UploadFile(ctx context.Context, spaceId, localPath, url, name 
 	name = strings.TrimSpace(name)
 	if dryRun {
 		return &v2model.FileUploadResult{DryRun: true}, nil
+	}
+	// nothing above needed the loaded space; the RPC does
+	if err := s.ensureSpaceLoaded(ctx, spaceId); err != nil {
+		return nil, err
 	}
 
 	// The caller's name rides the RPC's additional details. On this route

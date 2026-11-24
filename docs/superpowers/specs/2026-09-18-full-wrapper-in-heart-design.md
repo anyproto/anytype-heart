@@ -174,7 +174,7 @@ Launch contents:
 | operationId | action | reason |
 |---|---|---|
 | `auth_whoami`, `create_auth_challenge`, `create_api_key` | exclude | pairing/identity flows are the host's, not the model's |
-| `stream_chat_messages`, `stream_space_chats`, `stream_space_search` | exclude | SSE; the in-process transport buffers whole responses |
+| `stream_chat_messages`, `stream_space_chats`, `stream_space_search`, `stream_spaces` | exclude | SSE; the in-process transport buffers whole responses. `GET /v2/spaces/stream` also shadows `get_space` for the literal id `stream`: the executor refuses an assembled method and path equal to another operation's literal path |
 | `head_file`, `download_file` | exclude | binary/range responses have no text rendering; revisit with a use case |
 | `search_space`, `search_global`, `validate` | annotate read-only | POST reads |
 | `patch_object`, `update_type` | annotate destructive | ops can delete |

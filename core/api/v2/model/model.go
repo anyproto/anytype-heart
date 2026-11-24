@@ -50,7 +50,15 @@ const (
 	// deleted for good. Not a 404: a 404 says the id is wrong and invites a
 	// lookup, which for a deleted object can only find a different one.
 	CodeObjectDeleted = "object_deleted"
+	// CodeSpaceLoading is the 503 for a request that needs a space this
+	// device is still loading: the wait was bounded and the bound passed.
+	// Temporary — the response carries Retry-After, and the same request
+	// succeeds once the load ends.
+	CodeSpaceLoading = "space_loading"
 )
+
+// SpaceLoadingRetryAfterSeconds is the Retry-After of a space_loading 503.
+const SpaceLoadingRetryAfterSeconds = 5
 
 // Issue is one path-addressed problem (C6): path into the request
 // document or the query-parameter name, a message naming allowed values,
@@ -80,6 +88,9 @@ type Error struct {
 	Code    string  `json:"code"`
 	Message string  `json:"message"`
 	Issues  []Issue `json:"issues"`
+	// RetryAfterSeconds, when above zero, is sent as the Retry-After header
+	// where the error becomes bytes. It is not part of the body.
+	RetryAfterSeconds int `json:"-"`
 }
 
 func (e *Error) Error() string {
@@ -134,6 +145,16 @@ func NotFound(message string, issues ...Issue) *Error {
 // use. The message must name the actual grant.
 func SpaceNotGranted(message string) *Error {
 	return NewError(http.StatusForbidden, CodeSpaceNotGranted, message)
+}
+
+// SpaceLoading is the 503 for a write or a live-object read into a space
+// that did not finish loading on this device within the bounded wait.
+func SpaceLoading(spaceId string) *Error {
+	e := NewError(http.StatusServiceUnavailable, CodeSpaceLoading,
+		fmt.Sprintf("space %q is still loading on this device", spaceId),
+		Issue{Path: "space_id", Message: "the space is not loaded yet; nothing was read or written", Hint: "retry the same request after the Retry-After delay"})
+	e.RetryAfterSeconds = SpaceLoadingRetryAfterSeconds
+	return e
 }
 
 // WriteNotGranted is the 403 for a write-classified route reached with a

@@ -35,6 +35,8 @@ func newGrantEngine(grant *util.ApiGrant) *gin.Engine {
 	group.POST("/validate", ok)
 	group.GET("/schemas", ok)
 	group.GET("/spaces", ok)
+	// the spaces stream: a static segment beside /spaces/:space_id
+	group.GET("/spaces/stream", func(c *gin.Context) { c.String(http.StatusOK, "STREAM") })
 	group.POST("/search", ok)
 	group.POST("/spaces", ok)
 	// an UNREGISTERED no-space route: not in v2RouteAuthz — must be refused
@@ -237,6 +239,52 @@ func TestEnsureSpaceGrant(t *testing.T) {
 
 		granted := serveGrant(t, readWriteGrant("space1", "techSpace1"), "GET", "/v2/spaces/techSpace1/objects")
 		require.Equal(t, http.StatusOK, granted.Code)
+	})
+}
+
+// TestSpacesStreamRouteIsGlobal: GET /v2/spaces/stream sits beside
+// GET /v2/spaces/:space_id. It must be routed as the stream — no space id,
+// the service-filtered global class — and not as the space whose id is
+// "stream", which a narrowed key would be refused. Its neighbours are
+// routed as spaces, so a gate that admitted everything fails too.
+func TestSpacesStreamRouteIsGlobal(t *testing.T) {
+	narrowed := readGrant("space1")
+
+	t.Run("the stream passes a narrowed read-only grant, as the list does", func(t *testing.T) {
+		// when
+		stream := serveGrant(t, narrowed, "GET", "/v2/spaces/stream")
+		list := serveGrant(t, narrowed, "GET", "/v2/spaces")
+
+		// then
+		require.Equal(t, http.StatusOK, stream.Code, stream.Body.String())
+		assert.Equal(t, "STREAM", stream.Body.String(), "the static route answered, not GET-one")
+		require.Equal(t, http.StatusOK, list.Code)
+	})
+
+	t.Run("any other id in that position is a space the grant does not cover", func(t *testing.T) {
+		for _, path := range []string{"/v2/spaces/other", "/v2/spaces/streamx"} {
+			w := serveGrant(t, narrowed, "GET", path)
+			require.Equal(t, http.StatusForbidden, w.Code, path)
+			assert.Contains(t, w.Body.String(), `"space_not_granted"`, path)
+		}
+	})
+
+	t.Run("a longer path still treats stream as a space id", func(t *testing.T) {
+		// when: gin backtracks from the static segment to :space_id
+		refused := serveGrant(t, narrowed, "GET", "/v2/spaces/stream/objects")
+		granted := serveGrant(t, readGrant("stream"), "GET", "/v2/spaces/stream/objects")
+
+		// then
+		require.Equal(t, http.StatusForbidden, refused.Code)
+		assert.Contains(t, refused.Body.String(), `key not granted space \"stream\"`)
+		require.Equal(t, http.StatusOK, granted.Code)
+		assert.Equal(t, "OK", granted.Body.String())
+	})
+
+	t.Run("the route is classified a service-filtered read", func(t *testing.T) {
+		entry, ok := RouteAuthzTable()["GET /v2/spaces/stream"]
+		require.True(t, ok)
+		assert.Equal(t, RouteAuthz{Verb: RouteVerbRead, Global: GlobalServiceFiltered}, entry)
 	})
 }
 

@@ -242,6 +242,10 @@ func (s *Service) ListWidgets(ctx context.Context, spaceId, scopeFilter string, 
 	if err != nil {
 		return nil, 0, false, nil, err
 	}
+	// the widget roots are read live
+	if err := s.ensureSpaceLoaded(ctx, spaceId); err != nil {
+		return nil, 0, false, nil, err
+	}
 	var rows []v2model.WidgetRow
 	var warnings []v2model.Issue
 	for _, scope := range scopes {
@@ -697,7 +701,7 @@ func (s *Service) resolveWidget(ctx context.Context, spaceId, ref, scopeFilter s
 
 // CreateWidget implements POST /v2/spaces/{space_id}/widgets.
 func (s *Service) CreateWidget(ctx context.Context, spaceId string, req v2model.CreateWidgetRequest, dryRun bool) (*v2model.WidgetResult, error) {
-	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
+	if err := s.ensureSpaceWritable(ctx, spaceId); err != nil {
 		return nil, err
 	}
 	if err := s.ensureWidgets(); err != nil {
@@ -705,6 +709,10 @@ func (s *Service) CreateWidget(ctx context.Context, spaceId string, req v2model.
 	}
 	scope, err := parseWidgetScope(req.Scope, "/scope")
 	if err != nil {
+		return nil, err
+	}
+	// the widget roots are read live from here on, on a dry run too
+	if err := s.ensureSpaceLoaded(ctx, spaceId); err != nil {
 		return nil, err
 	}
 	if err := s.ensureWidgetWritable(ctx, spaceId, scope); err != nil {
@@ -775,7 +783,7 @@ func (s *Service) CreateWidget(ctx context.Context, spaceId string, req v2model.
 
 // UpdateWidget implements PATCH /v2/spaces/{space_id}/widgets/{widget_id}.
 func (s *Service) UpdateWidget(ctx context.Context, spaceId, ref, scopeFilter string, req v2model.UpdateWidgetRequest, dryRun bool) (*v2model.WidgetResult, error) {
-	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
+	if err := s.ensureSpaceWritable(ctx, spaceId); err != nil {
 		return nil, err
 	}
 	if err := s.ensureWidgets(); err != nil {
@@ -784,6 +792,10 @@ func (s *Service) UpdateWidget(ctx context.Context, spaceId, ref, scopeFilter st
 	if req.Layout == nil && req.Limit == nil && req.ViewId == nil && req.After == nil && req.Before == nil && req.Position == nil {
 		return nil, v2model.ValidationFailed("update needs at least one of layout, limit, view_id, after, before, position",
 			v2model.Issue{Message: "omitted members stay unchanged; the target is the widget's identity and does not change"})
+	}
+	// the widget roots are read live from here on, on a dry run too
+	if err := s.ensureSpaceLoaded(ctx, spaceId); err != nil {
+		return nil, err
 	}
 	entry, siblings, err := s.resolveWidget(ctx, spaceId, ref, scopeFilter)
 	if err != nil {

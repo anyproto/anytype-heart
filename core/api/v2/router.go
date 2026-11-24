@@ -67,6 +67,16 @@ type RouteDeps struct {
 	WriteRateLimit gin.HandlerFunc
 	// AnalyticsEvent builds the analytics middleware for one event code.
 	AnalyticsEvent func(code string) gin.HandlerFunc
+	// WatchKey builds the key watch of the request's own API key, for the
+	// spaces stream: the server owns the key cache and hears every grant
+	// edit and revocation, and v2 must not reach back into it. A false
+	// return means the key was refused and the response is written. With it
+	// nil the spaces stream is not registered.
+	WatchKey func(c *gin.Context) (v2service.KeyWatch, bool)
+	// RefuseKey writes the refusal WatchKey writes — the authentication
+	// middleware's own 401 — for a key the stream found revoked, expired or
+	// unverifiable while it opened (err is one of the v2service.ErrKey…).
+	RefuseKey func(c *gin.Context, err error)
 }
 
 // RegisterRoutes registers the /v2 route group (APIV2.md §8): same
@@ -232,6 +242,19 @@ func RegisterRoutes(router *gin.Engine, deps RouteDeps) {
 		v2.POST("/spaces/:space_id/search/stream",
 			deps.AnalyticsEvent("V2StreamSearch"),
 			v2handler.SearchStreamHandler(deps.Service),
+		)
+	}
+	// The spaces stream is GET /v2/spaces held open. It rides the live
+	// search dependency (a subscription to the tech space's space views) and
+	// needs the server's key watch. The static segment wins over
+	// /spaces/:space_id for GET only, and only for the literal `stream`:
+	// gin backtracks, so /spaces/stream/objects still reaches its :space_id
+	// route, and no served space reference is spelled `stream`
+	// (v2service.shortSpaceRefs keeps such a tail at its full id).
+	if !deps.SearchStreamDisabled && deps.WatchKey != nil && deps.RefuseKey != nil {
+		v2.GET("/spaces/stream",
+			deps.AnalyticsEvent("V2StreamSpaces"),
+			v2handler.SpacesStreamHandler(deps.Service, deps.WatchKey, deps.RefuseKey),
 		)
 	}
 	v2.GET("/spaces/:space_id/queries/:query_id/objects",

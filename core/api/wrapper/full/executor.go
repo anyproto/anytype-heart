@@ -233,6 +233,13 @@ func (e *Executor) assemble(tool Tool, args map[string]any) (wrapper.RawRequest,
 	if strings.Contains(req.Path, "{") {
 		return req, fmt.Errorf("%s: a path argument is missing in %s", tool.Name, req.Path)
 	}
+	// The router matches a static segment before a parameter: a path
+	// argument spelled like one (get_space with space_id "stream") would
+	// reach ANOTHER operation — here a server-sent event stream the
+	// in-process transport would hold open until the caller's deadline.
+	if other, shadowed := e.table.literalRoutes[req.Method+" "+req.Path]; shadowed && other != tool.Name {
+		return req, fmt.Errorf("%s: %s %s is the %s operation, not an id this tool can address — pass an id exactly as a list or a search served it", tool.Name, req.Method, req.Path, other)
+	}
 	if tool.HasBody {
 		encoded, err := json.Marshal(body)
 		if err != nil {

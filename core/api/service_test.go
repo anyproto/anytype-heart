@@ -3,10 +3,12 @@ package api
 import (
 	"context"
 	"net"
+	"net/http"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -308,6 +310,99 @@ func TestReassignAddress(t *testing.T) {
 				continue
 			}
 			assert.False(t, dialSucceeds(t, addr), "address %s is still reachable after reassignment — a listener leaked", addr)
+		}
+	})
+}
+
+// inFlightRequest registers a route whose handler blocks until the test
+// ends, sends one request to it and returns once the handler is running: the
+// connection is then active, which is what http.Server.Shutdown waits for.
+// done is closed when the client's request returns.
+func inFlightRequest(t *testing.T, fx *fixture, addr string) (done chan struct{}) {
+	t.Helper()
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	t.Cleanup(func() { close(release) })
+	fx.srv.Engine().GET("/in-flight", func(*gin.Context) {
+		close(entered)
+		<-release
+	})
+	done = make(chan struct{})
+	go func() {
+		defer close(done)
+		resp, err := http.Get("http://" + addr + "/in-flight")
+		if err == nil {
+			_ = resp.Body.Close()
+		}
+	}()
+	select {
+	case <-entered:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the in-flight request never reached its handler")
+	}
+	return done
+}
+
+// TestShutdownCutsWhatTheGraceDidNotDrain: the shutdown grace is a
+// millisecond, and a request in flight (or a stream held open) outlasts it.
+// That used to fail the rebind AFTER the old listener was closed, leaving the
+// API bound nowhere.
+func TestShutdownCutsWhatTheGraceDidNotDrain(t *testing.T) {
+	t.Run("a rebind with a request in flight binds the new address", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		fx.expectBroadcasts(2)
+		first := fx.startServer("127.0.0.1:0")
+		require.NotNil(t, first)
+		require.True(t, first.Success)
+		fx.awaitBroadcast(t)
+		done := inFlightRequest(t, fx, first.ListenAddr)
+		placeholder, err := net.Listen("tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+		newAddr := placeholder.Addr().String()
+		require.NoError(t, placeholder.Close())
+
+		// when
+		status, err := fx.ReassignAddress(context.Background(), newAddr)
+		if fx.httpSrv != nil {
+			defer fx.httpSrv.Close()
+		}
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, status)
+		assert.True(t, status.Success, status.Error)
+		assert.Equal(t, newAddr, status.ListenAddr)
+		fx.awaitBroadcast(t)
+		assert.True(t, dialSucceeds(t, newAddr), "the new address must be reachable")
+		assert.False(t, dialSucceeds(t, first.ListenAddr), "the old address must stop accepting connections")
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			t.Fatal("the connection the grace did not drain was left open")
+		}
+	})
+
+	t.Run("a stop with a request in flight succeeds and cuts it", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		fx.expectBroadcasts(1)
+		first := fx.startServer("127.0.0.1:0")
+		require.NotNil(t, first)
+		require.True(t, first.Success)
+		fx.awaitBroadcast(t)
+		done := inFlightRequest(t, fx, first.ListenAddr)
+
+		// when
+		err := fx.shutdownHTTP(context.Background())
+
+		// then
+		require.NoError(t, err)
+		assert.False(t, dialSucceeds(t, first.ListenAddr))
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			t.Fatal("the connection the grace did not drain was left open")
 		}
 	})
 }

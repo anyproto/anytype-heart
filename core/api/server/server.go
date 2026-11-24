@@ -93,6 +93,15 @@ type Server struct {
 	// nothing left to evict it, ever (cached entries are re-validated only
 	// against ExpireAt).
 	evictGen uint64
+	// watchers holds the key watches of the open spaces streams, by the
+	// session token each stream's request authenticated with. RevokeToken
+	// signals the watchers of the token it sweeps (keywatch.go).
+	watchers map[string]map[*keyWatch]struct{}
+	// streamsClosing is closed by CloseStreams; every key watch exposes it.
+	streamsClosing chan struct{}
+	// now is the wall clock key expiry is checked against; nil means
+	// time.Now. Tests set it.
+	now func() time.Time
 
 	initOnce sync.Once
 }
@@ -120,7 +129,11 @@ type V2Deps struct {
 	// ObjectSearch backs the search stream. With it nil the stream route is
 	// not registered, as with ChatSub.
 	ObjectSearch apicore.ObjectSearchService
-	Store        objectstore.ObjectStore
+	// SpaceLoads bounds the wait for a space that is still loading
+	// (APIV2_SPACE_STREAM.md §3.4). With it nil nothing is bounded: a write
+	// or a live read into a loading space waits as long as its own call does.
+	SpaceLoads apicore.SpaceLoads
+	Store      objectstore.ObjectStore
 	// FullTable supplies the full tool table the /mcp/full route serves
 	// (derived once per process by the composition root). With it nil the
 	// route still registers and refuses full-tier calls (fail closed).
@@ -158,7 +171,7 @@ func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService,
 		mcp:         newMCPSessions(),
 	}
 	if v2Deps.Reader != nil && v2Deps.Store != nil {
-		s.v2Service = v2service.NewService(mw, v2Deps.Reader, v2Deps.Creator, v2Deps.Mutator, v2Deps.Provenance, v2Deps.Widgets, v2Deps.ChatSub, v2Deps.ObjectSearch, fileObjectService, v2Deps.Store, techSpaceId, v2Deps.AccountId)
+		s.v2Service = v2service.NewService(mw, v2Deps.Reader, v2Deps.Creator, v2Deps.Mutator, v2Deps.Provenance, v2Deps.Widgets, v2Deps.ChatSub, v2Deps.ObjectSearch, v2Deps.SpaceLoads, fileObjectService, v2Deps.Store, techSpaceId, v2Deps.AccountId)
 		s.v2CreateDisabled = v2Deps.Creator == nil
 		s.v2EditDisabled = v2Deps.Mutator == nil
 		s.v2StreamDisabled = v2Deps.ChatSub == nil
@@ -223,6 +236,9 @@ func (srv *Server) Stop() {
 // precisely the racing case, where the entry this revocation targets is
 // still mid-mint and does not exist yet — the bump is what stops the mint
 // from caching it afterwards.
+//
+// An open spaces stream that authenticated with this token is told its key
+// changed; it re-reads the key to learn whether it was edited or revoked.
 func (srv *Server) RevokeToken(token string) {
 	srv.mu.Lock()
 	defer srv.mu.Unlock()
@@ -232,6 +248,9 @@ func (srv *Server) RevokeToken(token string) {
 			delete(srv.KeyToToken, key)
 		}
 	}
+	// in the same critical section as the sweep: a watch registers under
+	// this mutex too, so it either sees the bumped generation or is signaled
+	srv.signalWatchersLocked(token)
 }
 
 // Engine returns the underlying gin.Engine.

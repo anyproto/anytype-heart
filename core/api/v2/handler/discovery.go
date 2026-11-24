@@ -10,10 +10,19 @@ import (
 	v2service "github.com/anyproto/anytype-heart/core/api/v2/service"
 )
 
+// storeListResponse is the list envelope of a store read of one space: the
+// rows, plus the warning that the space is still loading on this device,
+// since such a read answers from what is indexed so far and never waits.
+func storeListResponse[T any](c *gin.Context, s *v2service.Service, rows []T, total, offset, limit int, hasMore bool, narrowHint string) v2model.ListResponse[T] {
+	resp := v2model.NewListResponse(rows, total, offset, limit, hasMore, narrowHint)
+	resp.Warnings = s.LoadingSpaceWarnings(c.Request.Context(), c.Param("space_id"))
+	return resp
+}
+
 // ListSpacesHandler lists the live spaces granted to the API key.
 //
 //	@Summary		List spaces
-//	@Description	Returns only live spaces accessible to this API key. A space that is deleted, left, or still joining does not appear. has_not_granted_spaces is true when other live user spaces are excluded by the key's grant; if a requested space is missing, ask the user to grant access. This flag is independent of pagination: total and has_more describe only accessible spaces.
+//	@Description	Returns the live spaces this API key can access, including one still loading on this device. A deleted, left, or still-joining space does not appear. has_not_granted_spaces is true when the key's grant excludes other live user spaces; if a requested space is missing, ask the user to grant access. The flag is independent of pagination: total and has_more describe only accessible spaces.
 //	@Id				list_spaces
 //	@Tags			Spaces
 //	@Produce		json
@@ -61,7 +70,7 @@ func ListMembersHandler(s *v2service.Service) gin.HandlerFunc {
 			RespondError(c, err)
 			return
 		}
-		c.JSON(http.StatusOK, v2model.NewListResponse(rows, total, offset, limit, hasMore,
+		c.JSON(http.StatusOK, storeListResponse(c, s, rows, total, offset, limit, hasMore,
 			"request the next offset"))
 	}
 }
@@ -111,7 +120,7 @@ func ListTypesHandler(s *v2service.Service) gin.HandlerFunc {
 			RespondError(c, err)
 			return
 		}
-		c.JSON(http.StatusOK, v2model.NewListResponse(rows, total, offset, limit, hasMore,
+		c.JSON(http.StatusOK, storeListResponse(c, s, rows, total, offset, limit, hasMore,
 			"request the next offset"))
 	}
 }
@@ -164,7 +173,7 @@ func ListPropertiesHandler(s *v2service.Service) gin.HandlerFunc {
 			RespondError(c, err)
 			return
 		}
-		c.JSON(http.StatusOK, v2model.NewListResponse(rows, total, offset, limit, hasMore,
+		c.JSON(http.StatusOK, storeListResponse(c, s, rows, total, offset, limit, hasMore,
 			"request the next offset"))
 	}
 }
@@ -194,7 +203,7 @@ func ListTemplatesHandler(s *v2service.Service) gin.HandlerFunc {
 			RespondError(c, err)
 			return
 		}
-		c.JSON(http.StatusOK, v2model.NewListResponse(rows, total, offset, limit, hasMore,
+		c.JSON(http.StatusOK, storeListResponse(c, s, rows, total, offset, limit, hasMore,
 			"narrow with type= or request the next offset"))
 	}
 }
@@ -223,7 +232,7 @@ func ListPropertyOptionsHandler(s *v2service.Service) gin.HandlerFunc {
 			RespondError(c, err)
 			return
 		}
-		c.JSON(http.StatusOK, v2model.NewListResponse(rows, total, offset, limit, hasMore,
+		c.JSON(http.StatusOK, storeListResponse(c, s, rows, total, offset, limit, hasMore,
 			"narrow with prefix= or request the next offset"))
 	}
 }

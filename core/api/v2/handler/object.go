@@ -75,7 +75,10 @@ func ListObjectsHandler(s *v2service.Service) gin.HandlerFunc {
 			RespondError(c, err)
 			return
 		}
-		c.JSON(http.StatusOK, v2model.NewListResponse(rows, total, offset, limit, hasMore,
-			"narrow with search filters or request the next offset"))
+		resp := v2model.NewListResponse(rows, total, offset, limit, hasMore,
+			"narrow with search filters or request the next offset")
+		// a store read: it never waits for a loading space, it says so
+		resp.Warnings = s.LoadingSpaceWarnings(c.Request.Context(), c.Param("space_id"))
+		c.JSON(http.StatusOK, resp)
 	}
 }

@@ -110,6 +110,52 @@ func ensureClientProcess() gin.HandlerFunc {
 	}
 }
 
+// mintSession exchanges an API key for a session — the one derivation of a
+// key's scope, grant and expiry — and caches the entry unless an eviction
+// happened since gen was observed. It is shared by ensureAuthenticated and
+// by a key watch's re-read, so the two cannot disagree about a key.
+//
+// The entry is cached only if no eviction swept while the mint was in
+// flight. A RevokeToken in that window (LinkLocalUpdateApp persists the new
+// grant FIRST, then sweeps) found no entry for this key, so the entry just
+// minted may carry the pre-edit grant. Serving the CALLER from it is
+// equivalent to the caller having read the key before the edit; CACHING it
+// would make the stale grant permanent — so on a generation mismatch the
+// entry is dropped and the next request re-mints against what the wallet
+// holds then.
+//
+// A code other than NULL means no session: the entry is zero.
+func (srv *Server) mintSession(ctx context.Context, mw apicore.ClientCommands, key string, gen uint64) (ApiSessionEntry, pb.RpcWalletCreateSessionResponseErrorCode) {
+	response := mw.WalletCreateSession(ctx, &pb.RpcWalletCreateSessionRequest{Auth: &pb.RpcWalletCreateSessionRequestAuthOfAppKey{AppKey: key}})
+	if response.Error.Code != pb.RpcWalletCreateSessionResponseError_NULL {
+		return ApiSessionEntry{}, response.Error.Code
+	}
+	entry := ApiSessionEntry{
+		Token:     response.Token,
+		AppName:   response.AppName,
+		Scope:     response.AccountScope,
+		ExpireAt:  response.AppExpireAt,
+		Grant:     util.ApiGrantFromProto(response.Grant),
+		KeyId:     response.AppHash,
+		CreatedAt: response.AppCreatedAt,
+	}
+	srv.mu.Lock()
+	if srv.evictGen == gen {
+		srv.KeyToToken[key] = entry
+	}
+	srv.mu.Unlock()
+	return entry, pb.RpcWalletCreateSessionResponseError_NULL
+}
+
+// clock is the wall clock key expiry is checked against; a test replaces
+// srv.now.
+func (srv *Server) clock() time.Time {
+	if srv.now != nil {
+		return srv.now()
+	}
+	return time.Now()
+}
+
 // ensureAuthenticated is a middleware that ensures the request is
 // authenticated: bearer parse, key→session exchange and cache, and per-request
 // expiry. It serves both route groups and decides only WHO is calling; whether
@@ -155,13 +201,14 @@ func (srv *Server) ensureAuthenticated(mw apicore.ClientCommands) gin.HandlerFun
 		srv.mu.Unlock()
 
 		if !exists {
-			response := mw.WalletCreateSession(context.Background(), &pb.RpcWalletCreateSessionRequest{Auth: &pb.RpcWalletCreateSessionRequestAuthOfAppKey{AppKey: key}})
-			if response.Error.Code != pb.RpcWalletCreateSessionResponseError_NULL {
+			var code pb.RpcWalletCreateSessionResponseErrorCode
+			apiSession, code = srv.mintSession(context.Background(), mw, key, mintGen)
+			if code != pb.RpcWalletCreateSessionResponseError_NULL {
 				// An expired key gets a distinct 401 so the client knows to
 				// re-issue it instead of retrying the same key (H5: ExpireAt
 				// must actually be enforced).
 				message := ErrInvalidApiKey.Error()
-				if response.Error.Code == pb.RpcWalletCreateSessionResponseError_APP_TOKEN_EXPIRED {
+				if code == pb.RpcWalletCreateSessionResponseError_APP_TOKEN_EXPIRED {
 					message = ErrApiKeyExpired.Error()
 				}
 				c.Header(util.WwwAuthenticateHeader, util.BearerChallengeInvalidToken())
@@ -169,34 +216,11 @@ func (srv *Server) ensureAuthenticated(mw apicore.ClientCommands) gin.HandlerFun
 				c.AbortWithStatusJSON(http.StatusUnauthorized, apiErr)
 				return
 			}
-			apiSession = ApiSessionEntry{
-				Token:     response.Token,
-				AppName:   response.AppName,
-				Scope:     response.AccountScope,
-				ExpireAt:  response.AppExpireAt,
-				Grant:     util.ApiGrantFromProto(response.Grant),
-				KeyId:     response.AppHash,
-				CreatedAt: response.AppCreatedAt,
-			}
-
-			// Cache only if no eviction swept while the mint was in flight. A
-			// RevokeToken in that window (LinkLocalUpdateApp persists the new
-			// grant FIRST, then sweeps) found no entry for this key, so the
-			// entry just minted may carry the pre-edit grant. Serving THIS
-			// request from it is equivalent to the request having completed
-			// before the edit; CACHING it would make the stale grant permanent
-			// — so on a generation mismatch the entry is dropped and the next
-			// request re-mints against what the wallet holds then.
-			srv.mu.Lock()
-			if srv.evictGen == mintGen {
-				srv.KeyToToken[key] = apiSession
-			}
-			srv.mu.Unlock()
 		}
 
 		// Expiry is enforced on every request, not only at session mint, so a
 		// key that expires while cached stops working without a restart (H5).
-		if apiSession.ExpireAt > 0 && time.Now().Unix() > apiSession.ExpireAt {
+		if util.KeyExpired(apiSession.ExpireAt, srv.clock()) {
 			// An eviction is an eviction: the generation bump keeps the rule
 			// uniform (ANY eviction invalidates concurrent mints), so no
 			// future eviction site can be the one that forgot it.
@@ -217,6 +241,10 @@ func (srv *Server) ensureAuthenticated(mw apicore.ClientCommands) gin.HandlerFun
 		// authorization middleware (the /v2-only scope gate) can read the
 		// key's scope without a second lookup.
 		c.Set(apiSessionContextKey, apiSession)
+		// The eviction generation observed with the cache read rides along:
+		// a key watch (the spaces stream) compares it with the current one to
+		// learn whether the grant above may predate an edit it never heard.
+		c.Set(apiSessionGenContextKey, mintGen)
 		// The gin context and the request context are separate carriers: the
 		// analytics middleware reads only c.Request.Context(), so the app name
 		// must ride there too — and so must the grant, because the v2

@@ -29,7 +29,7 @@ const dataviewBlockId = "dataview"
 
 // CreateQuery implements POST /v2/spaces/{space_id}/queries.
 func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.CreateQueryRequest, dryRun, createMissingOptions bool) (*v2model.CreateResult, error) {
-	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
+	if err := s.ensureSpaceWritable(ctx, spaceId); err != nil {
 		return nil, err
 	}
 	if req.Name == "" {
@@ -67,6 +67,13 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 		return nil, v2model.AmbiguousInput("provide views or top-level filter/filters/sorts, not both",
 			v2model.Issue{Path: "/views", Message: "views carry their own filters and sorts"}.
 				Hintf("move the top-level filter and sorts into a view, or drop views — %s lists a view's members", v2model.RefGetSchema("query")))
+	}
+
+	// the body is well-formed; from here the references are resolved, which
+	// can read live state (a removed built-in is told from a missing one by
+	// its derived id), on a dry run too
+	if err := s.ensureSpaceLoaded(ctx, spaceId); err != nil {
+		return nil, err
 	}
 
 	// the queried type must exist in the space — its property keys are the
@@ -269,7 +276,7 @@ func queryDocumentError(err error, explicitViews bool) error {
 // CreateCollection implements POST /v2/spaces/{space_id}/collections: the
 // AnyBlock collection_items import path builds the collection store.
 func (s *Service) CreateCollection(ctx context.Context, spaceId string, req v2model.CreateCollectionRequest, dryRun bool) (*v2model.CreateResult, error) {
-	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
+	if err := s.ensureSpaceWritable(ctx, spaceId); err != nil {
 		return nil, err
 	}
 	if req.Name == "" {
@@ -288,6 +295,12 @@ func (s *Service) CreateCollection(ctx context.Context, spaceId string, req v2mo
 				Hint:    "create the collection with the first items, then add the rest with the add_items PATCH op"})
 	}
 
+	// the first read of space state: a real write waits for a loading space
+	// here, so it is refused with the retryable 503 and not with a 404 or a
+	// duplicate concluded from a partial index; a dry run does not wait
+	if err := s.ensureSpaceLoadedForWrite(ctx, spaceId, dryRun); err != nil {
+		return nil, err
+	}
 	// referential validation: items must be existing objects in the space
 	var issues []v2model.Issue
 	index := s.store.SpaceIndex(spaceId)
@@ -301,7 +314,7 @@ func (s *Service) CreateCollection(ctx context.Context, spaceId string, req v2mo
 		}
 	}
 	if len(issues) > 0 {
-		return nil, v2model.ValidationFailed("unknown collection items", issues...)
+		return nil, s.dryRunLoadingNote(ctx, spaceId, dryRun, v2model.ValidationFailed("unknown collection items", issues...))
 	}
 
 	fields := map[string]json.RawMessage{}
@@ -322,6 +335,11 @@ func (s *Service) CreateCollection(ctx context.Context, spaceId string, req v2mo
 	}
 	doc, err := encodeEnvelope(fields)
 	if err != nil {
+		return nil, err
+	}
+	// the document create reads live state, on a dry run too: that is the
+	// one wait a dry run of this route takes
+	if err := s.ensureSpaceLoaded(ctx, spaceId); err != nil {
 		return nil, err
 	}
 	// a collection body is {name, items}: object ids, no property values, so

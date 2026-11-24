@@ -123,7 +123,9 @@ func (s *Service) SearchObjects(ctx context.Context, spaceId string, req v2model
 	for _, record := range records {
 		rows = append(rows, builder.row(record))
 	}
-	return rows, total, offset+len(records) < total, plan.warnings, nil
+	// a store read: it never waits for a loading space, it says so
+	warnings := slices.Concat(plan.warnings, s.LoadingSpaceWarnings(ctx, spaceId))
+	return rows, total, offset+len(records) < total, warnings, nil
 }
 
 // runSearchQuery executes one space's plan with C10 pagination. Full-text
@@ -1095,6 +1097,33 @@ func (s *Service) spaceRefs(ctx context.Context) ([]spaceRef, error) {
 	return out, nil
 }
 
+// loadingSpaceIds returns the spaces that are still loading on this device,
+// for the global search's store-read warning. A space is judged by the view
+// it is served by (judgedSpaceView), as everywhere else: with two views of
+// one target, a Loading view that does not name the row does not make the
+// space loading. A failed query warns about nothing: a warning must not
+// fail a search.
+func (s *Service) loadingSpaceIds() map[string]bool {
+	records, err := s.store.SpaceIndex(s.techSpaceId).Query(database.Query{Filters: spaceViewFilters()})
+	if err != nil {
+		log.With("error", err).Warn("global search: query space views")
+		return nil
+	}
+	byTarget := map[string][]*domain.Details{}
+	for _, record := range records {
+		if target := record.Details.GetString(bundle.RelationKeyTargetSpaceId); target != "" {
+			byTarget[target] = append(byTarget[target], record.Details)
+		}
+	}
+	loading := map[string]bool{}
+	for target, views := range byTarget {
+		if isLoadingSpaceView(judgedSpaceView(views)) {
+			loading[target] = true
+		}
+	}
+	return loading
+}
+
 // globalRecord is one merged result with its origin space.
 type globalRecord struct {
 	spaceId string
@@ -1137,12 +1166,19 @@ func (s *Service) GlobalSearchObjects(ctx context.Context, req v2model.SearchReq
 	var groups []*queryGroup
 	need := offset + limit
 	opened := s.store.OpenedSpaceIds()
+	loading := s.loadingSpaceIds()
 	hasUnloadedSpaces := false
 	for _, space := range spaces {
 		if !slices.Contains(opened, space.id) {
 			hasUnloadedSpaces = true
 			warnings = append(warnings, incompleteSearchIssue())
 			continue
+		}
+		// a space still loading on this device answers from what is indexed
+		// so far; only spaces in the fan-out are named, so the warning
+		// discloses nothing the key cannot see
+		if loading[space.id] {
+			warnings = append(warnings, spaceLoadingWarning(space.short))
 		}
 
 		// rule 4: type keys and option names resolve inside each space's loop

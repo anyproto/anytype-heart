@@ -253,13 +253,15 @@ func TestReadEntriesConcurrentWithClaims(t *testing.T) {
 }
 
 func TestOpenStatusReader(t *testing.T) {
-	t.Run("reads beside a live holder without guard or sentinel side effects", func(t *testing.T) {
+	t.Run("is refused beside a live holder, without guard or sentinel side effects", func(t *testing.T) {
 		// given — review Class E: the full Open (a) registered in the
 		// active-dir guard, making the once-per-start sweep skip the dir for
 		// a whole session, and (b) ran the quick-check + MarkClean, REMOVING
 		// the dirty sentinel under the live writer — the next start then
 		// opened a possibly-torn db as clean, so a status poll disarmed
 		// corruption detection on exactly the dirs most likely damaged.
+		// any-store v2 refuses a second handle on a file this process holds,
+		// so the reader fails; the refusal must leave both untouched.
 		ctx := context.Background()
 		dir := filepath.Join(t.TempDir(), "run-1")
 		holder := createStore(t, dir)
@@ -268,6 +270,30 @@ func TestOpenStatusReader(t *testing.T) {
 		require.NoError(t, holder.RecordCreated(ctx, "page-1", "obj-1"))
 		sentinel := filepath.Join(dir, "run.db.lock")
 		require.FileExists(t, sentinel, "the live writer's dirty sentinel")
+
+		// when
+		reader, err := OpenStatusReader(ctx, dir)
+
+		// then
+		require.Error(t, err)
+		assert.Nil(t, reader)
+		assert.FileExists(t, sentinel,
+			"a status read must not clear the dirty sentinel (corruption detection stays armed)")
+		assert.True(t, IsActive(dir), "the holder's guard is untouched")
+		require.NoError(t, holder.RecordCreated(ctx, "page-2", "obj-2"), "the holder still writes")
+		require.NoError(t, holder.Close())
+		assert.False(t, IsActive(dir), "and the reader added no hold of its own")
+	})
+
+	t.Run("reads a dormant dir", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		dir := filepath.Join(t.TempDir(), "run-1")
+		holder := createStore(t, dir)
+		_, err := holder.Spool(ctx)
+		require.NoError(t, err)
+		require.NoError(t, holder.RecordCreated(ctx, "page-1", "obj-1"))
+		require.NoError(t, holder.Close())
 
 		// when
 		reader, err := OpenStatusReader(ctx, dir)
@@ -285,11 +311,7 @@ func TestOpenStatusReader(t *testing.T) {
 		// then
 		assert.Equal(t, "run-1", manifest.RunId)
 		assert.Len(t, records, 1)
-		assert.FileExists(t, sentinel,
-			"a status read must not clear the dirty sentinel (corruption detection stays armed)")
-		assert.True(t, IsActive(dir), "the holder's guard is untouched")
-		require.NoError(t, holder.Close())
-		assert.False(t, IsActive(dir), "and the reader added no hold of its own")
+		assert.False(t, IsActive(dir), "the reader took no hold")
 	})
 
 	t.Run("a dir missing its collections is an error, not a create", func(t *testing.T) {

@@ -244,7 +244,7 @@
   },
   {
    "name": "list_spaces",
-   "description": "List spaces. Returns only live spaces accessible to this API key. A space that is deleted, left, or still joining does not appear. has_not_granted_spaces is true when other live user spaces are excluded by the key's grant; if a requested space is missing, ask the user to grant access. This flag is independent of pagination: total and has_more describe only accessible spaces.",
+   "description": "List spaces. Returns the live spaces this API key can access, including one still loading on this device. A deleted, left, or still-joining space does not appear. has_not_granted_spaces is true when the key's grant excludes other live user spaces; if a requested space is missing, ask the user to grant access. The flag is independent of pagination: total and has_more describe only accessible spaces.",
    "inputSchema": {
     "additionalProperties": false,
     "properties": {
@@ -298,7 +298,7 @@
   },
   {
    "name": "get_space",
-   "description": "Get a space. Only live spaces are served. A space that is deleted, left, or still joining is a 404.",
+   "description": "Get a space. Only live spaces are served. A space that is deleted, left, or still joining is a 404; one still loading on this device is served.",
    "inputSchema": {
     "additionalProperties": false,
     "properties": {

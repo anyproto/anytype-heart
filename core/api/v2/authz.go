@@ -98,6 +98,10 @@ func routeKey(method, path string) string {
 //     watermark that every device sees.
 //   - POST /v2/spaces is a write AND scoped-denied: even a readwrite grant
 //     must not mint spaces outside its list.
+//   - GET /v2/spaces/stream is GET /v2/spaces held open and takes its
+//     class: it addresses no space, and the service picks the space set — by
+//     the same function the list calls, re-run with the key's CURRENT grant
+//     whenever it is edited.
 //   - GET /v2/auth/whoami is a read, classified service-filtered by
 //     reasoning, not by reflex: it is AUTHENTICATED (auth-exempt is
 //     impossible inside the gated group — the conformance walk enforces
@@ -112,6 +116,7 @@ var v2RouteAuthz = map[string]RouteAuthz{
 	routeKey(http.MethodGet, "/v2/auth/whoami"):                                         {Verb: RouteVerbRead, Global: GlobalServiceFiltered},
 	routeKey(http.MethodPost, "/v2/validate"):                                           {Verb: RouteVerbRead, Global: GlobalDataFreeAllow},
 	routeKey(http.MethodGet, "/v2/spaces"):                                              {Verb: RouteVerbRead, Global: GlobalServiceFiltered},
+	routeKey(http.MethodGet, "/v2/spaces/stream"):                                       {Verb: RouteVerbRead, Global: GlobalServiceFiltered},
 	routeKey(http.MethodGet, "/v2/spaces/:space_id"):                                    {Verb: RouteVerbRead},
 	routeKey(http.MethodPost, "/v2/spaces"):                                             {Verb: RouteVerbWrite, Global: GlobalScopedDenied},
 	routeKey(http.MethodPatch, "/v2/spaces/:space_id"):                                  {Verb: RouteVerbWrite},

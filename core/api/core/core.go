@@ -410,3 +410,13 @@ type Widgets interface {
 	// removed under a stale name. The removed entry is answered.
 	DeleteWidget(ctx context.Context, spaceId string, scope WidgetScope, widgetId string, expectedTarget string) (WidgetEntry, error)
 }
+
+// SpaceLoads is the bounded-wait port of API v2 (APIV2_SPACE_STREAM.md §3.4):
+// a request that needs a loaded space waits for the load through it, under a
+// deadline of its own, before it calls anything that would wait without one.
+type SpaceLoads interface {
+	// WaitLoaded returns nil once the space is loaded on this device. It
+	// waits for a load in progress for as long as ctx allows and returns the
+	// load's error, or ctx's, otherwise. For a loaded space it does not wait.
+	WaitLoaded(ctx context.Context, spaceId string) error
+}

@@ -120,6 +120,31 @@ func TestShortSpaceRefs(t *testing.T) {
 	})
 }
 
+// TestReservedSpaceRefTail: GET /v2/spaces/stream is the spaces stream, so a
+// space served as "stream" could not be read back through GET-one. A tail is
+// six base32 characters, and "stream" is one of them; such a space keeps its
+// full id. Its neighbour, whose tail is merely near, shortens as usual — a
+// guard that kept everything full would fail on it.
+func TestReservedSpaceRefTail(t *testing.T) {
+	// given: two shaped ids, one whose CID half ends in "stream"
+	reserved := "bafyreiay4rdeleruyuy6x575hvhtifedmjq4g3ojpffvpbgmuackstream" + testReplKey
+	neighbour := "bafyreiay4rdeleruyuy6x575hvhtifedmjq4g3ojpffvpbgmuackstreaq" + testReplKey
+	require.True(t, isSpaceIdShaped(reserved), "the fixture id must take the production shape, or it would never shorten")
+	require.Equal(t, "stream", spaceIdTail(reserved))
+	want := map[string]string{neighbour: "streaq"}
+
+	// when
+	got := shortSpaceRefs([]string{reserved, neighbour})
+
+	// then
+	assert.Equal(t, want, got)
+	assert.Equal(t, reserved, shortSpaceRef([]string{reserved, neighbour}, reserved))
+	// and the reference still resolves when a caller types it on a longer route
+	idx, matches := matchSpaceRef([]string{reserved, neighbour}, "stream")
+	assert.Equal(t, 1, matches)
+	assert.Equal(t, 0, idx)
+}
+
 func TestMatchSpaceRef(t *testing.T) {
 	ids := realSpaceIds()
 
