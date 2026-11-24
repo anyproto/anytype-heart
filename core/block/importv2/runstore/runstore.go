@@ -27,6 +27,8 @@ import (
 	"github.com/anyproto/any-store/v2/query"
 	sqlite "github.com/anyproto/go-sqlite"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoremigrate"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
@@ -306,9 +308,11 @@ func RunsRoot(repoPath string) string {
 //     byte-identical files.
 //
 // The returned Store must only be used for reads; Close releases only the
-// db handle. Concurrent with a live writer this is a plain extra SQLite
-// connection (WAL) — safe, at the documented cost of read-transaction
-// pressure on the writer's latency.
+// db handle. any-store v2 refuses a second handle on a file this process
+// already holds, so while a live Store (a run, the sweep) has the dir open
+// the reader fails instead of reading beside it; the caller treats that as
+// transient. A dir whose run db is still an any-store v1 file is refused
+// too: migrating it is a write, left to the sweep's open.
 func OpenStatusReader(ctx context.Context, dir string) (*Store, error) {
 	dbPath := filepath.Join(dir, dbFileName)
 	if _, err := os.Stat(dbPath); err != nil {
@@ -383,9 +387,11 @@ func IsMissingManifest(err error) bool {
 // so it must never fire on a recoverable condition.
 //
 // Classification is deliberately narrow:
-//   - the fork's codes are checked directly (anystorehelper classifies by
+//   - a v2 file counts when any-store says ErrCorrupt;
+//   - SQLite codes still come from a v1 file whose migration failed; the
+//     fork's codes are checked directly (anystorehelper classifies by
 //     zombiezen.com/go/sqlite codes, which cannot unwrap the
-//     github.com/anyproto/go-sqlite error type any-store v0.4.7 emits);
+//     github.com/anyproto/go-sqlite error type any-store v1 emits);
 //   - only CORRUPT and NOTADB count — CANTOPEN is excluded on purpose: it
 //     also means EACCES, fd exhaustion and some disk-full paths, none of
 //     which is a damaged file (the provider's reinit path counts CANTOPEN
@@ -408,7 +414,8 @@ func IsCorrupted(err error) bool {
 	if sqlite.ErrCode(err) == sqlite.ResultInterrupt {
 		return false
 	}
-	if errors.Is(err, anystore.ErrQuickCheckFailed) || errors.Is(err, anystore.ErrIncompatibleVersion) {
+	// ErrCorrupt covers every damaged v2 file, ErrQuickCheckFailed included.
+	if errors.Is(err, anystore.ErrCorrupt) || errors.Is(err, anystore.ErrIncompatibleVersion) {
 		return true
 	}
 	switch sqlite.ErrCode(err) {
@@ -559,7 +566,16 @@ func Open(ctx context.Context, dir string) (*Store, error) {
 }
 
 func open(ctx context.Context, dir string) (*Store, error) {
-	db, err := anystore.Open(ctx, filepath.Join(dir, dbFileName), storeConfig())
+	dbPath := filepath.Join(dir, dbFileName)
+	db, err := anystore.Open(ctx, dbPath, storeConfig())
+	if errors.Is(err, anystore.ErrV1Database) {
+		// A run started before the move to any-store v2 left its ledger in
+		// a v1 file; the freeze promises it stays compensable.
+		if err = migrateV1(ctx, dbPath); err != nil {
+			return nil, fmt.Errorf("migrate run db to any-store v2: %w", err)
+		}
+		db, err = anystore.Open(ctx, dbPath, storeConfig())
+	}
 	if err != nil {
 		return nil, fmt.Errorf("open run db: %w", err)
 	}
@@ -587,6 +603,19 @@ func open(ctx context.Context, dir string) (*Store, error) {
 		return nil, fmt.Errorf("ensure entries index: %w", err)
 	}
 	return s, nil
+}
+
+// migrateV1 rewrites the any-store v1 run db at path as a v2 one in place,
+// with the options the object store migrates its own databases with. The
+// v1 file is removed once the copy is verified; on an error it stays as it
+// was.
+func migrateV1(ctx context.Context, path string) error {
+	unlock := anystoremigrate.LockPath(path)
+	defer unlock()
+	if _, err := anystoremigrate.New(anystoreprovider.MigrationOptions(storeConfig())).MigrateFile(ctx, path); err != nil {
+		return fmt.Errorf("migrate %s: %w", filepath.Base(path), err)
+	}
+	return nil
 }
 
 // storeConfig mirrors the app's objectstore settings plus the durability

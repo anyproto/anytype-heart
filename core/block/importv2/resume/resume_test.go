@@ -90,7 +90,9 @@ func TestLoad(t *testing.T) {
 		// than the core. The belt behind the sweep's resumable() gate: any
 		// caller gets the refusal, and the dir routes to compensate-only.
 		store := interruptedRun(t)
-		db, err := anystore.Open(ctx, filepath.Join(store.Dir(), "run.db"), nil)
+		dir := store.Dir()
+		require.NoError(t, store.Close(), "any-store v2 allows one handle per file")
+		db, err := anystore.Open(ctx, filepath.Join(dir, "run.db"), nil)
 		require.NoError(t, err)
 		coll, err := db.Collection(ctx, "manifest")
 		require.NoError(t, err)
@@ -101,6 +103,9 @@ func TestLoad(t *testing.T) {
 			}))
 		require.NoError(t, err)
 		require.NoError(t, db.Close())
+		store, err = runstore.Open(ctx, dir)
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = store.Close() })
 
 		// when
 		_, err = Load(ctx, store)
