@@ -18,7 +18,8 @@ func TestIsCorruptedError(t *testing.T) {
 	}{
 		"v2 corrupt umbrella":         {fmt.Errorf("open: %w", anystore.ErrCorrupt), true},
 		"v2 header corrupt":           {fmt.Errorf("open: %w", anystore.ErrHeaderCorrupt), true},
-		"v2 wal corrupt":              {fmt.Errorf("open: %w", anystore.ErrWALCorrupt), true},
+		"v2 wal short read":           {fmt.Errorf("open: %w", anystore.ErrWALShortRead), false},
+		"v2 wrong key":                {fmt.Errorf("open: %w", anystore.ErrWrongKey), false},
 		"v2 quick check failed":       {fmt.Errorf("open: %w", anystore.ErrQuickCheckFailed), true},
 		"v2 incompatible version":     {anystore.ErrIncompatibleVersion, true},
 		"v1 file":                     {anystore.ErrV1Database, false},

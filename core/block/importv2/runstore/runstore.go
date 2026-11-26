@@ -945,7 +945,10 @@ func (s *Store) RecordDerivedMatched(ctx context.Context, sourceKey, objectId st
 	ctx, opDone := opCtx(ctx)
 	defer opDone()
 
-	_, err := s.entries.UpsertId(ctx, sourceKey, query.ModifyFunc(
+	// UpdateId, not UpsertId: any-store v2.6 inserts a bare {id} row when an
+	// upsert's modifier changes nothing for a missing id, and a missing row
+	// is "any other row shape" — left alone.
+	_, err := s.entries.UpdateId(ctx, sourceKey, query.ModifyFunc(
 		func(arena *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
 			if string(v.GetStringBytes("mode")) != modeDerived ||
 				string(v.GetStringBytes("objectId")) != objectId {
@@ -955,6 +958,9 @@ func (s *Store) RecordDerivedMatched(ctx context.Context, sourceKey, objectId st
 			v.Set("status", arena.NewString(statusPersisted))
 			return v, true, nil
 		}))
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		return nil
+	}
 	return err
 }
 
