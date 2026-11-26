@@ -280,6 +280,14 @@ type Repository interface {
 	// GetLastMessages
 	GetLastMessagesByCreators(ctx context.Context, creators []string, limit uint) ([]*chatmodel.Message, error)
 	SetSyncedByMaxOrderId(ctx context.Context, maxOrderId string) ([]string, error)
+	// HasUnsyncedEdgeMessage reports whether the newest or the oldest message of creator with an
+	// order id <= maxOrderId is still marked unsynced, in two indexed reads of one message each.
+	// A synced mark covers every message up to the order id it was set for, so once the tree is
+	// synced both edges are, unless a replay rewrote the flags: a store replayed from the root
+	// (a reset or rebuilt database) holds every own message unsynced, both edges included. A
+	// replay into a store that kept some messages can leave only messages between two synced
+	// ones unsynced; that this does not see.
+	HasUnsyncedEdgeMessage(ctx context.Context, creator string, maxOrderId string) (bool, error)
 	// GetAllMessageAttachments returns attachment info from all messages, optionally filtered by afterOrderId.
 	GetAllMessageAttachments(ctx context.Context, afterOrderId string) ([]MessageAttachmentInfo, error)
 	GetPinnedMessages(ctx context.Context) ([]*chatmodel.Message, error)
@@ -736,6 +744,57 @@ func (r *repository) unsyncedUpToQuery(maxOrderId string) anystore.Query {
 	})
 }
 
+func (r *repository) HasUnsyncedEdgeMessage(ctx context.Context, creator string, maxOrderId string) (bool, error) {
+	if maxOrderId == "" {
+		return false, nil
+	}
+	for _, order := range []string{descOrder, ascOrder} {
+		synced, found, err := firstMessageSynced(ctx, r.edgeByCreatorQuery(creator, maxOrderId, order))
+		if err != nil {
+			return false, fmt.Errorf("read edge message of creator: %w", err)
+		}
+		if !found {
+			return false, nil
+		}
+		if !synced {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// edgeByCreatorQuery walks the (creator, storage key) index up to maxOrderId in the given order
+// and stops at the first message, tombstones included.
+func (r *repository) edgeByCreatorQuery(creator string, maxOrderId string, order string) anystore.Query {
+	return r.collection.Find(query.And{
+		query.Key{
+			Path:   []string{chatmodel.CreatorKey},
+			Filter: query.NewComp(query.CompOpEq, creator),
+		},
+		chatmodel.OrderIdAtMost(maxOrderId),
+	}).Sort(order).Limit(1)
+}
+
+// firstMessageSynced reads the synced flag of the first message q yields, and only that one.
+func firstMessageSynced(ctx context.Context, q anystore.Query) (synced, found bool, err error) {
+	iter, err := q.Iter(ctx)
+	if err != nil {
+		return false, false, fmt.Errorf("find iter: %w", err)
+	}
+	defer iter.Close()
+	if !iter.Next() {
+		if err = iter.Err(); err != nil {
+			return false, false, fmt.Errorf("iterate: %w", err)
+		}
+		return false, false, nil
+	}
+	doc, err := iter.Doc()
+	if err != nil {
+		return false, false, fmt.Errorf("get doc: %w", err)
+	}
+	return doc.Value().GetBool(chatmodel.SyncedKey), true, nil
+}
+
 type GetMessagesRequest struct {
 	AfterOrderId    string
 	BeforeOrderId   string
@@ -807,6 +866,10 @@ func (s *repository) queryMessages(ctx context.Context, query anystore.Query) ([
 			return nil, fmt.Errorf("unmarshal message: %w", err)
 		}
 		res = append(res, msg)
+	}
+	// Next reports a read failure as the end of the results
+	if err = iter.Err(); err != nil {
+		return nil, fmt.Errorf("iterate: %w", err)
 	}
 	// reverse
 	sort.Slice(res, func(i, j int) bool {

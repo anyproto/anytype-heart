@@ -107,6 +107,8 @@ type storeObject struct {
 	detailsComponent        *detailsComponent
 	statService             debugstat.StatService
 	indexerStore            objectstore.IndexerStore
+	// localOnly is set when the account runs without the sync node, which alone confirms a sync
+	localOnly bool
 
 	reactionsCounterEpoch int64
 
@@ -214,6 +216,7 @@ func New(
 	layoutConverter converter.LayoutConverter,
 	fileObjectService fileobject.Service,
 	statService debugstat.StatService,
+	localOnly bool,
 	typeKey domain.TypeKey,
 	layout model.ObjectTypeLayout,
 ) StoreObject {
@@ -225,6 +228,7 @@ func New(
 		locker:                  sb.(smartblock.Locker),
 		accountService:          accountService,
 		statService:             statService,
+		localOnly:               localOnly,
 		arenaPool:               &anyenc.ArenaPool{},
 		crdtDb:                  crdtDb,
 		repositoryService:       repositoryService,
@@ -322,6 +326,10 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	})
 	if err != nil {
 		return fmt.Errorf("read store doc: %w", err)
+	}
+	// a wrong sync mark is not worth failing the open over
+	if checkErr := s.recheckSyncIfMarksStale(ctx.State); checkErr != nil {
+		log.Error("recheck sync of stale synced marks", zap.String("objectId", s.Id()), zap.Error(checkErr))
 	}
 
 	s.detailsComponent = &detailsComponent{
@@ -848,16 +856,7 @@ func (s *storeObject) HandleSyncStatusUpdate(heads []string, status domain.Objec
 		return
 	}
 
-	var maxOrderId string
-	for _, head := range heads {
-		ch, err := s.Tree().GetChange(head)
-		if err != nil {
-			continue
-		}
-		if ch.OrderId > maxOrderId {
-			maxOrderId = ch.OrderId
-		}
-	}
+	maxOrderId := s.maxOrderIdOf(heads)
 	if maxOrderId == "" {
 		return
 	}
@@ -874,6 +873,60 @@ func (s *storeObject) HandleSyncStatusUpdate(heads []string, status domain.Objec
 		s.subscription.UpdateSyncStatus(idsModified, true)
 		s.subscription.Flush(false)
 	}
+}
+
+// recheckSyncIfMarksStale puts the chat back to syncing when the store holds own messages
+// unsynced up to the heads while the object's sync status says the tree is synced.
+//
+// ChatHandler.BeforeCreate stores every own message unsynced, and only a synced status event
+// (HandleSyncStatusUpdate) marks it synced. A store that replays the tree from the root (a reset
+// or rebuilt crdt database) brings every own message back unsynced, and a tree that is already
+// synced never moves from syncing to synced again: no event comes. The stored status cannot
+// vouch for the current heads by itself (a send whose syncing status was not saved before a
+// crash, a change that came over the local network while the node was out of reach), so the
+// node decides: the status written to st is saved when the object loads, and the next head sync
+// with the node moves a syncing chat to synced once the node holds the heads; that event marks
+// the messages.
+//
+// A missing status counts as synced: it is one the object store backfill has not written yet
+// (a new or reset object store), and the backfill skips a chat that is already loaded. An
+// archived chat stays syncing until it is restored, as the syncing objects subscription leaves
+// archived objects out. Without the node nothing can confirm, so a local-only account is left
+// alone.
+func (s *storeObject) recheckSyncIfMarksStale(st *state.State) error {
+	if s.localOnly {
+		return nil
+	}
+	if status := st.LocalDetails(); status != nil && status.Has(bundle.RelationKeySyncStatus) &&
+		status.GetInt64(bundle.RelationKeySyncStatus) != int64(domain.ObjectSyncStatusSynced) {
+		return nil
+	}
+	// the object's own context: a deadline of the caller that loads it must not skip the check
+	stale, err := s.repository.HasUnsyncedEdgeMessage(s.componentCtx, s.accountService.AccountID(), s.maxOrderIdOf(s.Tree().Heads()))
+	if err != nil {
+		return fmt.Errorf("check own messages: %w", err)
+	}
+	if stale {
+		st.SetDetailAndBundledRelation(bundle.RelationKeySyncStatus, domain.Int64(int64(domain.ObjectSyncStatusSyncing)))
+		st.SetDetailAndBundledRelation(bundle.RelationKeySyncError, domain.Int64(int64(domain.SyncErrorNull)))
+		st.SetDetailAndBundledRelation(bundle.RelationKeySyncDate, domain.Int64(time.Now().Unix()))
+	}
+	return nil
+}
+
+// maxOrderIdOf returns the greatest order id among heads, or "" when none of them is in the tree.
+func (s *storeObject) maxOrderIdOf(heads []string) string {
+	var maxOrderId string
+	for _, head := range heads {
+		ch, err := s.Tree().GetChange(head)
+		if err != nil {
+			continue
+		}
+		if ch.OrderId > maxOrderId {
+			maxOrderId = ch.OrderId
+		}
+	}
+	return maxOrderId
 }
 
 func (s *storeObject) SetMessagesPinned(ctx context.Context, messageIds []string, pinned bool) error {

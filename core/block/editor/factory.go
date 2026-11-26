@@ -276,13 +276,13 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		if err != nil {
 			return nil, fmt.Errorf("get crdt db: %w", err)
 		}
-		return chatobject.New(sb, f.accountService, crdtDb, f.chatRepositoryService, f.chatSubscriptionService, spaceIndex, f.objectStore, f.layoutConverter, f.fileObjectService, f.statService, bundle.TypeKeyChatDerived, model.ObjectType_chatDerived), nil
+		return chatobject.New(sb, f.accountService, crdtDb, f.chatRepositoryService, f.chatSubscriptionService, spaceIndex, f.objectStore, f.layoutConverter, f.fileObjectService, f.statService, f.config.IsLocalOnlyMode(), bundle.TypeKeyChatDerived, model.ObjectType_chatDerived), nil
 	case coresb.SmartBlockTypeDiscussionObject:
 		crdtDb, err := f.dbProvider.GetCrdtDb(space.Id()).Wait()
 		if err != nil {
 			return nil, fmt.Errorf("get crdt db: %w", err)
 		}
-		return chatobject.New(sb, f.accountService, crdtDb, f.chatRepositoryService, f.chatSubscriptionService, spaceIndex, f.objectStore, f.layoutConverter, f.fileObjectService, f.statService, bundle.TypeKeyDiscussion, model.ObjectType_discussion), nil
+		return chatobject.New(sb, f.accountService, crdtDb, f.chatRepositoryService, f.chatSubscriptionService, spaceIndex, f.objectStore, f.layoutConverter, f.fileObjectService, f.statService, f.config.IsLocalOnlyMode(), bundle.TypeKeyDiscussion, model.ObjectType_discussion), nil
 	case coresb.SmartBlockTypeAccountObject:
 		db, err := f.dbProvider.GetCrdtDb(space.Id()).Wait()
 		if err != nil {
