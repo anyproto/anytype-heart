@@ -3695,7 +3695,7 @@
                 }
               }
             },
-            "description": "challenge_attempts_exceeded: stop submitting codes and ask the user to start a new pairing when ready"
+            "description": "Too many pairing attempts"
           },
           "500": {
             "content": {

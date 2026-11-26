@@ -119,7 +119,7 @@ func TestPairingOpenAPIResponses(t *testing.T) {
 		"403": {"ForbiddenError", nil},
 		"404": {"PairingError", []string{"invalid_challenge_id"}},
 		"409": {"PairingError", []string{"challenge_not_approved"}},
-		"429": {"PairingError", []string{"challenge_attempts_exceeded"}},
+		"429": {"PairingError", nil},
 		"500": {"ServerError", nil},
 		"503": {"PairingError", []string{"account_not_running"}},
 	}

@@ -21,7 +21,7 @@ var (
 	ErrInvalidChallengeID        = errors.New("the challenge ID is no longer valid. Start a new challenge if the user still wants to pair")
 	ErrChallengeNotApproved      = errors.New("wait for the user to approve this challenge in Anytype Desktop, then submit the displayed code")
 	ErrIncorrectAnswer           = errors.New("the code is incorrect. Ask the user to check the four-digit code displayed for this challenge")
-	ErrChallengeAttemptsExceeded = errors.New("pairing attempts are exhausted. Stop submitting codes and ask the user to start a new pairing when ready")
+	ErrChallengeAttemptsExceeded = errors.New("pairing attempts are exhausted. Start a new challenge when ready. If pairing is still locked, restart Anytype Desktop and try again")
 )
 
 // CreateChallenge calls AccountLocalLinkNewChallenge and returns the challenge ID

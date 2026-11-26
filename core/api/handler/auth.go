@@ -9,6 +9,7 @@ import (
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/service"
 	"github.com/anyproto/anytype-heart/core/api/util"
+	"github.com/anyproto/anytype-heart/core/session"
 )
 
 // CreateChallengeHandler creates a new challenge for API key generation
@@ -62,7 +63,7 @@ func CreateChallengeHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		403				{object}	util.ForbiddenError				"Untrusted request origin or host"
 //	@Failure		404				{object}	apimodel.PairingError			"invalid_challenge_id: start a new challenge if the user still wants to pair"
 //	@Failure		409				{object}	apimodel.PairingError			"challenge_not_approved: wait for Desktop approval and submit the displayed code with the same challenge_id"
-//	@Failure		429				{object}	apimodel.PairingError			"challenge_attempts_exceeded: stop submitting codes and ask the user to start a new pairing when ready"
+//	@Failure		429				{object}	apimodel.PairingError			"Too many pairing attempts"
 //	@Failure		500				{object}	util.ServerError				"Internal server error"
 //	@Failure		503				{object}	apimodel.PairingError			"account_not_running: open Anytype Desktop and sign in before pairing"
 //	@Router			/v1/auth/api_keys [post]
@@ -75,6 +76,10 @@ func CreateApiKeyHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
+		if !session.IsWellFormedChallengeCode(req.Code) {
+			writePairingError(c, util.ErrBadInput("enter the four-digit code exactly as shown in Anytype Desktop"))
+			return
+		}
 		result, err := s.CreateApiKey(c.Request.Context(), req.ChallengeId, req.Code)
 		if err != nil {
 			writePairingError(c, err)

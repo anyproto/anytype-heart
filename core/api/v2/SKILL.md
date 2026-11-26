@@ -5,7 +5,8 @@ description: Call Anytype's local HTTP API v2 directly — search, read, create 
 
 # Anytype API v2 — HTTP guide for agents
 
-Local REST API at `http://127.0.0.1:31009` while Anytype Desktop is running.
+Anytype Desktop serves the local REST API at `http://127.0.0.1:31009` by
+default. In **Settings → Local API**, you can enable the API and check its port.
 Bodies are compact JSON, and every name this API owns is `snake_case` — params,
 fields and op names alike. (Inside an object's `blocks` and `properties`
 you are reading the AnyBlock format's content; property and type keys
@@ -20,8 +21,10 @@ If the user has already configured an API key, use it. Otherwise, with the
 user signed in to Anytype Desktop, make the two pairing requests without a
 bearer token. Send `Content-Type: application/json` on both.
 
-1. `POST /v2/auth/challenges` with `{"app_name":"My integration"}`. Keep the
-   returned `challenge_id` for this pairing.
+1. `POST /v2/auth/challenges` with `{"app_name":"<your integration name>"}`.
+   Replace the placeholder with a distinct name for your integration and reuse
+   the exact name when pairing again. Anytype uses it to identify the integration
+   that created an object. Keep the returned `challenge_id` for this pairing.
 2. Ask the user to review the app, choose spaces and permissions in Desktop,
    and approve. Have the user enter the displayed four-digit code in the
    integration's local setup prompt and keep the code and key out of chat and logs.
@@ -39,11 +42,10 @@ Pairing errors include a `code` and recovery `message`. For
 `challenge_not_approved`, wait for the user and keep the same challenge ID.
 For `incorrect_answer`, ask the user to check the displayed code. For
 `invalid_challenge_id`, start a fresh challenge only if the user still wants
-to pair. Stop automatic retries on `pairing_rate_limited` or
-`challenge_attempts_exceeded`. For `account_not_running`, ask the user to
-open Desktop and sign in. Older versions may return a generic 500 for these
-conditions. Check Desktop for the prompt with the user, or use a key the user
-created in Settings → API Keys.
+to pair. Stop automatic retries on `pairing_rate_limited`. For
+`account_not_running`, ask the user to open Desktop and sign in. Older
+versions may return a generic 500 for these conditions. Check Desktop for the
+prompt with the user, or use a key the user created in **Settings → Local API**.
 
 ## The data model in six ideas
 

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -52,7 +53,7 @@ func TestRouter_AuthRoute(t *testing.T) {
 				require.Equal(t, "http://localhost:3000", localorigin.OriginFromContext(args.Get(0).(context.Context)))
 			}).Return(&pb.RpcAccountLocalLinkNewChallengeResponse{ChallengeId: "challenge-id"}).Once()
 			fx.mwMock.On("AccountLocalLinkSolveChallenge", mock.Anything, &pb.RpcAccountLocalLinkSolveChallengeRequest{
-				ChallengeId: "challenge-id", Answer: "1234",
+				ChallengeId: "challenge-id", Answer: "0731",
 			}).Return(&pb.RpcAccountLocalLinkSolveChallengeResponse{AppKey: "issued-key", SessionToken: "private-session"}).Once()
 
 			post := func(path, body string) *httptest.ResponseRecorder {
@@ -68,7 +69,7 @@ func TestRouter_AuthRoute(t *testing.T) {
 			challenge := post("/auth/challenges", `{"app_name":"pairing-client"}`)
 			require.Equal(t, http.StatusCreated, challenge.Code)
 			require.JSONEq(t, `{"challenge_id":"challenge-id"}`, challenge.Body.String())
-			key := post("/auth/api_keys", `{"challenge_id":"challenge-id","code":"1234"}`)
+			key := post("/auth/api_keys", `{"challenge_id":"challenge-id","code":"0731"}`)
 			require.Equal(t, http.StatusCreated, key.Code)
 			require.JSONEq(t, `{"api_key":"issued-key","grant":null}`, key.Body.String())
 
@@ -147,6 +148,26 @@ func TestRouter_AuthErrors(t *testing.T) {
 	}
 }
 
+func TestRouter_RejectsMalformedPairingCodeBeforeSolve(t *testing.T) {
+	for _, version := range []string{"/v1", "/v2"} {
+		t.Run(version, func(t *testing.T) {
+			fx := newFixture(t)
+			for _, code := range []string{"", "123", "12345", "1a34", "+123", " 123", "123 ", "１２３４"} {
+				body, err := json.Marshal(map[string]string{"challenge_id": "pending", "code": code})
+				require.NoError(t, err)
+				req := httptest.NewRequest(http.MethodPost, version+"/auth/api_keys", bytes.NewReader(body))
+				req.Host = localApiHost
+				w := httptest.NewRecorder()
+				fx.Engine().ServeHTTP(w, req)
+				require.Equal(t, http.StatusBadRequest, w.Code)
+				require.Contains(t, w.Body.String(), `"code":"bad_request"`)
+				require.Contains(t, w.Body.String(), "four-digit code")
+			}
+			fx.mwMock.AssertNumberOfCalls(t, "AccountLocalLinkSolveChallenge", 0)
+		})
+	}
+}
+
 func TestRouter_PairingRPCFailures(t *testing.T) {
 	check := func(t *testing.T, fx *fixture, path, body string, status int, code, action string) {
 		t.Helper()
@@ -163,6 +184,7 @@ func TestRouter_PairingRPCFailures(t *testing.T) {
 		require.Equal(t, code, got["code"])
 		require.Contains(t, got["message"], action)
 		require.NotContains(t, w.Body.String(), "private-")
+		require.NotContains(t, w.Body.String(), "0731")
 	}
 	for _, version := range []string{"/v1", "/v2"} {
 		for _, tc := range []struct {
@@ -198,7 +220,7 @@ func TestRouter_PairingRPCFailures(t *testing.T) {
 			{pb.RpcAccountLocalLinkSolveChallengeResponseError_INVALID_CHALLENGE_ID, 404, "invalid_challenge_id", "new challenge"},
 			{pb.RpcAccountLocalLinkSolveChallengeResponseError_CHALLENGE_NOT_APPROVED, 409, "challenge_not_approved", "wait for the user"},
 			{pb.RpcAccountLocalLinkSolveChallengeResponseError_INCORRECT_ANSWER, 400, "incorrect_answer", "check the four-digit code"},
-			{pb.RpcAccountLocalLinkSolveChallengeResponseError_CHALLENGE_ATTEMPTS_EXCEEDED, 429, "challenge_attempts_exceeded", "Stop submitting codes"},
+			{pb.RpcAccountLocalLinkSolveChallengeResponseError_CHALLENGE_ATTEMPTS_EXCEEDED, 429, "challenge_attempts_exceeded", "restart Anytype Desktop"},
 			{pb.RpcAccountLocalLinkSolveChallengeResponseError_UNKNOWN_ERROR, 500, "internal_server_error", "failed to authenticate"},
 			{999, 500, "internal_server_error", "failed to authenticate"},
 		} {
@@ -209,7 +231,7 @@ func TestRouter_PairingRPCFailures(t *testing.T) {
 						AppKey: "private-key", SessionToken: "private-token",
 						Error: &pb.RpcAccountLocalLinkSolveChallengeResponseError{Code: tc.rpc, Description: "private-refusal-reason"},
 					}).Once()
-				check(t, fx, version+"/auth/api_keys", `{"challenge_id":"private-id","code":"1234"}`, tc.status, tc.code, tc.action)
+				check(t, fx, version+"/auth/api_keys", `{"challenge_id":"private-id","code":"0731"}`, tc.status, tc.code, tc.action)
 			})
 		}
 	}
