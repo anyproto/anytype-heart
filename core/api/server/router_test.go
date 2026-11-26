@@ -134,19 +134,6 @@ func TestRouter_AuthErrors(t *testing.T) {
 					require.Equal(t, http.StatusBadRequest, w.Code)
 					require.Contains(t, w.Body.String(), `"code":"bad_request"`)
 				}
-				if endpoint == "/auth/api_keys" {
-					fx.mwMock.On("AccountLocalLinkSolveChallenge", mock.Anything, mock.Anything).
-						Return(&pb.RpcAccountLocalLinkSolveChallengeResponse{
-							Error: &pb.RpcAccountLocalLinkSolveChallengeResponseError{Code: pb.RpcAccountLocalLinkSolveChallengeResponseError_CHALLENGE_NOT_APPROVED},
-						}).Once()
-					req := httptest.NewRequest(http.MethodPost, version+endpoint, strings.NewReader(`{"challenge_id":"pending","code":"1234"}`))
-					req.Host = localApiHost
-					w := httptest.NewRecorder()
-					fx.Engine().ServeHTTP(w, req)
-					require.Equal(t, http.StatusInternalServerError, w.Code)
-					require.NotContains(t, w.Body.String(), `"api_key"`)
-				}
-
 				// Neither alias may reach a pairing RPC from an untrusted origin.
 				req := httptest.NewRequest(http.MethodPost, version+endpoint, strings.NewReader(`{}`))
 				req.Host = localApiHost
@@ -154,6 +141,75 @@ func TestRouter_AuthErrors(t *testing.T) {
 				w := httptest.NewRecorder()
 				fx.Engine().ServeHTTP(w, req)
 				require.Equal(t, http.StatusForbidden, w.Code)
+				require.Contains(t, w.Body.String(), `"code":"forbidden"`)
+			})
+		}
+	}
+}
+
+func TestRouter_PairingRPCFailures(t *testing.T) {
+	check := func(t *testing.T, fx *fixture, path, body string, status int, code, action string) {
+		t.Helper()
+		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
+		req.Host = localApiHost
+		w := httptest.NewRecorder()
+		fx.Engine().ServeHTTP(w, req)
+		require.Equal(t, status, w.Code)
+		var got map[string]any
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
+		require.Len(t, got, 4)
+		require.Equal(t, "error", got["object"])
+		require.Equal(t, float64(status), got["status"])
+		require.Equal(t, code, got["code"])
+		require.Contains(t, got["message"], action)
+		require.NotContains(t, w.Body.String(), "private-")
+	}
+	for _, version := range []string{"/v1", "/v2"} {
+		for _, tc := range []struct {
+			rpc    pb.RpcAccountLocalLinkNewChallengeResponseErrorCode
+			status int
+			code   string
+			action string
+		}{
+			{pb.RpcAccountLocalLinkNewChallengeResponseError_BAD_INPUT, 400, "bad_request", "app_name"},
+			{pb.RpcAccountLocalLinkNewChallengeResponseError_ACCOUNT_IS_NOT_RUNNING, 503, "account_not_running", "sign in"},
+			{pb.RpcAccountLocalLinkNewChallengeResponseError_TOO_MANY_REQUESTS, 429, "pairing_rate_limited", "check Anytype Desktop"},
+			{pb.RpcAccountLocalLinkNewChallengeResponseError_UNKNOWN_ERROR, 500, "internal_server_error", "failed to create"},
+			{999, 500, "internal_server_error", "failed to create"},
+		} {
+			t.Run(version+"/challenges/"+tc.rpc.String(), func(t *testing.T) {
+				fx := newFixture(t)
+				fx.mwMock.On("AccountLocalLinkNewChallenge", mock.Anything, mock.Anything).
+					Return(&pb.RpcAccountLocalLinkNewChallengeResponse{
+						ChallengeId: "private-challenge",
+						Error:       &pb.RpcAccountLocalLinkNewChallengeResponseError{Code: tc.rpc, Description: "private-refusal-reason"},
+					}).Once()
+				check(t, fx, version+"/auth/challenges", `{"app_name":"pairing-client"}`, tc.status, tc.code, tc.action)
+			})
+		}
+		for _, tc := range []struct {
+			rpc    pb.RpcAccountLocalLinkSolveChallengeResponseErrorCode
+			status int
+			code   string
+			action string
+		}{
+			{pb.RpcAccountLocalLinkSolveChallengeResponseError_BAD_INPUT, 400, "bad_request", "challenge_id"},
+			{pb.RpcAccountLocalLinkSolveChallengeResponseError_ACCOUNT_IS_NOT_RUNNING, 503, "account_not_running", "sign in"},
+			{pb.RpcAccountLocalLinkSolveChallengeResponseError_INVALID_CHALLENGE_ID, 404, "invalid_challenge_id", "new challenge"},
+			{pb.RpcAccountLocalLinkSolveChallengeResponseError_CHALLENGE_NOT_APPROVED, 409, "challenge_not_approved", "wait for the user"},
+			{pb.RpcAccountLocalLinkSolveChallengeResponseError_INCORRECT_ANSWER, 400, "incorrect_answer", "check the four-digit code"},
+			{pb.RpcAccountLocalLinkSolveChallengeResponseError_CHALLENGE_ATTEMPTS_EXCEEDED, 429, "challenge_attempts_exceeded", "Stop submitting codes"},
+			{pb.RpcAccountLocalLinkSolveChallengeResponseError_UNKNOWN_ERROR, 500, "internal_server_error", "failed to authenticate"},
+			{999, 500, "internal_server_error", "failed to authenticate"},
+		} {
+			t.Run(version+"/api_keys/"+tc.rpc.String(), func(t *testing.T) {
+				fx := newFixture(t)
+				fx.mwMock.On("AccountLocalLinkSolveChallenge", mock.Anything, mock.Anything).
+					Return(&pb.RpcAccountLocalLinkSolveChallengeResponse{
+						AppKey: "private-key", SessionToken: "private-token",
+						Error: &pb.RpcAccountLocalLinkSolveChallengeResponseError{Code: tc.rpc, Description: "private-refusal-reason"},
+					}).Once()
+				check(t, fx, version+"/auth/api_keys", `{"challenge_id":"private-id","code":"1234"}`, tc.status, tc.code, tc.action)
 			})
 		}
 	}

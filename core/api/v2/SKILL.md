@@ -5,10 +5,8 @@ description: Call Anytype's local HTTP API v2 directly — search, read, create 
 
 # Anytype API v2 — HTTP guide for agents
 
-Local REST API at `http://127.0.0.1:31009` (the Anytype app must be
-running). Every call sends `Authorization: Bearer <key>`; keys are created
-in the app (Settings → API keys) — **the API mints none**. Bodies are
-compact JSON, and every name this API owns is `snake_case` — params,
+Local REST API at `http://127.0.0.1:31009` while Anytype Desktop is running.
+Bodies are compact JSON, and every name this API owns is `snake_case` — params,
 fields and op names alike. (Inside an object's `blocks` and `properties`
 you are reading the AnyBlock format's content; property and type keys
 there are served as slugs by default, as display names under
@@ -16,11 +14,36 @@ there are served as slugs by default, as display names under
 `?offset=&limit=` (default 25, max 1000) and returns
 `{data, total, offset, limit, has_more}`.
 
-**First call: `GET /v2/auth/whoami`.** A key may be scoped to particular
-spaces and to read-only. `grant.scoped: false` means the whole account;
-otherwise `grant.spaces` lists what you may touch and `grant.permission`
-whether you may write. Ask this instead of discovering limits through 403s
-(`space_not_granted` / `write_not_granted` — the message names the grant).
+## Pair and make a first read
+
+If the user has already configured an API key, use it. Otherwise, with the
+user signed in to Anytype Desktop, make the two pairing requests without a
+bearer token. Send `Content-Type: application/json` on both.
+
+1. `POST /v2/auth/challenges` with `{"app_name":"My integration"}`. Keep the
+   returned `challenge_id` for this pairing.
+2. Ask the user to review the app, choose spaces and permissions in Desktop,
+   and approve. Have the user enter the displayed four-digit code in the
+   integration's local setup prompt and keep the code and key out of chat and logs.
+3. `POST /v2/auth/api_keys` with `{"challenge_id":"<id>","code":"<four digits>"}`.
+   Keep the code as a string to preserve leading zeros. The response contains
+   `api_key` and the approved `grant`.
+
+Use `Authorization: Bearer <key>` on `GET /v2/auth/whoami` to check the key.
+A scoped key reports its permission and whether it covers all spaces. For
+selected spaces, `grant.spaces` lists them. A legacy key with `grant.scoped:
+false` gives account-wide access. Confirm the integration works by calling
+`GET /v2/spaces` through the intended client with that same key.
+
+Pairing errors include a `code` and recovery `message`. For
+`challenge_not_approved`, wait for the user and keep the same challenge ID.
+For `incorrect_answer`, ask the user to check the displayed code. For
+`invalid_challenge_id`, start a fresh challenge only if the user still wants
+to pair. Stop automatic retries on `pairing_rate_limited` or
+`challenge_attempts_exceeded`. For `account_not_running`, ask the user to
+open Desktop and sign in. Older versions may return a generic 500 for these
+conditions. Check Desktop for the prompt with the user, or use a key the user
+created in Settings → API Keys.
 
 ## The data model in six ideas
 
@@ -358,7 +381,7 @@ read: no `Idempotency-Key`, `dry_run` ignored.
     is absent from it has left.
   - At most 16 spaces streams per process (429 `too_many_streams`, close one).
 
-## Conventions on every call
+## Authenticated API conventions
 
 - **Errors** are `{status, code, message, issues:[{path, message,
   hint}]}` — built to be repaired in ONE retry: fix the named path per the

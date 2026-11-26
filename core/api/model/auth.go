@@ -18,9 +18,17 @@ type CreateChallengeResponse struct {
 	ChallengeId string `json:"challenge_id" example:"GB6ZU3Y52UGUEQQCIJC33LM6XC"` // The challenge id associated with the displayed code and needed to solve the challenge for api_key
 }
 
+// PairingError carries a stable reason and a recovery message for the caller.
+type PairingError struct {
+	Object  string `json:"object" binding:"required" enums:"error"`
+	Status  int    `json:"status" binding:"required"`
+	Code    string `json:"code" binding:"required"`
+	Message string `json:"message" binding:"required"`
+}
+
 type CreateApiKeyRequest struct {
 	ChallengeId string `json:"challenge_id" example:"GB6ZU3Y52UGUEQQCIJC33LM6XC"` // The challenge id associated with the previously displayed code
-	Code        string `json:"code" example:"1234"`                             // The 4-digit code retrieved from Anytype Desktop app
+	Code        string `json:"code" example:"1234"`                               // The 4-digit code retrieved from Anytype Desktop app
 }
 
 type CreateApiKeyResponse struct {

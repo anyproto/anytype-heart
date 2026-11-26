@@ -1516,6 +1516,32 @@
         },
         "type": "object"
       },
+      "PairingError": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "object": {
+            "enum": [
+              "error"
+            ],
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "object",
+          "status"
+        ],
+        "type": "object"
+      },
       "ServerError": {
         "properties": {
           "code": {
@@ -9575,7 +9601,6 @@
             "description": "The version of the API to use",
             "in": "header",
             "name": "Anytype-Version",
-            "required": true,
             "schema": {
               "default": "2025-11-08",
               "type": "string"
@@ -9612,7 +9637,7 @@
                 }
               }
             },
-            "description": "Bad request"
+            "description": "bad_request: send valid JSON with a nonempty app_name of at most 128 bytes"
           },
           "403": {
             "content": {
@@ -9624,6 +9649,16 @@
             },
             "description": "Untrusted request origin or host"
           },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairingError"
+                }
+              }
+            },
+            "description": "pairing_rate_limited: stop requesting challenges and ask the user to check Anytype Desktop for a pairing prompt"
+          },
           "500": {
             "content": {
               "application/json": {
@@ -9633,6 +9668,16 @@
               }
             },
             "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairingError"
+                }
+              }
+            },
+            "description": "account_not_running: open Anytype Desktop and sign in before pairing"
           }
         },
         "summary": "Create a challenge",
@@ -9651,7 +9696,6 @@
             "description": "The version of the API to use",
             "in": "header",
             "name": "Anytype-Version",
-            "required": true,
             "schema": {
               "default": "2025-11-08",
               "type": "string"
@@ -9684,11 +9728,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ValidationError"
+                  "$ref": "#/components/schemas/PairingError"
                 }
               }
             },
-            "description": "Bad request"
+            "description": "bad_request: check the JSON, challenge_id and code. incorrect_answer: ask the user to check the four-digit code for this challenge"
           },
           "403": {
             "content": {
@@ -9700,6 +9744,36 @@
             },
             "description": "Untrusted request origin or host"
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairingError"
+                }
+              }
+            },
+            "description": "invalid_challenge_id: start a new challenge if the user still wants to pair"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairingError"
+                }
+              }
+            },
+            "description": "challenge_not_approved: wait for Desktop approval and submit the displayed code with the same challenge_id"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairingError"
+                }
+              }
+            },
+            "description": "challenge_attempts_exceeded: stop submitting codes and ask the user to start a new pairing when ready"
+          },
           "500": {
             "content": {
               "application/json": {
@@ -9709,6 +9783,16 @@
               }
             },
             "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairingError"
+                }
+              }
+            },
+            "description": "account_not_running: open Anytype Desktop and sign in before pairing"
           }
         },
         "summary": "Create an API key",
