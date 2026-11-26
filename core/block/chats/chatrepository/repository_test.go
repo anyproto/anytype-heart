@@ -460,6 +460,156 @@ func TestSetSyncedByMaxOrderId(t *testing.T) {
 	})
 }
 
+func TestHasUnsyncedEdgeMessage(t *testing.T) {
+	const (
+		me    = "me"
+		other = "other"
+	)
+	addMessage := func(t *testing.T, fx *fixture, id, orderId, creator string, synced bool) {
+		t.Helper()
+		err := fx.repo.AddTestMessage(context.Background(), &chatmodel.Message{
+			ChatMessage: &model.ChatMessage{
+				Id:      id,
+				OrderId: orderId,
+				Creator: creator,
+				Message: &model.ChatMessageMessageContent{Text: "test"},
+				Synced:  synced,
+			},
+		})
+		require.NoError(t, err)
+	}
+
+	for _, tc := range []struct {
+		name       string
+		messages   []*model.ChatMessage
+		maxOrderId string
+		want       bool
+	}{
+		{
+			name: "every own message unsynced, as a replay leaves them",
+			messages: []*model.ChatMessage{
+				{Id: "msg1", OrderId: "order1", Creator: me},
+				{Id: "msg2", OrderId: "order2", Creator: other, Synced: true},
+				{Id: "msg3", OrderId: "order3", Creator: me},
+			},
+			maxOrderId: "order3",
+			want:       true,
+		},
+		{
+			name: "every own message synced",
+			messages: []*model.ChatMessage{
+				{Id: "msg1", OrderId: "order1", Creator: me, Synced: true},
+				{Id: "msg2", OrderId: "order2", Creator: me, Synced: true},
+			},
+			maxOrderId: "order2",
+			want:       false,
+		},
+		{
+			name: "newest own message unsynced above a synced oldest one",
+			messages: []*model.ChatMessage{
+				{Id: "msg1", OrderId: "order1", Creator: me, Synced: true},
+				{Id: "msg2", OrderId: "order2", Creator: other, Synced: true},
+				{Id: "msg3", OrderId: "order3", Creator: me},
+			},
+			maxOrderId: "order3",
+			want:       true,
+		},
+		{
+			name: "oldest own message unsynced under a synced newest one, as a gap replay leaves them",
+			messages: []*model.ChatMessage{
+				{Id: "msg1", OrderId: "order1", Creator: me},
+				{Id: "msg2", OrderId: "order2", Creator: other, Synced: true},
+				{Id: "msg3", OrderId: "order3", Creator: me, Synced: true},
+			},
+			maxOrderId: "order3",
+			want:       true,
+		},
+		{
+			name: "only an own message above the max order id is unsynced",
+			messages: []*model.ChatMessage{
+				{Id: "msg1", OrderId: "order1", Creator: me, Synced: true},
+				{Id: "msg2", OrderId: "order2", Creator: other, Synced: true},
+				{Id: "msg3", OrderId: "order3", Creator: me},
+			},
+			maxOrderId: "order2",
+			want:       false,
+		},
+		{
+			name: "messages of another creator do not count",
+			messages: []*model.ChatMessage{
+				{Id: "msg1", OrderId: "order1", Creator: me, Synced: true},
+				{Id: "msg2", OrderId: "order2", Creator: other},
+			},
+			maxOrderId: "order2",
+			want:       false,
+		},
+		{
+			name: "no own messages",
+			messages: []*model.ChatMessage{
+				{Id: "msg1", OrderId: "order1", Creator: other},
+			},
+			maxOrderId: "order1",
+			want:       false,
+		},
+		{
+			name: "empty max order id",
+			messages: []*model.ChatMessage{
+				{Id: "msg1", OrderId: "order1", Creator: me},
+			},
+			maxOrderId: "",
+			want:       false,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			fx := newFixture(t)
+			for _, msg := range tc.messages {
+				addMessage(t, fx, msg.Id, msg.OrderId, msg.Creator, msg.Synced)
+			}
+
+			// when
+			got, err := fx.repo.HasUnsyncedEdgeMessage(context.Background(), me, tc.maxOrderId)
+
+			// then
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+
+	// a creator who wrote a few messages among many others' is where a scan of the collection in
+	// its natural order would read far more than one message
+	skewed := func(t *testing.T) *fixture {
+		fx := newFixture(t)
+		var orderId string
+		for i := range 500 {
+			orderId = storestate.LexId.Next(orderId)
+			creator := other
+			if i < 2 {
+				creator = me
+			}
+			addMessage(t, fx, fmt.Sprintf("msg%03d", i), orderId, creator, true)
+		}
+		return fx
+	}
+	for _, order := range []string{descOrder, ascOrder} {
+		for name, newFx := range map[string]func(t *testing.T) *fixture{"even creators": newPopulatedFixture, "a rare creator": skewed} {
+			t.Run("reads one entry of the creator index, "+order+", "+name, func(t *testing.T) {
+				fx := newFx(t)
+				creator := "creator1"
+				if name == "a rare creator" {
+					creator = me
+				}
+
+				ex := explain(t, fx.repo.edgeByCreatorQuery(creator, "~", order))
+
+				assert.Equal(t, chatmodel.CreatorKey+","+chatmodel.StorageKeyField, usedIndex(ex), ex.Sql)
+				assert.NotContains(t, ex.Sql, "Sort", ex.Sql)
+				assert.Contains(t, ex.Sql, "Limit(1)", ex.Sql)
+			})
+		}
+	}
+}
+
 func TestClearUnreadReactions(t *testing.T) {
 	t.Run("empty maxOrderId clears all unread reactions", func(t *testing.T) {
 		fx := newFixture(t)

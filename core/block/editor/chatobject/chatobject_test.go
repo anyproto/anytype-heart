@@ -67,8 +67,8 @@ func (a *accountServiceStub) Init(ap *app.App) error {
 }
 
 // stubTree satisfies objecttree.ObjectTree for tests.
-// Only GetChange (by markReadReactions) and Root (by a discussion's Init) are called; all other
-// methods are unused and will panic if called.
+// Only GetChange (by markReadReactions), Root (by a discussion's Init) and Heads (by the
+// synced marks check in Init) are called; all other methods are unused and will panic if called.
 type stubTree struct {
 	objecttree.ObjectTree
 	parentId string
@@ -76,6 +76,10 @@ type stubTree struct {
 
 func (s *stubTree) GetChange(string) (*objecttree.Change, error) {
 	return nil, fmt.Errorf("change not found")
+}
+
+func (s *stubTree) Heads() []string {
+	return nil
 }
 
 func (s *stubTree) Root() *objecttree.Change {
@@ -100,6 +104,8 @@ type fixture struct {
 	events             []*pb.EventMessage
 	spaceIndex         spaceindex.Store
 	storeFixture       *objectstore.StoreFixture
+	// initState is the state Init filled, which the object factory applies after it
+	initState *state.State
 	// spaceObjects is what Space().Do reaches; set by withSpace, nil otherwise (the default
 	// smarttest space's Do does nothing).
 	spaceObjects *spaceObjects
@@ -168,7 +174,7 @@ func newFixture(t *testing.T, opts ...fixtureOption) *fixture {
 	db, err := provider.GetCrdtDb(testSpaceId).Wait()
 	require.NoError(t, err)
 
-	object := New(sb, accountService, db, repo, subscriptions, nil, objectStore, nil, nil, debugstat.NewNoOp(), bundle.TypeKeyChatDerived, model.ObjectType_chatDerived)
+	object := New(sb, accountService, db, repo, subscriptions, nil, objectStore, nil, nil, debugstat.NewNoOp(), false, bundle.TypeKeyChatDerived, model.ObjectType_chatDerived)
 	rawObject := object.(*storeObject)
 
 	fx := &fixture{
@@ -238,13 +244,15 @@ func newFixture(t *testing.T, opts ...fixtureOption) *fixture {
 
 	// Init runs under the object lock, as ObjectFactory.InitObject runs it: the unread counters
 	// worker it starts writes under the same lock.
-	fx.Lock()
-	err = object.Init(&smartblock.InitContext{
+	initCtx := &smartblock.InitContext{
 		Ctx:    ctx,
 		Source: source,
 		Doc:    state.NewDoc(chatId, nil),
-	})
+	}
+	fx.Lock()
+	err = object.Init(initCtx)
 	fx.Unlock()
+	fx.initState = initCtx.State
 	require.NoError(t, err)
 	// Registered after the options, so it runs before the cleanups of the mocks they create.
 	t.Cleanup(func() {
