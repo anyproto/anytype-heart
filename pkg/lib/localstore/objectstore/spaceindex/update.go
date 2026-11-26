@@ -220,7 +220,7 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 	}()
 
 	var shouldDelete bool
-	res, err := s.pendingDetails.UpsertId(txn.Context(), id, query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
+	_, err = s.pendingDetails.UpsertId(txn.Context(), id, query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
 		currentDetails, err := domain.NewDetailsFromAnyEnc(val)
 		if err != nil {
 			return nil, false, fmt.Errorf("get old details: json to proto: %w", err)
@@ -246,9 +246,12 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 	if err != nil {
 		return fmt.Errorf("upsert details: %w", err)
 	}
-	if res.Matched > 0 && shouldDelete {
+	// any-store v2.6 upsert inserts a bare {id} row when the modifier changes
+	// nothing for a missing id (Matched 0), so delete whenever asked — not only
+	// when a row existed before.
+	if shouldDelete {
 		err = s.pendingDetails.DeleteId(txn.Context(), id)
-		if err != nil {
+		if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
 			return fmt.Errorf("delete pending details: %w", err)
 		}
 	}
