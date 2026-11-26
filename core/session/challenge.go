@@ -235,6 +235,19 @@ func (s *service) ApproveChallenge(processPath, origin string, allow bool, grant
 	return ch.value, ch.clientInfo, nil
 }
 
+// IsWellFormedChallengeCode reports whether code has the format minted at approval.
+func IsWellFormedChallengeCode(code string) bool {
+	if len(code) != challengeDigits {
+		return false
+	}
+	for _, digit := range code {
+		if digit < '0' || digit > '9' {
+			return false
+		}
+	}
+	return true
+}
+
 // randomDigits returns n zero-padded decimal digits drawn from the OS entropy
 // source. The code is the whole secret of the pairing handshake, so it comes
 // from crypto/rand rather than math/rand, whose global source is a runtime

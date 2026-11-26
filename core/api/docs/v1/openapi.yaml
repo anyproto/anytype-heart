@@ -1907,6 +1907,24 @@ components:
           type: array
           uniqueItems: false
       type: object
+    PairingError:
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        object:
+          enum:
+          - error
+          type: string
+        status:
+          type: integer
+      required:
+      - code
+      - message
+      - object
+      - status
+      type: object
     PhoneFilterItem:
       properties:
         condition:
@@ -2854,7 +2872,6 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
-        required: true
         schema:
           default: "2025-11-08"
           type: string
@@ -2876,20 +2893,48 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationError'
-          description: Bad request
+                $ref: '#/components/schemas/PairingError'
+          description: 'bad_request: check the JSON, challenge_id and code. incorrect_answer:
+            ask the user to check the four-digit code for this challenge'
         "403":
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ForbiddenError'
           description: Untrusted request origin or host
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PairingError'
+          description: 'invalid_challenge_id: start a new challenge if the user still
+            wants to pair'
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PairingError'
+          description: 'challenge_not_approved: wait for Desktop approval and submit
+            the displayed code with the same challenge_id'
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PairingError'
+          description: Too many pairing attempts
         "500":
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ServerError'
           description: Internal server error
+        "503":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PairingError'
+          description: 'account_not_running: open Anytype Desktop and sign in before
+            pairing'
       summary: Create an API key
       tags:
       - Auth
@@ -2904,7 +2949,6 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
-        required: true
         schema:
           default: "2025-11-08"
           type: string
@@ -2927,19 +2971,34 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ValidationError'
-          description: Bad request
+          description: 'bad_request: send valid JSON with a nonempty app_name of at
+            most 128 bytes'
         "403":
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ForbiddenError'
           description: Untrusted request origin or host
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PairingError'
+          description: 'pairing_rate_limited: stop requesting challenges and ask the
+            user to check Anytype Desktop for a pairing prompt'
         "500":
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ServerError'
           description: Internal server error
+        "503":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PairingError'
+          description: 'account_not_running: open Anytype Desktop and sign in before
+            pairing'
       summary: Create a challenge
       tags:
       - Auth

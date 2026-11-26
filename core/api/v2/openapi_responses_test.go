@@ -100,6 +100,57 @@ func TestOpenAPIGrantDiscoveryResponses(t *testing.T) {
 	}
 }
 
+func TestPairingOpenAPIResponses(t *testing.T) {
+	type response struct {
+		schema string
+		codes  []string
+	}
+	challenge := map[string]response{
+		"201": {"CreateChallengeResponse", nil},
+		"400": {"ValidationError", []string{"bad_request"}},
+		"403": {"ForbiddenError", nil},
+		"429": {"PairingError", []string{"pairing_rate_limited"}},
+		"500": {"ServerError", nil},
+		"503": {"PairingError", []string{"account_not_running"}},
+	}
+	exchange := map[string]response{
+		"201": {"CreateApiKeyResponse", nil},
+		"400": {"PairingError", []string{"bad_request", "incorrect_answer"}},
+		"403": {"ForbiddenError", nil},
+		"404": {"PairingError", []string{"invalid_challenge_id"}},
+		"409": {"PairingError", []string{"challenge_not_approved"}},
+		"429": {"PairingError", nil},
+		"500": {"ServerError", nil},
+		"503": {"PairingError", []string{"account_not_running"}},
+	}
+	for _, version := range []string{"v1", "v2"} {
+		for _, form := range []string{"json", "yaml"} {
+			t.Run(version+"/"+form, func(t *testing.T) {
+				body, err := os.ReadFile("../docs/" + version + "/openapi." + form)
+				require.NoError(t, err)
+				var doc responseContractDocument
+				if form == "json" {
+					require.NoError(t, json.Unmarshal(body, &doc))
+				} else {
+					require.NoError(t, yaml.Unmarshal(body, &doc))
+				}
+				assert.ElementsMatch(t, []string{"object", "status", "code", "message"}, doc.Components.Schemas["PairingError"].Required)
+				for path, want := range map[string]map[string]response{"challenges": challenge, "api_keys": exchange} {
+					op := doc.Paths["/"+version+"/auth/"+path]["post"]
+					require.Len(t, op.Responses, len(want), path)
+					for status, contract := range want {
+						res := op.Responses[status]
+						assert.Equal(t, "#/components/schemas/"+contract.schema, res.Content["application/json"].Schema.Ref, "%s %s", path, status)
+						for _, code := range contract.codes {
+							assert.Contains(t, res.Description, code, "%s %s", path, status)
+						}
+					}
+				}
+			})
+		}
+	}
+}
+
 func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	jsonBody, err := os.ReadFile("../docs/v2/openapi.json")
 	require.NoError(t, err)
@@ -223,7 +274,7 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	for _, operation := range jsonOperations {
 		pairCount += len(operation.Responses)
 	}
-	assert.Equal(t, 446, pairCount, "the checked-in response inventory changes only deliberately")
+	assert.Equal(t, 452, pairCount, "the checked-in response inventory changes only deliberately")
 
 	dryRunCreates := stringSet(
 		"add_chat_message", "create_chat", "create_collection", "create_object", "create_property",
@@ -276,19 +327,15 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	}
 
 	for operationId, operation := range jsonOperations {
+		if operationId == "create_auth_challenge" || operationId == "create_api_key" {
+			// These unauthenticated operations have their own error contract,
+			// including a 503 when the account is unavailable.
+			continue
+		}
 		if spaceLoadGated[operationId] {
 			assert.Equal(t, "#/components/responses/SpaceLoading", operation.Responses["503"].Ref, "%s bounded load wait", operationId)
 		} else {
 			assert.NotContains(t, operation.Responses, "503", "%s does not wait for a loading space", operationId)
-		}
-		if operationId == "create_auth_challenge" || operationId == "create_api_key" {
-			// Shared pairing handlers run outside all authenticated v2 gates.
-			assert.Len(t, operation.Responses, 4)
-			assert.Contains(t, operation.Responses, "201")
-			assert.Equal(t, "#/components/schemas/ValidationError", operation.Responses["400"].Content["application/json"].Schema.Ref)
-			assert.Equal(t, "#/components/schemas/ForbiddenError", operation.Responses["403"].Content["application/json"].Schema.Ref)
-			assert.Equal(t, "#/components/schemas/ServerError", operation.Responses["500"].Content["application/json"].Schema.Ref)
-			continue
 		}
 		for status, component := range map[string]string{
 			"401": "Unauthorized",
