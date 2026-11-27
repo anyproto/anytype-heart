@@ -338,7 +338,8 @@ its fold, on the same one-or-refuse rule. The format's own chain underneath
 (`pkg/lib/anyblockjson/storeresolver/keyvocab.go:495`) has the same order but
 degrades to the verbatim term wherever v2 would refuse — it never guesses
 either. Ambiguity at any step lists every holder by stored key and id (the
-addresses that always resolve) and never picks by store order; a full miss
+addresses that always resolve), ordered by stored key and then id, and never
+picks by store order; a full miss
 falls to the unknown-key refusal with did-you-mean (§1.3). The one tie-break
 is the object's type: of several holders, the single one the type lists wins
 (`core/api/v2/service/keys.go:242`). A template is scoped by the type it is
@@ -619,14 +620,18 @@ PATCH/DELETE /v2/spaces/{space_id}/properties/{key}    # update / archive
   importer already supports (R-note). A template's type is `template` on
   both endpoints: `kind: "template"` beside any other type is refused at
   `/type` before a property name resolves, because the creator would build
-  an object of that other type (`core/api/v2/service/keys.go:1332`).
+  an object of that other type (`core/api/v2/service/keys.go:1360`).
 - **A value on a property the type does not list is stored and warned
   about**, on create and on `set_properties`, once, when the object first
   takes the key. `name`, the system query keys and hidden built-in
   properties never warn (`core/api/v2/service/refs.go:634`). A template is
   judged against the type it is for, the one whose objects take its values,
   never against the type `template`, and the warning names that target. The
-  type judged against is found by its exact stored key and must be live. A
+  warning names the type in the request's vocabulary: its display name under
+  `?keys=name`, its slug otherwise, and its display name when a slug
+  collision would expose the stored key. On a dry run it says what the write
+  would do. The type judged against is found by its exact stored key and
+  must be live. A
   template whose target is unknown, or has no live row in the space, gets no
   such warning, and neither does a property list that cannot be read
   (`core/api/v2/service/refs.go:652`).

@@ -833,7 +833,7 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 		return nil, err
 	}
 	if typeKeys, readable := s.listedKeysOf(spaceId, judged.Id); found && readable {
-		judgedSlug := resolvers.keys.TypeSlug(judged.Key)
+		typeWord := ""
 		for _, key := range sortedKeys(envelope.Properties) {
 			if typeKeys[key] || !offTypeCandidate(key) {
 				continue
@@ -842,7 +842,10 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 			if original, ok := spellings[key]; ok {
 				spelling = original
 			}
-			result.Warnings = append(result.Warnings, offTypePropertyIssue(spelling, judgedSlug, "/properties/"+spelling, forTemplate))
+			if typeWord == "" {
+				typeWord = s.offTypeTypeWord(spaceId, judged, errKeysFor(ctx).names)
+			}
+			result.Warnings = append(result.Warnings, offTypePropertyIssue(spelling, typeWord, "/properties/"+spelling, forTemplate, opts.dryRun))
 		}
 	}
 	if opts.dryRun {

@@ -114,6 +114,8 @@ type v2StateApplier struct {
 	// typeKeysCache memoizes listedKeysOf per type id for this PATCH; nil
 	// marks a list that could not be read.
 	typeKeysCache map[string]map[string]bool
+	// typeWords memoizes offTypeTypeWord per type id for this PATCH.
+	typeWords map[string]string
 	// setObjectType is the editor's type change (apicore.ObjectEdit
 	// .SetObjectType). simulate says no editor is behind the state BY
 	// DESIGN — a dry run, or the create-missing probe pass — so set_type
@@ -2744,7 +2746,7 @@ func (a *v2StateApplier) warnOffTypeKeys(doc *v2EditDoc, opPath string, fields m
 		if !judges || typeKeys[key] {
 			continue
 		}
-		a.warnings = append(a.warnings, offTypePropertyIssue(spelledAs(key), a.servedTypeWord(judged.Key), opPath+"."+fields[key]+"."+spelledAs(key), forTemplate))
+		a.warnings = append(a.warnings, offTypePropertyIssue(spelledAs(key), a.offTypeTypeWord(judged), opPath+"."+fields[key]+"."+spelledAs(key), forTemplate, a.simulate))
 	}
 	return nil
 }
@@ -2805,12 +2807,16 @@ func (a *v2StateApplier) renderSnapshot() *model.SmartBlockSnapshotBase {
 	return snapshot
 }
 
-// servedTypeWord spells a stored type key the way this PATCH's documents
-// do: the api slug vocabulary.
-func (a *v2StateApplier) servedTypeWord(key string) string {
-	a.marshalOptions() // primes the key vocabulary once
-	if a.marshalKeys != nil {
-		return a.marshalKeys.TypeSlug(key)
+// offTypeTypeWord is Service.offTypeTypeWord in this request's vocabulary,
+// memoized per type for this PATCH.
+func (a *v2StateApplier) offTypeTypeWord(judged liveType) string {
+	if word, ok := a.typeWords[judged.Id]; ok {
+		return word
 	}
-	return bundle.TypeApiSlug(key)
+	if a.typeWords == nil {
+		a.typeWords = map[string]string{}
+	}
+	word := a.s.offTypeTypeWord(a.spaceId, judged, a.v.names)
+	a.typeWords[judged.Id] = word
+	return word
 }

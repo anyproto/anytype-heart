@@ -244,6 +244,15 @@ func (s *Service) resolvePropertyInputIn(input string, entries []propertyEntry, 
 	if len(candidates) == 0 {
 		return entry, ok, nil
 	}
+	// the refusal lists the holders by stored key, then id: the store's row
+	// order is not one a caller can rely on
+	sort.SliceStable(candidates, func(i, j int) bool {
+		a, b := candidates[i].entry, candidates[j].entry
+		if a.Key != b.Key {
+			return a.Key < b.Key
+		}
+		return a.Id < b.Id
+	})
 	var listed []propertyEntry
 	for _, candidate := range candidates {
 		if candidate.entry.Id != "" && scope[candidate.entry.Id] {

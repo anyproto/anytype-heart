@@ -670,19 +670,67 @@ func scopeTypeKey(kind, docType, templateFor string) string {
 }
 
 // offTypePropertyIssue is the F16 warning: the value lands, but the type's
-// own surfaces do not reach it. On a template the type is the one the
-// template is for, whose objects take the value from it.
-func offTypePropertyIssue(spelling, typeKey, path string, forTemplate bool) v2model.Issue {
+// own surfaces do not reach it. typeWord is the type in the request's
+// vocabulary (offTypeTypeWord). On a template the type is the one the
+// template is for, whose objects take the value from it. A preview (a dry
+// run) says what the write would do.
+func offTypePropertyIssue(spelling, typeWord, path string, forTemplate, preview bool) v2model.Issue {
 	if forTemplate {
+		take := "take"
+		if preview {
+			take = "would take"
+		}
 		return v2model.Issue{
-			Path:    path,
-			Message: fmt.Sprintf("property %q is not on type %q, the type this template is for — objects created from the template take the value, but type-scoped search and queries over %q refuse the key and the type's default columns omit it", spelling, typeKey, typeKey),
-		}.Hintf("list it on type %q with the add_property op (%s)", typeKey, v2model.RefGetOpSchema("add_property"))
+			Path: path,
+			Message: fmt.Sprintf("property %q is not on type %q, the type this template is for. "+
+				"Objects created from the template %s the value, but that type's search and queries refuse the key, and its default columns omit it.",
+				spelling, typeWord, take),
+		}.Hintf("list it on type %q with the add_property op (%s)", typeWord, v2model.RefGetOpSchema("add_property"))
+	}
+	stored := "is stored and served"
+	if preview {
+		stored = "would be stored and served"
 	}
 	return v2model.Issue{
 		Path:    path,
-		Message: fmt.Sprintf("property %q is not on type %q — the value is stored and served on the object, but type-scoped search and queries over %q refuse the key and the type's default columns omit it", spelling, typeKey, typeKey),
+		Message: fmt.Sprintf("property %q is not on type %q — the value %s on the object, but type-scoped search and queries over %q refuse the key and the type's default columns omit it", spelling, typeWord, stored, typeWord),
 	}.Hintf("list it on the type with the add_property op (%s)", v2model.RefGetOpSchema("add_property"))
+}
+
+// offTypeTypeWord spells the type an off-type warning names in the request's
+// vocabulary: its display name under ?keys=name, its served slug otherwise.
+// A slug collision serves the stored key, which the caller never sent, so
+// the display name stands in for it then.
+func (s *Service) offTypeTypeWord(spaceId string, judged liveType, names bool) string {
+	fallback := judged.Key
+	if bundle.HasObjectTypeByKey(domain.TypeKey(judged.Key)) {
+		if slug := bundle.TypeApiSlug(judged.Key); slug != "" {
+			fallback = slug
+		}
+	}
+	entries, err := s.liveTypes(spaceId)
+	if err != nil {
+		return fallback
+	}
+	for _, entry := range entries {
+		if entry.Id != judged.Id {
+			continue
+		}
+		if names && entry.Name != "" {
+			return entry.Name
+		}
+		keyTaken, slugHolders := servedTypeKeySets(entries)
+		served := servedTypeKeyOf(entry.Key, entry.Slug, keyTaken, slugHolders)
+		wanted := entry.Slug
+		if bundle.HasObjectTypeByKey(domain.TypeKey(entry.Key)) {
+			wanted = bundle.TypeApiSlug(entry.Key)
+		}
+		if served == entry.Key && wanted != "" && wanted != entry.Key && entry.Name != "" {
+			return entry.Name
+		}
+		return served
+	}
+	return fallback
 }
 
 // removedTypeRefusal is the issue for a REMOVED space-minted type addressed

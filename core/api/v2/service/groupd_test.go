@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -303,7 +304,7 @@ func TestV2TemplatePropertiesJudgedAgainstTarget(t *testing.T) {
 	spicinessOffChore := func(path string) v2model.Issue {
 		return v2model.Issue{
 			Path:    path,
-			Message: `property "spiciness" is not on type "chore", the type this template is for — objects created from the template take the value, but type-scoped search and queries over "chore" refuse the key and the type's default columns omit it`,
+			Message: `property "spiciness" is not on type "chore", the type this template is for. Objects created from the template take the value, but that type's search and queries refuse the key, and its default columns omit it.`,
 			SeeAlso: []v2model.Ref{v2model.RefGetOpSchema("add_property")},
 		}
 	}
@@ -360,7 +361,78 @@ func TestV2TemplatePropertiesJudgedAgainstTarget(t *testing.T) {
 		require.Len(t, result.Warnings, 1, "severity is on errand; %v", result.Warnings)
 		assert.Equal(t, "/properties/spiciness", result.Warnings[0].Path)
 		assert.Contains(t, result.Warnings[0].Message, `is not on type "errand", the type this template is for`)
+		assert.Contains(t, result.Warnings[0].Message, "Objects created from the template would take the value", "a preview says what the write would do")
 		assert.NotContains(t, result.Warnings[0].Message, "6a8f2c1d9e4b7a3f5c2d8e88")
+	})
+
+	t.Run("under ?keys=name a template create names its target by display name", func(t *testing.T) {
+		// given
+		fx := setup(t)
+
+		// when
+		result, err := fx.CreateTemplate(CtxWithNameKeys(ctx), testSpaceId,
+			[]byte(`{"formatVersion":"2.0","template_for":"errand","properties":{"name":"Weekly","spiciness":"mild"}}`), true, true)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, result.Warnings, 1, "%v", result.Warnings)
+		assert.Contains(t, result.Warnings[0].Message, `is not on type "Errand", the type this template is for`)
+		assert.Contains(t, result.Warnings[0].Hint, `list it on type "Errand"`)
+		assert.NotContains(t, result.Warnings[0].Message, `"errand"`)
+	})
+
+	t.Run("under ?keys=name set_properties on a template names its target by display name", func(t *testing.T) {
+		// given
+		fx := setup(t)
+		fx.expectMutate(editRead(t, `{"formatVersion":"2.0","id":"obj1","kind":"template","type":"template","template_for":"6a8f2c1d9e4b7a3f5c2d8e88","properties":{"name":"Weekly"}}`), "headB")
+
+		// when
+		result, err := fx.PatchObject(CtxWithNameKeys(ctx), testSpaceId, "obj1",
+			patchBody(`{"op":"set_properties","set":{"spiciness":"mild"}}`), "", false, true)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, result.Warnings, 1, "%v", result.Warnings)
+		assert.Contains(t, result.Warnings[0].Message, `is not on type "Errand", the type this template is for`)
+		assert.Contains(t, result.Warnings[0].Hint, `list it on type "Errand"`)
+	})
+
+	t.Run("a target whose slug collides is named by display name, never by its stored key", func(t *testing.T) {
+		// given: a second live type also serves the slug "errand", so the
+		// served spelling of either falls back to its stored key
+		fx := setup(t)
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:           domain.String("type-errand-twin"),
+			bundle.RelationKeyUniqueKey:    domain.String("ot-6a8f2c1d9e4b7a3f5c2d8e89"),
+			bundle.RelationKeyApiObjectKey: domain.String("errand"),
+			bundle.RelationKeyName:         domain.String("Errand twin"),
+		})
+		fx.expectMutate(editRead(t, `{"formatVersion":"2.0","id":"obj1","kind":"template","type":"template","template_for":"6a8f2c1d9e4b7a3f5c2d8e88","properties":{"name":"Weekly"}}`), "headB")
+
+		// when
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"set_properties","set":{"spiciness":"mild"}}`), "", false, true)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, result.Warnings, 1, "%v", result.Warnings)
+		assert.Contains(t, result.Warnings[0].Message, `is not on type "Errand", the type this template is for`)
+		assert.NotContains(t, result.Warnings[0].Message, "6a8f2c1d9e4b7a3f5c2d8e88")
+		assert.NotContains(t, result.Warnings[0].Hint, "6a8f2c1d9e4b7a3f5c2d8e88")
+	})
+
+	t.Run("a plain create preview says the value would be stored", func(t *testing.T) {
+		// given
+		fx := setup(t)
+
+		// when
+		result, err := fx.CreateObject(ctx, testSpaceId,
+			[]byte(`{"formatVersion":"2.0","type":"chore","properties":{"name":"X","spiciness":"mild"}}`), true, true)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, result.Warnings, 1, "%v", result.Warnings)
+		assert.Contains(t, result.Warnings[0].Message, `is not on type "chore" — the value would be stored and served on the object`)
 	})
 
 	t.Run("a template for a type this space cannot resolve warns nothing", func(t *testing.T) {
@@ -614,8 +686,10 @@ func TestV2TemplateNamesResolveAgainstTarget(t *testing.T) {
 		// then
 		assert.Equal(t, v2model.CodeAmbiguousInput, v2Err(t, err).Code)
 		issue := issueAt(t, err, "ops[0].set.Effort")
-		assert.Contains(t, issue.Message, pointsKey)
-		assert.Contains(t, issue.Message, hoursKey)
+		require.Contains(t, issue.Message, pointsKey)
+		require.Contains(t, issue.Message, hoursKey)
+		assert.Less(t, strings.Index(issue.Message, pointsKey), strings.Index(issue.Message, hoursKey),
+			"the holders are listed by stored key, not by store order")
 	})
 }
 
