@@ -144,6 +144,24 @@ func (a *v2StateApplier) typeScope(key domain.TypeKey) (map[string]bool, error) 
 // the install lists them (relationutils.FillRecommendedRelations). The
 // prewarm, the probe and a dry run then read the property the commit will.
 func pendingTypeScope(typeKey string, entries []propertyEntry) map[string]bool {
+	keys := pendingTypeKeys(typeKey)
+	if keys == nil {
+		return nil
+	}
+	scope := map[string]bool{}
+	for _, entry := range entries {
+		if entry.Id != "" && keys[entry.Key] {
+			scope[entry.Id] = true
+		}
+	}
+	return scope
+}
+
+// pendingTypeKeys is the stored keys of the properties a built-in's install
+// will list: its bundled definition's, and the default featured ones. It
+// approximates relationutils.FillRecommendedRelations, which also lists the
+// default recommended and hidden keys (APIV2.md §1.6). nil: not a built-in.
+func pendingTypeKeys(typeKey string) map[string]bool {
 	bundled, err := bundle.GetType(domain.TypeKey(typeKey))
 	if err != nil {
 		return nil
@@ -155,13 +173,7 @@ func pendingTypeScope(typeKey string, entries []propertyEntry) map[string]bool {
 	for _, key := range relationutils.DefaultFeaturedRelationKeys(domain.TypeKey(typeKey)) {
 		keys[key.String()] = true
 	}
-	scope := map[string]bool{}
-	for _, entry := range entries {
-		if entry.Id != "" && keys[entry.Key] {
-			scope[entry.Id] = true
-		}
-	}
-	return scope
+	return keys
 }
 
 // setTypeScope is the property scope an object takes on with a set_type to

@@ -114,7 +114,7 @@ type v2StateApplier struct {
 	itemsBefore []string
 	// typeKeysCache memoizes listedKeysOf per type id for this PATCH; nil
 	// marks a list that could not be read.
-	typeKeysCache map[string]map[string]bool
+	typeKeysCache map[string]*listedProps
 	// typeWords memoizes offTypeTypeWord per type id for this PATCH.
 	typeWords map[string]string
 	// liveTypeHits memoizes liveTypeByKey per stored key for this PATCH.
@@ -2775,9 +2775,9 @@ func (a *v2StateApplier) warnOffTypeKeys(doc *v2EditDoc, opPath string, fields m
 		return false
 	}
 	var (
-		judged              liveType
-		forTemplate, judges bool
-		typeKeys            map[string]bool
+		judged      liveType
+		forTemplate bool
+		listed      *listedProps
 	)
 	loaded := false
 	for _, key := range keys {
@@ -2791,11 +2791,14 @@ func (a *v2StateApplier) warnOffTypeKeys(doc *v2EditDoc, opPath string, fields m
 			if judged, forTemplate, found, err = a.offTypeJudged(); err != nil {
 				return err
 			}
-			if found {
-				typeKeys, judges = a.listedKeys(judged.Id)
+			switch {
+			case found && judged.Id == "":
+				listed = &listedProps{keys: pendingTypeKeys(judged.Key)}
+			case found:
+				listed = a.listedKeys(judged.Id)
 			}
 		}
-		if !judges || typeKeys[key] {
+		if listed == nil || listed.has(key) {
 			continue
 		}
 		a.warnings = append(a.warnings, offTypePropertyIssue(spelledAs(key), a.offTypeTypeWord(judged), opPath+"."+fields[key]+"."+spelledAs(key), forTemplate, a.simulate))
@@ -2826,6 +2829,11 @@ func (a *v2StateApplier) offTypeJudged() (judged liveType, forTemplate, found bo
 	if err != nil {
 		return liveType{}, false, false, fmt.Errorf("resolve the type to judge properties against: %w", err)
 	}
+	if bundled, berr := bundle.GetType(domain.TypeKey(key)); !found && berr == nil {
+		// a built-in a dry run's set_type has not installed: judged by the
+		// list its install will write (pendingTypeKeys), with no id
+		live, found = liveType{Key: key, Name: bundled.Name}, true
+	}
 	if a.liveTypeHits == nil {
 		a.liveTypeHits = map[string]liveTypeHit{}
 	}
@@ -2834,16 +2842,16 @@ func (a *v2StateApplier) offTypeJudged() (judged liveType, forTemplate, found bo
 }
 
 // listedKeys is listedKeysOf memoized per type for this PATCH.
-func (a *v2StateApplier) listedKeys(typeId string) (map[string]bool, bool) {
+func (a *v2StateApplier) listedKeys(typeId string) *listedProps {
 	if cached, ok := a.typeKeysCache[typeId]; ok {
-		return cached, cached != nil
+		return cached
 	}
 	if a.typeKeysCache == nil {
-		a.typeKeysCache = map[string]map[string]bool{}
+		a.typeKeysCache = map[string]*listedProps{}
 	}
-	keys, readable := a.s.listedKeysOf(a.spaceId, typeId, applierProps{a})
-	a.typeKeysCache[typeId] = keys
-	return keys, readable
+	listed := a.s.listedKeysOf(a.spaceId, typeId, applierProps{a})
+	a.typeKeysCache[typeId] = listed
+	return listed
 }
 
 // applierProps is the applier's once-per-PATCH live property snapshot in

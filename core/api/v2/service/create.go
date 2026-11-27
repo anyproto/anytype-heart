@@ -836,10 +836,10 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	// F16: a value on a property the type does not list, said at create as
 	// on set_properties (the object takes the key here for the first time).
 	// A template is judged against template_for, never against `template`.
-	if typeKeys, readable := s.listedKeysOf(spaceId, judged.Id, resolvers); found && readable {
+	if listed := s.listedKeysOf(spaceId, judged.Id, resolvers); found && listed != nil {
 		typeWord := ""
 		for _, key := range sortedKeys(envelope.Properties) {
-			if typeKeys[key] || !offTypeCandidate(key) {
+			if listed.has(key) || !offTypeCandidate(key) {
 				continue
 			}
 			spelling := key

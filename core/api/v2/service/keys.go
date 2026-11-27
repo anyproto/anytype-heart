@@ -333,7 +333,16 @@ func (s *Service) createPropertyScope(spaceId, kind, typeKey, templateFor string
 			return s.typePropertyScopeOf(spaceId, target.Id)
 		}
 	}
-	return s.typeKeyPropertyScope(spaceId, typeKey), nil
+	entries, err := s.liveTypes(spaceId)
+	if err != nil {
+		return nil, err
+	}
+	for _, entry := range entries {
+		if entry.Key == typeKey && entry.Id != "" {
+			return s.typePropertyScopeOf(spaceId, entry.Id)
+		}
+	}
+	return nil, nil
 }
 
 // propertyCandidate is one holder of an ambiguous term, with the words the
@@ -564,8 +573,8 @@ func (s *Service) resolveTypeInput(spaceId, input string, entries []typeEntry) (
 		}
 	}
 	if len(slugMatches) == 1 {
-		if shadowed, ok := shadowedBundledType(input, slugMatches[0].Key); ok {
-			return typeEntry{}, false, append(describeTypeEntries(slugMatches), shadowed), nil
+		if shadowed, shadowKey, ok := shadowedBundledType(input, slugMatches[0].Key); ok {
+			return typeEntry{}, false, describeTypeCandidates(slugMatches, shadowKey, shadowed), nil
 		}
 		return slugMatches[0], true, nil, nil
 	}
@@ -640,8 +649,8 @@ func (s *Service) resolveTypeInput(spaceId, input string, entries []typeEntry) (
 		return typeEntry{}, false, describeTypeEntries(nameMatches), nil
 	}
 	if len(nameMatches) == 1 {
-		if shadowed, ok := shadowedBundledTypeName(nfcInput, nameMatches[0].Key); ok {
-			return typeEntry{}, false, append(describeTypeEntries(nameMatches), shadowed), nil
+		if shadowed, shadowKey, ok := shadowedBundledTypeName(nfcInput, nameMatches[0].Key); ok {
+			return typeEntry{}, false, describeTypeCandidates(nameMatches, shadowKey, shadowed), nil
 		}
 		return nameMatches[0], true, nil, nil
 	}
@@ -715,12 +724,12 @@ func shadowedBundledProperty(input, matchedKey string) (string, bool) {
 }
 
 // shadowedBundledType is shadowedBundledProperty for the type namespace.
-func shadowedBundledType(input, matchedKey string) (string, bool) {
-	key, ok := bundle.TypeKeyByApiSlug(input)
-	if !ok || string(key) == matchedKey {
-		return "", false
+func shadowedBundledType(input, matchedKey string) (desc, key string, ok bool) {
+	typeKey, found := bundle.TypeKeyByApiSlug(input)
+	if !found || string(typeKey) == matchedKey {
+		return "", "", false
 	}
-	return fmt.Sprintf("the bundled %q (key %s)", bundle.MustGetType(key).Name, key), true
+	return fmt.Sprintf("the bundled %q (key %s)", bundle.MustGetType(typeKey).Name, typeKey), string(typeKey), true
 }
 
 // shadowedBundledTypeName is the type namespace's name shadow (chain step
@@ -728,12 +737,12 @@ func shadowedBundledType(input, matchedKey string) (string, bool) {
 // anything — a bundled type answering to its own name is not a shadow, and
 // an ambiguous bundled name binds nobody (the table refuses it at build
 // time), so it cannot shadow either.
-func shadowedBundledTypeName(name, matchedKey string) (string, bool) {
-	key, ok := anyblockjson.BundledTypeKeyByName(name)
+func shadowedBundledTypeName(name, matchedKey string) (desc, key string, ok bool) {
+	key, ok = anyblockjson.BundledTypeKeyByName(name)
 	if !ok || key == matchedKey {
-		return "", false
+		return "", "", false
 	}
-	return fmt.Sprintf("the bundled %q (key %s)", bundle.MustGetType(domain.TypeKey(key)).Name, key), true
+	return fmt.Sprintf("the bundled %q (key %s)", bundle.MustGetType(domain.TypeKey(key)).Name, key), key, true
 }
 
 // bundledPropertyCandidate answers a bundled key that step 5 resolved: the
@@ -787,6 +796,20 @@ func describeTypeEntries(entries []typeEntry) []string {
 		out = append(out, fmt.Sprintf("%q (key %s, id %s)", entry.Name, entry.Key, entry.Id))
 	}
 	return out
+}
+
+// describeTypeCandidates is describeTypeEntries with a shadowed built-in
+// among the live holders, in the same stored-key order. It has no id, so
+// it leads the holders of its own key.
+func describeTypeCandidates(entries []typeEntry, shadowKey, shadowDesc string) []string {
+	out := describeTypeEntries(entries)
+	at := 0
+	for _, entry := range entries {
+		if entry.Key < shadowKey {
+			at++
+		}
+	}
+	return slices.Insert(out, at, shadowDesc)
 }
 
 // ambiguousKeyError is the loud 400 the chain owes an input that several
@@ -989,7 +1012,10 @@ func servedKey(storedKey, slug string, keyTaken map[string]bool, slugHolders map
 // the type tables, not the relation ones).
 func servedTypeKeyOf(storedKey, slug string, keyTaken map[string]bool, slugHolders map[string][]string) string {
 	return servedKeyOf(storedKey, slug, keyTaken, slugHolders,
-		bundle.HasObjectTypeByKey(domain.TypeKey(storedKey)), shadowedBundledType, bundle.TypeApiSlug)
+		bundle.HasObjectTypeByKey(domain.TypeKey(storedKey)), func(input, matchedKey string) (string, bool) {
+			desc, _, ok := shadowedBundledType(input, matchedKey)
+			return desc, ok
+		}, bundle.TypeApiSlug)
 }
 
 // slugOf is the namespace's own derivation, and the two namespaces do not

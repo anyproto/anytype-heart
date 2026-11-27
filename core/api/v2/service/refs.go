@@ -608,16 +608,37 @@ func (s *Service) offTypeJudgedType(spaceId, kind, typeKey, templateFor string) 
 	return judged, forTemplate, found, nil
 }
 
-// listedKeysOf is the stored key set one live type lists: the keys of the
-// live properties whose ids its lists carry, compared by id, so no
-// property definition has to be read to decide membership. readable=false:
-// the type's row or the live properties could not be read, which is not a
-// type listing nothing, so no warning may rest on it.
+// listedProps is the property list one type carries, for F16 membership.
+type listedProps struct {
+	keys   map[string]bool // the stored keys of the live properties it lists
+	ids    map[string]bool // the ids it lists
+	derive func(key string) string
+}
+
+// has reports whether the list carries the property key names: by its live
+// entry, or, for a built-in, by the id derived from its key, which a list
+// carries before the property's own row has synced.
+func (l *listedProps) has(key string) bool {
+	if l.keys[key] {
+		return true
+	}
+	if l.derive != nil && bundle.HasRelation(domain.RelationKey(key)) {
+		if id := l.derive(key); id != "" && l.ids[id] {
+			return true
+		}
+	}
+	return false
+}
+
+// listedKeysOf is the property list one live type carries, compared by id,
+// so no property definition has to be read to decide membership. nil: the
+// type's row or the live properties could not be read, which is not a type
+// listing nothing, so no warning may rest on it.
 func (s *Service) listedKeysOf(spaceId, typeId string, props interface {
 	liveProps() ([]propertyEntry, error)
-}) (keys map[string]bool, readable bool) {
+}) *listedProps {
 	if typeId == "" {
-		return nil, false
+		return nil
 	}
 	ids, err := s.typePropertyScopeOf(spaceId, typeId)
 	if err == nil && ids == nil {
@@ -629,15 +650,21 @@ func (s *Service) listedKeysOf(spaceId, typeId string, props interface {
 	}
 	if err != nil {
 		log.Warnf("api v2: read the property list of type %s in space %s: %v", typeId, spaceId, err)
-		return nil, false
+		return nil
 	}
-	keys = map[string]bool{}
+	listed := &listedProps{keys: map[string]bool{}, ids: ids, derive: func(key string) string {
+		id, err := s.creator.RelationIdByKey(context.Background(), spaceId, domain.RelationKey(key))
+		if err != nil {
+			return ""
+		}
+		return id
+	}}
 	for _, entry := range entries {
 		if entry.Id != "" && ids[entry.Id] {
-			keys[entry.Key] = true
+			listed.keys[entry.Key] = true
 		}
 	}
-	return keys, true
+	return listed
 }
 
 // offTypeCandidate reports whether a stored property key is one the F16
@@ -737,7 +764,14 @@ func (s *Service) offTypeTypeWord(spaceId string, judged liveType, names bool) s
 		}
 		keyTaken, slugHolders := servedTypeKeySets(entries)
 		served := servedTypeKeyOf(entry.Key, entry.Slug, keyTaken, slugHolders)
-		if served == entry.Key && mintedKeyShape(entry.Key) && entry.Name != "" {
+		wanted := entry.Slug
+		if bundle.HasObjectTypeByKey(domain.TypeKey(entry.Key)) {
+			wanted = bundle.TypeApiSlug(entry.Key)
+		}
+		// a stored key stands where its slug should: a minted one, or any
+		// whose slug another type took
+		displaced := wanted != "" && wanted != entry.Key
+		if served == entry.Key && entry.Name != "" && (mintedKeyShape(entry.Key) || displaced) {
 			return entry.Name
 		}
 		return served

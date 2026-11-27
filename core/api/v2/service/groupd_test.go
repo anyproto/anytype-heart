@@ -469,6 +469,73 @@ func TestV2TemplatePropertiesJudgedAgainstTarget(t *testing.T) {
 		assert.Less(t, strings.Index(issue.Message, "key aaa"), strings.Index(issue.Message, "key zzz"))
 	})
 
+	t.Run("a built-in the target lists by its derived id is on the target before its row syncs", func(t *testing.T) {
+		// given: chore lists dueDate by the id derived from its key; this
+		// space holds no row for dueDate yet
+		fx := setup(t)
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:                   domain.String("type-chore"),
+			bundle.RelationKeyName:                 domain.String("Chore"),
+			bundle.RelationKeyUniqueKey:            domain.String("ot-chore"),
+			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-severity", "drv-rel-dueDate"}),
+		})
+
+		// when
+		result, err := fx.CreateTemplate(ctx, testSpaceId,
+			[]byte(`{"formatVersion":"2.0","template_for":"chore","properties":{"name":"Weekly","due_date":"2026-01-01"}}`), true, true)
+
+		// then
+		require.NoError(t, err)
+		assert.Empty(t, result.Warnings)
+	})
+
+	t.Run("a built-in whose slug another type took is named by display name", func(t *testing.T) {
+		// given: the installed set serves the slug query, which a legacy
+		// type holds
+		fx := setup(t)
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:        domain.String("type-set"),
+			bundle.RelationKeyUniqueKey: domain.String("ot-set"),
+			bundle.RelationKeyName:      domain.String("Query"),
+		})
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:           domain.String("type-legacy-query"),
+			bundle.RelationKeyUniqueKey:    domain.String("ot-6a8f2c1d9e4b7a3f5c2d8e86"),
+			bundle.RelationKeyApiObjectKey: domain.String("query"),
+			bundle.RelationKeyName:         domain.String("Legacy query"),
+		})
+		fx.expectMutate(editRead(t, `{"formatVersion":"2.0","id":"obj1","kind":"template","type":"template","template_for":"set","properties":{"name":"Weekly"}}`), "headB")
+
+		// when
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(`{"op":"set_properties","set":{"spiciness":"mild"}}`), "", false, true)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, result.Warnings, 1, "%v", result.Warnings)
+		assert.Contains(t, result.Warnings[0].Message, `is not on type "Query"`)
+	})
+
+	t.Run("a live type and the built-in it shadows are listed by stored key", func(t *testing.T) {
+		// given: a type stored as zztask serves the slug task, which also
+		// names the built-in
+		fx := setup(t)
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:           domain.String("type-zztask"),
+			bundle.RelationKeyUniqueKey:    domain.String("ot-zztask"),
+			bundle.RelationKeyApiObjectKey: domain.String("task"),
+			bundle.RelationKeyName:         domain.String("My task"),
+		})
+
+		// when
+		_, err := fx.CreateTemplate(ctx, testSpaceId, []byte(`{"formatVersion":"2.0","template_for":"task","properties":{"name":"Weekly"}}`), true, true)
+
+		// then
+		issue := issueAt(t, err, "/template_for")
+		require.Contains(t, issue.Message, "(key task)")
+		require.Contains(t, issue.Message, "key zztask")
+		assert.Less(t, strings.Index(issue.Message, "(key task)"), strings.Index(issue.Message, "key zztask"))
+	})
+
 	t.Run("a plain create preview says the value would be stored", func(t *testing.T) {
 		// given
 		fx := setup(t)
@@ -1291,6 +1358,27 @@ func TestV2PatchScopesFollowTheirSource(t *testing.T) {
 		assert.Equal(t, v2model.CodeEtagMismatch, v2Err(t, err).Code)
 	})
 
+	t.Run("a dry run's set_type to a built-in it does not install still judges the next property", func(t *testing.T) {
+		// given: the hours Effort is on backlog, not on the never-installed task
+		fx := setup(t, stageSprintKey)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(backlogRead(t), nil).Maybe()
+
+		// when
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"set_type","type":"task"}`, `{"op":"set_properties","set":{"effort_hours":"3"}}`), "", true, true)
+
+		// then
+		require.NoError(t, err)
+		var offType []string
+		for _, w := range result.Warnings {
+			if strings.Contains(w.Message, "is not on type") {
+				offType = append(offType, w.Message)
+			}
+		}
+		require.Len(t, offType, 1, "%v", result.Warnings)
+		assert.Contains(t, offType[0], `"effort_hours" is not on type "task"`)
+	})
+
 	t.Run("set_properties after set_type writes the new type's property", func(t *testing.T) {
 		// given
 		fx := setup(t, stageSprintKey)
@@ -1618,6 +1706,7 @@ type faultyStore struct {
 	objectstore.ObjectStore
 	failUniqueKey     string
 	failRelationReads bool
+	failDetailsId     string
 }
 
 func (f *faultyStore) SpaceIndex(spaceId string) spaceindex.Store {
@@ -1634,6 +1723,13 @@ func (i *faultyIndex) GetObjectByUniqueKey(uk domain.UniqueKey) (*domain.Details
 		return nil, errStoreFault
 	}
 	return i.Store.GetObjectByUniqueKey(uk)
+}
+
+func (i *faultyIndex) GetDetails(id string) (*domain.Details, error) {
+	if i.f.failDetailsId != "" && id == i.f.failDetailsId {
+		return nil, errStoreFault
+	}
+	return i.Store.GetDetails(id)
 }
 
 func (i *faultyIndex) ListAllRelations() (relationutils.Relations, error) {
@@ -1663,6 +1759,21 @@ func TestV2CreateUnderStoreFaults(t *testing.T) {
 		// when
 		_, err := fx.CreateObject(ctx, testSpaceId,
 			[]byte(`{"formatVersion":"2.0","type":"chore","template":"none","properties":{"name":"X","severity":["Blocker"]}}`), false, true)
+
+		// then
+		require.ErrorIs(t, err, errStoreFault)
+	})
+
+	t.Run("a type list that cannot be read refuses the create instead of settling a name without it", func(t *testing.T) {
+		// given: sprint lists one of two properties named Effort, and its row
+		// cannot be read
+		fx := newEffortFixture(t)
+		fx.addSprintType(t)
+		fx.store = &faultyStore{ObjectStore: fx.objectStore, failDetailsId: "type-sprint"}
+
+		// when
+		_, err := fx.CreateObject(ctx, testSpaceId,
+			[]byte(`{"formatVersion":"2.0","type":"sprint","template":"none","properties":{"name":"X","Effort":"3"}}`), true, true)
 
 		// then
 		require.ErrorIs(t, err, errStoreFault)
