@@ -609,7 +609,10 @@ PATCH/DELETE /v2/spaces/{space_id}/properties/{key}    # update / archive
   and created as another (`core/api/v2/service/create.go:934`).
 - **Templates**: no create-from-body RPC exists; `POST /templates` targets
   the generic AnyBlock create path (Template kind + `templateFor`), which the
-  importer already supports (R-note).
+  importer already supports (R-note). A template's type is `template` on
+  both endpoints: `kind: "template"` beside any other type is refused at
+  `/type` before a property name resolves, because the creator would build
+  an object of that other type (`core/api/v2/service/keys.go:1332`).
 - **A value on a property the type does not list is stored and warned
   about**, on create and on `set_properties`, once, when the object first
   takes the key. A template is judged against `template_for`, the type whose

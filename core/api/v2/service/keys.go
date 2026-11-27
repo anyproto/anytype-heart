@@ -1287,8 +1287,9 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 	changed := false
 
 	var typeEntries []typeEntry
-	// the resolved type slots, by field: stored key and type id
-	resolvedKeys, resolvedIds := map[string]string{}, map[string]string{}
+	// the resolved type slots, by field: the caller's term, stored key and
+	// type id
+	terms, resolvedKeys, resolvedIds := map[string]string{}, map[string]string{}, map[string]string{}
 	for _, field := range []string{"type", "template_for"} {
 		raw, ok := fields[field]
 		if !ok {
@@ -1298,6 +1299,7 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 		if err := json.Unmarshal(raw, &term); err != nil || term == "" {
 			continue
 		}
+		terms[field] = term
 		if typeEntries == nil {
 			if typeEntries, err = s.liveTypes(spaceId); err != nil {
 				return nil, nil, err
@@ -1320,12 +1322,20 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 			changed = true
 		}
 	}
+	kind := envelopeString(fields, "kind")
+	ownKey := resolvedKeys["type"]
+	// a template kind on another type would resolve its property names
+	// against the target and then be created as that other type: refused
+	// before any of them resolves (validateDocumentRefs repeats the rule for
+	// a type this pass could not resolve)
+	if kind == "template" && ownKey != "" && ownKey != string(bundle.TypeKeyTemplate) {
+		return nil, nil, templateTypeMismatch(terms["type"])
+	}
 	// the object's type settles a term two properties answer to
 	// (resolvePropertyInputIn); a template's, the type it is for
 	// (scopeTypeKey), or its own when that one has no row
 	var scope map[string]bool
-	ownKey := resolvedKeys["type"]
-	if scopeTypeKey(envelopeString(fields, "kind"), ownKey, resolvedKeys["template_for"]) != ownKey {
+	if scopeTypeKey(kind, ownKey, resolvedKeys["template_for"]) != ownKey {
 		scope = s.typePropertyScope(spaceId, resolvedIds["template_for"])
 	}
 	if scope == nil {

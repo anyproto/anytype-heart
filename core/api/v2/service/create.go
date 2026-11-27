@@ -1044,6 +1044,16 @@ func mapUnmarshalError(body []byte, err error, kind string) error {
 // (apiV2KindNarrowings), so the two cannot drift.
 var documentCreateKinds = map[string]bool{"": true, "page": true, "template": true}
 
+// templateTypeMismatch refuses a template document whose type is not
+// `template`. The creator builds an object of the type it is handed, so a
+// template kind on a page type made a page, after its property names had
+// resolved against the target as a template's do.
+func templateTypeMismatch(spelledAs string) error {
+	return v2model.ValidationFailed("not a template document",
+		v2model.Issue{Path: "/type", Message: fmt.Sprintf("expected type \"template\", got %q", spelledAs)}.
+			Hintf("a template's type is \"template\"; name the type it is for in template_for"))
+}
+
 // validateDocumentRefs is the R9 layer for object creates: kind and type
 // gating, template target, items-on-collections, and property-key existence
 // in the properties map (reject with did-you-mean — creating properties from
@@ -1068,13 +1078,15 @@ func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, enve
 	// every kind — including the forged-identity case this layer used to
 	// guard. One statement of the rule, in the validator.
 
-	if opts.requireTemplate {
+	// the endpoint or the kind says template, and a template's type is
+	// `template` (canonicalizeDocumentKeys holds the same line earlier, before
+	// any property term resolves against the target)
+	if opts.requireTemplate || envelope.Kind == "template" {
 		if envelope.Type == "" {
 			envelope.Type = string(bundle.TypeKeyTemplate)
 		}
 		if envelope.Type != string(bundle.TypeKeyTemplate) {
-			return v2model.ValidationFailed("not a template document",
-				v2model.Issue{Path: "/type", Message: fmt.Sprintf("expected type \"template\", got %q", envelope.Type)})
+			return templateTypeMismatch(docSpelling(spellings, envelope.Type))
 		}
 	}
 	// a template must name its target type — the editor derives the layout

@@ -588,6 +588,50 @@ func TestV2TemplateNamesResolveAgainstTarget(t *testing.T) {
 	})
 }
 
+// GO-7614: `kind: "template"` names a template, whose type is `template`. On
+// another type the create would resolve property names against the target
+// and then build an object of that other type, so the generic create holds
+// the same line POST /templates does, before any property term resolves.
+func TestV2TemplateKindNeedsTemplateType(t *testing.T) {
+	ctx := context.Background()
+	setup := func(t *testing.T) *v2Fixture {
+		fx := newOffTypeFixture(t)
+		fx.addTemplateType(t)
+		return fx
+	}
+
+	t.Run("a template kind on another type is refused at /type", func(t *testing.T) {
+		// given
+		fx := setup(t)
+
+		// when
+		_, err := fx.CreateObject(ctx, testSpaceId,
+			[]byte(`{"formatVersion":"2.0","kind":"template","type":"page","template_for":"chore","properties":{"name":"Weekly","severity":["High"]}}`), false, true)
+
+		// then
+		issue := issueAt(t, err, "/type")
+		assert.Equal(t, `expected type "template", got "page"`, issue.Message)
+	})
+
+	t.Run("a template kind on the template type still creates a template", func(t *testing.T) {
+		// given
+		fx := setup(t)
+		captured := fx.expectCreate("tpl1")
+		fx.expectEtagRead("tpl1")
+
+		// when
+		result, err := fx.CreateObject(ctx, testSpaceId,
+			[]byte(`{"formatVersion":"2.0","kind":"template","type":"template","template_for":"chore","properties":{"name":"Weekly","severity":["High"]}}`), false, true)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "template", result.Type)
+		require.NotNil(t, *captured)
+		assert.Equal(t, []string{"ot-template", "ot-chore"}, (*captured).ObjectTypes)
+		assert.Empty(t, result.Warnings)
+	})
+}
+
 func TestV2ReceiptsCountWhatChanged(t *testing.T) {
 	ctx := context.Background()
 
