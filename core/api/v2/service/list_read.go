@@ -670,7 +670,10 @@ func (s *Service) danglingFilterWarnings(ctx context.Context, spaceId string, vi
 	// spelled the way the request's own reads spell it: the served slug (a
 	// live holder of the spelling keeps it) or, under ?keys=name, the name
 	keyTaken, slugHolders := servedPropertyKeySets(entries)
-	removed, _ := s.removedProperties(spaceId)
+	removed, err := s.removedProperties(spaceId)
+	if err != nil {
+		removed = nil // the spelling degrades to the stored key; the warning still stands
+	}
 	removedByKey := map[string]propertyEntry{}
 	for _, entry := range removed {
 		removedByKey[entry.Key] = entry
