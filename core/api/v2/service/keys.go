@@ -785,6 +785,13 @@ func (s *Service) requireLiveType(spaceId, input, path string, v errKeys) (typeE
 	return entry, nil
 }
 
+// jsonPointerToken escapes one member name for a JSON Pointer (RFC 6901): a
+// display name such as "wins/losses" is ONE member, and appended raw it would
+// address two nested ones.
+func jsonPointerToken(name string) string {
+	return strings.NewReplacer("~", "~0", "/", "~1").Replace(name)
+}
+
 // slugHolder names the existing holder of a proposed api key — the material
 // for the loud refusal the union collision check owes the caller.
 type slugHolder struct {
@@ -1372,7 +1379,7 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 					}
 					if first, dup := spelledBy[canonical]; dup {
 						return nil, nil, v2model.ValidationFailed("duplicate property key",
-							v2model.Issue{Path: "/properties/" + key,
+							v2model.Issue{Path: "/properties/" + jsonPointerToken(key),
 								Message: fmt.Sprintf("%q and %q both address one property — keep one", first, key)})
 					}
 					spelledBy[canonical] = key

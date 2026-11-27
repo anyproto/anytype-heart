@@ -192,6 +192,33 @@ func TestV2SlugAddressedDocuments(t *testing.T) {
 		assert.NotContains(t, apiErr.Issues[0].Message, slugPropKey)
 		assert.NotRegexp(t, `[0-9a-f]{24}`, apiErr.Issues[0].Message, "a stored bson key reached the caller")
 	})
+
+	t.Run("the duplicate-spelling path escapes the member name as a JSON Pointer token", func(t *testing.T) {
+		// given: a property whose display name holds a "/" — one member,
+		// which a raw append would turn into two nested ones
+		fx := slugSpaceFixture(t)
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("rel-ratio"),
+			bundle.RelationKeyRelationKey:    domain.String("6a7663db61fab21cd4b9e104"),
+			bundle.RelationKeyApiObjectKey:   domain.String("ratio"),
+			bundle.RelationKeyName:           domain.String("wins/losses"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_number)),
+		})
+		want := v2model.Issue{
+			Path:    "/properties/wins~1losses",
+			Message: `"ratio" and "wins/losses" both address one property — keep one`,
+		}
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId, []byte(`{
+			"formatVersion":"2.0","type":"meeting_note",
+			"properties":{"ratio":1,"wins/losses":2}}`), false, true)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, want, apiErr.Issues[0])
+	})
 }
 
 func TestV2SlugAddressedOps(t *testing.T) {
