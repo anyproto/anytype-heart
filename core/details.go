@@ -140,7 +140,7 @@ func (mw *Middleware) ObjectListSetIsArchived(cctx context.Context, req *pb.RpcO
 	return response(pb.RpcObjectListSetIsArchivedResponseError_NULL, nil)
 }
 
-func (mw *Middleware) ObjectListSetIsFavorite(_ context.Context, req *pb.RpcObjectListSetIsFavoriteRequest) *pb.RpcObjectListSetIsFavoriteResponse {
+func (mw *Middleware) ObjectListSetIsFavorite(cctx context.Context, req *pb.RpcObjectListSetIsFavoriteRequest) *pb.RpcObjectListSetIsFavoriteResponse {
 	response := func(code pb.RpcObjectListSetIsFavoriteResponseErrorCode, err error) *pb.RpcObjectListSetIsFavoriteResponse {
 		m := &pb.RpcObjectListSetIsFavoriteResponse{Error: &pb.RpcObjectListSetIsFavoriteResponseError{Code: code}}
 		if err != nil {
@@ -148,7 +148,7 @@ func (mw *Middleware) ObjectListSetIsFavorite(_ context.Context, req *pb.RpcObje
 		}
 		return m
 	}
-	err := mustService[detailservice.Service](mw).SetListIsFavorite(req.ObjectIds, req.IsFavorite)
+	err := mustService[detailservice.Service](mw).SetListIsFavorite(cctx, req.ObjectIds, req.IsFavorite)
 	if err != nil {
 		return response(pb.RpcObjectListSetIsFavoriteResponseError_UNKNOWN_ERROR, err)
 	}

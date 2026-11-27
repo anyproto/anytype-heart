@@ -70,7 +70,11 @@ func (c *detailsComponent) onPushOrdinaryChange(params source.PushChangeParams) 
 	if builder.StoreChange == nil {
 		return "", nil
 	}
-	return c.storeSource.PushStoreChange(c.componentCtx, source.PushStoreChangeParams{
+	// a chat's details are edited through smartblock.Apply like any object's, and reach
+	// the store through this hook: the apply's attribution arrives in params, and goes on
+	// to the store push the way a request's does — on the context
+	ctx := domain.CtxWithIntegrationName(c.componentCtx, params.IntegrationName)
+	return c.storeSource.PushStoreChange(ctx, source.PushStoreChangeParams{
 		Changes: builder.ChangeSet,
 		State:   c.storeState,
 		Time:    time.Now(),

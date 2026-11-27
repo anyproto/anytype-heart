@@ -946,6 +946,7 @@ var defaultDeletionAuditKeys = []domain.RelationKey{
 	bundle.RelationKeyCreatedInContext,
 	bundle.RelationKeyCreatedInContextRef,
 	bundle.RelationKeyLastModifiedBy,
+	bundle.RelationKeyLastModifiedVia,
 	bundle.RelationKeyLastModifiedDate,
 	bundle.RelationKeyType,
 	bundle.RelationKeyResolvedLayout,

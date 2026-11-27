@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -136,4 +137,36 @@ func (t *testDetailsService) SetDetail(key domain.RelationKey, value domain.Valu
 		t.details = domain.NewDetails()
 	}
 	t.details.Set(key, value)
+}
+
+// Each binding is judged on its own: a block whose text is bound to a derived
+// attribution detail still writes its checkbox to a writable one.
+func TestTextDetails_DerivedAttributionBindingIsReadOnlyOnItsOwn(t *testing.T) {
+	// given: text → lastModifiedVia (derived), checkbox → done (writable)
+	block := &model.Block{
+		Fields: &types.Struct{Fields: map[string]*types.Value{
+			DetailsKeyFieldName: pbtypes.StringList([]string{bundle.RelationKeyLastModifiedVia.String(), bundle.RelationKeyDone.String()}),
+		}},
+		Content: &model.BlockContentOfText{Text: &model.BlockContentText{}},
+	}
+	orig := simple.New(block).Copy().(DetailsBlock)
+	db := orig.Copy().(DetailsBlock)
+	ds := &testDetailsService{details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyLastModifiedVia: domain.String("Raycast"),
+	})}
+	db.DetailsInit(ds)
+
+	// when: the client edits both
+	db.SetText("Forged", nil)
+	db.SetChecked(true)
+	ok, err := db.ApplyToDetails(orig, ds)
+
+	// then
+	require.NoError(t, err)
+	// red if the text binding writes the derived key
+	assert.Equal(t, "Raycast", ds.Details().GetString(bundle.RelationKeyLastModifiedVia))
+	// red if one derived binding makes the whole block read-only: the
+	// checkbox would stop updating and persisting
+	assert.True(t, ok)
+	assert.True(t, ds.Details().GetBool(bundle.RelationKeyDone))
 }

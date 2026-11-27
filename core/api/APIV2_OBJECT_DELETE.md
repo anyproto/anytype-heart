@@ -1,5 +1,7 @@
 # API v2 object DELETE (plan 3.3) — creator provenance and the delete surface
 
+> **Update (API change attribution, `docs/ApiChangeAttribution.md`).** `pb.Change.integrationName` is now stamped on EVERY change a local-API request authors, not only the creating one. The DELETE rule below is unchanged: it reads the FIRST non-root change, which is always a creating change (that document proves it). Every reference below to `docs/IntegrationAttribution.md` and to a future integration object, slug or icon describes a SUPERSEDED spec — none of it is planned.
+
 Status: **built** · implementation record · 2026-08-14 · **revised
 2026-10-26** (§0 — read it first: archive is no longer creator-gated) and
 **2026-10-27** (§0.1: a deleted object answers 410).

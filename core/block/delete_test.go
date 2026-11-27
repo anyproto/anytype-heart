@@ -1,6 +1,7 @@
 package block
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -50,12 +51,18 @@ func TestService_deleteDerivedObjectKeepsTheIndexRow(t *testing.T) {
 	spaceSvc := mock_space.NewMockService(t)
 	spaceSvc.EXPECT().Get(mock.Anything, spaceId).Return(spc, nil)
 	detailsSvc := mock_detailservice.NewMockService(t)
+	// the Home cleanup is develop's: the cached flag passed back, on no
+	// request's behalf (docs/ApiChangeAttribution.md)
 	detailsSvc.EXPECT().SetIsFavorite(relationId, false).Return(nil)
+	// the delete serves a local-API request: the uninstall mark is attributed
+	apiCtx := domain.CtxWithIntegrationName(context.Background(), "Raycast")
 	s := &Service{objectStore: store, spaceService: spaceSvc, detailsService: detailsSvc}
 
-	err := s.deleteDerivedObject(domain.FullID{SpaceID: spaceId, ObjectID: relationId}, coresb.SmartBlockTypeRelation, spc)
+	err := s.deleteDerivedObject(apiCtx, domain.FullID{SpaceID: spaceId, ObjectID: relationId}, coresb.SmartBlockTypeRelation, spc)
 
 	require.NoError(t, err)
+	// red if the uninstall mark is applied without the request's stamp
+	assert.Equal(t, []string{"Raycast"}, sb.Results.IntegrationNames)
 	assert.True(t, sb.IsDeleted(), "marked deleted in memory")
 	assert.True(t, sb.Details().GetBool(bundle.RelationKeyIsUninstalled), "uninstalled in the tree")
 	row, err := store.SpaceIndex(spaceId).GetDetails(relationId)
@@ -96,7 +103,7 @@ func TestService_unsetDashboardIdIfNeeded(t *testing.T) {
 			Workspace: workspaceId,
 		})
 
-		detailsSvc.EXPECT().SetSpaceInfo(mock.Anything, mock.Anything).RunAndReturn(func(spcId string, details *domain.Details) error {
+		detailsSvc.EXPECT().SetSpaceInfo(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, spcId string, details *domain.Details) error {
 			assert.Equal(t, spaceId, spcId)
 			require.NotNil(t, details)
 			require.NotEmpty(t, details)
@@ -105,7 +112,7 @@ func TestService_unsetDashboardIdIfNeeded(t *testing.T) {
 		})
 
 		// when
-		s.unsetHomepageIfNeeded(domain.FullID{SpaceID: spaceId, ObjectID: objectId}, spc)
+		s.unsetHomepageIfNeeded(context.Background(), domain.FullID{SpaceID: spaceId, ObjectID: objectId}, spc)
 	})
 
 	t.Run("deleting object that is NOT the homepage leaves homepage setting unchanged", func(t *testing.T) {
@@ -132,7 +139,7 @@ func TestService_unsetDashboardIdIfNeeded(t *testing.T) {
 		})
 
 		// when
-		s.unsetHomepageIfNeeded(domain.FullID{SpaceID: spaceId, ObjectID: objectId}, spc)
+		s.unsetHomepageIfNeeded(context.Background(), domain.FullID{SpaceID: spaceId, ObjectID: objectId}, spc)
 
 		// then
 		detailsSvc.AssertNotCalled(t, "SetSpaceInfo", mock.Anything, mock.Anything)
@@ -161,7 +168,7 @@ func TestService_unsetDashboardIdIfNeeded(t *testing.T) {
 		})
 
 		// when
-		s.unsetHomepageIfNeeded(domain.FullID{SpaceID: spaceId, ObjectID: objectId}, spc)
+		s.unsetHomepageIfNeeded(context.Background(), domain.FullID{SpaceID: spaceId, ObjectID: objectId}, spc)
 
 		// then
 		detailsSvc.AssertNotCalled(t, "SetSpaceInfo", mock.Anything, mock.Anything)

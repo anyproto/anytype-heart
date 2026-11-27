@@ -513,7 +513,7 @@ func TestPushDelta(t *testing.T) {
 			entry("l1", model.BlockContentWidget_Link, 5, "vA", ""),
 		}
 
-		v.pushDelta(nil, desired, spaceId)
+		v.pushDelta(nil, desired, spaceId, "")
 
 		assert.Empty(t, stub.deletes)
 		assert.Empty(t, stub.updates)
@@ -528,7 +528,7 @@ func TestPushDelta(t *testing.T) {
 			entry("l1", model.BlockContentWidget_Link, 5, "vA", ""),
 		}
 
-		v.pushDelta(prev, nil, spaceId)
+		v.pushDelta(prev, nil, spaceId, "")
 
 		assert.Empty(t, stub.creates)
 		assert.Empty(t, stub.updates)
@@ -544,7 +544,7 @@ func TestPushDelta(t *testing.T) {
 			entry("l1", model.BlockContentWidget_List, 5, "vA", ""),
 		}
 
-		v.pushDelta(prev, desired, spaceId)
+		v.pushDelta(prev, desired, spaceId, "")
 
 		assert.Empty(t, stub.creates)
 		assert.Empty(t, stub.deletes)
@@ -574,7 +574,7 @@ func TestPushDelta(t *testing.T) {
 			entry("l3", model.BlockContentWidget_Link, 5, "vC", "l1"),
 		}
 
-		v.pushDelta(prev, desired, spaceId)
+		v.pushDelta(prev, desired, spaceId, "")
 
 		assert.Empty(t, stub.creates)
 		assert.Empty(t, stub.deletes)
@@ -604,7 +604,7 @@ func TestPushDelta(t *testing.T) {
 			entry("l2", model.BlockContentWidget_Link, 5, "vB", "l1"),
 		}
 
-		v.pushDelta(entries, entries, spaceId)
+		v.pushDelta(entries, entries, spaceId, "")
 
 		assert.Empty(t, stub.creates)
 		assert.Empty(t, stub.updates)
@@ -618,7 +618,7 @@ func TestPushDelta(t *testing.T) {
 			entry("l2", model.BlockContentWidget_Link, 5, "vB", "l1"),
 		}
 
-		v.pushDelta(nil, desired, spaceId)
+		v.pushDelta(nil, desired, spaceId, "")
 
 		assert.Empty(t, stub.updates)
 		assert.Empty(t, stub.deletes)
@@ -633,7 +633,7 @@ func TestPushDelta(t *testing.T) {
 		e.SpaceId = "" // Simulate extractEntriesFromState being called with a space or an old entry.
 		desired := []personalfavorites.WidgetEntry{e}
 
-		v.pushDelta(nil, desired, spaceId)
+		v.pushDelta(nil, desired, spaceId, "")
 
 		require.Len(t, stub.creates, 1)
 		assert.Equal(t, spaceId, stub.creates[0].SpaceId)

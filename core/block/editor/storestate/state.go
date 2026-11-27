@@ -80,6 +80,18 @@ func New(ctx context.Context, id string, db anystore.DB, handlers ...Handler) (s
 	return
 }
 
+// ChangeAttribution is what a store change says about its own authoring,
+// beyond who signed it: the per-change attributes read from pb.StoreChange.
+// It travels as one value from the two places a change set is built (a local
+// push and a replayed/received tree change) to every handler, so a new
+// attribute is a member here plus its fill at those two sites.
+type ChangeAttribution struct {
+	// IntegrationName is pb.StoreChange.IntegrationName: the RAW name of
+	// the local-API app whose request authored the change, "" for a change
+	// made in an Anytype app.
+	IntegrationName string
+}
+
 type ChangeSet struct {
 	Id        string
 	Order     string
@@ -87,6 +99,7 @@ type ChangeSet struct {
 	AclHeadId string
 	Changes   []*pb.StoreChangeContent
 	Timestamp int64
+	ChangeAttribution
 }
 
 type Change struct {
@@ -96,6 +109,7 @@ type Change struct {
 	AclHeadId string
 	Change    *pb.StoreChangeContent
 	Timestamp int64
+	ChangeAttribution
 }
 
 type StoreState struct {
@@ -227,7 +241,9 @@ func (ss *StoreState) applyChangeSet(ctx context.Context, set ChangeSet, returnA
 			Change:    ch,
 			Creator:   set.Creator,
 			AclHeadId: set.AclHeadId,
-			Timestamp: set.Timestamp,
+			// the whole attribution, so a new member needs no change here
+			ChangeAttribution: set.ChangeAttribution,
+			Timestamp:         set.Timestamp,
 		})
 		if applyErr == nil || errors.Is(applyErr, ErrIgnore) {
 			continue

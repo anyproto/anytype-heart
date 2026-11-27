@@ -220,8 +220,9 @@ func (mw *Middleware) BlockPaste(cctx context.Context, req *pb.RpcBlockPasteRequ
 				ObjectOrigin:          objectorigin.Clipboard(),
 				ImageKind:             model.ImageKind_AutomaticallyAdded,
 			}
-			// we shouldn't pass context here because the upload operation can rewrite original paste events
-			if _, err = bs.UploadBlockFile(nil, req, groupId, false); err != nil {
+			// we shouldn't pass context here because the upload operation can rewrite original paste events;
+			// the attribution-only context (nil outside the local API) stamps the change and collects nothing
+			if _, err = bs.UploadBlockFile(session.AttributionOnly(cctx), req, groupId, false); err != nil {
 				return err
 			}
 		}
@@ -439,7 +440,7 @@ func (mw *Middleware) ObjectListDelete(cctx context.Context, req *pb.RpcObjectLi
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.DeleteArchivedObjects(req.ObjectIds)
+		return bs.DeleteArchivedObjects(cctx, req.ObjectIds)
 	})
 	if err != nil {
 		return response(pb.RpcObjectListDeleteResponseError_UNKNOWN_ERROR, err)
@@ -732,7 +733,16 @@ func getSessionToken(cctx context.Context) (string, bool) {
 	return tok, true
 }
 
+// newContext builds the per-request session context. It is also where a
+// local-API request's attribution crosses from the request context into the
+// editor: the HTTP auth middleware installs the session's raw app name on
+// cctx, and every state created with NewStateCtx(ctx) pushes its change
+// stamped with it (docs/ApiChangeAttribution.md). gRPC calls from the apps
+// carry no name, so their contexts stamp nothing.
 func (mw *Middleware) newContext(cctx context.Context, opts ...session.ContextOption) session.Context {
+	if name := domain.IntegrationNameFromCtx(cctx); name != "" {
+		opts = append(opts, session.WithIntegrationName(name))
+	}
 	tok, ok := getSessionToken(cctx)
 	if ok {
 		return session.NewContext(append(opts, session.WithSession(tok))...)

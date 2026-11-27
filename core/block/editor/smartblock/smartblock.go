@@ -86,6 +86,12 @@ type ApplyInfo struct {
 	Events            []simple.EventMessage
 	Changes           []*pb.ChangeContent
 	ApplyOtherObjects bool
+	// IntegrationName is the attribution of the apply the hook reports on
+	// (HookAfterApply of a local Apply only): the raw name of the local-API
+	// app whose request made it, "" otherwise. A hook that writes OTHER
+	// objects as a consequence of this apply, inside the same request,
+	// stamps those changes with it; a hook must not keep it past the call.
+	IntegrationName string
 }
 
 type HookCallback func(info ApplyInfo) (err error)
@@ -391,15 +397,25 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.spaceIndex, sb.formatFetcher).Migrate(ctx.State)
 		// Creation provenance (APIV2_OBJECT_DELETE.md §11.4): when the request
 		// ctx carries an API session's raw app name, stamp it on the
-		// CREATION state only — the creating Apply copies it onto the first
+		// CREATION state — the creating Apply copies it onto the first
 		// content change (source.PushChangeParams.IntegrationName), which is
-		// what the DELETE ownership check later reads. The value is per-apply
-		// by construction (state.State does not propagate it), so a later
-		// edit on this device — IsNewObject false, or a fresh NewState —
-		// carries no stamp.
+		// what the DELETE ownership check later reads. Only a NEW object's
+		// init is stamped from InitContext.Ctx: the init apply of an existing
+		// object (load-time migrations) is heart's own work even when an API
+		// request happened to load the object, and stays unstamped. The value
+		// is per-apply by construction (state.State does not propagate it);
+		// later edits are stamped on their own, from the request that makes
+		// them (docs/ApiChangeAttribution.md).
 		if name := domain.IntegrationNameFromCtx(ctx.Ctx); name != "" {
 			ctx.State.SetIntegrationName(name)
 		}
+		// lastModifiedVia is derived from changes only; a creation state
+		// (an API document, an import, a template, copied details) cannot
+		// bring one: the generic detail setters skip the key, and the
+		// creating Apply drops whatever else wrote it. It follows
+		// lastModifiedBy: a created object has none until someone edits it —
+		// the creation's own attribution is on the creating change and in
+		// version history.
 	}
 
 	if err = sb.injectLocalDetails(ctx.State); err != nil {
@@ -851,21 +867,27 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		parent                  = s.ParentState()
 		changeType              = s.GetChangeType()
 		// captured from the INCOMING state before ApplyState merges it away:
-		// the doc state never carries the integration name, so only the apply
-		// whose own state was stamped (the creating one) pushes it
-		integrationName = s.IntegrationName()
+		// the doc state never carries the integration name, so only an apply
+		// whose own state was stamped — explicitly, or by the session context
+		// of the local-API request it was created for — pushes it
+		// (docs/ApiChangeAttribution.md). Taking CONSUMES the explicit stamp
+		// (review F6): one stamped push per stamped state is a structural
+		// guarantee, not a caller invariant — without it the state object
+		// keeps the name after it becomes the doc, and applying the same
+		// stamped state twice pushes the value twice.
+		integrationName = s.TakeIntegrationName()
 	)
-	// consume the stamp AT capture (review F6): one stamped push per stamped
-	// state is a structural guarantee, not a caller invariant. Without this
-	// line the state object keeps the name after it becomes the doc, and
-	// applying the same stamped state twice pushes the value twice —
-	// InitObject applies once today, but attribution will widen the fill
-	// sites, and a caller-count invariant does not survive that.
-	s.SetIntegrationName("")
 
 	if parent != nil {
 		migrationVersionUpdated = s.MigrationVersion() != parent.MigrationVersion()
 	}
+
+	// lastModifiedVia is derived, never written by content: whatever path
+	// built the applied state (a details RPC, an API op, a whole-document
+	// write, a creation state), a value no derivation put there is replaced
+	// by the document's. The setters refuse the key with an error of their
+	// own; this is the one place none of them can bypass.
+	s.EnforceLastModifiedVia()
 
 	msgs, act, err := state.ApplyState(sb.SpaceID(), s, sb.enableLayouts)
 	if err != nil {
@@ -921,8 +943,20 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			}
 		}
 		if !sb.source.ReadOnly() && changeType == domain.ChangeTypeUserChange {
-			// We can set details directly in object's state, they'll be indexed correctly
-			st.SetLastModified(lastModified.Unix(), sb.currentParticipantId)
+			// We can set details directly in object's state, they'll be indexed correctly.
+			// The app goes in with the author, from the same change: set when this change is
+			// made for a local-API request, REMOVED when it is not. Store-backed objects (chats)
+			// never show it: their details live in a store whose replay derives no author, so
+			// the name would be there until reopen and on no other device.
+			via := integrationName
+			if sb.Type().IsStoreBacked() {
+				via = ""
+			}
+			st.SetLastModified(state.LastModified{
+				Timestamp:       lastModified.Unix(),
+				By:              sb.currentParticipantId,
+				IntegrationName: via,
+			})
 		}
 		fileDetailsKeys := st.FileRelationKeys(sb.formatFetcher)
 		var fileDetailsKeysFiltered []domain.RelationKey
@@ -1060,12 +1094,36 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			// object init and layout syncs run on every device and must not each rewrite the
 			// objects of a type
 			ApplyOtherObjects: changeType == domain.ChangeTypeUserChange || changeType == domain.ChangeTypeHistoryOperation,
+			IntegrationName:   integrationName,
 		}); e != nil {
 			log.With("objectID", sb.Id()).Warnf("after apply execHooks error: %v", e)
 		}
 	}
 
 	return
+}
+
+// InitApplyFlags are the flags ObjectFactory.InitObject applies an object's
+// init state with.
+//
+// NoSpaceConfigCheck: init is our own code, and its writes must never be able
+// to fail object loading - this Apply's error is returned straight to the
+// caller. The state also carries ChangeTypeObjectInit, so the guard would
+// pass anyway; the flag says so explicitly rather than leaving object loading
+// resting on an enum value someone may repurpose.
+//
+// AllowApplyWithEmptyTree is given to a NEW object's init only, and this is
+// the one place that gives it: the creating apply is therefore the only
+// apply that can write a root-only tree, i.e. the only one that can produce
+// a tree's first change. The API's permanent-delete ownership rule reads
+// that change and depends on this (docs/ApiChangeAttribution.md).
+func InitApplyFlags(isNewObject bool) []ApplyFlag {
+	flags := []ApplyFlag{NoHistory, NoEvent, NoRestrictions, KeepInternalFlags, IgnoreNoPermissions, NoSpaceConfigCheck}
+	if isNewObject {
+		// the creation migration may only now have given the object its type, and so its layout
+		flags = append(flags, AllowApplyWithEmptyTree, ShapeNewObjectLayout)
+	}
+	return flags
 }
 
 func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {

@@ -109,11 +109,93 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 	return s, nil
 }
 
-func (s *State) SetLastModified(ts int64, identityLink string) {
-	if ts > 0 {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyLastModifiedDate, domain.Int64(ts))
+// LastModified says who changed the object last, when, and through which
+// local-API app. The author and the app are a PAIR: both are read off the
+// same change and they are always set, restored or left alone together — an
+// author shown with another change's app ("Alice via Linear" when Bob made
+// the Linear edit) is the failure this type exists to rule out. Which change
+// counts as the latest is not decided here. A new per-change attribute (the
+// authoring device) is one more member.
+type LastModified struct {
+	// Timestamp is the change's timestamp, in seconds.
+	Timestamp int64
+	// By is the participant id of the identity that signed the change.
+	By string
+	// IntegrationName is the RAW name of the local-API app that authored the
+	// change, "" when it was made in an Anytype app.
+	IntegrationName string
+}
+
+// SetLastModified sets the tuple: the date (when there is one), the author,
+// and the app — REMOVED when the change was not made through the API.
+// Derived details: it writes no change content.
+func (s *State) SetLastModified(info LastModified) {
+	if info.Timestamp > 0 {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyLastModifiedDate, domain.Int64(info.Timestamp))
 	}
-	s.SetDetailAndBundledRelation(bundle.RelationKeyLastModifiedBy, domain.String(identityLink))
+	s.SetDetailAndBundledRelation(bundle.RelationKeyLastModifiedBy, domain.String(info.By))
+	s.SetLastModifiedVia(info.IntegrationName)
+}
+
+// SetLastModifiedVia records which local-API app authored the object's
+// latest user change (bundle.RelationKeyLastModifiedVia). An empty name
+// REMOVES the detail: an edit made in an Anytype app after an API edit must
+// stop showing the app. It is the ONE legitimate writer of the detail — the
+// derivations call it, right after they set the author it belongs to — and
+// marks the state's value as derived (EnforceLastModifiedVia).
+//
+// The generic detail setters (SetDetail, SetLocalDetail, SetDetails and the
+// ones built on them) skip the key, so this is also the only way it gets in:
+// a bulk write of an object's whole details — which carries the key along —
+// cannot put it back after the author it belongs to was replaced.
+func (s *State) SetLastModifiedVia(integrationName string) {
+	if integrationName == "" {
+		s.RemoveLocalDetail(bundle.RelationKeyLastModifiedVia)
+	} else {
+		s.AddBundledRelationLinks(bundle.RelationKeyLastModifiedVia)
+		s.setLocalDetail(bundle.RelationKeyLastModifiedVia, domain.String(integrationName))
+	}
+	s.lastModifiedViaDerived = true
+}
+
+// EnforceLastModifiedVia is called on a state about to be applied. Unless a
+// derivation decided this state's lastModifiedVia, the state is made to say
+// what its parent (the document) says: content can neither set nor clear
+// the detail. The comparison is of the key's presence and its typed value,
+// not of its text: a value that is not an app name (a boolean, an empty
+// string) is no app, and the key is then REMOVED.
+func (s *State) EnforceLastModifiedVia() {
+	if s.lastModifiedViaDerived {
+		return
+	}
+	var trusted string
+	if s.parent != nil {
+		trusted, _ = s.parent.LocalDetails().Get(bundle.RelationKeyLastModifiedVia).TryString()
+	}
+	// presence is the map's, not the value's: an invalid value is a
+	// present key too (and goes out as null)
+	current, present := s.LocalDetails().TryGet(bundle.RelationKeyLastModifiedVia)
+	if trusted == "" && !present {
+		return
+	}
+	if name, isString := current.TryString(); isString && trusted != "" && name == trusted {
+		return
+	}
+	s.SetLastModifiedVia(trusted)
+	s.lastModifiedViaDerived = false
+}
+
+// authorWritten keeps the pair together when lastModifiedBy is written or
+// removed by ANYTHING: the app shown next to an author belongs to that
+// author's change, so a new author starts with none. A derivation sets the
+// app right after it sets the author; a bare write of the author (a details
+// RPC, a block bound to the key — it has always been writable) leaves none,
+// instead of the previous author's app next to the new name.
+func (s *State) authorWritten() {
+	if s.localDetails != nil && s.localDetails.Has(bundle.RelationKeyLastModifiedVia) {
+		s.localDetails.Delete(bundle.RelationKeyLastModifiedVia)
+	}
+	s.lastModifiedViaDerived = true
 }
 
 func (s *State) SetChangeId(id string) {

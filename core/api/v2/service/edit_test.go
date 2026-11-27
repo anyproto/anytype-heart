@@ -2731,6 +2731,31 @@ func TestPatchObject(t *testing.T) {
 		assert.Equal(t, `"tags" appears in both set and add — pick one`, apiErr.Issues[0].Message)
 	})
 
+	t.Run("set_properties can neither set nor unset lastModifiedVia", func(t *testing.T) {
+		// it names the app that authored the object's latest change and is
+		// derived from that change alone. Both spellings a caller may hold:
+		// the served slug and the stored key.
+		for _, body := range []string{
+			`{"op":"set_properties","set":{"last_modified_via":"Forged"}}`,
+			`{"op":"set_properties","set":{"lastModifiedVia":"Forged"}}`,
+			// red if only set is guarded: an unset hides the app that made
+			// the latest change
+			`{"op":"set_properties","unset":["last_modified_via"]}`,
+			`{"op":"set_properties","unset":["lastModifiedVia"]}`,
+		} {
+			fx := newV2Fixture(t)
+			fx.expectMutate(editRead(t, editBaseDoc))
+
+			_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(body), "", false, true)
+
+			// red if the key is missing from the output-only set — the op
+			// would reach the state and plant or remove the detail
+			apiErr := v2Err(t, err)
+			require.NotEmpty(t, apiErr.Issues, body)
+			assert.Contains(t, apiErr.Issues[0].Message, "output-only", body)
+		}
+	})
+
 	t.Run("set_properties add validates keys like set", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.expectMutate(editRead(t, editBaseDoc))

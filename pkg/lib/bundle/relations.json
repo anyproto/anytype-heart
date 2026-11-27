@@ -846,6 +846,16 @@
     "revision": 1
   },
   {
+    "description": "Name of the app that made the last change through the local API. Empty when the last change was made in an Anytype app",
+    "format": "shorttext",
+    "hidden": false,
+    "key": "lastModifiedVia",
+    "maxCount": 1,
+    "name": "Last modified via",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
     "description": "Relation allows multi values",
     "format": "number",
     "hidden": true,

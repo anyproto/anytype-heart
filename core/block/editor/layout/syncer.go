@@ -40,12 +40,16 @@ type Syncer interface {
 	SyncLayoutWithType(oldLayout, newLayout LayoutState, forceUpdate, needApply, withTemplates bool) error
 }
 
-func NewSyncer(typeId string, space smartblock.Space, index spaceindex.Store) Syncer {
-	return &syncer{
+func NewSyncer(typeId string, space smartblock.Space, index spaceindex.Store, opts ...SyncerOption) Syncer {
+	s := &syncer{
 		typeId: typeId,
 		space:  space,
 		index:  index,
 	}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
 }
 
 type LayoutState struct {
@@ -135,9 +139,26 @@ func NewLayoutStateFromEvents(events []simple.EventMessage) LayoutState {
 	return ls
 }
 
+// SyncerOption configures a syncer.
+type SyncerOption func(*syncer)
+
+// WithIntegrationName attributes the changes the syncer pushes on the type's
+// objects to the local-API app whose request changed the type: the fan-out
+// runs inside that request, so its changes carry the same stamp as the type
+// change that caused them (docs/ApiChangeAttribution.md). Empty stamps
+// nothing.
+func WithIntegrationName(name string) SyncerOption {
+	return func(s *syncer) {
+		s.integrationName = name
+	}
+}
+
 type syncer struct {
 	space smartblock.Space
 	index spaceindex.Store
+
+	// integrationName: see WithIntegrationName
+	integrationName string
 
 	typeId string
 	cache  map[domain.RelationKey]string
@@ -170,6 +191,7 @@ func (s *syncer) SyncLayoutWithType(oldLayout, newLayout LayoutState, forceUpdat
 			// we should modify not local relations from object, that's why we apply changes even if object is not in cache
 			err = s.space.Do(id, func(b smartblock.SmartBlock) error {
 				st := b.NewState()
+				st.SetIntegrationName(s.integrationName)
 				st.RemoveDetail(changes.relationsToRemove...)
 				if changes.isFeaturedRelationsChanged {
 					st.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(changes.newFeaturedRelations))
@@ -277,6 +299,7 @@ func (s *syncer) updateResolvedLayout(id string, layout int64, addName, needAppl
 			})
 		}
 		st.SetChangeType(domain.ChangeTypeLayoutSync)
+		st.SetIntegrationName(s.integrationName)
 		// the conversion rewrites the children of the edit-restricted header: not a user edit of it
 		return b.Apply(st, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 	})

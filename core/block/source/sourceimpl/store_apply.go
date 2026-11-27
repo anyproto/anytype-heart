@@ -72,6 +72,9 @@ func (a *storeApply) applyChange(change *objecttree.Change) (err error) {
 		Changes:   storeChange.ChangeSet,
 		Creator:   change.Identity.Account(),
 		Timestamp: change.Timestamp,
+		// read from the change's own payload: a received or replayed change
+		// keeps the attribution its author's heart stamped on it
+		ChangeAttribution: storeChangeAttribution(storeChange),
 	}
 	err = a.tx.ApplyChangeSet(set)
 	// Skip invalid changes

@@ -64,6 +64,10 @@ func (m mockSessionContext) GetResponseEvent() *pb.ResponseEvent {
 	panic("implement me")
 }
 
+func (m mockSessionContext) IntegrationName() string {
+	return ""
+}
+
 type fixture struct {
 	*spaceSyncStatus
 	a                   *app.App

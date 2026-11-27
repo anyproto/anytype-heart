@@ -16,6 +16,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/debug/exporter"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -33,6 +34,17 @@ func treeSmartBlockType(tree objecttree.ReadableObjectTree) (smartblock.SmartBlo
 		return 0, fmt.Errorf("unmarshal change payload: %w", err)
 	}
 	return smartblock.SmartBlockType(payload.SmartBlockType), nil
+}
+
+// anonymizedObjectDetails is the index row's details fit for an anonymized
+// export: the generic anonymizer, minus the detail that names the local-API
+// app behind the latest change. That one is REMOVED — the text scrambler
+// keeps what it cannot map (a name of punctuation or digits survives whole)
+// and a name's length and shape alone can identify a tool.
+func anonymizedObjectDetails(details *domain.Details) *domain.Details {
+	res := anonymize.Details(details)
+	res.Delete(bundle.RelationKeyLastModifiedVia)
+	return res
 }
 
 type treeExporter struct {
@@ -86,7 +98,7 @@ func (e *treeExporter) Export(ctx context.Context, path string, tree objecttree.
 		e.log.Printf("can't fetch localstore info: %v", err)
 	} else {
 		if len(data) > 0 {
-			data[0].Details = transform(data[0].Details, e.anonymized, anonymize.Details)
+			data[0].Details = transform(data[0].Details, e.anonymized, anonymizedObjectDetails)
 			data[0].Snippet = transform(data[0].Snippet, e.anonymized, anonymize.Text)
 			for i, r := range data[0].Relations {
 				data[0].Relations[i] = transform(r, e.anonymized, anonymize.Relation)

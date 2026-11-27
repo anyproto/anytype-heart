@@ -138,7 +138,7 @@ func (a *widgetAdapter) ListWidgets(ctx context.Context, spaceId string, scope a
 func (a *widgetAdapter) CreateWidget(ctx context.Context, spaceId string, scope apicore.WidgetScope, create apicore.WidgetCreate) (apicore.WidgetEntry, error) {
 	var created apicore.WidgetEntry
 	err := a.doRoot(ctx, spaceId, scope, func(root widgetRoot, sb widgetEditor) error {
-		st := sb.NewState()
+		st := sb.NewState().StampFromCtx(ctx)
 		for _, entry := range widgetEntries(st, scope) {
 			if entry.Target == create.Target {
 				return fmt.Errorf("%w: %s", apicore.ErrWidgetExists, entry.Id)
@@ -188,7 +188,7 @@ func (a *widgetAdapter) CreateWidget(ctx context.Context, spaceId string, scope 
 func (a *widgetAdapter) UpdateWidget(ctx context.Context, spaceId string, scope apicore.WidgetScope, widgetId string, plan func(current apicore.WidgetEntry) (apicore.WidgetUpdate, error)) (apicore.WidgetEntry, error) {
 	var updated apicore.WidgetEntry
 	err := a.doRoot(ctx, spaceId, scope, func(root widgetRoot, sb widgetEditor) error {
-		st := sb.NewState()
+		st := sb.NewState().StampFromCtx(ctx)
 		current, ok := widgetEntry(st, scope, widgetId)
 		if !ok {
 			return apicore.ErrWidgetNotFound
@@ -242,7 +242,7 @@ func (a *widgetAdapter) UpdateWidget(ctx context.Context, spaceId string, scope 
 func (a *widgetAdapter) DeleteWidget(ctx context.Context, spaceId string, scope apicore.WidgetScope, widgetId string, expectedTarget string) (apicore.WidgetEntry, error) {
 	var removed apicore.WidgetEntry
 	err := a.doRoot(ctx, spaceId, scope, func(root widgetRoot, sb widgetEditor) error {
-		st := sb.NewState()
+		st := sb.NewState().StampFromCtx(ctx)
 		current, ok := widgetEntry(st, scope, widgetId)
 		if !ok {
 			return apicore.ErrWidgetNotFound

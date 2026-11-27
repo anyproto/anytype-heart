@@ -115,19 +115,26 @@ func (v *VirtualWidgetObject) Apply(s *state.State, flags ...smartblock.ApplyFla
 
 	prev := extractEntriesFromState(parent, spaceId)
 	desired := extractEntriesFromState(s, spaceId)
+	// the tree push is off, so the stamp smartblock.Apply would have put on
+	// its change goes to the store ops that stand in for it
+	integrationName := s.TakeIntegrationName()
 
 	if err := v.SmartBlock.Apply(s, append(flags, smartblock.NotPushChanges)...); err != nil {
 		return fmt.Errorf("apply smartblock: %w", err)
 	}
-	v.pushDelta(prev, desired, spaceId)
+	v.pushDelta(prev, desired, spaceId, integrationName)
 	return nil
 }
 
 // pushDelta publishes the entry-level ops that take prev to desired. It does
 // not read the store, so it cannot interpret a concurrent remote change as a
 // local deletion.
-func (v *VirtualWidgetObject) pushDelta(prev, desired []personalfavorites.WidgetEntry, spaceId string) {
-	ctx := context.Background()
+//
+// integrationName is the attribution of the apply being published: the raw
+// name of the local-API app whose request made it, "" otherwise. It rides the
+// context to the store push, which is where store changes are stamped.
+func (v *VirtualWidgetObject) pushDelta(prev, desired []personalfavorites.WidgetEntry, spaceId string, integrationName string) {
+	ctx := domain.CtxWithIntegrationName(context.Background(), integrationName)
 
 	prevMap := make(map[string]personalfavorites.WidgetEntry, len(prev))
 	for _, e := range prev {

@@ -92,16 +92,15 @@ func TestChange(t *testing.T) {
 }
 
 func TestChangeAnonymizesTheIntegrationName(t *testing.T) {
-	// the raw, user-chosen API-key name (§8.44). A non-ASCII name is the
-	// discriminating fixture: an ASCII-only one could pass a check that
-	// only handled the common case, and an empty one could pass a no-op.
-	in := &pb.Change{IntegrationName: "Café Desktop 🙂"}
-	out := Change(in)
-	assert.NotEqual(t, in.IntegrationName, out.IntegrationName)
-	assert.NotEmpty(t, out.IntegrationName)
-
-	// absent stays absent — "no name recorded" must not become a fake one
-	assert.Empty(t, Change(&pb.Change{}).IntegrationName)
+	// the raw, user-chosen API-key name (§8.44) is CLEARED. Each name is one
+	// a scrambler leaves partly or wholly intact: punctuation only, digits,
+	// non-ASCII — red if the field is passed through Text again, or left.
+	for _, name := range []string{"!!!", "2024", "Café Desktop 🙂", "Raycast"} {
+		in := &pb.Change{IntegrationName: name}
+		out := Change(in)
+		assert.Empty(t, out.IntegrationName, "name %q", name)
+		assert.Equal(t, name, in.IntegrationName, "the caller's change is not modified")
+	}
 }
 
 func TestText(t *testing.T) {
@@ -131,5 +130,19 @@ func TestStruct(t *testing.T) {
 	out := Struct(in)
 	for k := range in.Fields {
 		assert.False(t, in.Fields[k].Equal(out.Fields[k]), in.Fields[k], out.Fields[k])
+	}
+}
+
+func TestStoreChangeAnonymizesTheIntegrationName(t *testing.T) {
+	// the same rule for a chat's changes: cleared, whatever the name is made
+	// of. Red if StoreChange scrambles instead of clearing, or passes it on.
+	for _, name := range []string{"!!!", "2024", "Café Desktop 🙂", "Raycast"} {
+		in := &pb.StoreChange{ChangeSet: []*pb.StoreChangeContent{{}}, IntegrationName: name}
+		out := StoreChange(in)
+		assert.Empty(t, out.IntegrationName, "name %q", name)
+		// the caller's change is the live tree's model: it must not be touched
+		assert.Equal(t, name, in.IntegrationName)
+		// the operations are exported as before
+		assert.Equal(t, in.ChangeSet, out.ChangeSet)
 	}
 }

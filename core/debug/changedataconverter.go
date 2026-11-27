@@ -32,6 +32,9 @@ func (c *changeDataConverter) Marshall(model any) (data []byte, dataType string,
 		if !ok {
 			return nil, "", fmt.Errorf("can't convert the model")
 		}
+		if c.anonymize {
+			ch = anonymize.StoreChange(ch)
+		}
 		data, err = ch.Marshal()
 		return
 	}

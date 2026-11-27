@@ -3,7 +3,10 @@ package history
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
@@ -17,8 +20,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"github.com/zeebo/blake3"
 	"go.uber.org/mock/gomock"
 
+	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -38,7 +44,13 @@ type historyStub struct {
 	changes  []*objecttree.Change
 	heads    []string
 	objectId string
+	// walks, when set, counts the walks of the tree (IterateFrom calls)
+	walks *atomic.Int32
 }
+
+// stubSmartBlockType is the type every historyStub tree says it is. Tests
+// that need another type set it and restore it.
+var stubSmartBlockType = model.SmartBlockType_Page
 
 func (h historyStub) Lock() {}
 
@@ -54,7 +66,7 @@ func (h historyStub) TryLock() bool { return false }
 func (h historyStub) Id() string { return h.objectId }
 
 func (h historyStub) Header() *treechangeproto.RawTreeChangeWithId {
-	objectChange := &model.ObjectChangePayload{SmartBlockType: model.SmartBlockType_Page}
+	objectChange := &model.ObjectChangePayload{SmartBlockType: stubSmartBlockType}
 	objectChangeRaw, err := objectChange.Marshal()
 	if err != nil {
 		return nil
@@ -83,7 +95,7 @@ func (h historyStub) Header() *treechangeproto.RawTreeChangeWithId {
 func (h historyStub) UnmarshalledHeader() *objecttree.Change { return nil }
 
 func (h historyStub) ChangeInfo() *treechangeproto.TreeChangeInfo {
-	objectChangePayload := &model.ObjectChangePayload{SmartBlockType: model.SmartBlockType_Page}
+	objectChangePayload := &model.ObjectChangePayload{SmartBlockType: stubSmartBlockType}
 	changePayload, _ := objectChangePayload.Marshal()
 	return &treechangeproto.TreeChangeInfo{
 		ChangePayload: changePayload,
@@ -124,6 +136,9 @@ func (h historyStub) IterateRoot(convert objecttree.ChangeConvertFunc, iterate o
 }
 
 func (h historyStub) IterateFrom(id string, convert objecttree.ChangeConvertFunc, iterate objecttree.ChangeIterateFunc) error {
+	if h.walks != nil {
+		h.walks.Add(1)
+	}
 	for _, change := range h.changes {
 		if !iterate(change) {
 			return nil
@@ -1229,6 +1244,10 @@ type historyFixture struct {
 	*history
 	space       *mock_clientspace.MockSpace
 	treeBuilder *mock_objecttreebuilder.MockTreeBuilder
+	// treesBuilt and treeWalks count, across a newFixtureShow fixture's
+	// life, the history trees it built and the walks made of them
+	treesBuilt *atomic.Int32
+	treeWalks  *atomic.Int32
 }
 
 func newFixture(t *testing.T, expectedChanges []*objecttree.Change, objectId, spaceID, versionId string) *historyFixture {
@@ -1243,7 +1262,6 @@ func newFixture(t *testing.T, expectedChanges []*objecttree.Change, objectId, sp
 	history := &history{
 		objectStore:  objectstore.NewStoreFixture(t),
 		spaceService: spaceService,
-		heads:        map[string]string{},
 	}
 	return &historyFixture{
 		history:     history,
@@ -1279,7 +1297,6 @@ func newFixtureDiffVersions(t *testing.T,
 	history := &history{
 		objectStore:   objectstore.NewStoreFixture(t),
 		spaceService:  spaceService,
-		heads:         map[string]string{},
 		resolver:      resolver,
 		formatFetcher: fetcher,
 	}
@@ -1291,24 +1308,45 @@ func newFixtureDiffVersions(t *testing.T,
 }
 
 func newFixtureShow(t *testing.T, changes map[string][]*objecttree.Change, objectId, spaceID string) *historyFixture {
+	if len(changes) == 0 {
+		return newFixtureShowWith(t, nil, objectId, spaceID)
+	}
+	return newFixtureShowWith(t, func(versionId string) ([]*objecttree.Change, bool) {
+		chs, ok := changes[versionId]
+		return chs, ok
+	}, objectId, spaceID)
+}
+
+// newFixtureShowWith is newFixtureShow with the tree of a head set computed
+// per request (lookup nil: no tree builder at all).
+func newFixtureShowWith(t *testing.T, lookup func(versionId string) ([]*objecttree.Change, bool), objectId, spaceID string) *historyFixture {
 	spaceService := mock_space.NewMockService(t)
 	space := mock_clientspace.NewMockSpace(t)
 	ctrl := gomock.NewController(t)
 	treeBuilder := mock_objecttreebuilder.NewMockTreeBuilder(ctrl)
+	treesBuilt, treeWalks := &atomic.Int32{}, &atomic.Int32{}
 
-	if len(changes) > 0 {
+	if lookup != nil {
 		treeBuilder.EXPECT().BuildHistoryTree(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id string, opts objecttreebuilder.HistoryTreeOpts) (objecttree.HistoryTree, error) {
+			treesBuilt.Add(1)
 			assert.True(t, opts.Include)
 			assert.Equal(t, objectId, id)
 			versionId := strings.Join(opts.Heads, " ")
 
-			chs, ok := changes[versionId]
-			assert.True(t, ok)
+			chs, ok := lookup(versionId)
+			assert.True(t, ok, "no tree for heads %q", versionId)
 
+			heads := opts.Heads
+			if versionId == "" {
+				// "the latest version": the tree's own heads — the changes
+				// nothing else builds on
+				heads = leafIds(chs)
+			}
 			return &historyStub{
 				objectId: objectId,
 				changes:  chs,
-				heads:    opts.Heads,
+				heads:    heads,
+				walks:    treeWalks,
 			}, nil
 		}).AnyTimes()
 		space.EXPECT().TreeBuilder().Return(treeBuilder)
@@ -1332,14 +1370,46 @@ func newFixtureShow(t *testing.T, changes map[string][]*objecttree.Change, objec
 	h := &history{
 		objectStore:   objectstore.NewStoreFixture(t),
 		spaceService:  spaceService,
-		heads:         map[string]string{},
 		formatFetcher: fetcher,
 	}
 	return &historyFixture{
 		history:     h,
 		space:       space,
 		treeBuilder: treeBuilder,
+		treesBuilt:  treesBuilt,
+		treeWalks:   treeWalks,
 	}
+}
+
+// leafIds returns the ids of the changes no other change builds on, sorted
+// the way a tree reports its heads.
+func leafIds(changes []*objecttree.Change) []string {
+	built := map[string]bool{}
+	for _, ch := range changes {
+		for _, prev := range ch.PreviousIds {
+			built[prev] = true
+		}
+	}
+	var leaves []string
+	for _, ch := range changes {
+		if !built[ch.Id] {
+			leaves = append(leaves, ch.Id)
+		}
+	}
+	slices.Sort(leaves)
+	return leaves
+}
+
+// restoreRecorder is an object that records the state a history restore
+// hands it.
+type restoreRecorder struct {
+	*smarttest.SmartTest
+	restored *state.State
+}
+
+func (r *restoreRecorder) ResetToVersion(s *state.State) error {
+	r.restored = s
+	return nil
 }
 
 func configureTreeBuilder(treeBuilder *mock_objecttreebuilder.MockTreeBuilder,
@@ -2184,4 +2254,465 @@ func provideBlockSetTableRowChange(block *model.Block, account crypto.PubKey) *o
 			},
 		},
 	}
+}
+
+// Version attribution (docs/ApiChangeAttribution.md "History"). Each test
+// names the implementation change that turns it red.
+func TestHistory_VersionAttribution(t *testing.T) {
+	const (
+		objectId  = "objectId"
+		spaceID   = "spaceID"
+		versionId = "versionId"
+	)
+	accountKeys, _ := accountdata.NewRandom()
+	account := accountKeys.SignKey.GetPublic()
+	fullId := domain.FullID{ObjectID: objectId, SpaceID: spaceID}
+
+	// chain builds a linear history, oldest first, all within one second —
+	// so only attribution can split the groups
+	chain := func(names ...string) []*objecttree.Change {
+		changes := make([]*objecttree.Change, 0, len(names))
+		var previous []string
+		for i, name := range names {
+			id := fmt.Sprintf("c%d", i)
+			changes = append(changes, &objecttree.Change{
+				Id:          id,
+				PreviousIds: previous,
+				Identity:    account,
+				Timestamp:   1000,
+				Model:       &pb.Change{IntegrationName: name},
+			})
+			previous = []string{id}
+		}
+		return changes
+	}
+
+	t.Run("each version names the app of its change", func(t *testing.T) {
+		// given
+		h := newFixture(t, chain("", "Raycast", "Linear"), objectId, spaceID, versionId)
+
+		// when: newest first
+		resp, err := h.Versions(fullId, versionId, 10, false)
+		require.NoError(t, err)
+
+		// then: red if fillVersionData stops reading the change's payload
+		want := []string{"Linear", "Raycast", ""}
+		got := make([]string, 0, len(resp))
+		for _, version := range resp {
+			got = append(got, version.IntegrationName)
+		}
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("a group never mixes an API change with an app change, or two apps", func(t *testing.T) {
+		// given: seven changes in the same second — one time group before
+		// attribution existed
+		h := newFixture(t, chain("", "", "Raycast", "Raycast", "Linear", "", ""), objectId, spaceID, versionId)
+
+		// when
+		resp, err := h.Versions(fullId, versionId, 10, false)
+		require.NoError(t, err)
+
+		// then: runs of one attribution share a group, neighbors of
+		// different attribution never do. Red if the split rule is removed
+		// (every row would be in group 0), and red if the rule splits on
+		// every row instead of on a difference (equal neighbors would part).
+		require.Len(t, resp, 7)
+		for i := 1; i < len(resp); i++ {
+			sameAttribution := resp[i].IntegrationName == resp[i-1].IntegrationName
+			sameGroup := resp[i].GroupId == resp[i-1].GroupId
+			assert.Equal(t, sameAttribution, sameGroup, "versions %d and %d", i-1, i)
+		}
+		groups := map[int64]struct{}{}
+		for _, version := range resp {
+			groups[version.GroupId] = struct{}{}
+		}
+		want := 4 // app, Linear, Raycast, app
+		assert.Len(t, groups, want)
+	})
+
+	t.Run("a change whose payload is not a pb.Change has no attribution and breaks nothing", func(t *testing.T) {
+		// given: the genesis shape — a model of another type — and a change
+		// with no model at all
+		changes := chain("Raycast")
+		changes = append(changes,
+			&objecttree.Change{Id: "info", PreviousIds: []string{"c0"}, Identity: account, Timestamp: 1000, Model: &treechangeproto.TreeChangeInfo{}},
+			&objecttree.Change{Id: "bare", PreviousIds: []string{"info"}, Identity: account, Timestamp: 1000},
+		)
+		h := newFixture(t, changes, objectId, spaceID, versionId)
+
+		// when
+		resp, err := h.Versions(fullId, versionId, 10, false)
+
+		// then: red (a panic) if the model is asserted unchecked
+		require.NoError(t, err)
+		want := []string{"", "", "Raycast"}
+		got := make([]string, 0, len(resp))
+		for _, version := range resp {
+			got = append(got, version.IntegrationName)
+		}
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("a several-heads version: Show answers with the row Versions listed, for both branches", func(t *testing.T) {
+		// given: a tree that branches at the root — this account adds block
+		// "api-block" through the API, another member adds "app-block" in an
+		// app, concurrently. The tree builder answers for the heads it is
+		// asked for, as the real one does.
+		otherKeys, _ := accountdata.NewRandom()
+		other := otherKeys.SignKey.GetPublic()
+		block := func(id string) *model.Block {
+			return &model.Block{Id: id, Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: id}}}
+		}
+		root := &objecttree.Change{Id: objectId, Identity: account, Model: &pb.Change{}}
+		base := provideBlockCreateChange(&model.Block{Id: objectId, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}, account)
+		base.Id, base.PreviousIds, base.Timestamp = "base", []string{objectId}, 500
+		branch := func(id string, identity crypto.PubKey, ts int64, integrationName string, blockId string) *objecttree.Change {
+			ch := provideBlockCreateChange(block(blockId), identity)
+			ch.Id, ch.PreviousIds, ch.Timestamp = id, []string{"base"}, ts
+			ch.Model.(*pb.Change).Content[0].GetBlockCreate().TargetId = objectId
+			ch.Model.(*pb.Change).Content[0].GetBlockCreate().Position = model.Block_Inner
+			ch.Model.(*pb.Change).IntegrationName = integrationName
+			return ch
+		}
+		apiChange := branch("idB", account, 1000, "Raycast", "api-block")
+		appChange := branch("idA", other, 2000, "", "app-block")
+		// tree order visits the API change first, so the two-heads version is
+		// described by the app change — while the head that sorts LAST is the
+		// API change ("idA" < "idB"): "the last head" and "the change
+		// Versions described" are different changes here, by construction
+		h := newFixtureShow(t, map[string][]*objecttree.Change{
+			objectId:  {root, base, apiChange, appChange},
+			"idA idB": {root, base, apiChange, appChange},
+			"idB":     {root, base, apiChange},
+			"idA":     {root, base, appChange},
+		}, objectId, spaceID)
+
+		// when
+		resp, err := h.Versions(fullId, objectId, 10, false)
+		require.NoError(t, err)
+		require.Len(t, resp, 3)
+		listed := resp[0]
+		require.NotEqual(t, "idA", listed.Id, "the newest version must be the synthetic several-heads one")
+		require.NotEqual(t, "idB", listed.Id)
+		view, shown, err := h.Show(fullId, listed.Id)
+		require.NoError(t, err)
+
+		// then: Show's row IS the listed row. Red if Show describes the
+		// version by its last head (author, time and app would be the API
+		// change's), and red if it answers with a head's id.
+		want := &pb.RpcHistoryVersion{
+			Id:              listed.Id,
+			PreviousIds:     []string{"base"},
+			AuthorId:        domain.NewParticipantId(spaceID, other.Account()),
+			Time:            2000,
+			IntegrationName: "",
+		}
+		got := &pb.RpcHistoryVersion{Id: shown.Id, PreviousIds: shown.PreviousIds, AuthorId: shown.AuthorId, Time: shown.Time, IntegrationName: shown.IntegrationName}
+		assert.Equal(t, want, got)
+		assert.Equal(t, listed.AuthorId, shown.AuthorId)
+		assert.Equal(t, listed.PreviousIds, shown.PreviousIds)
+		// the view holds BOTH branches' content
+		blockIds := func(view *model.ObjectView) []string {
+			var ids []string
+			for _, b := range view.Blocks {
+				ids = append(ids, b.Id)
+			}
+			return ids
+		}
+		assert.Subset(t, blockIds(view), []string{"api-block", "app-block"})
+
+		// and the returned id round-trips: a second Show of it is the same
+		// version, not one branch of it. Red if Show returns a head's id —
+		// that second Show would build one head and lose the other branch.
+		viewAgain, shownAgain, err := h.Show(fullId, shown.Id)
+		require.NoError(t, err)
+		assert.Equal(t, shown.Id, shownAgain.Id)
+		assert.Subset(t, blockIds(viewAgain), []string{"api-block", "app-block"})
+	})
+
+	t.Run("a several-heads version: diffing and rebuilding the returned id cover both branches", func(t *testing.T) {
+		// given: the same branching tree — two members add one block each on
+		// top of a common base
+		otherKeys, _ := accountdata.NewRandom()
+		other := otherKeys.SignKey.GetPublic()
+		root := &objecttree.Change{Id: objectId, Identity: account, Model: &pb.Change{}}
+		base := provideBlockCreateChange(&model.Block{Id: objectId, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}, account)
+		base.Id, base.PreviousIds, base.Timestamp = "base", []string{objectId}, 500
+		branch := func(id string, identity crypto.PubKey, blockId string) *objecttree.Change {
+			ch := provideBlockCreateChange(&model.Block{Id: blockId, Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: blockId}}}, identity)
+			ch.Id, ch.PreviousIds, ch.Timestamp = id, []string{"base"}, 1000
+			ch.Model.(*pb.Change).Content[0].GetBlockCreate().TargetId = objectId
+			ch.Model.(*pb.Change).Content[0].GetBlockCreate().Position = model.Block_Inner
+			return ch
+		}
+		left, right := branch("idB", account, "left-block"), branch("idA", other, "right-block")
+		h := newFixtureShow(t, map[string][]*objecttree.Change{
+			objectId:  {root, base, left, right},
+			"idA idB": {root, base, left, right},
+			"base":    {root, base},
+		}, objectId, spaceID)
+		h.resolver = func() *mock_idresolver.MockResolver {
+			r := mock_idresolver.NewMockResolver(t)
+			r.EXPECT().ResolveSpaceID(mock.Anything).Return(spaceID, nil).Maybe()
+			return r
+		}()
+		resp, err := h.Versions(fullId, objectId, 10, false)
+		require.NoError(t, err)
+		require.Len(t, resp, 3)
+		_, shown, err := h.Show(fullId, resp[0].Id)
+		require.NoError(t, err)
+
+		// when: the id Show returned is used the way a client uses it — as
+		// the current side of a diff against the base, and as the version to
+		// restore (SetVersion restores the state buildState builds)
+		changes, _, err := h.DiffVersions(&pb.RpcHistoryDiffVersionsRequest{
+			ObjectId: objectId, SpaceId: spaceID, CurrentVersion: shown.Id, PreviousVersion: "base",
+		})
+		require.NoError(t, err)
+		restored, _, _, err := h.buildState(fullId, shown.Id)
+		require.NoError(t, err)
+
+		// then: both branches' blocks, in the diff and in the state a restore
+		// would apply. Red if Show answers with one head's id: the diff and
+		// the restore would hold one branch and silently drop the other.
+		var added []string
+		for _, msg := range changes {
+			if add := msg.GetBlockAdd(); add != nil {
+				for _, b := range add.Blocks {
+					added = append(added, b.Id)
+				}
+			}
+		}
+		assert.ElementsMatch(t, []string{"left-block", "right-block"}, added)
+		assert.NotNil(t, restored.Pick("left-block"))
+		assert.NotNil(t, restored.Pick("right-block"))
+	})
+
+	t.Run("listing and showing a several-heads version concurrently is safe", func(t *testing.T) {
+		// given: the branching tree again; Versions records the version's
+		// heads while Show, on other RPC goroutines, reads them
+		root := &objecttree.Change{Id: objectId, Identity: account, Model: &pb.Change{}}
+		left := &objecttree.Change{Id: "idB", PreviousIds: []string{objectId}, Identity: account, Timestamp: 1000, Model: &pb.Change{}}
+		right := &objecttree.Change{Id: "idA", PreviousIds: []string{objectId}, Identity: account, Timestamp: 2000, Model: &pb.Change{}}
+		// fresh change values per tree: the stub hands out the same pointers
+		// to every caller, and state building writes to a change's model
+		tree := func() []*objecttree.Change {
+			copyOf := func(c *objecttree.Change) *objecttree.Change {
+				dup := *c
+				dup.Model = &pb.Change{}
+				return &dup
+			}
+			return []*objecttree.Change{copyOf(root), copyOf(left), copyOf(right)}
+		}
+		h := newFixtureShowWith(t, func(string) ([]*objecttree.Change, bool) { return tree(), true }, objectId, spaceID)
+		first, err := h.Versions(fullId, objectId, 10, false)
+		require.NoError(t, err)
+		require.Len(t, first, 2)
+		syntheticId := first[0].Id
+
+		// when: run with -race, an unlocked map is reported here; without
+		// -race it can still die on "concurrent map read and map write"
+		var wg sync.WaitGroup
+		for i := 0; i < 4; i++ {
+			wg.Add(2)
+			go func() {
+				defer wg.Done()
+				for j := 0; j < 20; j++ {
+					_, err := h.Versions(fullId, objectId, 10, false)
+					assert.NoError(t, err)
+				}
+			}()
+			go func() {
+				defer wg.Done()
+				for j := 0; j < 20; j++ {
+					_, shown, err := h.Show(fullId, syntheticId)
+					assert.NoError(t, err)
+					if shown != nil {
+						assert.Equal(t, syntheticId, shown.Id)
+					}
+				}
+			}()
+		}
+		wg.Wait()
+	})
+
+	t.Run("a store-backed object's shown details never carry the app, its version row does", func(t *testing.T) {
+		// given: a chat's tree. Its payloads are store changes; read as
+		// pb.Change (every history read does) one looks like a user change
+		// made through an app
+		stubSmartBlockType = model.SmartBlockType_ChatDerivedObject
+		t.Cleanup(func() { stubSmartBlockType = model.SmartBlockType_Page })
+		root := &objecttree.Change{Id: objectId, Identity: account, Model: &pb.Change{}}
+		storeChange := &objecttree.Change{Id: "id", PreviousIds: []string{objectId}, Identity: account, Timestamp: 1000, Model: &pb.Change{IntegrationName: "Raycast"}}
+		h := newFixtureShow(t, map[string][]*objecttree.Change{"id": {root, storeChange}}, objectId, spaceID)
+
+		// when
+		view, shown, err := h.Show(fullId, "id")
+		require.NoError(t, err)
+
+		// then: red if history-built details derive lastModifiedVia for a
+		// store-backed object — live, such an object never shows it
+		rootRow := findHistoryViewDetails(t, view.Details, objectId)
+		require.NotNil(t, rootRow, "the view must carry the object's own details row")
+		assert.NotContains(t, rootRow.GetFields(), bundle.RelationKeyLastModifiedVia.String())
+		assert.Equal(t, "Raycast", shown.IntegrationName)
+	})
+
+	t.Run("a page that links to itself is shown once, as it was, with its historical app", func(t *testing.T) {
+		// given: a page whose only block links to the page itself; the
+		// version was made through Raycast, the index's CURRENT row says the
+		// latest change was made through Linear
+		root := &objecttree.Change{Id: objectId, Identity: account, Model: &pb.Change{}}
+		base := provideBlockCreateChange(&model.Block{Id: objectId, ChildrenIds: []string{"self-link"}, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}, account)
+		base.Id, base.PreviousIds, base.Timestamp = "base", []string{objectId}, 500
+		linked := provideBlockCreateChange(&model.Block{Id: "self-link", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: objectId}}}, account)
+		linked.Id, linked.PreviousIds, linked.Timestamp = "id", []string{"base"}, 1000
+		linked.Model.(*pb.Change).IntegrationName = "Raycast"
+		h := newFixtureShow(t, map[string][]*objecttree.Change{"id": {root, base, linked}, "base": {root, base}}, objectId, spaceID)
+		h.resolver = func() *mock_idresolver.MockResolver {
+			r := mock_idresolver.NewMockResolver(t)
+			r.EXPECT().ResolveSpaceID(mock.Anything).Return(spaceID, nil).Maybe()
+			return r
+		}()
+		h.objectStore.(*objectstore.StoreFixture).AddObjects(t, spaceID, []objectstore.TestObject{{
+			bundle.RelationKeyId:              domain.String(objectId),
+			bundle.RelationKeyName:            domain.String("the page as it is NOW"),
+			bundle.RelationKeyLastModifiedVia: domain.String("Linear"),
+		}})
+		rowsOfThePage := func(view *model.ObjectView) []*model.ObjectViewDetailsSet {
+			var rows []*model.ObjectViewDetailsSet
+			for _, set := range view.Details {
+				if set.Id == objectId || set.Id == "" {
+					rows = append(rows, set)
+				}
+			}
+			return rows
+		}
+
+		// when: the version is shown, and diffed against the one before it
+		shown, _, err := h.Show(fullId, "id")
+		require.NoError(t, err)
+		_, diffed, err := h.DiffVersions(&pb.RpcHistoryDiffVersionsRequest{
+			ObjectId: objectId, SpaceId: spaceID, CurrentVersion: "id", PreviousVersion: "base",
+		})
+		require.NoError(t, err)
+
+		// then: in both views exactly one row for the page, the historical
+		// one, under the page's id. Red if the current index row is appended
+		// under the same id (a client keeps the last: today's name and app
+		// on a past version) — for the diff, red if the historical row's id
+		// is read from details that were never given one: the row would be
+		// keyed "" and the self-link filter would let the current row in —
+		// and, the regular-page control of the store-backed case, red if a
+		// page's historical details lose their app.
+		for name, view := range map[string]*model.ObjectView{"Show": shown, "DiffVersions": diffed} {
+			rows := rowsOfThePage(view)
+			require.Len(t, rows, 1, name)
+			assert.Equal(t, objectId, rows[0].Id, name)
+			assert.Equal(t, "Raycast", pbtypes.GetString(rows[0].Details, bundle.RelationKeyLastModifiedVia.String()), name)
+		}
+	})
+
+	t.Run("showing the latest version of a branching tree, before any listing, answers with a restorable id", func(t *testing.T) {
+		// given: the branching tree; nothing has listed its versions
+		otherKeys, _ := accountdata.NewRandom()
+		other := otherKeys.SignKey.GetPublic()
+		root := &objecttree.Change{Id: objectId, Identity: account, Model: &pb.Change{}}
+		base := provideBlockCreateChange(&model.Block{Id: objectId, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}, account)
+		base.Id, base.PreviousIds, base.Timestamp = "base", []string{objectId}, 500
+		branch := func(id string, identity crypto.PubKey, ts int64, integrationName, blockId string) *objecttree.Change {
+			ch := provideBlockCreateChange(&model.Block{Id: blockId, Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: blockId}}}, identity)
+			ch.Id, ch.PreviousIds, ch.Timestamp = id, []string{"base"}, ts
+			ch.Model.(*pb.Change).Content[0].GetBlockCreate().TargetId = objectId
+			ch.Model.(*pb.Change).Content[0].GetBlockCreate().Position = model.Block_Inner
+			ch.Model.(*pb.Change).IntegrationName = integrationName
+			return ch
+		}
+		// the head that sorts last ("idB") is the API change; the change last
+		// in tree order — the one a listing describes the version by — is
+		// the other member's app change
+		apiChange := branch("idB", account, 1000, "Raycast", "api-block")
+		appChange := branch("idA", other, 2000, "", "app-block")
+		full := []*objecttree.Change{root, base, apiChange, appChange}
+		h := newFixtureShow(t, map[string][]*objecttree.Change{"": full, "idA idB": full, objectId: full}, objectId, spaceID)
+		recorder := &restoreRecorder{SmartTest: smarttest.New(objectId)}
+		picker := mock_cache.NewMockObjectGetter(t)
+		picker.EXPECT().GetObject(mock.Anything, objectId).Return(recorder, nil)
+		h.picker = picker
+
+		// when: Show of the latest version, then the public restore of the
+		// id it returned
+		_, shown, err := h.Show(fullId, "")
+		require.NoError(t, err)
+		// (Show builds a tree for the version and one for its block
+		// participants, and walks each once. Red if naming the version walks
+		// its tree again to find the change the build has just visited last.)
+		assert.Equal(t, h.treesBuilt.Load(), h.treeWalks.Load(), "every tree Show builds is walked once")
+		require.NoError(t, h.SetVersion(fullId, shown.Id))
+
+		// then: the id is the canonical several-heads id, described by the
+		// change a listing describes it by. Red if Show answers with one
+		// head's id and that head's author and app.
+		listed, err := h.Versions(fullId, objectId, 10, false)
+		require.NoError(t, err)
+		want := &pb.RpcHistoryVersion{Id: listed[0].Id, AuthorId: domain.NewParticipantId(spaceID, other.Account()), Time: 2000, IntegrationName: ""}
+		got := &pb.RpcHistoryVersion{Id: shown.Id, AuthorId: shown.AuthorId, Time: shown.Time, IntegrationName: shown.IntegrationName}
+		assert.Equal(t, want, got)
+		assert.NotContains(t, []string{"idA", "idB"}, shown.Id)
+		// and restoring it restores BOTH branches. Red if the returned id
+		// selects one head: the restore would silently drop the other
+		// member's block.
+		require.NotNil(t, recorder.restored, "SetVersion must have handed the object a state")
+		assert.NotNil(t, recorder.restored.Pick("api-block"))
+		assert.NotNil(t, recorder.restored.Pick("app-block"))
+	})
+
+	t.Run("the same heads are the same version whatever order they are met in", func(t *testing.T) {
+		// when
+		hasher := blake3.New()
+		first, sorted := multiHeadVersionId([]string{"idB", "idA"}, hasher)
+		second, _ := multiHeadVersionId([]string{"idA", "idB"}, hasher)
+
+		// then: red if the heads are hashed in map order — the id of one
+		// version would differ between two listings
+		assert.Equal(t, first, second)
+		assert.Equal(t, []string{"idA", "idB"}, sorted)
+	})
+
+	t.Run("Show names the app of a single-head version", func(t *testing.T) {
+		// given
+		root := &objecttree.Change{Id: objectId, Identity: account, Model: &pb.Change{}}
+		apiChange := &objecttree.Change{Id: "id", PreviousIds: []string{objectId}, Identity: account, Timestamp: 1000, Model: &pb.Change{IntegrationName: "Raycast"}}
+		h := newFixtureShow(t, map[string][]*objecttree.Change{"id": {root, apiChange}}, objectId, spaceID)
+
+		// when
+		_, shown, err := h.Show(fullId, "id")
+		require.NoError(t, err)
+
+		// then: red if buildState stops filling the attribution
+		assert.Equal(t, "Raycast", shown.IntegrationName)
+	})
+}
+
+func TestHistory_GetBlocksParticipantsSkipsUnsignedRoot(t *testing.T) {
+	// given: a derived object — its root is unsigned (no identity) and its
+	// payload is the tree's change info, not a pb.Change
+	objectId, spaceID, versionId := "objectId", "spaceID", "versionId"
+	accountKeys, _ := accountdata.NewRandom()
+	account := accountKeys.SignKey.GetPublic()
+	bl := &model.Block{Id: "blockId", Content: &model.BlockContentOfText{Text: &model.BlockContentText{}}}
+	unsignedRoot := &objecttree.Change{Id: objectId, Model: &treechangeproto.TreeChangeInfo{}}
+	h := newFixture(t, []*objecttree.Change{unsignedRoot, provideBlockCreateChange(bl, account)}, objectId, spaceID, versionId)
+	want := []*model.ObjectViewBlockParticipant{{
+		BlockId:       "blockId",
+		ParticipantId: domain.NewParticipantId(spaceID, account.Account()),
+	}}
+
+	// when: red (a nil dereference) if the root's identity is read unchecked
+	got, err := h.GetBlocksParticipants(domain.FullID{ObjectID: objectId, SpaceID: spaceID}, versionId, []*model.Block{bl})
+
+	// then
+	require.NoError(t, err)
+	assert.Equal(t, want, got)
 }

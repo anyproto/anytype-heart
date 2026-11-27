@@ -134,6 +134,11 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 	}
 	msg.CreatedAt = ch.Change.Timestamp
 	msg.Creator = ch.Change.Creator
+	// like Creator, taken from the CHANGE and never from the payload: set when the creating
+	// change was authored through the local API, cleared otherwise — a payload cannot claim
+	// an app. Creation-only: no modify path reads the change's attribution, so a later edit
+	// or reaction made through another app (or in an app) leaves it as it is.
+	msg.IntegrationName = ch.Change.IntegrationName
 	// only a Delete op makes a tombstone (BeforeDelete); a create never arrives deleted
 	msg.Deleted = false
 	if d.forceNotRead {

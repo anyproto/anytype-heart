@@ -745,6 +745,11 @@ var outputOnlyPropertyKeys = map[string]bool{
 	"coverId": true, "coverType": true, "createdDate": true,
 	"lastModifiedDate": true, "creator": true, "isArchived": true,
 	"resolvedLayout": true,
+	// which app authored the latest change: derived from that change, so a
+	// set or an unset would make the object contradict its own history.
+	// (lastModifiedBy needs no entry: the codec drops it from a document
+	// before any op sees it. The codec does not know this key yet.)
+	"lastModifiedVia": true,
 }
 
 // IsUnwritableProperty reports whether set_properties can never change a

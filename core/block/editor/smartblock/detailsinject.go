@@ -56,10 +56,33 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 
 	localDetailsFromStore := details.CopyOnlyKeys(keys...)
 	localDetailsFromStore.Delete(bundle.RelationKeyResolvedLayout)
+	// lastModifiedVia goes wherever lastModifiedBy goes. The index row's
+	// author overrides the state's below, as it always has; the app is then
+	// taken from that SAME row — set, or REMOVED when the row has none
+	// (plain injection can add a key, never remove one, and would leave the
+	// tree's app next to the index's author) — into exactly the states the
+	// author went into: the edit state always, the document only when no
+	// pending details hold the row back from it. A row without an author
+	// restores neither.
+	restoresAuthor := localDetailsFromStore.Has(bundle.RelationKeyLastModifiedBy)
+	restoredVia := localDetailsFromStore.GetString(bundle.RelationKeyLastModifiedVia)
+	localDetailsFromStore.Delete(bundle.RelationKeyLastModifiedVia)
+	restoreVia := func(st *state.State) {
+		switch {
+		case sb.Type().IsStoreBacked():
+			// a store-backed object (a chat) never shows the app: nothing
+			// its replay derives could confirm or clear it
+			st.SetLastModifiedVia("")
+		case restoresAuthor:
+			st.SetLastModifiedVia(restoredVia)
+		}
+	}
 	s.AddLocalDetails(localDetailsFromStore)
+	restoreVia(s)
 	if p := s.ParentState(); p != nil && !hasPendingLocalDetails {
 		// inject for both current and parent state
 		p.AddLocalDetails(localDetailsFromStore)
+		restoreVia(p)
 	}
 
 	err = sb.injectCreationInfo(s)

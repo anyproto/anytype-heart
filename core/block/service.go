@@ -667,7 +667,7 @@ func (s *Service) ObjectAddDiscussion(ctx context.Context, objectId string) (dis
 	}
 
 	err = spc.DoCtx(ctx, objectId, func(b smartblock.SmartBlock) error {
-		st := b.NewState()
+		st := b.NewState().StampFromCtx(ctx)
 		st.SetDetail(bundle.RelationKeyDiscussionId, domain.String(discussionId))
 		return b.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.KeepInternalFlags)
 	})
@@ -693,14 +693,16 @@ func (s *Service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (link s
 	panic("should be removed")
 }
 
-func (s *Service) DeleteArchivedObjects(objectIDs []string) error {
+// DeleteArchivedObjects deletes the objects for good. ctx is the request it
+// serves, read for attribution only (see deleteObjectByFullID).
+func (s *Service) DeleteArchivedObjects(ctx context.Context, objectIDs []string) error {
 	var (
 		resultError error
 		anySucceed  bool
 	)
 	for _, objectID := range objectIDs {
 		// todo: make batched DeleteArchivedObject
-		err := s.DeleteArchivedObject(objectID)
+		err := s.deleteArchivedObject(ctx, objectID)
 		if err != nil {
 			resultError = errors.Join(resultError, err)
 		} else {
@@ -737,7 +739,7 @@ func (s *Service) ObjectsDuplicate(ctx context.Context, ids []string) (newIds []
 	return nil, merr.ErrorOrNil()
 }
 
-func (s *Service) DeleteArchivedObject(id string) (err error) {
+func (s *Service) deleteArchivedObject(ctx context.Context, id string) (err error) {
 	spaceID, err := s.resolver.ResolveSpaceID(id)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
@@ -750,7 +752,7 @@ func (s *Service) DeleteArchivedObject(id string) (err error) {
 		return fmt.Errorf("cannot delete archive object")
 	}
 	// we need to do it outside of cache.Do to avoid deadlock via objectgc
-	err = s.DeleteObject(id)
+	err = s.deleteObject(ctx, id)
 	if err != nil {
 		return fmt.Errorf("delete object: %w", err)
 	}
@@ -762,7 +764,7 @@ func (s *Service) DeleteArchivedObject(id string) (err error) {
 		}
 
 		if exists, _ := archive.HasObject(id); exists {
-			err = archive.RemoveObject(id)
+			err = archive.RemoveObject(ctx, id)
 			if err != nil {
 				return err
 			}

@@ -73,6 +73,9 @@ func (s widgetTestSpaces) Get(context.Context, string) (clientspace.Space, error
 type fakeFavorites struct {
 	mu      sync.Mutex
 	entries map[string]personalfavorites.WidgetEntry
+	// integrationNames holds, per store write, the attribution its context
+	// carried — what store.PushStoreChange would stamp on the change
+	integrationNames []string
 }
 
 func newFakeFavorites() *fakeFavorites {
@@ -86,23 +89,26 @@ func (f *fakeFavorites) Subscribe(personalfavorites.SubscribeParams) func() {
 }
 func (f *fakeFavorites) OnStoreUpdate(string, []personalfavorites.WidgetChange) {}
 
-func (f *fakeFavorites) CreateWidget(_ context.Context, entry personalfavorites.WidgetEntry) error {
+func (f *fakeFavorites) CreateWidget(ctx context.Context, entry personalfavorites.WidgetEntry) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.integrationNames = append(f.integrationNames, domain.IntegrationNameFromCtx(ctx))
 	f.entries[entry.Id] = entry
 	return nil
 }
 
-func (f *fakeFavorites) DeleteWidget(_ context.Context, id string) error {
+func (f *fakeFavorites) DeleteWidget(ctx context.Context, id string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.integrationNames = append(f.integrationNames, domain.IntegrationNameFromCtx(ctx))
 	delete(f.entries, id)
 	return nil
 }
 
-func (f *fakeFavorites) UpdateWidget(_ context.Context, id string, update personalfavorites.WidgetUpdate) error {
+func (f *fakeFavorites) UpdateWidget(ctx context.Context, id string, update personalfavorites.WidgetUpdate) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.integrationNames = append(f.integrationNames, domain.IntegrationNameFromCtx(ctx))
 	entry, ok := f.entries[id]
 	if !ok {
 		return fmt.Errorf("no entry %s", id)

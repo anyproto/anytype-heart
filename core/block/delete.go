@@ -20,6 +20,16 @@ import (
 )
 
 func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
+	return s.deleteObjectByFullID(context.Background(), id)
+}
+
+// deleteObjectByFullID deletes the object. ctx is the request the delete
+// serves and is read for ATTRIBUTION only (docs/ApiChangeAttribution.md):
+// the tree changes a delete writes on other objects — the uninstall mark of
+// a derived object, the type's default-template reset, the homepage reset —
+// are stamped with the local-API app whose request it is. It bounds nothing:
+// every wait below keeps its own context.
+func (s *Service) deleteObjectByFullID(ctx context.Context, id domain.FullID) error {
 	var sbType coresb.SmartBlockType
 	spc, err := s.spaceService.Get(context.Background(), id.SpaceID)
 	if err != nil {
@@ -70,7 +80,7 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
 		coresb.SmartBlockTypeRelation,
 		coresb.SmartBlockTypeRelationOption,
 		coresb.SmartBlockTypeTemplate:
-		err = s.deleteDerivedObject(id, sbType, spc)
+		err = s.deleteDerivedObject(ctx, id, sbType, spc)
 	case coresb.SmartBlockTypeSubObject:
 		return fmt.Errorf("subobjects deprecated")
 	case coresb.SmartBlockTypeFileObject:
@@ -92,7 +102,7 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
 		}
 	default:
 		if entry.IsDerived {
-			err = s.deleteDerivedObject(id, sbType, spc)
+			err = s.deleteDerivedObject(ctx, id, sbType, spc)
 		} else {
 			err = spc.DeleteTree(context.Background(), id.ObjectID)
 		}
@@ -100,7 +110,7 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
 	if err != nil {
 		return err
 	}
-	s.unsetHomepageIfNeeded(id, spc)
+	s.unsetHomepageIfNeeded(ctx, id, spc)
 	s.sendOnRemoveEvent(id.SpaceID, id.ObjectID)
 	// Remove from cache
 	err = spc.Remove(context.Background(), id.ObjectID)
@@ -110,10 +120,10 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
 	return nil
 }
 
-func (s *Service) deleteDerivedObject(id domain.FullID, sbType coresb.SmartBlockType, spc clientspace.Space) (err error) {
+func (s *Service) deleteDerivedObject(ctx context.Context, id domain.FullID, sbType coresb.SmartBlockType, spc clientspace.Space) (err error) {
 	var relationKey, targetTypeId string
 	err = spc.Do(id.ObjectID, func(b smartblock.SmartBlock) error {
-		st := b.NewState()
+		st := b.NewState().StampFromCtx(ctx)
 		st.SetDetailAndBundledRelation(bundle.RelationKeyIsUninstalled, domain.Bool(true))
 		switch sbType {
 		case coresb.SmartBlockTypeRelation:
@@ -137,18 +147,18 @@ func (s *Service) deleteDerivedObject(id domain.FullID, sbType coresb.SmartBlock
 	s.closeAndMarkDeleted(id, nil)
 	switch sbType {
 	case coresb.SmartBlockTypeRelation:
-		if err = s.deleteRelationOptions(id.SpaceID, relationKey); err != nil {
+		if err = s.deleteRelationOptions(ctx, id.SpaceID, relationKey); err != nil {
 			return fmt.Errorf("failed to delete relation options of deleted relation: %w", err)
 		}
 	case coresb.SmartBlockTypeTemplate:
-		if err = s.unsetDefaultTemplateId(id.ObjectID, targetTypeId, spc); err != nil {
+		if err = s.unsetDefaultTemplateId(ctx, id.ObjectID, targetTypeId, spc); err != nil {
 			return fmt.Errorf("failed to reset default template id: %w", err)
 		}
 	}
 	return nil
 }
 
-func (s *Service) deleteRelationOptions(spaceId string, relationKey string) error {
+func (s *Service) deleteRelationOptions(ctx context.Context, spaceId string, relationKey string) error {
 	relationOptions, _, err := s.objectStore.SpaceIndex(spaceId).QueryObjectIds(database.Query{
 		Filters: []database.FilterRequest{
 			{
@@ -171,14 +181,14 @@ func (s *Service) deleteRelationOptions(spaceId string, relationKey string) erro
 	// the next load — one failing option must not strand the ones after it
 	var errs []error
 	for _, id := range relationOptions {
-		if err := s.DeleteObject(id); err != nil {
+		if err := s.deleteObject(ctx, id); err != nil {
 			errs = append(errs, fmt.Errorf("delete option %s: %w", id, err))
 		}
 	}
 	return errors.Join(errs...)
 }
 
-func (s *Service) unsetDefaultTemplateId(templateId, typeId string, spc clientspace.Space) error {
+func (s *Service) unsetDefaultTemplateId(ctx context.Context, templateId, typeId string, spc clientspace.Space) error {
 	records, err := s.objectStore.SpaceIndex(spc.Id()).QueryByIds([]string{typeId})
 	if err != nil {
 		return fmt.Errorf("failed to query type object: %w", err)
@@ -192,7 +202,7 @@ func (s *Service) unsetDefaultTemplateId(templateId, typeId string, spc clientsp
 	}
 
 	return spc.Do(typeId, func(sb smartblock.SmartBlock) error {
-		st := sb.NewState()
+		st := sb.NewState().StampFromCtx(ctx)
 		st.SetDetail(bundle.RelationKeyDefaultTemplateId, domain.String(""))
 		st.SetChangeType(domain.ChangeTypeLayoutSync)
 		return sb.Apply(st)
@@ -200,11 +210,17 @@ func (s *Service) unsetDefaultTemplateId(templateId, typeId string, spc clientsp
 }
 
 func (s *Service) DeleteObject(objectId string) (err error) {
+	return s.deleteObject(context.Background(), objectId)
+}
+
+// deleteObject is DeleteObject for a request: see deleteObjectByFullID for
+// what ctx is read for.
+func (s *Service) deleteObject(ctx context.Context, objectId string) (err error) {
 	spaceId, err := s.resolver.ResolveSpaceID(objectId)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
 	}
-	return s.DeleteObjectByFullID(domain.FullID{SpaceID: spaceId, ObjectID: objectId})
+	return s.deleteObjectByFullID(ctx, domain.FullID{SpaceID: spaceId, ObjectID: objectId})
 }
 
 // closeAndMarkDeleted is the in-memory half of a delete: the sessions
@@ -244,7 +260,7 @@ func (s *Service) BeforeDelete(id domain.FullID, workspaceRemove func() error) e
 	return nil
 }
 
-func (s *Service) unsetHomepageIfNeeded(id domain.FullID, spc clientspace.Space) {
+func (s *Service) unsetHomepageIfNeeded(ctx context.Context, id domain.FullID, spc clientspace.Space) {
 	workspaceId := spc.DerivedIDs().Workspace
 	details, err := s.objectStore.SpaceIndex(id.SpaceID).GetDetails(workspaceId)
 	if err != nil {
@@ -253,7 +269,7 @@ func (s *Service) unsetHomepageIfNeeded(id domain.FullID, spc clientspace.Space)
 	}
 	homepage := details.GetString(bundle.RelationKeyHomepage)
 	if homepage == id.ObjectID {
-		if err = s.detailsService.SetSpaceInfo(spc.Id(), domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		if err = s.detailsService.SetSpaceInfo(ctx, spc.Id(), domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 			bundle.RelationKeyHomepage: domain.String(domain.HomepageWidgets),
 		})); err != nil {
 			log.With("objectId", id.ObjectID).Warnf("failed to reset homepage to widgets: %v", err)

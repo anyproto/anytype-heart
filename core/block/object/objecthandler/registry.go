@@ -8,9 +8,27 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 )
 
+// LastModifiedInfo describes the user change a handler picked as the object's
+// latest. WHICH change is picked is unchanged, long-standing behavior (the
+// greatest timestamp; of equals, the first met) and out of scope for
+// attribution. What matters here is that every member is read off that ONE
+// change: who signed it, when, and what the change says about its own
+// authoring (per-change attributes such as the local-API app name — a new
+// attribute is one more member).
+type LastModifiedInfo struct {
+	Timestamp int64
+	// Account is the identity that signed the change; "" when no change was
+	// picked.
+	Account string
+	// IntegrationName is pb.Change.IntegrationName of the change: the RAW
+	// name of the local-API app that authored it, or "" when it was made in
+	// an Anytype app.
+	IntegrationName string
+}
+
 type SmartblockHandler interface {
 	CollectLastModifiedInfo(change *objecttree.Change)
-	GetLastModifiedInfo() (lastModified int64, lastModifiedBy string)
+	GetLastModifiedInfo() LastModifiedInfo
 }
 
 func GetSmartblockHandler(sbt smartblock.SmartBlockType) SmartblockHandler {
@@ -22,29 +40,35 @@ func GetSmartblockHandler(sbt smartblock.SmartBlockType) SmartblockHandler {
 	}
 }
 
+// infoFromChange reads the whole tuple off one change.
+func infoFromChange(change *objecttree.Change) LastModifiedInfo {
+	info := LastModifiedInfo{Timestamp: change.Timestamp, Account: change.Identity.Account()}
+	if model, ok := change.Model.(*pb.Change); ok && model != nil {
+		info.IntegrationName = model.IntegrationName
+	}
+	return info
+}
+
 type defaultHandler struct {
-	lastModified   int64
-	lastModifiedBy string
+	info LastModifiedInfo
 }
 
 func (d *defaultHandler) CollectLastModifiedInfo(change *objecttree.Change) {
-	if change.Timestamp > d.lastModified {
-		d.lastModified = change.Timestamp
-		d.lastModifiedBy = change.Identity.Account()
+	if change.Timestamp > d.info.Timestamp {
+		d.info = infoFromChange(change)
 	}
 }
 
-func (d *defaultHandler) GetLastModifiedInfo() (lastModified int64, lastModifiedBy string) {
-	return d.lastModified, d.lastModifiedBy
+func (d *defaultHandler) GetLastModifiedInfo() LastModifiedInfo {
+	return d.info
 }
 
 type filesHandler struct {
-	lastModified   int64
-	lastModifiedBy string
+	info LastModifiedInfo
 }
 
 func (f *filesHandler) CollectLastModifiedInfo(change *objecttree.Change) {
-	if change.Timestamp <= f.lastModified {
+	if change.Timestamp <= f.info.Timestamp {
 		return
 	}
 
@@ -57,10 +81,9 @@ func (f *filesHandler) CollectLastModifiedInfo(change *objecttree.Change) {
 		}
 	}
 
-	f.lastModified = change.Timestamp
-	f.lastModifiedBy = change.Identity.Account()
+	f.info = infoFromChange(change)
 }
 
-func (f *filesHandler) GetLastModifiedInfo() (lastModified int64, lastModifiedBy string) {
-	return f.lastModified, f.lastModifiedBy
+func (f *filesHandler) GetLastModifiedInfo() LastModifiedInfo {
+	return f.info
 }

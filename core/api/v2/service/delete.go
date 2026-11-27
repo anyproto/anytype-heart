@@ -343,9 +343,11 @@ type permanentRefusal struct {
 // failure, on which the caller must refuse. Fail-closed: a nil provenance
 // dependency refuses.
 func (s *Service) permanentDeleteCheck(ctx context.Context, spaceId, objectId string, read apicore.ObjectRead) (*permanentRefusal, error) {
-	// chats and discussions are store-backed: their changes carry no
-	// creation stamp, so the creator rule could never pass — refused up
-	// front, without building what can be a long message history
+	// chats and discussions are store-backed: the creator rule reads the
+	// first pb.Change of a tree, and theirs holds pb.StoreChange — whose
+	// first change is whatever touched the chat first, not a creating
+	// change — so the rule is not defined for them. Refused up front,
+	// without building what can be a long message history
 	if read.SbType == model.SmartBlockType_ChatDerivedObject || read.SbType == model.SmartBlockType_DiscussionObject {
 		return &permanentRefusal{
 			why: "chats cannot be deleted permanently through the API",
@@ -530,9 +532,9 @@ func (s *Service) binNotice(ctx context.Context, spaceId, objectId string, read 
 // the deprecated chat container, tech-space shapes — is a system surface
 // and refuses here, whatever its root signature looks like. Note the chat
 // shapes are allowlisted as user content but still refuse a PERMANENT
-// delete at the provenance read (their changes are StoreChange, which
-// carries no stamp): the list states the product surface, provenance stays
-// fail-closed.
+// delete BEFORE the provenance read (permanentDeleteCheck): their changes
+// are StoreChange, and the first one is not a creating change — the list
+// states the product surface, provenance stays fail-closed.
 func deletableSbType(sbType model.SmartBlockType) bool {
 	switch sbType {
 	case model.SmartBlockType_Page,

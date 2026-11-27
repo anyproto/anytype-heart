@@ -22,6 +22,14 @@ import (
 var log = logging.Logger("anytype-mw-editor-basic")
 
 func (bs *basic) SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
+	// refused by the keys the caller NAMED, before any diff: a write of the
+	// current value, or an unset of an absent key, is an empty diff and
+	// would otherwise be answered as a success
+	for _, detail := range details {
+		if bundle.IsDerivedAttribution(detail.Key) {
+			return errDerivedAttribution(detail.Key)
+		}
+	}
 	if err = bs.UpdateDetails(ctx, func(current *domain.Details) (*domain.Details, error) {
 		return applyDetailUpdates(current, details), nil
 	}); err != nil {
@@ -86,11 +94,29 @@ func (bs *basic) validateUpdates(st *state.State, diff *domain.Details, removedK
 		}
 	}
 
+	// lastModifiedVia says which app authored the object's latest change, and
+	// is derived from that change alone: a details write can neither set nor
+	// clear it, or the object would show a name its signed history
+	// contradicts. (smartblock.Apply drops such a write whatever path made
+	// it; this is the refusal a caller of the details API gets to see.)
+	for key := range diff.IterateKeys() {
+		if bundle.IsDerivedAttribution(key) {
+			return errDerivedAttribution(key)
+		}
+	}
+	if i := slices.IndexFunc(removedKeys, bundle.IsDerivedAttribution); i >= 0 {
+		return errDerivedAttribution(removedKeys[i])
+	}
+
 	if slices.ContainsFunc(removedKeys, bundle.IsInternalRelation) {
 		return fmt.Errorf("deletion of internal relation is prohibited: %v", removedKeys)
 	}
 
 	return nil
+}
+
+func errDerivedAttribution(key domain.RelationKey) error {
+	return fmt.Errorf("%s is derived from the object's changes and cannot be set or unset: %w", key, domain.ErrValidationFailed)
 }
 
 func applyDetailUpdates(oldDetails *domain.Details, updates []domain.Detail) *domain.Details {

@@ -264,7 +264,10 @@ func (a *accountObject) OnPushChange(params source.PushChangeParams) (id string,
 	if builder.StoreChange == nil {
 		return "", nil
 	}
-	return a.storeSource.PushStoreChange(a.ctx, source.PushStoreChangeParams{
+	// the apply's attribution continues to the store push on the context
+	// (the same carry as chatobject's details hook)
+	ctx := domain.CtxWithIntegrationName(a.ctx, params.IntegrationName)
+	return a.storeSource.PushStoreChange(ctx, source.PushStoreChangeParams{
 		Changes: builder.ChangeSet,
 		State:   a.state,
 		Time:    time.Now(),
