@@ -200,11 +200,6 @@ func (s objectSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple 
 		}
 		listLen = len(ids)
 		s.keyBuffer = s.orders.BuildOrder(s.keyBuffer, ids...)
-	} else if val != nil && val.Type() == anyenc.TypeString {
-		// a single reference (an object's own id, a status) is a list of
-		// one, as Order.Compare reads it
-		listLen = 1
-		s.keyBuffer = s.orders.BuildOrder(s.keyBuffer, string(val.GetStringBytes()))
 	} else {
 		switch s.nulls {
 		case model.BlockContentDataviewSort_Start:

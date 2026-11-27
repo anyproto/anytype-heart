@@ -206,36 +206,22 @@ func TestIdSortOrders(t *testing.T) {
 		assertCompare(t, desc, upper, lower, 1)
 	})
 
-	t.Run("an app's id sort orders by the objects' names", func(t *testing.T) {
-		// given: a view sorted by id ascending
+	t.Run("an app's id sort orders by name in memory and by id in the store", func(t *testing.T) {
+		// given: a view sorted by id ascending, with the tie-break appended
 		store := &stubSpaceObjectStore{queryRawResult: []Record{{Details: zulu}, {Details: alpha}}}
-		order := NewKeyOrder(store, &anyenc.Arena{}, &collate.Buffer{}, SortRequest{
-			RelationKey: bundle.RelationKeyId, Type: model.BlockContentDataviewSort_Asc,
-		})
+		sorts := WithIdTieBreak([]SortRequest{{RelationKey: bundle.RelationKeyId, Type: model.BlockContentDataviewSort_Asc}})
+		order := NewSetOrder(store, &anyenc.Arena{}, &collate.Buffer{}, sorts)
+		arena := &anyenc.Arena{}
 
-		// when, then: Alpha (id b) before Zulu (id a), in the comparison
-		// and in the store's keys
-		assertCompare(t, order, zulu, alpha, 1)
-	})
+		// when
+		inMemory := order.Compare(zulu, alpha)
+		inStore := bytes.Compare(order.AnystoreSort().AppendKey(nil, zulu.ToAnyEnc(arena)), order.AnystoreSort().AppendKey(nil, alpha.ToAnyEnc(arena)))
 
-	t.Run("a manual order compares unlisted objects by name, then the next sort", func(t *testing.T) {
-		// given: the desktop's manual order, then the view's own due date
-		// sort, which ranks Zulu first
-		monday := time.Date(2026, 11, 23, 9, 0, 0, 0, time.UTC).Unix()
-		tuesday := time.Date(2026, 11, 24, 9, 0, 0, 0, time.UTC).Unix()
-		zuluMonday := zulu.Copy()
-		zuluMonday.SetInt64(bundle.RelationKeyDueDate, monday)
-		alphaTuesday := alpha.Copy()
-		alphaTuesday.SetInt64(bundle.RelationKeyDueDate, tuesday)
-		sorts := []SortRequest{
-			{RelationKey: bundle.RelationKeyId, Type: model.BlockContentDataviewSort_Custom, CustomOrder: []domain.Value{domain.String("listed")}},
-			{RelationKey: bundle.RelationKeyDueDate, Type: model.BlockContentDataviewSort_Asc, IncludeTime: true},
-		}
-		store := &stubSpaceObjectStore{queryRawResult: []Record{{Details: zuluMonday}, {Details: alphaTuesday}}}
-
-		// when, then: the names decide before the due date, in the
-		// comparison and in the store's keys
-		assertCompare(t, extractOrder(store, &anyenc.Arena{}, &collate.Buffer{}, sorts), zuluMonday, alphaTuesday, 1)
+		// then: a subscription puts Alpha (id b) first, as develop does; the
+		// store reads an id as no reference, as develop does, so the raw id
+		// decides and Zulu (id a) comes first
+		assert.Equal(t, 1, inMemory)
+		assert.Equal(t, -1, inStore)
 	})
 
 	t.Run("a manual order falls through to the next sort on equal names", func(t *testing.T) {
@@ -299,8 +285,9 @@ func TestSortKeyer(t *testing.T) {
 		assert.Equal(t, keyer.Key(narrow), keyer.Key(wide))
 	})
 
-	t.Run("an app's id sort keys objects by their names", func(t *testing.T) {
-		// given: a view sorted by id ascending
+	t.Run("an app's id sort keys as the store sorts it", func(t *testing.T) {
+		// given: a view sorted by id ascending, as a request carries it,
+		// with the tie-break appended
 		zulu := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 			bundle.RelationKeyId: domain.String("a"), bundle.RelationKeyName: domain.String("Zulu"),
 		})
@@ -308,37 +295,49 @@ func TestSortKeyer(t *testing.T) {
 			bundle.RelationKeyId: domain.String("b"), bundle.RelationKeyName: domain.String("Alpha"),
 		})
 		store := &stubSpaceObjectStore{queryRawResult: []Record{{Details: zulu}, {Details: alpha}}}
-		keyer := NewSortKeyer(store, SortsFromProto([]*model.BlockContentDataviewSort{
+		keyer := NewSortKeyer(store, WithIdTieBreak(SortsFromProto([]*model.BlockContentDataviewSort{
 			{RelationKey: bundle.RelationKeyId.String(), Type: model.BlockContentDataviewSort_Asc, NoCollate: true},
-		}))
+		})))
 
-		// when, then: Alpha (id b) before Zulu (id a)
-		assert.Equal(t, 1, bytes.Compare(keyer.Key(zulu), keyer.Key(alpha)))
+		// when, then: the store reads an id as no reference, so the raw id
+		// decides: Zulu (id a) before Alpha (id b)
+		assert.Equal(t, -1, bytes.Compare(keyer.Key(zulu), keyer.Key(alpha)))
+	})
+
+	t.Run("a key compiles the store sort once", func(t *testing.T) {
+		// given: a merge keys every row of every cut
+		keyer := NewSortKeyer(&stubSpaceObjectStore{}, []SortRequest{
+			{RelationKey: bundle.RelationKeyLastModifiedDate, Type: model.BlockContentDataviewSort_Desc, IncludeTime: true},
+			IdTieBreak(model.BlockContentDataviewSort_Desc),
+		})
+		row := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId: domain.String("a"), bundle.RelationKeyLastModifiedDate: domain.Int64(1700000000),
+		})
+
+		// when
+		allocs := testing.AllocsPerRun(100, func() { keyer.Key(row) })
+
+		// then: the value and the key; rebuilding the sort per row cost 8
+		assert.LessOrEqual(t, allocs, 2.0)
 	})
 }
 
-func TestNumberEmptyPlacement(t *testing.T) {
-	t.Run("where the store places empty values, zero is empty in both orders", func(t *testing.T) {
-		// given: ascending, empty values last
-		zero := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeySizeInBytes: domain.Int64(0)})
-		one := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeySizeInBytes: domain.Int64(1)})
-		order := NewSetOrder(&stubSpaceObjectStore{}, &anyenc.Arena{}, &collate.Buffer{}, []SortRequest{{
-			RelationKey: bundle.RelationKeySizeInBytes, Type: model.BlockContentDataviewSort_Asc, EmptyPlacement: model.BlockContentDataviewSort_End,
-		}})
+func TestCustomOrderRanks(t *testing.T) {
+	t.Run("a value listed twice keeps the unlisted values after the listed ones", func(t *testing.T) {
+		// given: a number custom order that lists 1 twice, then the id
+		two := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId: domain.String("listed"), bundle.RelationKeySizeInBytes: domain.Int64(2),
+		})
+		three := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId: domain.String("unlisted"), bundle.RelationKeySizeInBytes: domain.Int64(3),
+		})
+		order := NewSetOrder(&stubSpaceObjectStore{}, &anyenc.Arena{}, &collate.Buffer{}, WithIdTieBreak([]SortRequest{{
+			RelationKey: bundle.RelationKeySizeInBytes, Type: model.BlockContentDataviewSort_Custom,
+			CustomOrder: []domain.Value{domain.Int64(1), domain.Int64(1), domain.Int64(2)},
+		}}))
 
-		// when, then: one before zero, by Compare and by the store's key
-		assertCompare(t, order, zero, one, 1)
-	})
-
-	t.Run("elsewhere zero is a value", func(t *testing.T) {
-		// given: ascending, empty values first, which the plain order gives
-		zero := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeySizeInBytes: domain.Int64(0)})
-		one := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeySizeInBytes: domain.Int64(1)})
-		order := NewSetOrder(&stubSpaceObjectStore{}, &anyenc.Arena{}, &collate.Buffer{}, []SortRequest{{
-			RelationKey: bundle.RelationKeySizeInBytes, Type: model.BlockContentDataviewSort_Asc, EmptyPlacement: model.BlockContentDataviewSort_Start,
-		}})
-
-		// when, then
-		assertCompare(t, order, zero, one, -1)
+		// when, then: the listed 2 before the unlisted 3, in memory and in
+		// the store's keys
+		assertCompare(t, order, two, three, -1)
 	})
 }

@@ -38,7 +38,8 @@ type ObjectStore interface {
 // date sort puts an empty value, for one). A key reads only the details its
 // sorts read, so its cost does not grow with the record.
 type SortKeyer struct {
-	order Order
+	// sort is the order's store sort, compiled once: a merge keys every row
+	sort  query.Sort
 	deps  []domain.RelationKey
 	arena *anyenc.Arena
 }
@@ -59,7 +60,7 @@ func NewSortKeyer(store ObjectStore, sorts []SortRequest) *SortKeyer {
 		}
 	}
 	return &SortKeyer{
-		order: NewSetOrder(store, &anyenc.Arena{}, &collate.Buffer{}, sorts),
+		sort:  NewSetOrder(store, &anyenc.Arena{}, &collate.Buffer{}, sorts).AnystoreSort(),
 		deps:  deps,
 		arena: &anyenc.Arena{},
 	}
@@ -74,7 +75,7 @@ func (k *SortKeyer) Key(details *domain.Details) []byte {
 			value.Set(string(key), v.ToAnyEnc(k.arena))
 		}
 	}
-	return k.order.AnystoreSort().AppendKey(nil, value)
+	return k.sort.AppendKey(nil, value)
 }
 
 type setOrder []Order
@@ -128,10 +129,10 @@ func NewKeyOrder(store ObjectStore, arena *anyenc.Arena, collatorBuffer *collate
 	if err != nil {
 		format = sort.Format
 	}
-	// The id relation is object-formatted, so an id sort orders objects by
-	// their own names, through an order map built from the store, as the app
-	// shows a view sorted by id. Only the id tie-break (IsIdTieBreak) orders
-	// the raw id byte-wise, the order of the store's primary key.
+	// The id relation is object-formatted, so an id sort is an object sort:
+	// by name through an order map in memory, a tie in the store. Only the id
+	// tie-break (IsIdTieBreak) orders the raw id byte-wise, the order of the
+	// store's primary key.
 	rawId := IsIdTieBreak(sort)
 	if rawId {
 		format = model.RelationFormat_shorttext
@@ -215,16 +216,10 @@ func (ko *keyOrder) UpdateOrderMap(depDetails []*domain.Details) (updated bool) 
 	return ko.orderMap.Update(depDetails)
 }
 
-// placesEmptyValues reports whether the store sorts by emptyPlacementSort,
-// which moves empty values against the sort's direction; otherwise they fall
-// where the plain field order puts them.
-func (ko *keyOrder) placesEmptyValues() bool {
-	return (ko.emptyPlacement == model.BlockContentDataviewSort_Start && ko.sortType == model.BlockContentDataviewSort_Desc) ||
-		(ko.emptyPlacement == model.BlockContentDataviewSort_End && ko.sortType == model.BlockContentDataviewSort_Asc)
-}
-
 func (ko *keyOrder) basicSort(valType anyenc.Type) query.Sort {
-	if ko.placesEmptyValues() {
+	if ko.emptyPlacement == model.BlockContentDataviewSort_Start && ko.sortType == model.BlockContentDataviewSort_Desc {
+		return ko.emptyPlacementSort(valType)
+	} else if ko.emptyPlacement == model.BlockContentDataviewSort_End && ko.sortType == model.BlockContentDataviewSort_Asc {
 		return ko.emptyPlacementSort(valType)
 	} else {
 		return &query.SortField{
@@ -368,13 +363,10 @@ func (ko *keyOrder) compareDates(av domain.Value, bv domain.Value) int {
 }
 
 func (ko *keyOrder) compareNumbers(av domain.Value, bv domain.Value) int {
-	a, okA := av.TryFloat64()
-	b, okB := bv.TryFloat64()
-	// where the store places empty values itself (emptyPlacementSort), it
-	// counts 0 as empty: so does the comparison, or the two orders differ
-	zeroIsEmpty := ko.placesEmptyValues()
+	_, okA := av.TryInt64()
+	_, okB := bv.TryInt64()
 
-	comp, ok := ko.tryCompareEmptyValues(!okA || (zeroIsEmpty && a == 0), !okB || (zeroIsEmpty && b == 0))
+	comp, ok := ko.tryCompareEmptyValues(!okA, !okB)
 	if ok {
 		return comp
 	}
@@ -430,10 +422,17 @@ func isObjectFormat(format model.RelationFormat) bool {
 }
 
 func newCustomOrder(arena *anyenc.Arena, key domain.RelationKey, idsIndices map[string]int, keyOrd *keyOrder) customOrder {
+	// an unlisted value ranks after every listed one: a value listed twice
+	// keeps its last index, so the ranks can run past len(idsIndices)
+	unlisted := 0
+	for _, idx := range idsIndices {
+		unlisted = max(unlisted, idx+1)
+	}
 	return customOrder{
 		arena:        arena,
 		key:          key,
 		needOrderMap: idsIndices,
+		unlisted:     unlisted,
 		keyOrd:       keyOrd,
 	}
 }
@@ -442,7 +441,9 @@ type customOrder struct {
 	arena        *anyenc.Arena
 	key          domain.RelationKey
 	needOrderMap map[string]int
-	keyOrd       *keyOrder
+	// unlisted is the rank of a value the custom order does not list
+	unlisted int
+	keyOrd   *keyOrder
 
 	buf []byte
 }
@@ -461,7 +462,7 @@ func (co customOrder) AppendKey(k anyenc.Tuple, v *anyenc.Value) anyenc.Tuple {
 	if !ok {
 		anystoreSort := co.keyOrd.AnystoreSort()
 		// Push to the end
-		k = co.arena.NewNumberInt(len(co.needOrderMap)).MarshalTo(k)
+		k = co.arena.NewNumberInt(co.unlisted).MarshalTo(k)
 		// and add sorting
 		return anystoreSort.AppendKey(k, v)
 	}

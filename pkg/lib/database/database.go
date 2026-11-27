@@ -179,9 +179,9 @@ func InjectDefaultOrder(qry Query, sorts []SortRequest) []SortRequest {
 }
 
 // IdTieBreak is the sort WithIdTieBreak appends: the raw object id, compared
-// byte-wise. An id sort an app or a view sends orders objects by their names
-// (NewKeyOrder); only this sort, marked in a field no request can set,
-// compares the raw id.
+// byte-wise. An id sort an app or a view sends is an object sort (NewKeyOrder):
+// by name in memory, a tie in the store, which reads no single reference.
+// Only this sort, marked in a field no request can set, compares the raw id.
 func IdTieBreak(direction model.BlockContentDataviewSortType) SortRequest {
 	return SortRequest{RelationKey: bundle.RelationKeyId, Type: direction, idTieBreak: true}
 }
@@ -236,8 +236,8 @@ func RestoreIdTieBreak(ctx context.Context, sorts []SortRequest) []SortRequest {
 // both plans agree. After a relevance sort the id runs ascending, the order
 // GroupFulltextResults gives tied matches.
 //
-// A caller's own id sort orders by name, so the raw id is still appended
-// after it. The precision of a date sort is kept as given. Note that the
+// A caller's own id sort is an object sort, which ties every row in the
+// store, so the raw id is still appended after it. The precision of a date sort is kept as given. Note that the
 // store implies includeTime for a date sort only while it is the only sort:
 // a caller that cannot tell an omitted precision from false applies
 // ImplyIncludeTime first.
