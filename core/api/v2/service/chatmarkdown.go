@@ -197,9 +197,11 @@ func (b *chatBody) addTable(byId map[string]*model.Block, table *model.Block) {
 			Marks: line.marks,
 		})
 	}
+	// the warning describes the message, not the post: a dry run returns it
+	// with nothing sent
 	b.warnings = append(b.warnings, v2model.Issue{
 		Path:    "/text",
-		Message: "a chat message cannot hold a table: each row was posted as one line, its cells separated by |",
+		Message: "a chat message cannot hold a table: each row becomes one line, its cells separated by |",
 	})
 }
 

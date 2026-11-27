@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"regexp"
 	"slices"
 	"sort"
@@ -988,10 +989,14 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 		for _, row := range detached {
 			names = append(names, row.Key)
 		}
+		listed := fmt.Sprintf("%d no longer listed", len(detached))
+		if dryRun {
+			listed = fmt.Sprintf("%d would no longer be listed", len(detached))
+		}
 		warning := v2model.Issue{
 			Path: "/type_settings/property_definitions",
-			Message: fmt.Sprintf("property_definitions replaces the type's whole field list: %d no longer listed (%s)",
-				len(detached), strings.Join(names, ", ")),
+			Message: fmt.Sprintf("property_definitions replaces the type's whole field list: %s (%s)",
+				listed, strings.Join(names, ", ")),
 		}.Hintf("send the complete list to keep a field, omit property_definitions to leave the list untouched, or change one field at a time with the add_property, remove_property and move_property ops (%s)",
 			v2model.RefGetOpSchema("add_property"))
 		result.Warnings = append(result.Warnings, warning)
@@ -1004,7 +1009,7 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 		if perr != nil {
 			return nil, perr
 		}
-		result.Warnings = append(result.Warnings, typePruneWarnings(plan, "/type_settings/property_definitions", s.servedKeySpeller(spaceId))...)
+		result.Warnings = append(result.Warnings, typePruneWarnings(plan, "/type_settings/property_definitions", s.servedKeySpeller(spaceId), dryRun)...)
 	}
 	if dryRun {
 		result.DryRun = true
@@ -1194,11 +1199,14 @@ func (s *Service) DeleteType(ctx context.Context, spaceId, typeKey string, dryRu
 	if err != nil {
 		return nil, s.dryRunLoadingNote(ctx, spaceId, dryRun, err)
 	}
+	if slices.Contains(bundle.SystemTypes, domain.TypeKey(entry.Key)) {
+		return nil, systemSchemaRefusal("type", typeKey)
+	}
 	typeId := entry.Id
 	result := &v2model.CreateResult{Id: typeId, Key: typeKey}
 	// the objects of the type survive it, keeping it under the spelling
 	// they were served (round-four eval R4-1): say so, on the real run and
-	// the dry run alike, as delete_property does; only the hint differs
+	// the dry run alike, as delete_property does, worded for each run
 	result.Warnings = append(result.Warnings, s.typeDeleteWarnings(spaceId, entry, dryRun)...)
 	if dryRun {
 		result.DryRun = true
@@ -1207,17 +1215,48 @@ func (s *Service) DeleteType(ctx context.Context, spaceId, typeKey string, dryRu
 		result.Warnings = append(result.Warnings, s.LoadingSpaceWarnings(ctx, spaceId)...)
 		return result, nil
 	}
-	resp := s.mw.ObjectSetIsArchived(ctx, &pb.RpcObjectSetIsArchivedRequest{ContextId: typeId, IsArchived: true})
-	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
-		return nil, fmt.Errorf("archive type %s: %s", typeKey, resp.Error.Description)
+	if err := s.archiveSchemaObject(ctx, spaceId, typeId, fmt.Sprintf("type %q", typeKey)); err != nil {
+		return nil, fmt.Errorf("delete type: %w", err)
 	}
 	return result, nil
 }
 
+// systemSchemaRefusal refuses the delete of a type or property the app's
+// own features depend on (bundle.SystemTypes, bundle.SystemRelations). Heart
+// gives them a delete restriction, and its archive skips them while still
+// answering success, so the delete would report a Bin move that never
+// happened. It is the 403 every other restriction refusal answers with.
+// kind is "type" or "property"; spelling is the caller's own.
+func systemSchemaRefusal(kind, spelling string) error {
+	return v2model.NewError(http.StatusForbidden, v2model.CodeForbidden,
+		fmt.Sprintf("%s %q is built into Anytype and cannot be deleted", kind, spelling),
+		v2model.Issue{Path: "key", Message: fmt.Sprintf("the app's own features depend on this %s", kind)})
+}
+
+// archiveSchemaObject moves a type or property to the Bin and confirms it
+// is there. Heart's archive skips an id it protects or does not index and
+// still answers success, so the RPC's answer alone would let a delete report
+// a move that never happened. what names the target in errors.
+func (s *Service) archiveSchemaObject(ctx context.Context, spaceId, id, what string) error {
+	resp := s.mw.ObjectSetIsArchived(ctx, &pb.RpcObjectSetIsArchivedRequest{ContextId: id, IsArchived: true})
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
+		return fmt.Errorf("archive %s: %s", what, resp.Error.Description)
+	}
+	inBin, err := s.reader.InBin(ctx, spaceId, id)
+	if err != nil {
+		return fmt.Errorf("confirm the archive of %s: %w", what, err)
+	}
+	if !inBin {
+		return fmt.Errorf("%s is not in the Bin, though the archive answered success", what)
+	}
+	return nil
+}
+
 // typeDeleteWarnings names the objects a type delete leaves behind: they
 // keep the type, served under its slug, and nothing new is created in it.
-// A store error makes no warning. The hint follows the run: a dry run's says
-// nothing was deleted, a real delete's says where the type went.
+// A store error makes no warning. The warning follows the run: a dry run's
+// says what the delete would do, a real delete's what it did and where the
+// type went.
 func (s *Service) typeDeleteWarnings(spaceId string, entry typeEntry, dryRun bool) []v2model.Issue {
 	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
 		Filters: []database.FilterRequest{
@@ -1240,26 +1279,32 @@ func (s *Service) typeDeleteWarnings(spaceId string, entry typeEntry, dryRun boo
 	// under their stored keys (the twin rule)
 	served := s.apiKeys(spaceId, storeresolver.New(s.store.SpaceIndex(spaceId))).TypeSlug(entry.Key)
 	after := fmt.Sprintf("reads still spell it %q", served)
+	if dryRun {
+		after = fmt.Sprintf("reads would still spell it %q", served)
+	}
 	if entry.Slug != "" && served == entry.Slug {
 		if removed, rerr := s.removedTypes(spaceId); rerr == nil {
 			for _, e := range removed {
 				if e.Slug == entry.Slug && e.Key != entry.Key {
 					after = fmt.Sprintf("another removed type used %q before, so after this delete the objects of both read under their stored keys (%q here)", entry.Slug, entry.Key)
+					if dryRun {
+						after = fmt.Sprintf("another removed type used %q before, so the objects of both would read under their stored keys (%q here)", entry.Slug, entry.Key)
+					}
 					break
 				}
 			}
 		}
 	}
 	// a real delete already archived the type: the dry run's "keep it"
-	// could not be acted on there, so it says where the type went
+	// could not be acted on there, so it says where the type went; and a
+	// dry run deleted nothing, so the consequences are conditional
+	message := fmt.Sprintf("%s of type %q; they keep it, and %s, but nothing new is created in it and it is not listed or filterable, until this same type is restored in the app", count, served, after)
 	hint := "the type was moved to the Bin; to use it again, restore it from the Bin in the Anytype app"
 	if dryRun {
+		message = fmt.Sprintf("%s of type %q; after the delete they would keep it, and %s, but nothing new could be created in it and it would not be listed or filterable, until this same type is restored in the app", count, served, after)
 		hint = "a dry run reports this without deleting; to keep the type usable, keep it"
 	}
-	issue := v2model.Issue{
-		Path:    "key",
-		Message: fmt.Sprintf("%s of type %q; they keep it, and %s, but nothing new is created in it and it is not listed or filterable, until this same type is restored in the app", count, served, after),
-	}.WithHint(v2model.Plain(hint))
+	issue := v2model.Issue{Path: "key", Message: message}.WithHint(v2model.Plain(hint))
 	return []v2model.Issue{issue}
 }
 
@@ -1530,6 +1575,9 @@ func (s *Service) DeleteProperty(ctx context.Context, spaceId, propertyKey strin
 	if err != nil {
 		return nil, s.dryRunLoadingNote(ctx, spaceId, dryRun, err)
 	}
+	if bundle.IsSystemRelation(domain.RelationKey(entry.Key)) {
+		return nil, systemSchemaRefusal("property", propertyKey)
+	}
 	result := &v2model.CreateResult{Id: entry.Id, Key: propertyKey}
 	// the delete is destructive in two places the caller cannot see from
 	// here: objects that hold a value of the property, and types that list
@@ -1543,9 +1591,8 @@ func (s *Service) DeleteProperty(ctx context.Context, spaceId, propertyKey strin
 		result.Warnings = append(result.Warnings, s.LoadingSpaceWarnings(ctx, spaceId)...)
 		return result, nil
 	}
-	resp := s.mw.ObjectSetIsArchived(ctx, &pb.RpcObjectSetIsArchivedRequest{ContextId: entry.Id, IsArchived: true})
-	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
-		return nil, fmt.Errorf("archive property %s: %s", propertyKey, resp.Error.Description)
+	if err := s.archiveSchemaObject(ctx, spaceId, entry.Id, fmt.Sprintf("property %q", propertyKey)); err != nil {
+		return nil, fmt.Errorf("delete property: %w", err)
 	}
 	return result, nil
 }
@@ -1560,10 +1607,25 @@ const propertyHolderProbeLimit = 1000
 // deleted it by — a delete by display name or stored key still promises the
 // slug the values will show under. Store errors make no warning — the
 // delete still stands, and a warning the store could not substantiate is
-// worse than none. The holders' hint follows the run: a dry run's says
-// nothing was deleted, a real delete's says where the property went.
+// worse than none. The warnings follow the run: a dry run's say what the
+// delete would do, a real delete's what it did and where the property went.
+// Both spell the property as reads will once it is removed: the slug, unless
+// another removed property already answers to it, and then both read under
+// their stored keys (the twin rule of the read vocabulary).
 func (s *Service) propertyDeleteWarnings(spaceId string, entry propertyEntry, servedKey string, dryRun bool) []v2model.Issue {
 	var issues []v2model.Issue
+	removedKey := servedKey
+	twin := false
+	if entry.Slug != "" && servedKey == entry.Slug {
+		if removed, rerr := s.removedProperties(spaceId); rerr == nil {
+			for _, e := range removed {
+				if e.Slug == entry.Slug && e.Key != entry.Key {
+					removedKey, twin = entry.Key, true
+					break
+				}
+			}
+		}
+	}
 	// presence, not emptiness: a stored 0 or false is a value the caller
 	// set; and archived objects hold values too (a restore brings them
 	// back), so the injected isArchived default is suppressed — deleted
@@ -1582,24 +1644,41 @@ func (s *Service) propertyDeleteWarnings(spaceId string, entry propertyEntry, se
 		} else if len(records) >= propertyHolderProbeLimit {
 			count = fmt.Sprintf("at least %d objects hold", propertyHolderProbeLimit)
 		}
+		after := fmt.Sprintf("reads still spell it %q", servedKey)
+		switch {
+		case twin && dryRun:
+			after = fmt.Sprintf("another removed property used %q before, so the values of both would read under their stored keys (%q here)", entry.Slug, entry.Key)
+		case twin:
+			after = fmt.Sprintf("another removed property used %q before, so the values of both read under their stored keys (%q here)", entry.Slug, entry.Key)
+		case dryRun:
+			after = fmt.Sprintf("reads would still spell it %q", servedKey)
+		}
+		message := fmt.Sprintf("%s a value of %q; those values stay readable and editable in place, and %s, but set_properties gives no other object one, until this same property is restored in the app (a new property with the same name is a different property)", count, servedKey, after)
 		hint := "the property was moved to the Bin; to use it again, restore it from the Bin in the Anytype app"
 		if dryRun {
+			message = fmt.Sprintf("%s a value of %q; after the delete those values would stay readable and editable in place, and %s, but set_properties would give no other object one, until this same property is restored in the app (a new property with the same name is a different property)", count, servedKey, after)
 			hint = "a dry run reports this without deleting"
 		}
-		issues = append(issues, v2model.Issue{
-			Path:    "key",
-			Message: fmt.Sprintf("%s a value of %q; those values stay readable and editable in place under that key, but set_properties gives no other object one, until this same property is restored in the app (a new property with the same name is a different property)", count, servedKey),
-		}.WithHint(v2model.Plain(hint)))
+		issues = append(issues, v2model.Issue{Path: "key", Message: message}.WithHint(v2model.Plain(hint)))
 	}
 	types, err := s.store.SpaceIndex(spaceId).Query(database.Query{Filters: liveTypeFilters()})
 	if err == nil {
 		var listing []string
+		var vocab *apiKeyVocab
 		for _, record := range types {
 			for _, listKey := range typeRecommendedListKeys {
 				if slices.Contains(record.Details.GetStringList(listKey), entry.Id) {
 					name := record.Details.GetString(bundle.RelationKeyName)
 					if name == "" {
-						name = record.Details.GetString(bundle.RelationKeyUniqueKey)
+						// an unnamed type reads as its served key, never
+						// its unique key (ot-<stored key>)
+						name = record.Details.GetString(bundle.RelationKeyId)
+						if key, kerr := domain.GetTypeKeyFromRawUniqueKey(record.Details.GetString(bundle.RelationKeyUniqueKey)); kerr == nil {
+							if vocab == nil {
+								vocab = s.apiKeys(spaceId, storeresolver.New(s.store.SpaceIndex(spaceId)))
+							}
+							name = vocab.TypeSlug(string(key))
+						}
 					}
 					listing = append(listing, name)
 					break
@@ -1612,10 +1691,12 @@ func (s *Service) propertyDeleteWarnings(spaceId string, entry propertyEntry, se
 			if len(listing) == 1 {
 				noun = "type lists"
 			}
-			issues = append(issues, v2model.Issue{
-				Path:    "key",
-				Message: fmt.Sprintf("%d %s %q (%s); their property lists and views keep the entry, spelled %q, until it is taken off them", len(listing), noun, servedKey, strings.Join(listing, ", "), servedKey),
-			}.Hintf("take it off a type with the remove_property op (%s)", v2model.RefGetOpSchema("remove_property")))
+			message := fmt.Sprintf("%d %s %q (%s); their property lists and views keep the entry, spelled %q, until it is taken off them", len(listing), noun, servedKey, strings.Join(listing, ", "), removedKey)
+			if dryRun {
+				message = fmt.Sprintf("%d %s %q (%s); after the delete their property lists and views would keep the entry, spelled %q, until it is taken off them", len(listing), noun, servedKey, strings.Join(listing, ", "), removedKey)
+			}
+			issues = append(issues, v2model.Issue{Path: "key", Message: message}.
+				Hintf("take it off a type with the remove_property op (%s)", v2model.RefGetOpSchema("remove_property")))
 		}
 	}
 	return issues

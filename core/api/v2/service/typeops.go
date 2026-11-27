@@ -223,7 +223,7 @@ func (s *Service) updateTypeOps(ctx context.Context, spaceId string, typeObject 
 	if err != nil {
 		return nil, err
 	}
-	result.Warnings = append(result.Warnings, typePruneWarnings(prune, "/ops", s.servedKeySpeller(spaceId))...)
+	result.Warnings = append(result.Warnings, typePruneWarnings(prune, "/ops", s.servedKeySpeller(spaceId), dryRun)...)
 
 	if dryRun {
 		result.DryRun = true
@@ -1262,23 +1262,33 @@ func typeDataviewBlock(st *state.State) simple.Block {
 // typePruneWarnings renders a prune plan for the caller: path is the
 // request member the change came from, spell turns a stored relation key
 // into the spelling the surface serves (a bson stored key must never reach
-// the caller).
-func typePruneWarnings(plan template.TypeDataviewColumnPlan, path string, spell func(string) string) []v2model.Issue {
+// the caller). The plan is reported before a dry run returns, so a dry run
+// says what the real run would remove and leave, not what it did.
+func typePruneWarnings(plan template.TypeDataviewColumnPlan, path string, spell func(string) string, dryRun bool) []v2model.Issue {
 	var issues []v2model.Issue
 	if len(plan.Pruned) > 0 {
-		issues = append(issues, v2model.Issue{
-			Path:    path,
-			Message: fmt.Sprintf("columns dropped: %s", prunedPerView(plan.Pruned, spell)),
-		})
-	}
-	if len(plan.InUse) > 0 {
-		verb, left := "group, sort or filter by a removed property and were left as they are", ""
-		if len(plan.InUse) == 1 {
-			verb, left = "groups, sorts or filters by a removed property and was left as it is", ""
+		lead := "columns dropped"
+		if dryRun {
+			lead = "columns that would be removed"
 		}
 		issues = append(issues, v2model.Issue{
 			Path:    path,
-			Message: fmt.Sprintf("%s %s%s", namedViews(plan.InUse), verb, left),
+			Message: fmt.Sprintf("%s: %s", lead, prunedPerView(plan.Pruned, spell)),
+		})
+	}
+	if len(plan.InUse) > 0 {
+		verb := "group, sort or filter by a removed property and were left as they are"
+		switch {
+		case len(plan.InUse) == 1 && dryRun:
+			verb = "groups, sorts or filters by a removed property and would be left as it is"
+		case len(plan.InUse) == 1:
+			verb = "groups, sorts or filters by a removed property and was left as it is"
+		case dryRun:
+			verb = "group, sort or filter by a removed property and would be left as they are"
+		}
+		issues = append(issues, v2model.Issue{
+			Path:    path,
+			Message: fmt.Sprintf("%s %s", namedViews(plan.InUse), verb),
 		}.Hintf("change those views with update_view through %s", v2model.NewRef(v2model.OpPatchObject)))
 	}
 	return issues

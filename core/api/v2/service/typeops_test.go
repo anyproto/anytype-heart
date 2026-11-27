@@ -439,27 +439,32 @@ func TestV2TypeOpsAddPutsTheColumnInEveryView(t *testing.T) {
 			viewWithColumns("v-a", "All", "name", "location"),
 		))
 
+		// the same two warnings on both runs, worded for each: a rehearsal
+		// names what a real run would remove, the real run what it removed
+		const path = "/type_settings/property_definitions"
+		hint := v2model.Issue{}.Hintf("send the complete list to keep a field, omit property_definitions to leave the list untouched, or change one field at a time with the add_property, remove_property and move_property ops (%s)",
+			v2model.RefGetOpSchema("add_property"))
+		warnings := func(listed, columns string) []v2model.Issue {
+			return []v2model.Issue{
+				{Path: path, Message: "property_definitions replaces the type's whole field list: " + listed, Hint: hint.Hint, SeeAlso: hint.SeeAlso},
+				{Path: path, Message: columns},
+			}
+		}
+
 		// when: the list is resent without location — rehearsed first
 		rehearsal, err := fx.UpdateType(context.Background(), testSpaceId, "plant", "", []byte(`{
 			"type_settings":{"property_definitions":[{"property":"sun_needs"},{"property":"water_needs"}]}}`), true, false)
 		require.NoError(t, err)
 		require.NotNil(t, rehearsal.Removed)
-		require.NotEmpty(t, rehearsal.Warnings)
-		var dropped bool
-		for _, w := range rehearsal.Warnings {
-			if strings.Contains(w.Message, "columns dropped") {
-				dropped = true
-				assert.Equal(t, "/type_settings/property_definitions", w.Path)
-			}
-		}
-		assert.True(t, dropped, "a rehearsal names the columns a real run would drop")
+		assert.Equal(t, warnings("1 would no longer be listed (location)", `columns that would be removed: location from "All"`), rehearsal.Warnings)
 
 		// and for real
-		_, err = fx.UpdateType(context.Background(), testSpaceId, "plant", "", []byte(`{
+		real, err := fx.UpdateType(context.Background(), testSpaceId, "plant", "", []byte(`{
 			"type_settings":{"property_definitions":[{"property":"sun_needs"},{"property":"water_needs"}]}}`), false, false)
 
 		// then: the list half and the view half
 		require.NoError(t, err)
+		assert.Equal(t, warnings("1 no longer listed (location)", `columns dropped: location from "All"`), real.Warnings)
 		assert.Equal(t, []string{"rel-sun", "rel-water"}, (*captured)[bundle.RelationKeyRecommendedRelations.String()])
 		assert.Equal(t, []string{"name"}, viewColumnKeys(t, *committed, "v-a"))
 	})
@@ -592,6 +597,41 @@ func TestV2TypeOpsRemovePrunesEveryView(t *testing.T) {
 			}
 		}
 		assert.True(t, warned, "the views left alone must be named: %v", result.Warnings)
+	})
+
+	t.Run("the op channel's prune report speaks for the run", func(t *testing.T) {
+		// a rehearsal of remove_property names what the real run would
+		// remove and keep; the real run names what it removed and kept
+		hint := v2model.Issue{}.Hintf("change those views with update_view through %s", v2model.NewRef(v2model.OpPatchObject))
+		cases := []struct {
+			dryRun bool
+			want   []v2model.Issue
+		}{
+			{dryRun: true, want: []v2model.Issue{
+				{Path: "/ops", Message: `columns that would be removed: sun_needs from "All"`},
+				{Path: "/ops", Message: `the view "Board" groups, sorts or filters by a removed property and would be left as it is`, Hint: hint.Hint, SeeAlso: hint.SeeAlso},
+			}},
+			{dryRun: false, want: []v2model.Issue{
+				{Path: "/ops", Message: `columns dropped: sun_needs from "All"`},
+				{Path: "/ops", Message: `the view "Board" groups, sorts or filters by a removed property and was left as it is`, Hint: hint.Hint, SeeAlso: hint.SeeAlso},
+			}},
+		}
+		for _, tc := range cases {
+			// given
+			fx := newTypeOpsFixture(t)
+			fx.captureTypeDetails()
+			board := viewWithColumns("v-c", "Board", "name", "sun_needs")
+			board.GroupRelationKey = "sun_needs"
+			fx.expectTypeViewEdit(typeReadWithViews(viewWithColumns("v-a", "All", "name", "sun_needs"), board))
+
+			// when
+			result, err := fx.UpdateType(context.Background(), testSpaceId, "plant",
+				"", opsBody(`{"op":"remove_property","property":"sun_needs"}`), tc.dryRun, false)
+
+			// then
+			require.NoError(t, err, "dryRun=%v", tc.dryRun)
+			assert.Equal(t, tc.want, result.Warnings, "dryRun=%v", tc.dryRun)
+		}
 	})
 
 	// A sort and a filter are the same argument as the group.
@@ -802,7 +842,10 @@ func TestV2TypeOpsDryRunReportsTheRealRun(t *testing.T) {
 	assert.True(t, preview.DryRun)
 	assert.Equal(t, real.Removed, preview.Removed, "the preview must state the removal the real run makes")
 	assert.Equal(t, real.Created, preview.Created, "and the property the real run creates")
-	assert.Equal(t, real.Warnings, preview.Warnings, "and the views the real run rewrites")
+	// and the views the real run rewrites, worded as a preview: the same
+	// column of the same view, as what the real run would remove
+	assert.Equal(t, []v2model.Issue{{Path: "/ops", Message: `columns that would be removed: sun_needs from "All"`}}, preview.Warnings)
+	assert.Equal(t, []v2model.Issue{{Path: "/ops", Message: `columns dropped: sun_needs from "All"`}}, real.Warnings)
 }
 
 // TestV2TypeOpsDryRunWritesNothing is the other half: the preview above is

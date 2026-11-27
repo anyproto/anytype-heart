@@ -1500,3 +1500,61 @@ func TestDeleteWidget(t *testing.T) {
 }
 
 func int32Ptr(v int32) *int32 { return &v }
+
+// The normalizers run before a dry run returns, so their warnings name the
+// fallback the widget gets without claiming it was stored.
+func TestWidgetNormalizerWarningsClaimNoWrite(t *testing.T) {
+	t.Run("a layout the target cannot take", func(t *testing.T) {
+		// given
+		var warnings []v2model.Issue
+		want := []v2model.Issue{{Path: "/layout", Message: "this target renders as tree, not list; the widget gets tree, the same fallback the app shows. It takes tree, link"}}
+
+		// when
+		layout, err := normalizeWidgetLayout(widgetTarget{kind: widgetTargetPage}, "list", &warnings)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, model.BlockContentWidget_Tree, layout)
+		assert.Equal(t, want, warnings)
+	})
+
+	t.Run("a limit the layout does not offer", func(t *testing.T) {
+		// given
+		var warnings []v2model.Issue
+		requested := 7
+		want := []v2model.Issue{{Path: "/limit", Message: "the tree layout shows 6, 10, 14, 30, 50 entries, not 7; the widget gets 6, the same fallback the app shows"}}
+
+		// when
+		limit := normalizeWidgetLimit(model.BlockContentWidget_Tree, &requested, &warnings)
+
+		// then
+		assert.Equal(t, int32(6), limit)
+		assert.Equal(t, want, warnings)
+	})
+
+	t.Run("a stored layout the target cannot take", func(t *testing.T) {
+		// given
+		var warnings []v2model.Issue
+		want := []v2model.Issue{{Path: "/layout", Message: "the stored list is not one this target renders; the widget gets tree, the same fallback the app shows. It takes tree, link"}}
+
+		// when
+		layout := normalizeStoredLayout(widgetTarget{kind: widgetTargetPage}, model.BlockContentWidget_List, &warnings)
+
+		// then
+		assert.Equal(t, model.BlockContentWidget_Tree, layout)
+		assert.Equal(t, want, warnings)
+	})
+
+	t.Run("a stored limit the new layout does not offer", func(t *testing.T) {
+		// given
+		var warnings []v2model.Issue
+		want := []v2model.Issue{{Path: "/limit", Message: "the stored limit 10 is not one the list layout shows; the widget gets 4, the layout's smallest"}}
+
+		// when
+		limit := refitWidgetLimit(model.BlockContentWidget_List, 10, &warnings)
+
+		// then
+		assert.Equal(t, int32(4), limit)
+		assert.Equal(t, want, warnings)
+	})
+}

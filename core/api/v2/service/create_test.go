@@ -332,6 +332,21 @@ func TestV2CreateObjectDocument(t *testing.T) {
 		assert.Contains(t, result.Warnings[0].Hint, "?ids=full")
 	})
 
+	t.Run("the label-id warning describes the create, so a dry run does not claim an adoption", func(t *testing.T) {
+		// given
+		body := []byte(`{"formatVersion":"2.0","type":"page","blocks":[{"id":"aaaa1","type":"paragraph","text":"x"}]}`)
+		want := []v2model.Issue{v2model.Issue{
+			Path:    "/blocks",
+			Message: `ids "aaaa1" look like compact labels from a default read and become this object's real ids`,
+		}.Hintf("to clone with the source's real ids, read it with %s; to mint fresh ids, omit them", v2model.NewRef(v2model.OpGetObject).With("ids", "full"))}
+
+		// when
+		got := warnLabelShapedIds(body)
+
+		// then
+		assert.Equal(t, want, got)
+	})
+
 	t.Run("a ?block= subtree read cannot be cloned (partial marker)", func(t *testing.T) {
 		// a ?block= read is a fragment of another document: schema-valid on
 		// its face, so the envelope carries an explicit partial marker and

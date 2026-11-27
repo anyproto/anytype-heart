@@ -72,12 +72,11 @@ func TestV2DeletedTypeKeepsItsSpelling(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, result.Warnings, 1)
 		assert.Contains(t, result.Warnings[0].Message, `2 objects are of type "chore"`)
-		assert.Contains(t, result.Warnings[0].Message, `reads still spell it "chore"`)
+		assert.Contains(t, result.Warnings[0].Message, `reads would still spell it "chore"`)
 		assert.Empty(t, result.Warnings[0].SeeAlso, "list_objects has no type filter — no reference promises one")
 		assert.Contains(t, result.Warnings[0].Hint, "a dry run reports this without deleting")
 
-		fx.mwMock.EXPECT().ObjectSetIsArchived(mock.Anything, &pb.RpcObjectSetIsArchivedRequest{ContextId: "type-chore", IsArchived: true}).
-			Return(&pb.RpcObjectSetIsArchivedResponse{Error: &pb.RpcObjectSetIsArchivedResponseError{Code: pb.RpcObjectSetIsArchivedResponseError_NULL}})
+		fx.expectSchemaArchive("type-chore")
 		real, err := fx.DeleteType(ctx, testSpaceId, "chore", false)
 		require.NoError(t, err)
 		require.Len(t, real.Warnings, 1)
@@ -153,7 +152,7 @@ func TestV2DeletedTypeKeepsItsSpelling(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Len(t, result.Warnings, 1)
-		assert.Contains(t, result.Warnings[0].Message, `1 object is of type "gadget"; they keep it, and reads still spell it "gadget"`)
+		assert.Contains(t, result.Warnings[0].Message, `1 object is of type "gadget"; after the delete they would keep it, and reads would still spell it "gadget"`)
 		assert.NotContains(t, result.Warnings[0].Message, gadgetTypeKey)
 
 		// a removed type already answers to the slug: after this delete both
@@ -168,7 +167,7 @@ func TestV2DeletedTypeKeepsItsSpelling(t *testing.T) {
 		result, err = fx.DeleteType(ctx, testSpaceId, "gadget", true)
 		require.NoError(t, err)
 		require.Len(t, result.Warnings, 1)
-		assert.Contains(t, result.Warnings[0].Message, `another removed type used "gadget" before, so after this delete the objects of both read under their stored keys ("`+gadgetTypeKey+`" here)`)
+		assert.Contains(t, result.Warnings[0].Message, `another removed type used "gadget" before, so the objects of both would read under their stored keys ("`+gadgetTypeKey+`" here)`)
 	})
 
 	t.Run("a removed slug never folds onto a live type NAMED that way", func(t *testing.T) {

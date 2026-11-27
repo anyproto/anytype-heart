@@ -405,6 +405,8 @@ func (s *Service) widgetTargetDetails(spaceId, id string) (*domain.Details, bool
 // normalizeWidgetLayout is the desktop's render fallback, stored: a layout
 // the target cannot take becomes the first the target can, with a warning
 // that names both. No layout at all takes the desktop's creation default.
+// The normalizers run before a dry run returns, so their warnings name the
+// fallback the widget gets and never claim it was stored.
 func normalizeWidgetLayout(target widgetTarget, requested string, warnings *[]v2model.Issue) (model.BlockContentWidgetLayout, error) {
 	allowed, def := widgetLayoutsFor(target.kind)
 	if requested == "" {
@@ -423,7 +425,7 @@ func normalizeWidgetLayout(target widgetTarget, requested string, warnings *[]v2
 		}
 	}
 	*warnings = append(*warnings, v2model.Issue{Path: "/layout",
-		Message: fmt.Sprintf("this target renders as %s, not %s; stored %s, the same fallback the app shows. It takes %s", names[0], requested, names[0], strings.Join(names, ", "))})
+		Message: fmt.Sprintf("this target renders as %s, not %s; the widget gets %s, the same fallback the app shows. It takes %s", names[0], requested, names[0], strings.Join(names, ", "))})
 	return allowed[0], nil
 }
 
@@ -451,7 +453,7 @@ func normalizeWidgetLimit(layout model.BlockContentWidgetLayout, requested *int,
 		}
 	}
 	*warnings = append(*warnings, v2model.Issue{Path: "/limit",
-		Message: fmt.Sprintf("the %s layout shows %s entries, not %d; stored %d, the same fallback the app shows", widgetLayoutName(layout), strings.Join(names, ", "), *requested, options[0])})
+		Message: fmt.Sprintf("the %s layout shows %s entries, not %d; the widget gets %d, the same fallback the app shows", widgetLayoutName(layout), strings.Join(names, ", "), *requested, options[0])})
 	return int32(options[0])
 }
 
@@ -478,7 +480,7 @@ func normalizeStoredLayout(target widgetTarget, stored model.BlockContentWidgetL
 		spelled = name
 	}
 	*warnings = append(*warnings, v2model.Issue{Path: "/layout",
-		Message: fmt.Sprintf("the stored %s is not one this target renders; stored %s, the same fallback the app shows. It takes %s", spelled, names[0], strings.Join(names, ", "))})
+		Message: fmt.Sprintf("the stored %s is not one this target renders; the widget gets %s, the same fallback the app shows. It takes %s", spelled, names[0], strings.Join(names, ", "))})
 	return allowed[0]
 }
 
@@ -497,7 +499,7 @@ func refitWidgetLimit(layout model.BlockContentWidgetLayout, stored int32, warni
 		}
 	}
 	*warnings = append(*warnings, v2model.Issue{Path: "/limit",
-		Message: fmt.Sprintf("the stored limit %d is not one the %s layout shows; stored %d, the layout's smallest", stored, widgetLayoutName(layout), options[0])})
+		Message: fmt.Sprintf("the stored limit %d is not one the %s layout shows; the widget gets %d, the layout's smallest", stored, widgetLayoutName(layout), options[0])})
 	return int32(options[0])
 }
 

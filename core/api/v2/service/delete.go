@@ -47,7 +47,10 @@ const fileUserProbeLimit = 5
 
 // deleteProbeIssue is the C6 issue every ownership refusal carries (§9.5):
 // the probe idiom and where provenance is visible. A refused dry run already
-// was the probe, so its issue leaves the advice to resend as one out.
+// was the probe, so its issue leaves the advice to resend as one out, and
+// its archive alternative is a preview too. The creator is named generically:
+// a read spells the creator properties by the caller's vocabulary (slugs,
+// or names under ?keys=name), and a refusal cannot know which it will use.
 func deleteProbeIssue(dryRun bool) v2model.Issue {
 	issue := v2model.Issue{
 		Path: "object_id",
@@ -57,10 +60,20 @@ func deleteProbeIssue(dryRun bool) v2model.Issue {
 		Message: "this key may permanently delete only objects it created",
 	}
 	if dryRun {
-		return issue.WithHint(v2model.Plain("the created_date/creator properties on a read show who created the object; without permanent, DELETE moves the object to the Bin instead"))
+		return issue.WithHint(v2model.Plain("a read of the object shows who created it; " + binAlternative(true, "the object") + " instead"))
 	}
-	return issue.Hintf("probe without writing by resending with %s; the created_date/creator properties on a read show who created the object; without permanent, DELETE moves the object to the Bin instead",
+	return issue.Hintf("probe without writing by resending with %s; a read of the object shows who created it; "+binAlternative(false, "the object")+" instead",
 		v2model.Resend("dry_run", "true"))
+}
+
+// binAlternative is the archive a permanent refusal offers instead. A dry
+// run resent without permanent is still a dry run: it previews the move to
+// the Bin and moves nothing.
+func binAlternative(dryRun bool, what string) string {
+	if dryRun {
+		return "without permanent, the dry run previews moving " + what + " to the Bin"
+	}
+	return "without permanent, DELETE moves " + what + " to the Bin"
 }
 
 // DeleteObject implements DELETE /v2/spaces/{space_id}/objects/{object_id}
@@ -359,7 +372,7 @@ func (s *Service) permanentDeleteCheck(ctx context.Context, spaceId, objectId st
 			err: v2model.NewError(http.StatusForbidden, v2model.CodeForbidden,
 				"chats and discussions cannot be deleted permanently through the API",
 				v2model.Issue{Path: "object_id", Message: "this object is a chat"}.
-					WithHint(v2model.Plain("without permanent, DELETE moves it to the Bin"))),
+					WithHint(v2model.Plain(binAlternative(dryRun, "it")))),
 		}, nil
 	}
 	if s.provenance == nil {
@@ -381,7 +394,7 @@ func (s *Service) permanentDeleteCheck(ctx context.Context, spaceId, objectId st
 			err: v2model.NewError(http.StatusForbidden, v2model.CodeForbidden,
 				"permanent deletion is limited to objects with no changes by another space member: deleting this one for good would erase their changes too",
 				v2model.Issue{Path: "object_id", Message: "another space member changed this object"}.
-					WithHint(v2model.Plain("without permanent, DELETE moves the object to the Bin, where it can be restored"))),
+					WithHint(v2model.Plain(binAlternative(dryRun, "the object")+", where it can be restored"))),
 		}, nil
 	}
 	// a discussion is a tree of its own, so the co-author scan never sees
@@ -393,7 +406,7 @@ func (s *Service) permanentDeleteCheck(ctx context.Context, spaceId, objectId st
 			err: v2model.NewError(http.StatusForbidden, v2model.CodeForbidden,
 				"permanent deletion is limited to objects without a discussion: deleting this one for good would orphan its thread",
 				v2model.Issue{Path: "object_id", Message: "this object has a discussion"}.
-					WithHint(v2model.Plain("without permanent, DELETE moves the object to the Bin, where it can be restored"))),
+					WithHint(v2model.Plain(binAlternative(dryRun, "the object")+", where it can be restored"))),
 		}, nil
 	}
 	if read.SbType == model.SmartBlockType_FileObject {
@@ -407,7 +420,7 @@ func (s *Service) permanentDeleteCheck(ctx context.Context, spaceId, objectId st
 				err: v2model.NewError(http.StatusConflict, v2model.CodeFileInUse,
 					fmt.Sprintf("file %q is still used by other objects, and deleting it for good would break them: %s", objectId, strings.Join(users, ", ")),
 					v2model.Issue{Path: "object_id", Message: "the file is still in use"}.
-						WithHint(v2model.Plain("remove the file from those objects, or delete them first, then resend this request; without permanent, DELETE moves the file to the Bin"))),
+						WithHint(v2model.Plain("remove the file from those objects, or delete them first, then resend this request; "+binAlternative(dryRun, "the file")))),
 			}, nil
 		}
 	}
@@ -515,7 +528,7 @@ func holdsFile(details *domain.Details, fileKeys []domain.RelationKey, fileId st
 // archived is whether the object was in the Bin before this request. A dry
 // run's notice says what the real request does: an object it would move is
 // not in the Bin to restore from yet, and a resend of a dry run with
-// permanent=true is still a dry run, so it deletes nothing.
+// permanent=true is still a dry run, so it previews the delete for good.
 func (s *Service) binNotice(ctx context.Context, spaceId, objectId string, read apicore.ObjectRead, archived, dryRun bool) v2model.Issue {
 	issue := v2model.Issue{Path: "object_id", Message: "moved to the Bin"}
 	restore := "restore it with %s"
@@ -528,7 +541,9 @@ func (s *Service) binNotice(ctx context.Context, spaceId, objectId string, read 
 	}
 	permanent := "this key created it, so resending with %s deletes it for good"
 	if dryRun {
-		permanent = "this key created it, so with %s the real request deletes it for good"
+		// the resend keeps dry_run (the wrapper renders it as "this call
+		// again"), so on a dry run it previews the delete for good
+		permanent = "this key created it, so resending with %s previews deleting it for good"
 	}
 	restoreRef := v2model.RefRestoreObject(spaceId, objectId)
 	refusal, err := s.permanentDeleteCheck(ctx, spaceId, objectId, read, dryRun)

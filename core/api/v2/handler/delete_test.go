@@ -46,6 +46,33 @@ func TestDeleteObjectHandlerQuery(t *testing.T) {
 		assert.Equal(t, []v2model.Ref{v2model.Resend("permanent", "true")}, got.Issues[0].SeeAlso)
 	})
 
+	t.Run("skip_bin on a dry run steers to a preview of the delete for good", func(t *testing.T) {
+		// given: replacing skip_bin with permanent=true on a dry run still
+		// only probes, so the repair says so
+		cases := []struct {
+			query string
+			want  string
+		}{
+			{query: "?skip_bin=true", want: "to delete for good, send ?permanent=true instead"},
+			{query: "?skip_bin=true&dry_run=true", want: "to preview a delete for good, send ?permanent=true instead"},
+		}
+		for _, tc := range cases {
+			fx := newV2HandlerFixture(t)
+			fx.router.DELETE("/v2/spaces/:space_id/objects/:object_id", withDryRunFlag(), DeleteObjectHandler(fx.svc))
+			w := httptest.NewRecorder()
+
+			// when
+			fx.router.ServeHTTP(w, httptest.NewRequest(http.MethodDelete, "/v2/spaces/space1/objects/obj1"+tc.query, nil))
+
+			// then
+			require.Equal(t, http.StatusBadRequest, w.Code, tc.query)
+			got := decodeError(t, w)
+			require.Len(t, got.Issues, 1, tc.query)
+			assert.Equal(t, tc.want, got.Issues[0].Hint, tc.query)
+			assert.Equal(t, []v2model.Ref{v2model.Resend("permanent", "true")}, got.Issues[0].SeeAlso, tc.query)
+		}
+	})
+
 	t.Run("a permanent value other than true or false is refused", func(t *testing.T) {
 		fx := newV2HandlerFixture(t)
 

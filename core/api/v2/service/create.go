@@ -706,9 +706,11 @@ func warnLabelShapedIds(body []byte) []v2model.Issue {
 	if len(labelLike) == 0 {
 		return nil
 	}
+	// the warning describes the create, not its outcome: a dry run returns
+	// it with nothing created
 	return []v2model.Issue{v2model.Issue{
 		Path:    "/blocks",
-		Message: fmt.Sprintf("ids %s look like compact labels from a default read and were adopted as this object's real ids", strings.Join(labelLike, ", ")),
+		Message: fmt.Sprintf("ids %s look like compact labels from a default read and become this object's real ids", strings.Join(labelLike, ", ")),
 	}.Hintf("to clone with the source's real ids, read it with %s; to mint fresh ids, omit them", v2model.NewRef(v2model.OpGetObject).With("ids", "full"))}
 }
 

@@ -395,6 +395,15 @@ with a fresh identity, and DELETE of an already-deleted type or property is a
 404, not a second archive (`core/api/v2/service/keys.go:56`). What a corpse
 still does to a **write** is §2's key-acceptance rules.
 
+**Built-in schema is not deletable.** DELETE of a type or property the app's
+own features depend on (heart's system types and properties, such as `page`
+or `name`) is a 403 `forbidden` on the dry run and the real run alike: heart
+restricts their deletion, and its archive skips them while still answering
+success. A real delete that the archive answered but did not move to the Bin
+fails as an internal error rather than reporting a move
+(`core/api/v2/service/schema_write.go`, `systemSchemaRefusal` and
+`archiveSchemaObject`).
+
 **Option listings exclude removed options**: an option belonging to an
 uninstalled property or removed on its own never appears in
 `GET /v2/spaces/{space_id}/properties/{key}/options`

@@ -96,9 +96,7 @@ func TestV2SlugAddressedRoutes(t *testing.T) {
 
 	t.Run("DELETE types by slug archives the BSON-keyed type", func(t *testing.T) {
 		fx := slugSpaceFixture(t)
-		fx.mwMock.EXPECT().ObjectSetIsArchived(mock.Anything, &pb.RpcObjectSetIsArchivedRequest{
-			ContextId: "type-meeting", IsArchived: true,
-		}).Return(&pb.RpcObjectSetIsArchivedResponse{Error: &pb.RpcObjectSetIsArchivedResponseError{Code: pb.RpcObjectSetIsArchivedResponseError_NULL}})
+		fx.expectSchemaArchive("type-meeting")
 
 		result, err := fx.DeleteType(context.Background(), testSpaceId, "meeting_note", false)
 
