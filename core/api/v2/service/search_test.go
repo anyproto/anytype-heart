@@ -361,20 +361,39 @@ func TestV2SearchObjects(t *testing.T) {
 		assert.Contains(t, apiErr.Issues[0].Hint, "chore")
 	})
 
-	t.Run("the unguarded-date-comparison hazard warns on the response (rule 5)", func(t *testing.T) {
+	t.Run("an ignored date preset warns on the response (rule 5)", func(t *testing.T) {
 		// given
 		fx := searchSetup(t)
-		req := v2model.SearchRequest{Type: "chore", Filter: `lastModifiedDate < today()`}
+		req := v2model.SearchRequest{Type: "chore", Filters: json.RawMessage(`[{"property":"lastModifiedDate","condition":"empty","date_preset":"today"}]`)}
 
 		// when
 		_, _, _, warnings, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
 
-		// then — the SPEC §6.2 import warning text rides the C6 channel
+		// then — the import warning text rides the C6 channel
 		require.NoError(t, err)
 		require.Len(t, warnings, 1)
-		assert.Equal(t, "/filter", warnings[0].Path)
-		assert.Contains(t, warnings[0].Message, "also matches objects with no lastModifiedDate")
-		assert.Contains(t, warnings[0].Message, "not_empty")
+		assert.Equal(t, "/filters/0", warnings[0].Path)
+		assert.Contains(t, warnings[0].Message, "date_preset")
+	})
+
+	t.Run("a date less filter does not claim undated objects match (GO-7613)", func(t *testing.T) {
+		// given: the store never matches an ordering condition against a
+		// missing value, so there is nothing to warn about
+		fx := searchSetup(t)
+		for _, filter := range []string{
+			`lastModifiedDate < today()`,
+			`lastModifiedDate <= today()`,
+			`lastModifiedDate < today() OR lastModifiedDate IS EMPTY`,
+		} {
+			req := v2model.SearchRequest{Type: "chore", Filter: filter}
+
+			// when
+			_, _, _, warnings, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
+
+			// then
+			require.NoError(t, err, filter)
+			assert.Empty(t, warnings, filter)
+		}
 	})
 
 	t.Run("unknown fields keys are rejected (rule 1 covers field keys)", func(t *testing.T) {
@@ -974,17 +993,17 @@ func TestV2GlobalSearchObjects(t *testing.T) {
 	})
 
 	t.Run("identical per-space warnings dedupe to one", func(t *testing.T) {
-		// given: the unguarded-date warning fires identically in both spaces
+		// given: the ignored-preset warning fires identically in both spaces
 		fx := setup(t)
 
 		// when
 		_, _, _, warnings, err := fx.GlobalSearchObjects(context.Background(),
-			v2model.SearchRequest{Filter: `lastModifiedDate < today()`}, 0, 25)
+			v2model.SearchRequest{Filters: json.RawMessage(`[{"property":"lastModifiedDate","condition":"empty","date_preset":"today"}]`)}, 0, 25)
 
 		// then
 		require.NoError(t, err)
 		require.Len(t, warnings, 1, "the same (path, message) warning from N spaces collapses to one")
-		assert.Contains(t, warnings[0].Message, "also matches objects with no lastModifiedDate")
+		assert.Contains(t, warnings[0].Message, "date_preset")
 	})
 
 	t.Run("a space being removed is not searched (and gets no index minted)", func(t *testing.T) {

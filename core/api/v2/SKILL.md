@@ -247,8 +247,8 @@ read: no `Idempotency-Key`, `dry_run` ignored.
   channel (`type = "image"`, `type IN (… "file")`) — `size > 5` alone
   matches nothing; compose `type = "image" AND size > 5`. `mimeType` and
   `size` work in fields/filters/sorts.
-- An unguarded `due_date < …` also matches objects with **no** date — the
-  response warns; add `AND due_date IS NOT EMPTY` unless intended.
+- `due_date < …` (and `<=`, `>`, `>=`) never matches objects with **no**
+  date, so they are left out. To include them, add `OR due_date IS EMPTY`.
 - Full-text `total` is a lower bound while `has_more` is true — walk
   pages, don't plan on the number.
 - Sorts: any property key, `{"property", "direction": "asc|desc"}`;

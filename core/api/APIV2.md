@@ -1029,8 +1029,8 @@ with no positional/index/offset addressing anywhere (§3.1–3.2). It is:
   payload position — `ops[3].blocks[0] → "b1a2…"`), `created_views` (its twin
   for server-minted view ids, keyed by the same exact nested payload path),
   `diff_stats`, and `warnings` — the same warning-grade C6 channel reads use,
-  so hazards an edit introduces (for example an unguarded date comparison
-  that also matches undated objects) surface instead of passing silently. A
+  so hazards an edit introduces (for example a date preset its condition
+  ignores) surface instead of passing silently. A
   client-supplied payload id resolves an existing block and preserves that
   identity, so it is absent from both maps. Both receipts follow `?ids=`:
   compact labels by default, full ids with `ids=full`
@@ -1410,10 +1410,12 @@ Secondary example — programmatic composition (the structured array):
      and sorts. The result includes one lookahead row: `total` is a lower
      bound when clipped, and `has_more` reports whether another page is
      available.
-  5. **Empty-date hazard surfaces.** SPEC §6.2: an unguarded `less`/
-     `lessOrEqual` date comparison matches undated objects. Document import
-     warns; the search path does too — the same warning text rides the C6
-     `warnings` channel.
+  5. **Ordering conditions skip undated objects.** SPEC §6.2: `less`,
+     `lessOrEqual`, `greater` and `greaterOrEqual` never match an object with
+     no value for the property (any-store v2 compares only values of one
+     type), so `dueDate < today()` lists dated objects only. To include the
+     undated, OR an `empty` leaf in. Neither import nor search warns about
+     this.
   6. **`type` is a filterable pseudo-key.** The top-level `type` stays a
      single type key (the small-model form, C2). Multi-type queries use the
      filter channel: `type IN ("task", "bug")` — resolved key→id server-side
