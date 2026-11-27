@@ -28,6 +28,10 @@ const (
 	// RefreshAfter is how old the last read of the item may be before a
 	// request re-reads it.
 	RefreshAfter = 5 * time.Second
+	// StoreReadTimeout bounds one read of the item. A read that takes
+	// longer (a stalled network home) counts as "can't be read right now"
+	// for that attempt and is never waited for again.
+	StoreReadTimeout = 5 * time.Second
 	// ExchangeTimeout bounds one upstream exchange including its body.
 	ExchangeTimeout = 120 * time.Second
 	// ShutdownDeadline bounds everything between the shutdown trigger and

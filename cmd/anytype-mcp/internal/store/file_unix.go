@@ -150,6 +150,9 @@ func busy(error) bool { return false }
 // settle makes a finished rename durable.
 func settle(dir, _ string) error { return syncDir(dir) }
 
+// syncParent makes a new folder durable in its parent.
+func syncParent(dir string) error { return syncDir(dir) }
+
 func syncDir(dir string) error {
 	d, err := os.Open(dir)
 	if err != nil {

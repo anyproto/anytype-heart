@@ -50,6 +50,7 @@ type Options struct {
 	ShutdownDeadline time.Duration
 	StdoutStall      time.Duration
 	ErrorBodyWait    time.Duration
+	StoreTimeout     time.Duration
 	Now              func() time.Time
 
 	// Test hooks. httpClient replaces the loopback client, so a test can
@@ -75,6 +76,9 @@ func (o *Options) defaults() {
 	}
 	if o.ErrorBodyWait == 0 {
 		o.ErrorBodyWait = 5 * time.Second
+	}
+	if o.StoreTimeout == 0 {
+		o.StoreTimeout = contract.StoreReadTimeout
 	}
 	if o.Now == nil {
 		o.Now = time.Now
@@ -128,7 +132,9 @@ type server struct {
 	accepted   sync.WaitGroup
 	workers    sync.WaitGroup
 	// progress is when stdout last took a piece of the line being
-	// written; zero while the writer is idle
+	// written, as a monotonic offset from epoch; zero while the writer is
+	// idle. The stall timer never looks at the wall clock, which can jump.
+	epoch    time.Time
 	progress atomic.Int64
 
 	renewMu sync.Mutex
@@ -162,12 +168,13 @@ func Serve(ctx context.Context, o Options) int {
 	s := &server{
 		o:        o,
 		log:      log,
-		conn:     &connection{id: o.ConnectionID, st: o.Store, now: o.Now, maxAge: o.RefreshAfter, log: log},
+		conn:     &connection{id: o.ConnectionID, st: o.Store, now: o.Now, maxAge: o.RefreshAfter, timeout: o.StoreTimeout, log: log},
 		up:       &upstream{client: o.httpClient, timeout: o.ExchangeTimeout, errBodyFor: o.ErrorBodyWait},
 		out:      make(chan *reply, contract.QueueSize),
 		queue:    make(chan *call, contract.QueueSize),
 		broken:   make(chan struct{}),
 		runCtx:   runCtx,
+		epoch:    time.Now(),
 		drop:     make(chan session, contract.QueueSize),
 		dropDone: make(chan struct{}),
 		live:     map[string]*call{},
@@ -367,7 +374,7 @@ func (s *server) writer() {
 			}
 			for line := r.line; len(line) > 0; {
 				n := min(len(line), writePiece)
-				s.progress.Store(s.o.Now().UnixNano())
+				s.progress.Store(s.elapsed())
 				if _, err := s.o.Out.Write(line[:n]); err != nil {
 					s.progress.Store(0)
 					s.breakStdout()
@@ -385,6 +392,9 @@ func (s *server) writer() {
 	}
 }
 
+// elapsed is the monotonic time since the server started, never zero.
+func (s *server) elapsed() int64 { return int64(time.Since(s.epoch)) + 1 }
+
 // watchStdout treats a write that makes no progress for the stall window
 // as a broken stdout.
 func (s *server) watchStdout() {
@@ -398,7 +408,7 @@ func (s *server) watchStdout() {
 		select {
 		case <-t.C:
 			at := s.progress.Load()
-			if at != 0 && s.o.Now().Sub(time.Unix(0, at)) >= s.o.StdoutStall {
+			if at != 0 && time.Duration(s.elapsed()-at) >= s.o.StdoutStall {
 				s.breakStdout()
 				return
 			}
@@ -1084,8 +1094,8 @@ func (s *server) closeDrop() {
 // only while this holds: the bearer never goes to a port Anytype has left,
 // where another user's program may now listen.
 func (s *server) stillHome(ctx context.Context, snap snapshot) bool {
-	cur, err := s.conn.current(ctx)
-	return err == nil && cur.port == snap.port && cur.key == snap.key
+	cur, ok := s.conn.confirmed(ctx)
+	return ok && cur.port == snap.port && cur.key == snap.key
 }
 
 // cleaner ends dropped sessions one at a time, each with the snapshot that

@@ -15,7 +15,7 @@ import (
 // The desktop app never replaces a stable copy with a lower Rev, and the
 // Claude bundle's version is 2.<Rev>.0. guard_test.go fails when the
 // sources or a dependency version change without a bump.
-const Rev = 3
+const Rev = 4
 
 // Set at link time (-ldflags -X main.…).
 //

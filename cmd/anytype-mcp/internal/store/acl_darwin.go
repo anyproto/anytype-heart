@@ -6,10 +6,28 @@ import (
 	"encoding/binary"
 	"errors"
 	"os"
+	"syscall"
 	"unsafe"
 
 	"golang.org/x/sys/unix"
 )
+
+// getattrlist(2) and fgetattrlist(2) from libSystem. x/sys exports no
+// wrapper for them, so they are bound here the way x/sys binds libc on
+// darwin: a dynamic import and an assembly trampoline (acl_darwin.s),
+// called through the runtime's libc call path. No cgo, and no raw syscall
+// numbers, which Apple does not keep stable.
+
+//go:cgo_import_dynamic libc_getattrlist getattrlist "/usr/lib/libSystem.B.dylib"
+//go:cgo_import_dynamic libc_fgetattrlist fgetattrlist "/usr/lib/libSystem.B.dylib"
+
+var (
+	libc_getattrlist_trampoline_addr  uintptr //nolint:revive,stylecheck // the linker's name
+	libc_fgetattrlist_trampoline_addr uintptr //nolint:revive,stylecheck // the linker's name
+)
+
+//go:linkname syscall_syscall6 syscall.syscall6
+func syscall_syscall6(fn, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uintptr, err syscall.Errno) //nolint:revive,stylecheck
 
 // macOS evaluates ACL entries before the mode bits, so a folder that reads
 // 0700 can still be open to another user (Finder's "Sharing & Permissions"
@@ -30,12 +48,6 @@ const (
 	aceKindDeny = 2
 
 	aclBuffer = 64 << 10
-
-	// getattrlist(2) and fgetattrlist(2). x/sys exports no wrapper for
-	// them, and the binary is built without cgo, so they are called by
-	// number.
-	sysGetattrlist  = 220
-	sysFgetattrlist = 228
 )
 
 func attrList() unix.Attrlist {
@@ -49,7 +61,7 @@ func pathACL(path string) (aclInfo, error) {
 	}
 	list := attrList()
 	buf := make([]byte, aclBuffer)
-	_, _, errno := unix.Syscall6(sysGetattrlist, uintptr(unsafe.Pointer(p)), uintptr(unsafe.Pointer(&list)),
+	_, _, errno := syscall_syscall6(libc_getattrlist_trampoline_addr, uintptr(unsafe.Pointer(p)), uintptr(unsafe.Pointer(&list)),
 		uintptr(unsafe.Pointer(&buf[0])), uintptr(len(buf)), unix.FSOPT_NOFOLLOW, 0)
 	if errno != 0 {
 		return aclInfo{}, errno
@@ -60,7 +72,7 @@ func pathACL(path string) (aclInfo, error) {
 func fileACL(fh *os.File) (aclInfo, error) {
 	list := attrList()
 	buf := make([]byte, aclBuffer)
-	_, _, errno := unix.Syscall6(sysFgetattrlist, fh.Fd(), uintptr(unsafe.Pointer(&list)),
+	_, _, errno := syscall_syscall6(libc_fgetattrlist_trampoline_addr, fh.Fd(), uintptr(unsafe.Pointer(&list)),
 		uintptr(unsafe.Pointer(&buf[0])), uintptr(len(buf)), 0, 0)
 	if errno != 0 {
 		return aclInfo{}, errno

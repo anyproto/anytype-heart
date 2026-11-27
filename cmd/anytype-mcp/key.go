@@ -9,6 +9,7 @@ import (
 	"io"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/internal/store"
@@ -17,8 +18,17 @@ import (
 const (
 	expectAbsent = "absent"
 	lockWait     = 10 * time.Second
-	verbTimeout  = 30 * time.Second
 	maxPayload   = 16 << 10
+)
+
+// verbTimeout bounds a key verb end to end: reading stdin, taking the
+// lock and the store's I/O. commitGrace is how long a write that is
+// already replacing the item when the deadline passes gets to finish
+// before the verb reports it unconfirmed. Variables so tests can shorten
+// them.
+var (
+	verbTimeout = 30 * time.Second
+	commitGrace = 5 * time.Second
 )
 
 var stampRe = regexp.MustCompile(`^[0-9a-f]{16}@[1-9][0-9]{0,17}$`)
@@ -55,20 +65,94 @@ type keyEnv struct {
 	st     store.Store
 	stdout io.Writer
 	stderr io.Writer
+
+	// the verb's deadline: once expired, the verb's own goroutine prints
+	// nothing more and replaces nothing; committing means it reached the
+	// point of replacing or removing the item before the deadline
+	mu         sync.Mutex
+	expired    bool
+	committing bool
 }
 
-func (e *keyEnv) print(v any) {
+// emit writes the one JSON line and the stderr note. The caller holds mu.
+func (e *keyEnv) emit(v any, note string) {
 	line, err := json.Marshal(v)
 	if err != nil {
 		line = []byte(`{"ok":false,"reason":"internal error"}`)
 	}
 	fmt.Fprintln(e.stdout, string(line))
+	if note != "" {
+		fmt.Fprintf(e.stderr, "anytype-mcp: %s\n", note)
+	}
+}
+
+func (e *keyEnv) print(v any) { e.say(v, "") }
+
+// say is how the verb speaks: never after its deadline.
+func (e *keyEnv) say(v any, note string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.expired {
+		return
+	}
+	e.emit(v, note)
+}
+
+// mayCommit is the store's commit gate: the item is replaced or removed
+// only if the deadline has not passed.
+func (e *keyEnv) mayCommit() bool {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.expired {
+		return false
+	}
+	e.committing = true
+	return true
+}
+
+// bounded runs a verb under its deadline. When the deadline passes before
+// the verb reached its commit point, nothing was and nothing will be
+// written: exit 7. When it passes while the item is being replaced, the
+// verb gets a short grace to finish; after that the outcome is reported
+// as unconfirmed, never as "nothing changed". The caller's os.Exit ends
+// whatever is still stuck, and the lock dies with the process.
+func (e *keyEnv) bounded(verb func() int) int {
+	done := make(chan int, 1)
+	go func() { done <- verb() }()
+	timer := time.NewTimer(verbTimeout)
+	defer timer.Stop()
+	select {
+	case code := <-done:
+		return code
+	case <-timer.C:
+	}
+	e.mu.Lock()
+	if !e.committing {
+		e.expired = true
+		const reason = "timed out: nothing was changed, try again"
+		e.emit(keyResult{Reason: reason, Store: store.ReasonUnreachable}, reason)
+		e.mu.Unlock()
+		return exitTemporary
+	}
+	e.mu.Unlock()
+	grace := time.NewTimer(commitGrace)
+	defer grace.Stop()
+	select {
+	case code := <-done:
+		return code
+	case <-grace.C:
+	}
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.expired = true
+	const reason = "timed out while the item was being changed: check before retrying"
+	e.emit(keyResult{Unconfirmed: true, Reason: reason}, reason)
+	return exitInternal
 }
 
 // fail prints the failure line. Nothing here ever carries the key.
 func (e *keyEnv) fail(code int, reason string, storeState string) int {
-	e.print(keyResult{Reason: reason, Store: storeState})
-	fmt.Fprintf(e.stderr, "anytype-mcp: %s\n", reason)
+	e.say(keyResult{Reason: reason, Store: storeState}, reason)
 	return code
 }
 
@@ -92,19 +176,19 @@ func oneLine(err error) string { return strings.ReplaceAll(err.Error(), "\n", " 
 // rule or the error (never a value).
 func (e *keyEnv) storeFail(err error) int {
 	state, code := storeState(err)
-	fmt.Fprintf(e.stderr, "anytype-mcp: %s\n", oneLine(err))
+	reason := "the item store failed"
 	if code == exitTemporary {
-		return e.fail(code, "the item store is not ready ("+state+"): nothing was changed, try again", state)
+		reason = "the item store is not ready (" + state + "): nothing was changed, try again"
 	}
-	return e.fail(code, "the item store failed", state)
+	e.say(keyResult{Reason: reason, Store: state}, oneLine(err)+"\nanytype-mcp: "+reason)
+	return code
 }
 
 // unconfirmed reports a write or a delete the store took but could not
 // confirm.
 func (e *keyEnv) unconfirmed(err error) int {
 	const reason = "the item was changed but that could not be confirmed: check before retrying"
-	e.print(keyResult{Unconfirmed: true, Reason: reason})
-	fmt.Fprintf(e.stderr, "anytype-mcp: %s (%s)\n", reason, oneLine(err))
+	e.say(keyResult{Unconfirmed: true, Reason: reason}, reason+" ("+oneLine(err)+")")
 	return exitInternal
 }
 
@@ -196,24 +280,33 @@ func keyCmd(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return usageError(stderr, "--port and --tier are required")
 	}
 
+	e := &keyEnv{st: store.Open(namespace), stdout: stdout, stderr: stderr}
+	return e.run(verb, f, stdin)
+}
+
+// run executes one verb under the verb deadline, which covers reading
+// stdin, taking the lock and every store call.
+func (e *keyEnv) run(verb string, f keyFlags, stdin io.Reader) int {
 	ctx, cancel := context.WithTimeout(context.Background(), verbTimeout)
 	defer cancel()
-	e := &keyEnv{st: store.Open(namespace), stdout: stdout, stderr: stderr}
-	switch verb {
-	case "check":
-		return e.check(ctx, f)
-	case "set":
-		// the payload is read and judged before the lock is taken
-		payload, code := readPayload(stdin, e)
-		if code != exitOK {
-			return code
+	ctx = store.WithCommitGate(ctx, e.mayCommit)
+	return e.bounded(func() int {
+		switch verb {
+		case "check":
+			return e.check(ctx, f)
+		case "set":
+			// the payload is read and judged before the lock is taken
+			payload, code := readPayload(stdin, e)
+			if code != exitOK {
+				return code
+			}
+			return e.withLock(ctx, f.connection, func() int { return e.set(ctx, f, payload) })
+		case "retarget":
+			return e.withLock(ctx, f.connection, func() int { return e.retarget(ctx, f) })
+		default:
+			return e.withLock(ctx, f.connection, func() int { return e.remove(ctx, f) })
 		}
-		return e.withLock(ctx, f.connection, func() int { return e.set(ctx, f, payload) })
-	case "retarget":
-		return e.withLock(ctx, f.connection, func() int { return e.retarget(ctx, f) })
-	default:
-		return e.withLock(ctx, f.connection, func() int { return e.remove(ctx, f) })
-	}
+	})
 }
 
 type setPayload struct {
@@ -262,10 +355,16 @@ func (e *keyEnv) commit(ctx context.Context, id string, next store.Item) int {
 	}
 	if err := e.st.Write(ctx, id, raw); err != nil {
 		var taken *store.UnconfirmedError
-		if errors.As(err, &taken) {
+		if !errors.As(err, &taken) {
+			// the store proved the item was not replaced
+			return e.storeFail(err)
+		}
+		// an error after the item may have been replaced: the item itself
+		// says what happened. In place is ok; anything else is
+		// unconfirmed, never "nothing changed".
+		if back, absent, rerr := current(ctx, e.st, id); rerr != nil || absent || back != next {
 			return e.unconfirmed(err)
 		}
-		return e.storeFail(err)
 	}
 	back, absent, err := current(ctx, e.st, id)
 	if err != nil {
@@ -326,10 +425,14 @@ func (e *keyEnv) remove(ctx context.Context, f keyFlags) int {
 		case errors.Is(err, store.ErrNotFound):
 			return e.fail(exitNoItem, "no item for this connection", "")
 		case errors.As(err, &taken):
-			// the item is gone; only its confirmation failed
-			return e.unconfirmed(err)
+			// an error after the item may have been removed: gone is ok,
+			// anything else is unconfirmed
+			if _, absent, rerr := current(ctx, e.st, f.connection); rerr != nil || !absent {
+				return e.unconfirmed(err)
+			}
+		default:
+			return e.storeFail(err)
 		}
-		return e.storeFail(err)
 	}
 	e.print(keyResult{OK: true})
 	return exitOK
@@ -369,7 +472,6 @@ func (e *keyEnv) check(ctx context.Context, f keyFlags) int {
 	}
 	state, code := storeState(err)
 	out.Store = state
-	e.print(out)
-	fmt.Fprintf(e.stderr, "anytype-mcp: %s\n", oneLine(err))
+	e.say(out, oneLine(err))
 	return code
 }

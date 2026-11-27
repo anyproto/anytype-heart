@@ -614,7 +614,6 @@ func TestExitSevenMeansNothingWasWritten(t *testing.T) {
 	next := store.Item{V: 1, Rev: 1, Key: canary, Account: "A", Port: 1, Tier: "small"}
 	for name, st := range map[string]store.Store{
 		"the read-back fails":           &readBackFails{Mem: store.NewMem()},
-		"the store could not confirm":   &takenThenFails{Mem: store.NewMem()},
 		"the read-back shows something": &writesElse{Mem: store.NewMem()},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -667,17 +666,13 @@ func TestDeleteReceipt(t *testing.T) {
 	it := store.Item{V: 1, Rev: 1, Key: canary, Account: "A", Port: 1, Tier: "small"}
 	flags := keyFlags{connection: "c", expect: it.Stamp(), account: "A"}
 
-	t.Run("an unlink the store could not make durable is unconfirmed, exit 1", func(t *testing.T) {
+	t.Run("an error after the unlink, with the item provably gone, is ok", func(t *testing.T) {
 		st := &deleteUnconfirmed{Mem: store.NewMem()}
 		st.Put("c", it)
 		var out, errb bytes.Buffer
 		e := &keyEnv{st: st, stdout: &out, stderr: &errb}
-		assert.Equal(t, exitInternal, e.remove(context.Background(), flags))
-		var line map[string]any
-		require.NoError(t, json.Unmarshal(out.Bytes(), &line))
-		assert.Equal(t, true, line["unconfirmed"])
-		_, err := st.Mem.Read(context.Background(), "c")
-		assert.ErrorIs(t, err, store.ErrNotFound, "the item is gone")
+		assert.Equal(t, exitOK, e.remove(context.Background(), flags))
+		assert.JSONEq(t, `{"ok":true}`, out.String())
 	})
 
 	t.Run("a delete the store refused is exit 7 and the item stays", func(t *testing.T) {

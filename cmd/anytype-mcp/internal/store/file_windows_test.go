@@ -174,3 +174,24 @@ func TestWindowsFolderLink(t *testing.T) {
 	requireDenied(t, err, "folder symlink")
 	requireDenied(t, f.Write(ctx, "a", []byte("y")), "folder symlink")
 }
+
+// M4: a delete is flushed before its receipt.
+func TestWindowsDeleteIsDurable(t *testing.T) {
+	f := newFile(t)
+	require.NoError(t, f.Write(ctx, "a", []byte("one")))
+	require.NoError(t, syncDir(f.Dir()), "the items folder's handle can be flushed")
+	require.NoError(t, f.Delete(ctx, "a"), "a confirmed delete, not an unconfirmed one")
+	_, err := f.Read(ctx, "a")
+	require.ErrorIs(t, err, ErrNotFound)
+
+	// when the flush fails, the receipt says so
+	require.NoError(t, f.Write(ctx, "a", []byte("two")))
+	f.hook = func(stage string) error {
+		if stage == "after-unlink" {
+			return os.ErrInvalid
+		}
+		return nil
+	}
+	var unconfirmed *UnconfirmedError
+	require.ErrorAs(t, f.Delete(ctx, "a"), &unconfirmed)
+}

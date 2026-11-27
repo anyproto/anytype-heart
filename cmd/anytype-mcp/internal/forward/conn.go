@@ -26,7 +26,11 @@ type connection struct {
 	st     store.Store
 	now    func() time.Time
 	maxAge time.Duration
-	log    *logger
+	// timeout bounds one read of the item; pending is a read that has not
+	// come back yet
+	timeout time.Duration
+	pending chan readResult
+	log     *logger
 
 	gone    atomic.Bool // set with dead
 	mu      sync.Mutex
@@ -34,18 +38,62 @@ type connection struct {
 	account string
 	tier    string
 	snap    snapshot
-	readAt  time.Time
+	readAt  time.Time // the last attempt
+	okAt    time.Time // the last read that succeeded
 }
 
 // errNotConnected is every request's answer once the connection is dead.
 var errNotConnected = errors.New("not connected")
 
+type readResult struct {
+	it  store.Item
+	err error
+}
+
+// read reads the item off the control path. The store call runs in its
+// own goroutine and is waited for at most the read timeout: a read that
+// doesn't return in time (a stalled network home) is "can't be read right
+// now" for this attempt. Its goroutine is abandoned, never awaited: while
+// it is still out, later attempts only look whether it has come back, so
+// a stuck store can't hold a request, an EOF or a signal.
 func (c *connection) read(ctx context.Context) (store.Item, error) {
-	raw, err := c.st.Read(ctx, c.id)
-	if err != nil {
-		return store.Item{}, err
+	wait := c.timeout
+	ch := c.pending
+	if ch == nil {
+		ch = make(chan readResult, 1)
+		c.pending = ch
+		go func() { //nolint:gosec // the read outlives the request that started it, by design
+			raw, err := c.st.Read(context.Background(), c.id)
+			var it store.Item
+			if err == nil {
+				it, err = store.DecodeItem(raw)
+			}
+			ch <- readResult{it, err}
+		}()
+	} else {
+		wait = 0
 	}
-	return store.DecodeItem(raw)
+	late := store.Temporary(store.ReasonUnreachable, errors.New("the item store did not answer in time"))
+	if wait <= 0 {
+		select {
+		case r := <-ch:
+			c.pending = nil
+			return r.it, r.err
+		default:
+			return store.Item{}, late
+		}
+	}
+	timer := time.NewTimer(wait)
+	defer timer.Stop()
+	select {
+	case r := <-ch:
+		c.pending = nil
+		return r.it, r.err
+	case <-timer.C:
+		return store.Item{}, late
+	case <-ctx.Done():
+		return store.Item{}, late
+	}
 }
 
 func describe(err error) string {
@@ -77,6 +125,7 @@ func (c *connection) start(ctx context.Context) {
 	c.account, c.tier = it.Account, it.Tier
 	c.snap = snapshot{key: it.Key, port: it.Port, tier: it.Tier}
 	c.readAt = c.now()
+	c.okAt = c.readAt
 	c.log.printf("connected: tier %s, item rev %d", it.Tier, it.Rev)
 }
 
@@ -107,6 +156,20 @@ func (c *connection) current(ctx context.Context) (snapshot, error) {
 		return snapshot{}, errNotConnected
 	}
 	return c.snap, nil
+}
+
+// confirmed is current, but only when the snapshot rests on a read that
+// succeeded within the refresh window. Where the bearer is about to go
+// somewhere on the strength of "the item still says so", an item that
+// can't be read right now is not good enough.
+func (c *connection) confirmed(ctx context.Context) (snapshot, bool) {
+	snap, err := c.current(ctx)
+	if err != nil {
+		return snapshot{}, false
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return snap, c.now().Sub(c.okAt) < c.maxAge
 }
 
 // refresh re-reads the item now: after a refusal and after a 401.
@@ -153,4 +216,5 @@ func (c *connection) refreshLocked(ctx context.Context) {
 		c.log.printf("item changed: rev %d, port %d", it.Rev, it.Port)
 	}
 	c.snap = next
+	c.okAt = c.readAt
 }

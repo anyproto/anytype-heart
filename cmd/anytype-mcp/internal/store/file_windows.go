@@ -290,5 +290,25 @@ func settle(dir, name string) error {
 	return fh.Close()
 }
 
-// syncDir: NTFS journals directory changes; there is no handle to sync.
-func syncDir(string) error { return nil }
+// syncParent: a new folder is not flushed on Windows; nothing holding a
+// key depends on it, and the first write flushes the item itself.
+func syncParent(string) error { return nil }
+
+// syncDir flushes the folder's handle (FlushFileBuffers), so a removed
+// item is gone durably before the receipt is given. A failure makes the
+// delete unconfirmed.
+func syncDir(dir string) error {
+	p, err := windows.UTF16PtrFromString(dir)
+	if err != nil {
+		return err
+	}
+	h, err := windows.CreateFile(p, windows.GENERIC_WRITE,
+		windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE, nil,
+		windows.OPEN_EXISTING, windows.FILE_FLAG_BACKUP_SEMANTICS, 0)
+	if err != nil {
+		return err
+	}
+	err = windows.FlushFileBuffers(h)
+	ignore(windows.CloseHandle(h))
+	return err
+}

@@ -1,6 +1,7 @@
 package store
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -50,6 +51,11 @@ func OpenAt(home, namespace string) *File {
 
 func (f *File) Kind() string { return "file" }
 
+// FailAt installs a function that can fail a write or a delete at a named
+// stage. It exists for tests of what the verbs report; no flag, file or
+// environment variable reaches it.
+func (f *File) FailAt(hook func(stage string) error) { f.hook = hook }
+
 // Dir is the items folder.
 func (f *File) Dir() string {
 	return filepath.Join(f.home, ".anytype", "ai-connect", f.folder)
@@ -95,7 +101,7 @@ func (f *File) checked(create bool) (string, error) {
 			if err := f.stage("sync-parent"); err != nil {
 				return "", unreachable(err)
 			}
-			if err := syncDir(filepath.Dir(c.dir)); err != nil {
+			if err := syncParent(filepath.Dir(c.dir)); err != nil {
 				return "", unreachable(err)
 			}
 			fi, err = os.Lstat(c.dir)
@@ -152,7 +158,7 @@ func (f *File) stage(name string) error {
 // the item, then made durable. Any failure before the rename removes the
 // temp file and is temporary: nothing was written. After a successful
 // write the item is the only file that holds this connection's key.
-func (f *File) Write(_ context.Context, id string, value []byte) error {
+func (f *File) Write(ctx context.Context, id string, value []byte) error {
 	dir, err := f.checked(true)
 	if err != nil {
 		return err
@@ -191,8 +197,26 @@ func (f *File) Write(_ context.Context, id string, value []byte) error {
 	if err := f.stage("before-rename"); err != nil {
 		return fail(err)
 	}
-	if err := renameIn(dir, tmp, itemName(id)); err != nil {
-		return fail(err)
+	// the commit point: nothing is replaced once the caller's deadline has
+	// passed
+	if !commitAllowed(ctx) {
+		return fail(errors.New("the deadline passed before the item was replaced"))
+	}
+	err = renameIn(dir, tmp, itemName(id))
+	if err == nil {
+		err = f.stage("rename-result")
+	}
+	if err != nil {
+		// an error from the rename does not prove the rename did not
+		// happen (a network home): the item itself says which it was
+		switch f.holds(dir, id, value) {
+		case holdsNew:
+		case holdsOther:
+			return fail(err)
+		default:
+			ignore(removeIn(dir, tmp))
+			return &UnconfirmedError{Err: err}
+		}
 	}
 	// from here the new item is in place
 	if err := f.stage("after-rename"); err != nil {
@@ -233,7 +257,7 @@ func ignore(error) {}
 // Delete removes the item and every temp file of the connection, and
 // makes that durable: after it no file holds this connection's key. A
 // failure after the item is gone is unconfirmed, never "try again".
-func (f *File) Delete(_ context.Context, id string) error {
+func (f *File) Delete(ctx context.Context, id string) error {
 	dir, err := f.checked(false)
 	if err != nil {
 		return err
@@ -241,13 +265,25 @@ func (f *File) Delete(_ context.Context, id string) error {
 	if err := f.sweep(dir, id); err != nil {
 		return err
 	}
+	if !commitAllowed(ctx) {
+		return unreachable(errors.New("the deadline passed before the item was removed"))
+	}
 	err = removeIn(dir, itemName(id))
-	switch {
-	case err == nil:
-	case errors.Is(err, os.ErrNotExist):
+	if errors.Is(err, os.ErrNotExist) {
 		return ErrNotFound
-	default:
-		return unreachable(err)
+	}
+	if err == nil {
+		err = f.stage("unlink-result")
+	}
+	if err != nil {
+		// as with the rename: the item says whether the unlink happened
+		switch f.holds(dir, id, nil) {
+		case holdsNothing:
+		case holdsOther:
+			return unreachable(err)
+		default:
+			return &UnconfirmedError{Err: err}
+		}
 	}
 	if err := f.stage("after-unlink"); err != nil {
 		return &UnconfirmedError{Err: err}
@@ -316,3 +352,52 @@ func removeIn(dir, name string) error {
 
 // busyRetryFor bounds the wait for a file something else holds open.
 const busyRetryFor = 2 * time.Second
+
+// what the item path holds after an operation that reported an error
+const (
+	holdsUnknown = iota // it can't be read: nothing is proven
+	holdsNew            // exactly the value that was being written
+	holdsOther          // some other item: the operation did not happen
+	holdsNothing        // no item
+)
+
+// holds re-reads the item to learn whether an operation that reported an
+// error took effect anyway.
+func (f *File) holds(dir, id string, value []byte) int {
+	if err := f.stage("holds"); err != nil {
+		return holdsUnknown
+	}
+	data, err := f.readItem(dir, itemName(id))
+	switch {
+	case errors.Is(err, ErrNotFound):
+		if value == nil {
+			return holdsNothing
+		}
+		return holdsOther
+	case err == nil && value != nil && bytes.Equal(data, value):
+		return holdsNew
+	case err == nil || errors.Is(err, ErrInvalidItem):
+		return holdsOther
+	}
+	return holdsUnknown
+}
+
+type commitGateKey struct{}
+
+// WithCommitGate attaches a gate that a write or a delete asks at its
+// commit point, just before the item is replaced or removed. A gate that
+// says no stops the operation with nothing changed: the key verbs use it
+// so that nothing is written after their deadline.
+func WithCommitGate(ctx context.Context, allow func() bool) context.Context {
+	return context.WithValue(ctx, commitGateKey{}, allow)
+}
+
+func commitAllowed(ctx context.Context) bool {
+	if ctx.Err() != nil {
+		return false
+	}
+	if allow, ok := ctx.Value(commitGateKey{}).(func() bool); ok {
+		return allow()
+	}
+	return true
+}

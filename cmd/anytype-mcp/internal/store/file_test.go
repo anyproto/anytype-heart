@@ -196,3 +196,48 @@ func TestFileReceipts(t *testing.T) {
 		require.ErrorIs(t, err, ErrNotFound)
 	})
 }
+
+// M3 at the store: an error reported by the rename or the unlink is
+// settled by what the item path holds.
+func TestFileSettlesReportedErrors(t *testing.T) {
+	fail := func(stages ...string) func(string) error {
+		return func(s string) error {
+			for _, stage := range stages {
+				if s == stage {
+					return errors.New("injected at " + stage)
+				}
+			}
+			return nil
+		}
+	}
+	t.Run("the rename took effect: the write succeeded", func(t *testing.T) {
+		f := newFile(t)
+		require.NoError(t, f.Write(ctx, "a", []byte("old")))
+		f.FailAt(fail("rename-result"))
+		require.NoError(t, f.Write(ctx, "a", []byte("new")))
+		assert.Empty(t, tempFiles(t, f.Dir()))
+	})
+	t.Run("the rename took effect and the item can't be read: unconfirmed", func(t *testing.T) {
+		f := newFile(t)
+		f.FailAt(fail("rename-result", "holds"))
+		var unconfirmed *UnconfirmedError
+		require.ErrorAs(t, f.Write(ctx, "a", []byte("new")), &unconfirmed)
+	})
+	t.Run("the unlink took effect: the delete succeeded", func(t *testing.T) {
+		f := newFile(t)
+		require.NoError(t, f.Write(ctx, "a", []byte("old")))
+		f.FailAt(fail("unlink-result"))
+		require.NoError(t, f.Delete(ctx, "a"))
+	})
+	t.Run("a closed commit gate stops a write and a delete with nothing changed", func(t *testing.T) {
+		f := newFile(t)
+		require.NoError(t, f.Write(ctx, "a", []byte("old")))
+		closed := WithCommitGate(ctx, func() bool { return false })
+		require.True(t, IsTemporary(f.Write(closed, "a", []byte("new"))))
+		require.True(t, IsTemporary(f.Delete(closed, "a")))
+		raw, err := f.Read(ctx, "a")
+		require.NoError(t, err)
+		assert.Equal(t, "old", string(raw))
+		assert.Empty(t, tempFiles(t, f.Dir()))
+	})
+}
