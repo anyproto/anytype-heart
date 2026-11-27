@@ -17,7 +17,7 @@ package v2service
 //     names; unresolved → did-you-mean, never a silent no-match
 //  4. global search groups spaces with the same resolved query, merges by
 //     the requested sort, and reports lower-bound totals from lookahead
-//  5. the unguarded-date-comparison hazard rides the C6 warnings channel
+//  5. warning-grade codec findings (an ignored date preset) ride the C6 warnings channel
 //  6. `type` is a filterable pseudo-key; the top-level `type` composes by AND
 
 import (

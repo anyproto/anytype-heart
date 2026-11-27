@@ -632,9 +632,12 @@ func (b *byPrecomputedKey) Swap(i, j int) {
 // literally it would match nothing, v1's silent-empty-result bug. The
 // snapshot is a per-read copy, so substitution never touches live state.
 // danglingFilterWarnings reports the view filters keyed on a property the
-// space no longer holds. Such a filter matches nothing, so the read comes back
-// empty — and since a stored view now applies by default, that empty page is
-// what an ordinary caller sees, with no signal that the view is the reason.
+// space no longer holds. A missing property reads as no value, so what such a
+// filter does depends on its condition (`=` fails, `!=` holds), and the read
+// can still come back empty — since a stored view now applies by default, that
+// empty page is what an ordinary caller sees, with no signal that the view is
+// the reason. The warning reports the absence and does not blame the property
+// for the empty page.
 // This file's contract is that an unresolvable filter degrades to a warning
 // and never to a silent no-match, which substitutePlaceholders already honours
 // for placeholders; a deleted property is the same failure through a different
@@ -674,6 +677,9 @@ func (s *Service) danglingFilterWarnings(spaceId string, view *model.BlockConten
 	}
 	missing := make([]string, 0, len(keys))
 	for key := range keys {
+		if bundle.HasRelation(domain.RelationKey(key)) {
+			key = bundle.ApiSlug(key) // the spelling the API serves; a removed space-minted key has no other
+		}
 		missing = append(missing, strconv.Quote(key))
 	}
 	sort.Strings(missing)
@@ -683,9 +689,9 @@ func (s *Service) danglingFilterWarnings(spaceId string, view *model.BlockConten
 	}
 	return []v2model.Issue{v2model.Issue{
 		Path: "view",
-		Message: fmt.Sprintf("the view %s filters on %s no property in this space answers to (%s), so it matches nothing",
+		Message: fmt.Sprintf("the view %s returned no rows and filters on %s no property in this space answers to (%s)",
 			describeView(view), noun, strings.Join(missing, ", ")),
-	}.Hintf("the property was probably deleted; edit the view's filters, or pass %s to read through another view", v2model.Resend("view", "<view_id>"))}
+	}.Hintf("the property was probably deleted, so those filters may no longer mean what they did; edit the view's filters, or pass %s to read through another view", v2model.Resend("view", "<view_id>"))}
 }
 
 func (s *Service) substitutePlaceholders(spaceId, hostId string, filters []*model.BlockContentDataviewFilter) ([]*model.BlockContentDataviewFilter, []v2model.Issue) {

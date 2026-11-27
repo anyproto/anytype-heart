@@ -595,7 +595,7 @@ func (a *v2StateApplier) applyViewSorts(raw json.RawMessage, view map[string]any
 // gate first (a set PERSISTS its filter, so a malformed shape is not a bad
 // query but a view that quietly matches everything, for good), then the
 // codec's vocabulary and date-semantics checks — and replaces the view's
-// filters. The §6.2 unguarded-date-comparison finding rides the C11 warnings
+// filters. A codec finding such as an ignored date preset rides the C11 warnings
 // channel, exactly as on document import.
 func (a *v2StateApplier) applyViewFilters(raw json.RawMessage, view map[string]any, path string, issues *[]v2model.Issue, keyUses *[]viewKeyUse) error {
 	nodes, err := decodeFilterNodes(raw, "") // the applier canonicalizes after this, so these leaves are as sent

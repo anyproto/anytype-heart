@@ -161,8 +161,8 @@ func TestV2GetQueryObjects(t *testing.T) {
 	// A stored view now applies by default, so a filter keyed on a property
 	// the space no longer holds empties the page for every caller — the
 	// silent no-match this file's contract rules out. The rows are still
-	// empty (the filter genuinely matches nothing); what must not be empty is
-	// the explanation.
+	// empty; what must not be empty is the explanation, which names the absent
+	// property and does not predict what the filter does.
 	t.Run("a default view filtering on a deleted property warns instead of emptying silently", func(t *testing.T) {
 		// given: one stored view, filtering on a key no live property has
 		fx := searchSetup(t)
@@ -191,7 +191,8 @@ func TestV2GetQueryObjects(t *testing.T) {
 		}
 		assert.Contains(t, joined, "a_property_that_was_deleted")
 		assert.Contains(t, joined, "By status")
-		assert.Contains(t, joined, "matches nothing")
+		assert.Contains(t, joined, "returned no rows")
+		assert.NotContains(t, joined, "matches nothing")
 	})
 
 	t.Run("a query whose dataview has no views reads its source only", func(t *testing.T) {

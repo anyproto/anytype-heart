@@ -428,6 +428,6 @@ func TestSearchStreamFrames(t *testing.T) {
 		events := decodeSearchFrames(t, stream.Snapshot())
 		require.Len(t, events, 1)
 		require.Len(t, events[0].Warnings, 1)
-		assert.Contains(t, events[0].Warnings[0].Message, "date_preset")
+		assert.Equal(t, ignoredPresetWarning, events[0].Warnings[0].Message)
 	})
 }

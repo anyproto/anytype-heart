@@ -24,6 +24,12 @@ import (
 // addChoreObjects registers two chore objects (and one plain page) in the
 // test space: chore1 has severity High and an older modification date,
 // chore2 has none and a newer one.
+// ignoredPresetWarning is the codec warning the structured `empty` + `date_preset` probe raises.
+// placeholderWarning is the codec warning a dynamic placeholder on a text property raises.
+const placeholderWarning = `"_filter_template_2_" resolves to an object id, which a "text" property cannot hold; the placeholder is substituted only on object- or file-valued properties and is compared as a literal string elsewhere`
+
+const ignoredPresetWarning = `date_preset "today" is ignored under condition "empty"; a preset's range is applied on equal · greater · greater_or_equal · in · less · less_or_equal`
+
 func (fx *v2Fixture) addChoreObjects(t *testing.T) {
 	fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
 		{
@@ -372,28 +378,54 @@ func TestV2SearchObjects(t *testing.T) {
 		// then — the import warning text rides the C6 channel
 		require.NoError(t, err)
 		require.Len(t, warnings, 1)
-		assert.Equal(t, "/filters/0", warnings[0].Path)
-		assert.Contains(t, warnings[0].Message, "date_preset")
+		assert.Equal(t, v2model.Issue{Path: "/filters/0", Message: ignoredPresetWarning}, warnings[0])
 	})
 
-	t.Run("a date less filter does not claim undated objects match (GO-7613)", func(t *testing.T) {
-		// given: the store never matches an ordering condition against a
-		// missing value, so there is nothing to warn about
+	t.Run("a date less filter leaves undated objects out and warns about nothing (GO-7613)", func(t *testing.T) {
+		// given: chore3 has no lastModifiedDate; the store never matches an
+		// ordering condition against a missing value
 		fx := searchSetup(t)
-		for _, filter := range []string{
-			`lastModifiedDate < today()`,
-			`lastModifiedDate <= today()`,
-			`lastModifiedDate < today() OR lastModifiedDate IS EMPTY`,
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("chore3"),
+			bundle.RelationKeyName:           domain.String("Undated"),
+			bundle.RelationKeyType:           domain.String("type-chore"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+		}})
+		for _, tc := range []struct {
+			filter string
+			want   []string
+		}{
+			{`lastModifiedDate < today()`, []string{"chore1", "chore2"}},
+			{`lastModifiedDate <= today()`, []string{"chore1", "chore2"}},
+			{`lastModifiedDate < today() OR lastModifiedDate IS EMPTY`, []string{"chore1", "chore2", "chore3"}},
 		} {
-			req := v2model.SearchRequest{Type: "chore", Filter: filter}
+			t.Run(tc.filter, func(t *testing.T) {
+				req := v2model.SearchRequest{Type: "chore", Filter: tc.filter}
 
-			// when
-			_, _, _, warnings, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
+				// when
+				rows, _, _, warnings, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
 
-			// then
-			require.NoError(t, err, filter)
-			assert.Empty(t, warnings, filter)
+				// then
+				require.NoError(t, err)
+				assert.Empty(t, warnings)
+				assert.ElementsMatch(t, tc.want, rowIds(rows))
+			})
 		}
+	})
+
+	t.Run("a compact filter's warning is addressed at /filter", func(t *testing.T) {
+		// given: a dynamic placeholder on a text property, the one warning the
+		// string grammar lets through to the codec
+		fx := searchSetup(t)
+		req := v2model.SearchRequest{Type: "chore", Filter: `name = "_filter_template_2_"`}
+
+		// when
+		_, _, _, warnings, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, warnings, 1)
+		assert.Equal(t, v2model.Issue{Path: "/filter", Message: placeholderWarning}, warnings[0])
 	})
 
 	t.Run("unknown fields keys are rejected (rule 1 covers field keys)", func(t *testing.T) {
@@ -551,9 +583,8 @@ func TestV2SearchStructuredDateValues(t *testing.T) {
 	t.Run("unix seconds on a date property pass", func(t *testing.T) {
 		fx := searchSetup(t)
 		fx.addDateProperty(t)
-		// greater, because an unset date compares BELOW any set value — with
-		// `less` every object without the property would match (the separate
-		// unguarded-date warning covers that hazard)
+		// greater: the store never matches an ordering condition against an
+		// unset date, so `less` would leave out the same objects
 		req := v2model.SearchRequest{
 			Filters: json.RawMessage(`[{"property":"verifiedUntil","condition":"greater","value":1785542400}]`),
 		}
@@ -1003,7 +1034,7 @@ func TestV2GlobalSearchObjects(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.Len(t, warnings, 1, "the same (path, message) warning from N spaces collapses to one")
-		assert.Contains(t, warnings[0].Message, "date_preset")
+		assert.Equal(t, ignoredPresetWarning, warnings[0].Message)
 	})
 
 	t.Run("a space being removed is not searched (and gets no index minted)", func(t *testing.T) {

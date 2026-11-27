@@ -225,8 +225,8 @@ func VersionUnsupported(documentVersion, supportedVersion string) *Error {
 
 // ListResponse is the C10 paginated list envelope: default limit 25,
 // has_more, and a steering message when the result is truncated. Warnings
-// carry warning-grade C6 issues (C11 — e.g. the unguarded-date-comparison
-// hazard on search, or spaces a global search skipped).
+// carry warning-grade C6 issues (C11 — e.g. an ignored date preset
+// on search, or spaces a global search skipped).
 type ListResponse[T any] struct {
 	Data     []T     `json:"data"`
 	Total    int     `json:"total"`

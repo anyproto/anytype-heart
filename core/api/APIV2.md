@@ -1411,9 +1411,13 @@ Secondary example — programmatic composition (the structured array):
      bound when clipped, and `has_more` reports whether another page is
      available.
   5. **Ordering conditions skip undated objects.** SPEC §6.2: `less`,
-     `lessOrEqual`, `greater` and `greaterOrEqual` never match an object with
-     no value for the property (any-store v2 compares only values of one
-     type), so `dueDate < today()` lists dated objects only. To include the
+     `less_or_equal`, `greater` and `greater_or_equal` (the spellings the
+     structured form accepts) compared against a date or a date preset never
+     match an object with no value for the property (any-store v2 compares
+     only values of one type), so `dueDate < today()` lists dated objects
+     only. A `less_or_equal` with no value compares against null and a
+     `valueFromRelation` operand compares encoded bytes; both can match a
+     missing value. To include the
      undated, OR an `empty` leaf in. Neither import nor search warns about
      this.
   6. **`type` is a filterable pseudo-key.** The top-level `type` stays a
@@ -1472,8 +1476,8 @@ Secondary example — programmatic composition (the structured array):
   the global path (`core/api/v2/service/search.go:178`).
 - **Stored-view execution (`?view=`) substitutes dynamic placeholders.**
   SPEC §6.2's `_filter_template_<n>_` values are client-substituted and opaque
-  to the middleware — a query evaluated server-side against the literal string
-  matches nothing. The handler substitutes `_filter_template_2_` → the
+  to the middleware — a query evaluated server-side compares against the literal
+  string. The handler substitutes `_filter_template_2_` → the
   caller's participant id (`_participant_<space>_<account>`) and
   `_filter_template_1_` → the hosting object id before building the store
   query; any other placeholder degrades to a C6 warning, never a silent

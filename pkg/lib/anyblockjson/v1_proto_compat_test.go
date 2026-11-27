@@ -206,7 +206,9 @@ func TestImportProgressExclusionDropsTheEventMember(t *testing.T) {
 // every other definition (including the notification's existing fields) must
 // still match the pinned canonical source.
 func withoutExportReportAPI(normalized string) string {
+	// Heart and any-block spell the same import differently
 	normalized = strings.ReplaceAll(normalized, `import"pkg/lib/pb/model/protos/export_report.proto";`, "")
+	normalized = strings.ReplaceAll(normalized, `import"format/v1/proto/export_report.proto";`, "")
 	return strings.ReplaceAll(normalized, `model.Export.FormatexportType=3;ExportReportreport=4;stringpath=5;`, `model.Export.FormatexportType=3;`)
 }
 

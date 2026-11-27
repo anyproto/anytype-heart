@@ -212,7 +212,7 @@ prompt with the user, or use a key the user created in **Settings → Local API*
   nested row/column/cell slots included), `created_views` (same, for minted
   view ids), `created` (options minted under `?create_missing_options=true`),
   `diff_stats {blocks_added, blocks_removed, blocks_changed, blocks_moved,
-  properties_changed}`, `warnings` (advisory, e.g. an unguarded date filter).
+  properties_changed}`, `warnings` (advisory, e.g. a date preset the condition ignores).
 - **There is no whole-document replace** — never read a document,
   regenerate it and write it back. Replace a section with
   `replace_subtree`; start over by batching `delete_block`s with the new
@@ -247,8 +247,9 @@ read: no `Idempotency-Key`, `dry_run` ignored.
   channel (`type = "image"`, `type IN (… "file")`) — `size > 5` alone
   matches nothing; compose `type = "image" AND size > 5`. `mimeType` and
   `size` work in fields/filters/sorts.
-- `due_date < …` (and `<=`, `>`, `>=`) never matches objects with **no**
-  date, so they are left out. To include them, add `OR due_date IS EMPTY`.
+- `due_date < …` (and `<=`, `>`, `>=`) against a date or a preset never
+  matches objects with **no** date, so they are left out. To include them,
+  add `OR due_date IS EMPTY`.
 - Full-text `total` is a lower bound while `has_more` is true — walk
   pages, don't plan on the number.
 - Sorts: any property key, `{"property", "direction": "asc|desc"}`;
