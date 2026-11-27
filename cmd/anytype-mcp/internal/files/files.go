@@ -83,7 +83,8 @@ func open(path string, temp bool) (*Dir, error) {
 	if err != nil {
 		return nil, fmt.Errorf("the files folder can't be read: %w", err)
 	}
-	if fi.Mode()&os.ModeSymlink != 0 || !fi.IsDir() {
+	// ModeIrregular is how a Windows junction shows
+	if fi.Mode()&(os.ModeSymlink|os.ModeIrregular) != 0 || !fi.IsDir() {
 		return nil, fmt.Errorf("the files folder is not a real directory (a link is not accepted): %s", path)
 	}
 	if err := checkOwner(path, fi); err != nil {

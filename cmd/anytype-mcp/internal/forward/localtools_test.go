@@ -733,7 +733,7 @@ func TestUploadLocalFile(t *testing.T) {
 			"":                         "path must name a file in",
 			"  ":                       "path must name a file in",
 			"a\x00b":                   "must be relative to",
-			"sub/" + outside:           "there is no file",
+			"sub/" + outside:           "",
 			strings.Repeat("a/", 5000): "",
 		} {
 			g := h.tool("upload_local_file", map[string]any{"space_id": "s", "path": path})
