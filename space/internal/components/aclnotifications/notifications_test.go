@@ -3,16 +3,17 @@ package aclnotifications
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/consensus/consensusproto"
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/cheggaaa/mb/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclnotifications/mock_aclnotifications"
@@ -42,7 +43,7 @@ func TestAclNotificationSender_AddRecords(t *testing.T) {
 		f.notificationSender.EXPECT().LoadFinish().Return(loadChan)
 
 		// when
-		go f.processRecords()
+		require.NoError(t, f.Run(context.Background()))
 		go f.Close(context.Background())
 
 		// then
@@ -76,7 +77,7 @@ func TestAclNotificationSender_AddRecords(t *testing.T) {
 		close(loadChan)
 		f.notificationSender.EXPECT().LoadFinish().Return(loadChan)
 
-		f.identityService.EXPECT().WaitProfile(context.Background(), pubKey.Account()).Return(&model.IdentityProfile{
+		f.identityService.EXPECT().WaitProfile(f.ctx, pubKey.Account()).Return(&model.IdentityProfile{
 			Name:    "test",
 			IconCid: "test",
 		})
@@ -95,7 +96,7 @@ func TestAclNotificationSender_AddRecords(t *testing.T) {
 			Space: "spaceId",
 		}).Return(nil)
 		// when
-		go f.processRecords()
+		require.NoError(t, f.Run(context.Background()))
 		go f.Close(context.Background())
 
 		// then
@@ -140,10 +141,10 @@ func TestAclNotificationSender_AddRecords(t *testing.T) {
 		loadChan := make(chan struct{})
 		close(loadChan)
 		f.notificationSender.EXPECT().LoadFinish().Return(loadChan)
-		f.identityService.EXPECT().GetMyProfileDetails(context.Background()).Return("test", nil, nil)
+		f.identityService.EXPECT().GetMyProfileDetails(f.ctx).Return("test", nil, nil)
 
 		// when
-		go f.processRecords()
+		require.NoError(t, f.Run(context.Background()))
 		go f.Close(context.Background())
 
 		// then
@@ -176,7 +177,7 @@ func TestAclNotificationSender_AddRecords(t *testing.T) {
 		loadChan := make(chan struct{})
 		close(loadChan)
 		f.notificationSender.EXPECT().LoadFinish().Return(loadChan)
-		f.identityService.EXPECT().GetMyProfileDetails(context.Background()).Return(pubKey.Account(), nil, nil)
+		f.identityService.EXPECT().GetMyProfileDetails(f.ctx).Return(pubKey.Account(), nil, nil)
 
 		f.notificationSender.EXPECT().CreateAndSend(&model.Notification{
 			Id:      "recordId",
@@ -191,7 +192,7 @@ func TestAclNotificationSender_AddRecords(t *testing.T) {
 		}).Return(nil)
 
 		// when
-		go f.processRecords()
+		require.NoError(t, f.Run(context.Background()))
 		go f.Close(context.Background())
 
 		// then
@@ -235,7 +236,7 @@ func TestAclNotificationSender_AddRecords(t *testing.T) {
 		close(loadChan)
 		f.notificationSender.EXPECT().LoadFinish().Return(loadChan)
 		// when
-		go f.processRecords()
+		require.NoError(t, f.Run(context.Background()))
 		go f.Close(context.Background())
 
 		// then
@@ -262,10 +263,11 @@ func TestAclNotificationSender_AddRecords(t *testing.T) {
 		close(loadChan)
 		f.notificationSender.EXPECT().LoadFinish().Return(loadChan)
 		// when
-		go f.processRecords()
+		require.NoError(t, f.Run(context.Background()))
 		go f.Close(context.Background())
 
 		// then
+		<-f.done
 		f.notificationSender.AssertNotCalled(t, "CreateAndSend")
 	})
 	t.Run("change permissions notification not for current user", func(t *testing.T) {
@@ -300,10 +302,10 @@ func TestAclNotificationSender_AddRecords(t *testing.T) {
 		loadChan := make(chan struct{})
 		close(loadChan)
 		f.notificationSender.EXPECT().LoadFinish().Return(loadChan)
-		f.identityService.EXPECT().GetMyProfileDetails(context.Background()).Return("test", nil, nil)
+		f.identityService.EXPECT().GetMyProfileDetails(f.ctx).Return("test", nil, nil)
 
 		// when
-		go f.processRecords()
+		require.NoError(t, f.Run(context.Background()))
 		go f.Close(context.Background())
 
 		// then
@@ -342,7 +344,7 @@ func TestAclNotificationSender_AddRecords(t *testing.T) {
 		loadChan := make(chan struct{})
 		close(loadChan)
 		f.notificationSender.EXPECT().LoadFinish().Return(loadChan)
-		f.identityService.EXPECT().GetMyProfileDetails(context.Background()).Return(pubKey.Account(), nil, nil)
+		f.identityService.EXPECT().GetMyProfileDetails(f.ctx).Return(pubKey.Account(), nil, nil)
 
 		f.notificationSender.EXPECT().CreateAndSend(&model.Notification{
 			Id:      "recordId",
@@ -357,7 +359,7 @@ func TestAclNotificationSender_AddRecords(t *testing.T) {
 		}).Return(nil)
 
 		// when
-		go f.processRecords()
+		require.NoError(t, f.Run(context.Background()))
 		go f.Close(context.Background())
 
 		// then
@@ -403,7 +405,7 @@ func TestAclNotificationSender_AddRecords(t *testing.T) {
 		loadChan := make(chan struct{})
 		close(loadChan)
 		f.notificationSender.EXPECT().LoadFinish().Return(loadChan)
-		f.identityService.EXPECT().GetMyProfileDetails(context.Background()).Return(pubKey.Account(), nil, nil)
+		f.identityService.EXPECT().GetMyProfileDetails(f.ctx).Return(pubKey.Account(), nil, nil)
 
 		f.notificationSender.EXPECT().CreateAndSend(&model.Notification{
 			Id:      "recordId",
@@ -418,7 +420,7 @@ func TestAclNotificationSender_AddRecords(t *testing.T) {
 		}).Return(nil)
 
 		// when
-		go f.processRecords()
+		require.NoError(t, f.Run(context.Background()))
 		go f.Close(context.Background())
 
 		// then
@@ -464,10 +466,10 @@ func TestAclNotificationSender_AddRecords(t *testing.T) {
 		loadChan := make(chan struct{})
 		close(loadChan)
 		f.notificationSender.EXPECT().LoadFinish().Return(loadChan)
-		f.identityService.EXPECT().GetMyProfileDetails(context.Background()).Return("test", nil, nil)
+		f.identityService.EXPECT().GetMyProfileDetails(f.ctx).Return("test", nil, nil)
 
 		// when
-		go f.processRecords()
+		require.NoError(t, f.Run(context.Background()))
 		go f.Close(context.Background())
 
 		// then
@@ -513,7 +515,7 @@ func TestAclNotificationSender_AddSingleRecord(t *testing.T) {
 		}).Return(nil)
 
 		// when
-		go f.processRecords()
+		require.NoError(t, f.Run(context.Background()))
 		go f.Close(context.Background())
 
 		// then
@@ -554,7 +556,7 @@ func TestAclNotificationSender_AddSingleRecord(t *testing.T) {
 		f.notificationSender.EXPECT().LoadFinish().Return(loadChan)
 
 		// when
-		go f.processRecords()
+		require.NoError(t, f.Run(context.Background()))
 		go f.Close(context.Background())
 
 		// then
@@ -563,16 +565,129 @@ func TestAclNotificationSender_AddSingleRecord(t *testing.T) {
 	})
 }
 
+func TestAclNotificationSender_Close(t *testing.T) {
+	t.Run("returns when the notification service never finishes loading", func(t *testing.T) {
+		// given
+		f := newFixture(t)
+		f.closeGrace = 50 * time.Millisecond
+		f.notificationSender.EXPECT().LoadFinish().Return(make(chan struct{}))
+		require.NoError(t, f.Run(context.Background()))
+
+		// when, then
+		requireReturns(t, func() { _ = f.Close(context.Background()) })
+	})
+	t.Run("returns when a queued record blocks on the identity service", func(t *testing.T) {
+		// given
+		f := newFixture(t)
+		f.closeGrace = 50 * time.Millisecond
+		_, pubKey, err := crypto.GenerateRandomEd25519KeyPair()
+		require.NoError(t, err)
+		pubKeyRaw, err := pubKey.Marshall()
+		require.NoError(t, err)
+		aclRecord := &aclrecordproto.AclContentValue{Value: &aclrecordproto.AclContentValue_AccountRemove{
+			AccountRemove: &aclrecordproto.AclAccountRemove{Identities: [][]byte{pubKeyRaw}},
+		}}
+		acl := &aclListStub{records: []*list.AclRecord{
+			{Id: "recordId", Model: &aclrecordproto.AclData{AclContent: []*aclrecordproto.AclContentValue{aclRecord}}},
+		}}
+		f.notificationSender.EXPECT().GetLastNotificationId(mock.Anything).Return("")
+		f.AddRecords(acl, list.AclPermissionsWriter, "spaceId", spaceinfo.AccountStatusActive, spaceinfo.LocalStatusOk)
+		// queued behind it, and would be sent if the worker carried on after Close
+		f.AddSingleRecord("aclId", declineRecord(), 0, "spaceId", spaceinfo.AccountStatusDeleted)
+
+		loadChan := make(chan struct{})
+		close(loadChan)
+		f.notificationSender.EXPECT().LoadFinish().Return(loadChan)
+		// the identity service never got to run, so it never answers
+		entered := make(chan struct{})
+		f.identityService.EXPECT().GetMyProfileDetails(f.ctx).
+			RunAndReturn(func(ctx context.Context) (string, crypto.SymKey, *domain.Details) {
+				close(entered)
+				<-ctx.Done()
+				return "", nil, nil
+			})
+		require.NoError(t, f.Run(context.Background()))
+		requireReturns(t, func() { <-entered })
+
+		// when, then
+		requireReturns(t, func() { _ = f.Close(context.Background()) })
+		f.notificationSender.AssertNumberOfCalls(t, "CreateAndSend", 0)
+	})
+	t.Run("returns when a join request waits for a profile that never arrives", func(t *testing.T) {
+		// given
+		f := newFixture(t)
+		f.closeGrace = 50 * time.Millisecond
+		_, pubKey, err := crypto.GenerateRandomEd25519KeyPair()
+		require.NoError(t, err)
+		pubKeyRaw, err := pubKey.Marshall()
+		require.NoError(t, err)
+		aclRecord := &aclrecordproto.AclContentValue{Value: &aclrecordproto.AclContentValue_RequestJoin{
+			RequestJoin: &aclrecordproto.AclAccountRequestJoin{InviteIdentity: pubKeyRaw},
+		}}
+		acl := &aclListStub{records: []*list.AclRecord{
+			{Id: "recordId", Model: &aclrecordproto.AclData{AclContent: []*aclrecordproto.AclContentValue{aclRecord}}},
+		}}
+		f.notificationSender.EXPECT().GetLastNotificationId(mock.Anything).Return("")
+		f.AddRecords(acl, list.AclPermissionsOwner, "spaceId", spaceinfo.AccountStatusActive, spaceinfo.LocalStatusOk)
+
+		loadChan := make(chan struct{})
+		close(loadChan)
+		f.notificationSender.EXPECT().LoadFinish().Return(loadChan)
+		// the requester's profile is not cached and never arrives
+		entered := make(chan struct{})
+		f.identityService.EXPECT().WaitProfile(f.ctx, pubKey.Account()).
+			RunAndReturn(func(ctx context.Context, _ string) *model.IdentityProfile {
+				close(entered)
+				<-ctx.Done()
+				return nil
+			})
+		// saved without a name, as an account stop always has: holding it back
+		// would leave it to block the worker again on every start
+		f.notificationSender.EXPECT().CreateAndSend(mock.MatchedBy(func(n *model.Notification) bool {
+			return n.GetRequestToJoin().GetIdentity() == pubKey.Account() && n.GetRequestToJoin().GetIdentityName() == ""
+		})).Return(nil)
+		require.NoError(t, f.Run(context.Background()))
+		requireReturns(t, func() { <-entered })
+
+		// when, then
+		requireReturns(t, func() { _ = f.Close(context.Background()) })
+	})
+	t.Run("returns when Run was never called", func(t *testing.T) {
+		f := newFixture(t)
+		requireReturns(t, func() { _ = f.Close(context.Background()) })
+	})
+}
+
+// declineRecord is a join-request rejection, which the worker sends without
+// waiting on any other service.
+func declineRecord() *list.AclRecord {
+	return &list.AclRecord{Id: "declineId", Model: &aclrecordproto.AclData{AclContent: []*aclrecordproto.AclContentValue{
+		{Value: &aclrecordproto.AclContentValue_RequestDecline{RequestDecline: &aclrecordproto.AclAccountRequestDecline{}}},
+	}}}
+}
+
+// requireReturns fails the test if fn has not returned within a few seconds.
+func requireReturns(t *testing.T, fn func()) {
+	t.Helper()
+	returned := make(chan struct{})
+	go func() {
+		fn()
+		close(returned)
+	}()
+	select {
+	case <-returned:
+	case <-time.After(5 * time.Second):
+		t.Fatal("did not return in 5s")
+	}
+}
+
 func newFixture(t *testing.T) *fixture {
 	sender := mock_aclnotifications.NewMockNotificationSender(t)
 	identityService := mock_dependencies.NewMockIdentityService(t)
-	n := &aclNotificationSender{
-		batcher:             mb.New[*aclNotificationRecord](0),
-		done:                make(chan struct{}),
-		spaceNameGetter:     objectstore.NewStoreFixture(t),
-		notificationService: sender,
-		identityService:     identityService,
-	}
+	n := NewAclNotificationSender().(*aclNotificationSender)
+	n.spaceNameGetter = objectstore.NewStoreFixture(t)
+	n.notificationService = sender
+	n.identityService = identityService
 	fx := &fixture{
 		aclNotificationSender: n,
 		notificationSender:    sender,

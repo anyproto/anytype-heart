@@ -19,7 +19,9 @@ sending notifications for already-processed ACL records on startup.
 */
 
 import (
+	"context"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -27,7 +29,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/cheggaaa/mb/v3"
-	"golang.org/x/net/context"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -40,6 +41,16 @@ import (
 const CName = "common.components.aclnotifications"
 
 var logger = logging.Logger("acl-notifications")
+
+// closeGracePeriod is how long Close lets the worker send what is already
+// queued. After it Close cancels the worker: the worker may be waiting for the
+// notification service to load or for the identity service, and neither comes
+// when the account app failed to start between them, while any-sync panics
+// once an app's Close takes a minute. It is long because some records are
+// never queued again once dropped (the joiner queues a rejection after it has
+// marked the space deleted), and it still leaves half of that minute to the
+// rest of the app.
+const closeGracePeriod = 30 * time.Second
 
 type aclNotificationRecord struct {
 	record        list.AclRecord
@@ -69,11 +80,22 @@ type aclNotificationSender struct {
 	batcher             *mb.MB[*aclNotificationRecord]
 	spaceNameGetter     objectstore.SpaceNameGetter
 
-	done chan struct{}
+	ctx        context.Context
+	cancel     context.CancelFunc
+	closeGrace time.Duration
+	started    atomic.Bool
+	done       chan struct{}
 }
 
 func NewAclNotificationSender() AclNotification {
-	return &aclNotificationSender{batcher: mb.New[*aclNotificationRecord](0), done: make(chan struct{})}
+	ctx, cancel := context.WithCancel(context.Background())
+	return &aclNotificationSender{
+		batcher:    mb.New[*aclNotificationRecord](0),
+		ctx:        ctx,
+		cancel:     cancel,
+		closeGrace: closeGracePeriod,
+		done:       make(chan struct{}),
+	}
 }
 
 func (n *aclNotificationSender) Init(a *app.App) (err error) {
@@ -88,16 +110,31 @@ func (n *aclNotificationSender) Name() (name string) {
 }
 
 func (n *aclNotificationSender) Run(ctx context.Context) (err error) {
+	n.started.Store(true)
 	go n.processRecords()
 	return
 }
 
+// Close lets the worker send the records already queued for up to closeGrace,
+// then cancels it and drops the rest. An app closes every component, run or
+// not, so Close returns at once when Run never started the worker.
 func (n *aclNotificationSender) Close(ctx context.Context) (err error) {
+	defer n.cancel()
 	if err := n.batcher.Close(); err != nil {
 		logger.Errorf("failed to close batcher, %s", err)
 	}
+	if !n.started.Load() {
+		return nil
+	}
+	select {
+	case <-n.done:
+		return nil
+	case <-time.After(n.closeGrace):
+	}
+	logger.Warnf("worker did not stop within %s of close, canceling it", n.closeGrace)
+	n.cancel()
 	<-n.done
-	return
+	return nil
 }
 
 func (n *aclNotificationSender) AddRecords(acl list.AclList,
@@ -177,15 +214,20 @@ func (n *aclNotificationSender) processRecords() {
 	select {
 	case <-n.notificationService.LoadFinish():
 	case <-ticker.C:
+	case <-n.ctx.Done():
+		return
 	}
 
 	for {
-		msg, err := n.batcher.Wait(context.Background())
+		msg, err := n.batcher.Wait(n.ctx)
 		if err != nil {
 			return
 		}
 		for _, record := range msg {
-			err = n.sendNotification(context.Background(), record)
+			if n.ctx.Err() != nil {
+				return
+			}
+			err = n.sendNotification(n.ctx, record)
 			if err != nil {
 				logger.Errorf("failed to send notifications: %s", err)
 			}
