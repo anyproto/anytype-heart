@@ -133,6 +133,10 @@ type V2Deps struct {
 	// (APIV2_SPACE_STREAM.md §3.4). With it nil nothing is bounded: a write
 	// or a live read into a loading space waits as long as its own call does.
 	SpaceLoads apicore.SpaceLoads
+	// SyncStatus backs the space sync status read and the storage report
+	// on file uploads. With it nil the sync route answers 501 and an upload
+	// reports no storage.
+	SyncStatus apicore.SyncStatus
 	Store      objectstore.ObjectStore
 	// FullTable supplies the full tool table the /mcp/full route serves
 	// (derived once per process by the composition root). With it nil the
@@ -171,7 +175,7 @@ func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService,
 		mcp:         newMCPSessions(),
 	}
 	if v2Deps.Reader != nil && v2Deps.Store != nil {
-		s.v2Service = v2service.NewService(mw, v2Deps.Reader, v2Deps.Creator, v2Deps.Mutator, v2Deps.Provenance, v2Deps.Widgets, v2Deps.ChatSub, v2Deps.ObjectSearch, v2Deps.SpaceLoads, fileObjectService, v2Deps.Store, techSpaceId, v2Deps.AccountId)
+		s.v2Service = v2service.NewService(mw, v2Deps.Reader, v2Deps.Creator, v2Deps.Mutator, v2Deps.Provenance, v2Deps.Widgets, v2Deps.ChatSub, v2Deps.ObjectSearch, v2Deps.SpaceLoads, v2Deps.SyncStatus, fileObjectService, v2Deps.Store, techSpaceId, v2Deps.AccountId)
 		s.v2CreateDisabled = v2Deps.Creator == nil
 		s.v2EditDisabled = v2Deps.Mutator == nil
 		s.v2StreamDisabled = v2Deps.ChatSub == nil

@@ -14,6 +14,7 @@ Scope: global
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
@@ -43,7 +44,7 @@ type SyncSubscriptions interface {
 
 func New() SyncSubscriptions {
 	return &syncSubscriptions{
-		subs: make(map[string]SyncSubscription),
+		subs: make(map[string]*subscriptionEntry),
 	}
 }
 
@@ -51,12 +52,27 @@ type syncSubscriptions struct {
 	sync.Mutex
 	subscriptionService subscription.Service
 	accountService      account.Service
-	subs                map[string]SyncSubscription
+	subs                map[string]*subscriptionEntry
+	// newSubscription builds a space's subscription; a field so a test can
+	// control how long building takes
+	newSubscription func(spaceId string) SyncSubscription
+}
+
+// subscriptionEntry is one space's subscription, built once under its own
+// lock, so building one space's never holds up another's
+type subscriptionEntry struct {
+	mu  sync.Mutex
+	sub SyncSubscription
 }
 
 func (s *syncSubscriptions) Init(a *app.App) (err error) {
 	s.subscriptionService = app.MustComponent[subscription.Service](a)
 	s.accountService = app.MustComponent[account.Service](a)
+	if s.newSubscription == nil {
+		s.newSubscription = func(spaceId string) SyncSubscription {
+			return newSyncingObjects(spaceId, s.subscriptionService, domain.NewParticipantId(spaceId, s.accountService.AccountID()))
+		}
+	}
 	return
 }
 
@@ -68,30 +84,44 @@ func (s *syncSubscriptions) Run(ctx context.Context) (err error) {
 	return nil
 }
 
+// GetSubscription returns the space's subscription, building it on first
+// use. A space's check and build happen under that space's lock: two first
+// calls racing would build two subscriptions with the same ids, and the
+// second would tear down the first's, which could be the one kept, freezing
+// the space's counts. The registry lock is held only to find the entry, so a
+// slow build (an index that opens slowly) never holds up another space.
 func (s *syncSubscriptions) GetSubscription(id string) (SyncSubscription, error) {
 	s.Lock()
-	curSub := s.subs[id]
-	s.Unlock()
-	if curSub != nil {
-		return curSub, nil
+	entry := s.subs[id]
+	if entry == nil {
+		entry = &subscriptionEntry{}
+		s.subs[id] = entry
 	}
-	sub := newSyncingObjects(id, s.subscriptionService, domain.NewParticipantId(id, s.accountService.AccountID()))
-	err := sub.Run()
-	if err != nil {
-		return nil, err
-	}
-	s.Lock()
-	s.subs[id] = sub
 	s.Unlock()
+
+	entry.mu.Lock()
+	defer entry.mu.Unlock()
+	if entry.sub != nil {
+		return entry.sub, nil
+	}
+	sub := s.newSubscription(id)
+	if err := sub.Run(); err != nil {
+		return nil, fmt.Errorf("run sync subscriptions of space %s: %w", id, err)
+	}
+	entry.sub = sub
 	return sub, nil
 }
 
 func (s *syncSubscriptions) Close(ctx context.Context) (err error) {
 	s.Lock()
-	subs := lo.Values(s.subs)
+	entries := lo.Values(s.subs)
 	s.Unlock()
-	for _, sub := range subs {
-		sub.Close()
+	for _, entry := range entries {
+		entry.mu.Lock()
+		if entry.sub != nil {
+			entry.sub.Close()
+		}
+		entry.mu.Unlock()
 	}
 	return nil
 }

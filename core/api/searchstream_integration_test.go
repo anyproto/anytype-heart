@@ -47,7 +47,7 @@ func newSearchStreamOverEngine(t *testing.T) *searchStreamOverEngine {
 			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
 		},
 	})
-	svc := v2service.NewService(nil, nil, nil, nil, nil, nil, nil, fx.objectSearchAdapter, nil, nil, fx.store, objectstore.TestTechSpaceId, "")
+	svc := v2service.NewService(nil, nil, nil, nil, nil, nil, nil, fx.objectSearchAdapter, nil, nil, nil, fx.store, objectstore.TestTechSpaceId, "")
 	return &searchStreamOverEngine{objectSearchFixture: fx, svc: svc}
 }
 

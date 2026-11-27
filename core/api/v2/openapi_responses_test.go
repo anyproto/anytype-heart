@@ -157,7 +157,7 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	var jsonDoc responseContractDocument
 	require.NoError(t, json.Unmarshal(jsonBody, &jsonDoc))
 	jsonOperations := responseContractOperations(t, jsonDoc)
-	require.Len(t, jsonOperations, 60)
+	require.Len(t, jsonOperations, 61)
 
 	yamlBody, err := os.ReadFile("../docs/v2/openapi.yaml")
 	require.NoError(t, err)
@@ -270,11 +270,19 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	assert.Equal(t, "#/components/schemas/ForbiddenError", forbiddenAlternatives[0].Ref)
 	assert.Equal(t, "#/components/schemas/Error", forbiddenAlternatives[1].Ref)
 
+	// the sync read's own statuses, named: a renumbered refusal must not
+	// pass on an unchanged total
+	syncStatuses := make([]string, 0, len(jsonOperations["get_sync_status"].Responses))
+	for status := range jsonOperations["get_sync_status"].Responses {
+		syncStatuses = append(syncStatuses, status)
+	}
+	assert.ElementsMatch(t, []string{"200", "400", "401", "403", "404", "500", "501"}, syncStatuses)
+
 	pairCount := 0
 	for _, operation := range jsonOperations {
 		pairCount += len(operation.Responses)
 	}
-	assert.Equal(t, 452, pairCount, "the checked-in response inventory changes only deliberately")
+	assert.Equal(t, 459, pairCount, "the checked-in response inventory changes only deliberately")
 
 	dryRunCreates := stringSet(
 		"add_chat_message", "create_chat", "create_collection", "create_object", "create_property",

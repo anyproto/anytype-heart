@@ -423,6 +423,23 @@ Events carry no id and nothing replays. After a reconnect the stream opens
 with a fresh snapshot, and a space you hold that is absent from it has left
 the set.
 
+## Check sync and storage
+
+`GET /v2/spaces/{space_id}/sync` returns how the space's objects sync, as the
+app shows it, and what is out of sync: pending objects, files still
+uploading, and files not backed up because they did not fit in the storage
+limit. `connecting` means this device has not reached the backup node yet.
+Add `?count_only=true` to skip the object list.
+
+`storage` is the quota the space's files count against: the owner's, or in a
+one-to-one space your own. Its numbers are estimates. `upgrade_needed` is true
+only when the space is short of storage and upgrading your plan would make
+room. `notes` say what is wrong and who can fix it.
+
+A file upload reports the same `storage` with the new file counted. Its
+`over_limit` says whether that file will fit, and `note` says what fixes it
+when it will not. A multipart dry run gives the verdict before uploading.
+
 ## Download files and icons
 
 Use `GET /v2/spaces/{space_id}/files/{file_id}/content` with a file id or the

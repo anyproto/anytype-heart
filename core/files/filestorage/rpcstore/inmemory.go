@@ -333,6 +333,8 @@ func (t *InMemoryStore) AccountInfo(ctx context.Context) (*fileproto.AccountInfo
 	info.TotalUsageBytes = uint64(t.getTotalUsage())
 	info.TotalCidsCount = uint64(len(t.store))
 	info.LimitBytes = uint64(t.limit)
+	// no space here has a limit of its own, so the whole limit is the shared one
+	info.AccountLimitBytes = info.LimitBytes
 
 	for spaceId, files := range t.spaceFiles {
 		var spaceUsageBytes int

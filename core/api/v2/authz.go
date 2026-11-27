@@ -124,6 +124,7 @@ var v2RouteAuthz = map[string]RouteAuthz{
 	routeKey(http.MethodGet, "/v2/spaces/:space_id/objects/:object_id"):                 {Verb: RouteVerbRead},
 	routeKey(http.MethodGet, "/v2/spaces/:space_id/members"):                            {Verb: RouteVerbRead},
 	routeKey(http.MethodGet, "/v2/spaces/:space_id/members/me"):                         {Verb: RouteVerbRead},
+	routeKey(http.MethodGet, "/v2/spaces/:space_id/sync"):                               {Verb: RouteVerbRead},
 	routeKey(http.MethodGet, "/v2/spaces/:space_id/files/:file_id/content"):             {Verb: RouteVerbRead},
 	routeKey(http.MethodHead, "/v2/spaces/:space_id/files/:file_id/content"):            {Verb: RouteVerbRead},
 	routeKey(http.MethodGet, "/v2/spaces/:space_id/templates"):                          {Verb: RouteVerbRead},

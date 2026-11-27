@@ -78,6 +78,80 @@ type SpaceStat struct {
 	AccountBytesLimit int
 }
 
+// SpaceLimits is the storage quota uploads to a space count against: the
+// space owner's, so a member's uploads to a shared space use the owner's
+// limit, except in a one-to-one space, where the file node bills each
+// member's own account.
+type SpaceLimits struct {
+	LimitBytes int64
+	// NodeUsageBytes is the usage against LimitBytes as the node reported it
+	// at ReportedAt: the payer's whole account, or the space alone when the
+	// space has a limit of its own.
+	NodeUsageBytes int64
+	// Confirmed holds the uploads confirmed lately, by file object id.
+	Confirmed  map[string]ConfirmedUpload
+	ReportedAt time.Time
+	// PlanLimit is true when a recent report of the caller's account proves
+	// this limit is the account's shared one, which a plan upgrade raises:
+	// it equals the shared limit, and is larger than all the account gave to
+	// spaces with a limit of their own together, so it cannot be one of
+	// those. False when not so or not known; meaningful only for a space the
+	// caller pays for.
+	PlanLimit bool
+}
+
+// ConfirmedUpload is an upload the node confirmed.
+type ConfirmedUpload struct {
+	Bytes int64
+	// InReport is true when a node report taken after the confirmation has
+	// come in, so NodeUsageBytes includes the upload; until then it does not.
+	InReport bool
+}
+
+// accountLimits is the caller's account report: the limit its spaces share,
+// and its whole limit, which also covers what spaces with a limit of their
+// own were given.
+type accountLimits struct {
+	shared int64
+	total  int64
+	at     time.Time
+}
+
+// planEvidenceMaxAge is how old the account report may be to prove a limit
+// is the plan's: the account can give a space a limit of its own any time.
+const planEvidenceMaxAge = 5 * time.Minute
+
+func (s *fileSync) SpaceLimits(spaceId string) (SpaceLimits, bool, error) {
+	if s.cfg.IsLocalOnlyMode() {
+		return SpaceLimits{}, false, nil
+	}
+	usage, err := s.limitManager.peekSpace(spaceId)
+	if err != nil {
+		return SpaceLimits{}, false, fmt.Errorf("get space usage: %w", err)
+	}
+	if usage == nil {
+		return SpaceLimits{}, false, nil
+	}
+	limits, ok := usage.reported()
+	if !ok {
+		return SpaceLimits{}, false, nil
+	}
+	limits.PlanLimit = s.isPlanLimit(limits.LimitBytes)
+	return limits, true, nil
+}
+
+// isPlanLimit reports whether a recent account report proves limit is the
+// account's shared limit. An old node that sends no whole limit proves
+// nothing.
+func (s *fileSync) isPlanLimit(limit int64) bool {
+	account := s.accountLimits.Load()
+	if account == nil || time.Since(account.at) > planEvidenceMaxAge {
+		return false
+	}
+	isolated := account.total - account.shared
+	return account.total > 0 && isolated >= 0 && limit == account.shared && limit > isolated
+}
+
 type FileStat struct {
 	SpaceId             string
 	FileId              string
@@ -242,6 +316,12 @@ func (s *fileSync) getAndUpdateNodeUsage(ctx context.Context) (NodeUsage, error)
 	if info.LimitBytes > info.TotalUsageBytes {
 		left = info.LimitBytes - info.TotalUsageBytes
 	}
+	// the account's limits, 64-bit and timed, for the evidence PlanLimit needs
+	s.accountLimits.Store(&accountLimits{
+		shared: clampInt64(info.LimitBytes),
+		total:  clampInt64(info.AccountLimitBytes),
+		at:     time.Now(),
+	})
 	usage := NodeUsage{
 		AccountBytesLimit: int(info.LimitBytes),
 		TotalCidsCount:    int(info.TotalCidsCount),

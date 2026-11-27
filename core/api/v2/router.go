@@ -194,6 +194,12 @@ func RegisterRoutes(router *gin.Engine, deps RouteDeps) {
 		deps.AnalyticsEvent("V2GetMemberMe"),
 		v2handler.GetMemberMeHandler(deps.Service),
 	)
+	// the app's sync status of the space and its storage quota: reads of
+	// what heart already holds, never a wait on the backup node
+	v2.GET("/spaces/:space_id/sync",
+		deps.AnalyticsEvent("V2GetSyncStatus"),
+		v2handler.GetSyncStatusHandler(deps.Service),
+	)
 	v2.GET("/spaces/:space_id/files/:file_id/content",
 		deps.AnalyticsEvent("V2DownloadFile"),
 		v2handler.DownloadFileHandler(deps.Service),

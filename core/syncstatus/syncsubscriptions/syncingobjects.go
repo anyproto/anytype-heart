@@ -30,6 +30,74 @@ func newSyncingObjects(spaceId string, subService subscription.Service, myPartic
 	}
 }
 
+// SyncingObjectsFilters selects the objects not in sync with the backup
+// node: syncing, queued or failed, except the ones too big to ever sync.
+func SyncingObjectsFilters() []database.FilterRequest {
+	return []database.FilterRequest{
+		{
+			RelationKey: bundle.RelationKeySyncStatus,
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value: domain.Int64List([]int64{
+				int64(domain.ObjectSyncStatusSyncing),
+				int64(domain.ObjectSyncStatusQueued),
+				int64(domain.ObjectSyncStatusError),
+			}),
+		},
+		{
+			RelationKey: bundle.RelationKeySyncError,
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       domain.Int64(domain.SyncErrorOversized),
+		},
+	}
+}
+
+// LimitedFilesFilters selects the files the uploader refused for the
+// storage limit.
+func LimitedFilesFilters() []database.FilterRequest {
+	return []database.FilterRequest{
+		{
+			RelationKey: bundle.RelationKeyFileBackupStatus,
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       domain.Int64(filesyncstatus.Limited),
+		},
+		{
+			RelationKey: bundle.RelationKeyResolvedLayout,
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       domain.Int64List(domain.FileLayouts),
+		},
+	}
+}
+
+// UploadingFilesFilters selects the files participantId added that still
+// upload.
+func UploadingFilesFilters(participantId string) []database.FilterRequest {
+	return []database.FilterRequest{
+		{
+			RelationKey: bundle.RelationKeyCreator,
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       domain.String(participantId),
+		},
+		{
+			RelationKey: bundle.RelationKeyFileBackupStatus,
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       domain.Int64List([]filesyncstatus.Status{filesyncstatus.Syncing, filesyncstatus.Queued}),
+		},
+		{
+			RelationKey: bundle.RelationKeyResolvedLayout,
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       domain.Int64List(domain.FileLayouts),
+		},
+	}
+}
+
+// SyncingObjectsCount is the app's count of objects not in sync: the ones
+// ids lists, and the ones the node holds that this device has not
+// downloaded yet (missing) and ids does not list.
+func SyncingObjectsCount(ids, missing []string) int {
+	_, added := slice.DifferenceRemovedAdded(ids, missing)
+	return len(ids) + len(added)
+}
+
 func (s *syncingObjects) Run() error {
 	objectReq := subscription.SubscribeRequest{
 		SpaceId:           s.spaceId,
@@ -37,22 +105,7 @@ func (s *syncingObjects) Run() error {
 		Internal:          true,
 		NoDepSubscription: true,
 		Keys:              []string{bundle.RelationKeyId.String()},
-		Filters: []database.FilterRequest{
-			{
-				RelationKey: bundle.RelationKeySyncStatus,
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value: domain.Int64List([]int64{
-					int64(domain.ObjectSyncStatusSyncing),
-					int64(domain.ObjectSyncStatusQueued),
-					int64(domain.ObjectSyncStatusError),
-				}),
-			},
-			{
-				RelationKey: bundle.RelationKeySyncError,
-				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       domain.Int64(domain.SyncErrorOversized),
-			},
-		},
+		Filters:           SyncingObjectsFilters(),
 	}
 	s.objectSubscription = objectsubscription.NewIdSubscription(s.subscriptionService, objectReq)
 	errObjects := s.objectSubscription.Run()
@@ -66,18 +119,7 @@ func (s *syncingObjects) Run() error {
 		Internal:          true,
 		NoDepSubscription: true,
 		Keys:              []string{bundle.RelationKeyId.String()},
-		Filters: []database.FilterRequest{
-			{
-				RelationKey: bundle.RelationKeyFileBackupStatus,
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.Int64(filesyncstatus.Limited),
-			},
-			{
-				RelationKey: bundle.RelationKeyResolvedLayout,
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       domain.Int64List(domain.FileLayouts),
-			},
-		},
+		Filters:           LimitedFilesFilters(),
 	}
 	s.limitedFilesSubscription = objectsubscription.NewIdSubscription(s.subscriptionService, filesReq)
 	err := s.limitedFilesSubscription.Run()
@@ -91,23 +133,7 @@ func (s *syncingObjects) Run() error {
 		Internal:          true,
 		NoDepSubscription: true,
 		Keys:              []string{bundle.RelationKeyId.String()},
-		Filters: []database.FilterRequest{
-			{
-				RelationKey: bundle.RelationKeyCreator,
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.String(s.myParticipantId),
-			},
-			{
-				RelationKey: bundle.RelationKeyFileBackupStatus,
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       domain.Int64List([]filesyncstatus.Status{filesyncstatus.Syncing, filesyncstatus.Queued}),
-			},
-			{
-				RelationKey: bundle.RelationKeyResolvedLayout,
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       domain.Int64List(domain.FileLayouts),
-			},
-		},
+		Filters:           UploadingFilesFilters(s.myParticipantId),
 	}
 	s.uploadingFilesSubscription = objectsubscription.NewIdSubscription(s.subscriptionService, uplFilesReq)
 	err = s.uploadingFilesSubscription.Run()
@@ -140,6 +166,5 @@ func (s *syncingObjects) SyncingObjectsCount(missing []string) int {
 		ids = append(ids, id)
 		return true
 	})
-	_, added := slice.DifferenceRemovedAdded(ids, missing)
-	return len(ids) + len(added)
+	return SyncingObjectsCount(ids, missing)
 }

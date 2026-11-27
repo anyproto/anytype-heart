@@ -59,7 +59,7 @@ var overlays = map[string]overlay{
 
 	// the document's form also offers multipart with a local file, which
 	// the in-process transport does not send: the tool takes the url form
-	"upload_file": {Description: "Upload a file. Stores a file fetched from a URL in the space. A source that refuses the fetch, or a URL that cannot be fetched, is a 400 naming /url. The id that comes back is the one file blocks, image blocks and icon_image values reference."},
+	"upload_file": {Description: "Upload a file. Stores a file fetched from a URL in the space. A source that refuses the fetch, or a URL that cannot be fetched, is a 400 naming /url. The id that comes back is the one file blocks, image blocks and icon_image values reference. over_limit true: the file will not fit in the storage left and is not backed up until there is room; note says what fixes it."},
 
 	"patch_object": {Destructive: true},
 	"update_type":  {Destructive: true},

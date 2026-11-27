@@ -26,6 +26,7 @@ Status computation priority (highest wins):
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -35,12 +36,16 @@ import (
 	"github.com/anyproto/any-sync/util/periodicsync"
 	"github.com/samber/lo"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/filespaceusage"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/syncsubscriptions"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -53,6 +58,16 @@ type Updater interface {
 	app.ComponentRunnable
 	Refresh(spaceId string)
 	UpdateMissingIds(spaceId string, ids []string)
+	// SpaceStatus computes the space's sync status now: the value the app is
+	// sent for it, except the storage warning. That warning reads the
+	// account's usage, which can wait on the backup node, and judges the
+	// caller's own account whatever the space. The counts are read from the
+	// store by the filters of the app's subscriptions, without creating any:
+	// a read must not leave live subscriptions behind for every space it
+	// touches. connectionChecked is false while no connection to the space's
+	// node has been tried yet: the app then shows the connection as fine. It
+	// broadcasts nothing.
+	SpaceStatus(spaceId string) (status *pb.EventSpaceSyncStatusUpdate, connectionChecked bool, err error)
 }
 
 type NodeUsage interface {
@@ -64,6 +79,10 @@ type SpaceIdGetter interface {
 	app.Component
 	TechSpaceId() string
 	AllLoadedSpaceIds() []string
+}
+
+type accountIdGetter interface {
+	AccountID() string
 }
 
 type NetworkConfig interface {
@@ -78,6 +97,10 @@ type spaceSyncStatus struct {
 	nodeConf      nodeconf.Service
 	nodeUsage     NodeUsage
 	subs          syncsubscriptions.SyncSubscriptions
+	// objectStore and accountService serve SpaceStatus, which counts from the
+	// store instead of the subscriptions
+	objectStore    objectstore.ObjectStore
+	accountService accountIdGetter
 
 	spaceIdGetter  SpaceIdGetter
 	curStatuses    map[string]struct{}
@@ -107,6 +130,8 @@ func (s *spaceSyncStatus) Init(a *app.App) (err error) {
 	s.nodeUsage = app.MustComponent[NodeUsage](a)
 	s.curStatuses = make(map[string]struct{})
 	s.subs = app.MustComponent[syncsubscriptions.SyncSubscriptions](a)
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	s.accountService = app.MustComponent[account.Service](a)
 	s.missingIds = make(map[string][]string)
 	s.lastSentEvents = make(map[string]pb.EventSpaceSyncStatusUpdate)
 	s.spaceIdGetter = app.MustComponent[SpaceIdGetter](a)
@@ -170,11 +195,62 @@ func (s *spaceSyncStatus) update(ctx context.Context) error {
 }
 
 func (s *spaceSyncStatus) sendEventToSession(spaceId, token string) {
+	s.eventSender.SendToSession(token, event.NewEventSingleMessage(spaceId, &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+		SpaceSyncStatusUpdate: s.appStatus(spaceId),
+	}))
+}
+
+func (s *spaceSyncStatus) SpaceStatus(spaceId string) (*pb.EventSpaceSyncStatusUpdate, bool, error) {
 	if s.isLocal {
-		s.sendLocalOnlyEventToSession(spaceId, token)
-		return
+		return localOnlyEvent(spaceId), true, nil
 	}
-	params := syncParams{
+	_, checked := s.nodeStatus.TryGetNodeStatus(spaceId)
+	params, err := s.storeParams(spaceId)
+	if err != nil {
+		return nil, false, fmt.Errorf("sync counts of space %s: %w", spaceId, err)
+	}
+	return s.makeSyncEvent(spaceId, params), checked, nil
+}
+
+// storeParams reads the inputs of the space's status with the counts taken
+// from the store at one moment, and no storage warning: its input reads as
+// all of the storage left.
+func (s *spaceSyncStatus) storeParams(spaceId string) (syncParams, error) {
+	index := s.objectStore.SpaceIndex(spaceId)
+	pendingIds, _, err := index.QueryObjectIds(database.Query{Filters: syncsubscriptions.SyncingObjectsFilters()})
+	if err != nil {
+		return syncParams{}, fmt.Errorf("query objects not in sync: %w", err)
+	}
+	_, refused, err := index.QueryObjectIds(database.Query{Filters: syncsubscriptions.LimitedFilesFilters()})
+	if err != nil {
+		return syncParams{}, fmt.Errorf("query files refused for the limit: %w", err)
+	}
+	me := domain.NewParticipantId(spaceId, s.accountService.AccountID())
+	_, uploading, err := index.QueryObjectIds(database.Query{Filters: syncsubscriptions.UploadingFilesFilters(me)})
+	if err != nil {
+		return syncParams{}, fmt.Errorf("query files uploading: %w", err)
+	}
+	return syncParams{
+		bytesLeftPercentage: 1,
+		connectionStatus:    s.nodeStatus.GetNodeStatus(spaceId),
+		compatibility:       s.nodeConf.NetworkCompatibilityStatus(),
+		objectsSyncingCount: syncsubscriptions.SyncingObjectsCount(pendingIds, s.getMissingIds(spaceId)),
+		notSyncedFilesCount: refused,
+		uploadingFilesCount: uploading,
+	}, nil
+}
+
+// appStatus computes the status the app is sent, from its subscriptions.
+func (s *spaceSyncStatus) appStatus(spaceId string) *pb.EventSpaceSyncStatusUpdate {
+	if s.isLocal {
+		return localOnlyEvent(spaceId)
+	}
+	return s.makeSyncEvent(spaceId, s.currentParams(spaceId))
+}
+
+// currentParams reads the inputs of the space's status from their sources
+func (s *spaceSyncStatus) currentParams(spaceId string) syncParams {
+	return syncParams{
 		bytesLeftPercentage: s.getBytesLeftPercentage(spaceId),
 		connectionStatus:    s.nodeStatus.GetNodeStatus(spaceId),
 		compatibility:       s.nodeConf.NetworkCompatibilityStatus(),
@@ -182,25 +258,20 @@ func (s *spaceSyncStatus) sendEventToSession(spaceId, token string) {
 		notSyncedFilesCount: s.getNotSyncedFilesCount(spaceId),
 		uploadingFilesCount: s.getUploadingFilesCount(spaceId),
 	}
-	s.eventSender.SendToSession(token, event.NewEventSingleMessage(spaceId, &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-		SpaceSyncStatusUpdate: s.makeSyncEvent(spaceId, params),
-	}))
+}
+
+func localOnlyEvent(spaceId string) *pb.EventSpaceSyncStatusUpdate {
+	return &pb.EventSpaceSyncStatusUpdate{
+		Id:      spaceId,
+		Status:  pb.EventSpace_Offline,
+		Network: pb.EventSpace_LocalOnly,
+	}
 }
 
 func (s *spaceSyncStatus) sendStartEvent(spaceIds []string) {
 	for _, id := range spaceIds {
 		s.updateSpaceSyncStatus(id)
 	}
-}
-
-func (s *spaceSyncStatus) sendLocalOnlyEvent(spaceId string) {
-	s.broadcast(event.NewEventSingleMessage(spaceId, &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-		SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-			Id:      spaceId,
-			Status:  pb.EventSpace_Offline,
-			Network: pb.EventSpace_LocalOnly,
-		},
-	}))
 }
 
 func eventsEqual(a, b pb.EventSpaceSyncStatusUpdate) bool {
@@ -223,16 +294,6 @@ func (s *spaceSyncStatus) broadcast(event *pb.Event) {
 		return
 	}
 	s.eventSender.Broadcast(event)
-}
-
-func (s *spaceSyncStatus) sendLocalOnlyEventToSession(spaceId, token string) {
-	s.eventSender.SendToSession(token, event.NewEventSingleMessage(spaceId, &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-		SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-			Id:      spaceId,
-			Status:  pb.EventSpace_Offline,
-			Network: pb.EventSpace_LocalOnly,
-		},
-	}))
 }
 
 func (s *spaceSyncStatus) Refresh(spaceId string) {
@@ -278,21 +339,8 @@ func (s *spaceSyncStatus) getBytesLeftPercentage(spaceId string) float64 {
 }
 
 func (s *spaceSyncStatus) updateSpaceSyncStatus(spaceId string) {
-	if s.isLocal {
-		s.sendLocalOnlyEvent(spaceId)
-		return
-	}
-	missingObjects := s.getMissingIds(spaceId)
-	params := syncParams{
-		bytesLeftPercentage: s.getBytesLeftPercentage(spaceId),
-		connectionStatus:    s.nodeStatus.GetNodeStatus(spaceId),
-		compatibility:       s.nodeConf.NetworkCompatibilityStatus(),
-		objectsSyncingCount: s.getObjectSyncingObjectsCount(spaceId, missingObjects),
-		notSyncedFilesCount: s.getNotSyncedFilesCount(spaceId),
-		uploadingFilesCount: s.getUploadingFilesCount(spaceId),
-	}
 	s.broadcast(event.NewEventSingleMessage(spaceId, &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-		SpaceSyncStatusUpdate: s.makeSyncEvent(spaceId, params),
+		SpaceSyncStatusUpdate: s.appStatus(spaceId),
 	}))
 }
 
@@ -336,7 +384,7 @@ func (s *spaceSyncStatus) makeSyncEvent(spaceId string, params syncParams) *pb.E
 	return &pb.EventSpaceSyncStatusUpdate{
 		Id:                    spaceId,
 		Status:                status,
-		Network:               mapNetworkMode(s.networkConfig.GetNetworkMode()),
+		Network:               MapNetworkMode(s.networkConfig.GetNetworkMode()),
 		Error:                 err,
 		SyncingObjectsCounter: syncingObjectsCount,
 		NotSyncedFilesCounter: int64(params.notSyncedFilesCount),
@@ -344,7 +392,9 @@ func (s *spaceSyncStatus) makeSyncEvent(spaceId string, params syncParams) *pb.E
 	}
 }
 
-func mapNetworkMode(mode pb.RpcAccountNetworkMode) pb.EventSpaceNetwork {
+// MapNetworkMode maps the account's network mode to the network a space
+// syncs to, as the app is told.
+func MapNetworkMode(mode pb.RpcAccountNetworkMode) pb.EventSpaceNetwork {
 	switch mode {
 	case pb.RpcAccount_LocalOnly:
 		return pb.EventSpace_LocalOnly

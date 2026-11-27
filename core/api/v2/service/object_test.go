@@ -96,7 +96,7 @@ func newV2FixtureBare(t *testing.T) *v2Fixture {
 			return "drv-ot-" + string(key), nil
 		}).Maybe()
 	fx := &v2Fixture{
-		Service:        NewService(mwMock, readerMock, creatorMock, mutatorMock, provenanceMock, widgetsMock, nil, nil, nil, nil, objectStore, objectstore.TestTechSpaceId, testAccountId),
+		Service:        NewService(mwMock, readerMock, creatorMock, mutatorMock, provenanceMock, widgetsMock, nil, nil, nil, nil, nil, objectStore, objectstore.TestTechSpaceId, testAccountId),
 		mwMock:         mwMock,
 		readerMock:     readerMock,
 		creatorMock:    creatorMock,

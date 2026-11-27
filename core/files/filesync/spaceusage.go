@@ -207,6 +207,17 @@ func (m *spaceUsageManager) getSpace(spaceId string) (*spaceUsage, error) {
 	return nil, fmt.Errorf("spaceView not found")
 }
 
+// peekSpace is getSpace without side effects: the tech space's usage, made
+// on first use, is not made here, and nil is returned until it is.
+func (m *spaceUsageManager) peekSpace(spaceId string) (*spaceUsage, error) {
+	if spaceId == m.techSpaceId {
+		m.techSpaceLock.Lock()
+		defer m.techSpaceLock.Unlock()
+		return m.techSpaceUsage, nil
+	}
+	return m.getSpace(spaceId)
+}
+
 func (m *spaceUsageManager) getTechSpace() *spaceUsage {
 	m.techSpaceLock.Lock()
 	defer m.techSpaceLock.Unlock()

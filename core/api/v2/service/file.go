@@ -8,6 +8,7 @@ package v2service
 import (
 	"context"
 	"fmt"
+	"math"
 	"net/http"
 	"strings"
 
@@ -16,6 +17,7 @@ import (
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
+	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -46,12 +48,29 @@ func (s *Service) UploadFile(ctx context.Context, spaceId, localPath, url, name 
 	// blank the one the source gave — the write this guard exists to prevent
 	name = strings.TrimSpace(name)
 	if dryRun {
-		return &v2model.FileUploadResult{DryRun: true}, nil
+		result := &v2model.FileUploadResult{DryRun: true}
+		before := s.readUploadQuota(spaceId, s.uploads.before(spaceId, math.MaxUint64))
+		// a staged multipart upload knows its size: say whether it would
+		// fit; a url one reports the quota only
+		if size, ok := stagedFileSize(localPath); ok {
+			s.addUploadStorage(spaceId, before, result, size, filesyncstatus.Unknown, "")
+		} else if before != nil {
+			result.Storage = before.quota.storage(before.quota.waiting)
+		}
+		return result, nil
 	}
 	// nothing above needed the loaded space; the RPC does
 	if err := s.ensureSpaceLoaded(ctx, spaceId); err != nil {
 		return nil, err
 	}
+
+	// registered so that a parallel upload counts this one, and read before
+	// the upload: after it, a fast upload could already be in the usage and
+	// still read as waiting, and count twice
+	stagedSize, _ := stagedFileSize(localPath)
+	upload := s.uploads.start(spaceId, stagedSize)
+	defer s.uploads.finish(spaceId, upload)
+	before := s.readUploadQuota(spaceId, s.uploads.before(spaceId, upload.seq))
 
 	// The caller's name rides the RPC's additional details. On this route
 	// fileobject injects the file-derived metadata and then applies those
@@ -78,12 +97,17 @@ func (s *Service) UploadFile(ctx context.Context, spaceId, localPath, url, name 
 			int32(resp.Error.Code), int32(pb.RpcFileUploadResponseError_BAD_INPUT), resp.Error.Description)
 	}
 	details := domain.NewDetailsFromProto(resp.Details)
-	return &v2model.FileUploadResult{
+	result := &v2model.FileUploadResult{
 		Id:       resp.ObjectId,
 		Name:     details.GetString(bundle.RelationKeyName),
 		MimeType: details.GetString(bundle.RelationKeyFileMimeType),
 		Size:     details.GetInt64(bundle.RelationKeySizeInBytes),
-	}, nil
+	}
+	s.uploads.resolve(upload, result.Id, result.Size)
+	s.addUploadStorage(spaceId, before, result, result.Size,
+		filesyncstatus.Status(details.GetInt64(bundle.RelationKeyFileBackupStatus)), //nolint:gosec
+		details.GetString(bundle.RelationKeyCreator))
+	return result, nil
 }
 
 // v2FileRpcError classifies a FileUpload RPC failure into the C6 shape.
