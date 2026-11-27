@@ -1,6 +1,7 @@
 package files
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -15,6 +16,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var ctx = context.Background()
 
 func openDir(t *testing.T) (*Dir, string) {
 	t.Helper()
@@ -56,6 +59,64 @@ func TestOpenRules(t *testing.T) {
 			_, err := Open(path)
 			require.ErrorContains(t, err, "must be an absolute path", path)
 		}
+	})
+
+	t.Run("a path with .. in it is refused: behind a link it names another place", func(t *testing.T) {
+		base := t.TempDir()
+		for _, path := range []string{filepath.Join(base, "a") + string(filepath.Separator) + ".." + string(filepath.Separator) + "b", base + "/x/../y", base + string(filepath.Separator) + ".."} {
+			_, err := Open(path)
+			require.ErrorContains(t, err, `without ".."`, path)
+		}
+		assert.Empty(t, entries(t, base), "nothing was created")
+	})
+
+	t.Run("creating the folder changes nothing that exists", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("mode bits")
+		}
+		parent := filepath.Join(t.TempDir(), "parent")
+		require.NoError(t, os.Mkdir(parent, 0o755))
+		require.NoError(t, os.Chmod(parent, 0o755))
+		d, err := Open(filepath.Join(parent, "files"))
+		require.NoError(t, err)
+		defer d.Close()
+		fi, err := os.Stat(parent)
+		require.NoError(t, err)
+		assert.Equal(t, os.FileMode(0o755), fi.Mode().Perm())
+		// an existing folder keeps its mode too
+		own := filepath.Join(parent, "own")
+		require.NoError(t, os.Mkdir(own, 0o755))
+		require.NoError(t, os.Chmod(own, 0o755))
+		d2, err := Open(own)
+		require.NoError(t, err)
+		defer d2.Close()
+		fi, err = os.Stat(own)
+		require.NoError(t, err)
+		assert.Equal(t, os.FileMode(0o755), fi.Mode().Perm())
+	})
+
+	t.Run("the folder is never Anytype's own, inside it, or around it", func(t *testing.T) {
+		home := t.TempDir()
+		anytype := filepath.Join(home, ".anytype")
+		for _, path := range []string{home, filepath.Dir(home)} {
+			_, err := Open(path, anytype)
+			require.ErrorContains(t, err, "apart from Anytype's own folder", "around a folder that is not there yet: %s", path)
+		}
+		items := filepath.Join(anytype, "ai-connect", "items")
+		require.NoError(t, os.MkdirAll(items, 0o700))
+		alias := filepath.Join(home, "alias")
+		linked := os.Symlink(anytype, alias) == nil
+		refused := []string{home, anytype, items, filepath.Join(anytype, "new"), filepath.Join(anytype, "ai-connect")}
+		if linked {
+			refused = append(refused, filepath.Join(alias, "ai-connect", "items"), filepath.Join(alias, "new2"))
+		}
+		for _, path := range refused {
+			_, err := Open(path, anytype)
+			require.ErrorContains(t, err, "apart from Anytype's own folder", path)
+		}
+		d, err := Open(filepath.Join(home, "ai files"), anytype)
+		require.NoError(t, err, "a sibling is fine")
+		_ = d.Close()
 	})
 
 	t.Run("a missing folder is created private, parents included", func(t *testing.T) {
@@ -168,19 +229,47 @@ func TestOpenUpload(t *testing.T) {
 		d, root := openDir(t)
 		require.NoError(t, os.MkdirAll(filepath.Join(root, "notes"), 0o700))
 		require.NoError(t, os.WriteFile(filepath.Join(root, "notes", "today.txt"), []byte("hello"), 0o600))
-		for _, path := range []string{"notes/today.txt", "./notes/today.txt", "notes//today.txt", "notes/./today.txt", "notes/x/../today.txt"} {
+		for _, path := range []string{"notes/today.txt", "./notes/today.txt", "notes//today.txt", "notes/./today.txt"} {
 			content, name, err := read(t, d, path)
-			if path == "notes/x/../today.txt" {
-				// no "x" there: the system refuses, or the path is cleaned
-				if err == nil {
-					assert.Equal(t, "hello", content)
-				}
-				continue
-			}
 			require.NoError(t, err, path)
 			assert.Equal(t, "hello", content)
 			assert.Equal(t, "today.txt", name)
 		}
+	})
+
+	t.Run("any .. in the path is refused, wherever it leads", func(t *testing.T) {
+		d, root := openDir(t)
+		require.NoError(t, os.MkdirAll(filepath.Join(root, "notes"), 0o700))
+		require.NoError(t, os.WriteFile(filepath.Join(root, "notes", "today.txt"), []byte("hello"), 0o600))
+		for _, path := range []string{"notes/missing/../today.txt", "notes/../notes/today.txt", "..", "../x", "notes/.."} {
+			_, _, err := d.OpenUpload(path)
+			assert.Contains(t, refusal(t, err), "is outside", path)
+		}
+	})
+
+	t.Run("a file with a second name is refused: it may live anywhere", func(t *testing.T) {
+		base := t.TempDir()
+		root := filepath.Join(base, "files")
+		d, err := Open(root)
+		require.NoError(t, err)
+		defer d.Close()
+		secret := filepath.Join(base, "secret.txt")
+		require.NoError(t, os.WriteFile(secret, []byte("not yours"), 0o600))
+		if err := os.Link(secret, filepath.Join(root, "innocent.txt")); err != nil {
+			t.Skipf("no hard links here: %v", err)
+		}
+		_, _, err = d.OpenUpload("innocent.txt")
+		text := refusal(t, err)
+		assert.Contains(t, text, "more than one name")
+		assert.Contains(t, text, root)
+		// a link between two names inside the folder is refused as well
+		require.NoError(t, os.WriteFile(filepath.Join(root, "a.txt"), []byte("x"), 0o600))
+		require.NoError(t, os.Link(filepath.Join(root, "a.txt"), filepath.Join(root, "b.txt")))
+		_, _, err = d.OpenUpload("a.txt")
+		assert.Contains(t, refusal(t, err), "more than one name")
+		require.NoError(t, os.Remove(filepath.Join(root, "b.txt")))
+		_, _, err = read(t, d, "a.txt")
+		require.NoError(t, err)
 	})
 
 	t.Run("a folder on the way may be a link that stays inside", func(t *testing.T) {
@@ -203,14 +292,17 @@ func TestOpenUpload(t *testing.T) {
 		other := filepath.Join(base, "other")
 		require.NoError(t, os.Mkdir(other, 0o700))
 		require.NoError(t, os.WriteFile(filepath.Join(other, "a.txt"), []byte("not yours"), 0o600))
+		assert.True(t, d.Located())
 		if err := os.Rename(path, filepath.Join(base, "moved")); err != nil {
 			t.Skipf("an open folder can't be renamed here: %v", err)
 		}
+		assert.False(t, d.Located(), "nothing is at the path")
 		symlink(t, other, path)
+		assert.False(t, d.Located(), "the path names another folder now")
 		content, _, err := read(t, d, "a.txt")
 		require.NoError(t, err)
 		assert.Equal(t, "chosen", content)
-		saved, _, err := d.Save("b.txt", strings.NewReader("x"))
+		saved, _, err := d.Save(ctx, "b.txt", strings.NewReader("x"))
 		require.NoError(t, err)
 		assert.Equal(t, []string{"a.txt"}, entries(t, other), "nothing is written through the path")
 		assert.Contains(t, entries(t, filepath.Join(base, "moved")), saved)
@@ -271,7 +363,7 @@ func TestOpenUpload(t *testing.T) {
 func TestSave(t *testing.T) {
 	t.Run("publishes under the name, private, leaving no part file", func(t *testing.T) {
 		d, root := openDir(t)
-		saved, size, err := d.Save("report.pdf", strings.NewReader("%PDF"))
+		saved, size, err := d.Save(ctx, "report.pdf", strings.NewReader("%PDF"))
 		require.NoError(t, err)
 		assert.Equal(t, "report.pdf", saved)
 		assert.Equal(t, int64(4), size)
@@ -288,13 +380,13 @@ func TestSave(t *testing.T) {
 		require.NoError(t, os.WriteFile(filepath.Join(root, "a.txt"), []byte("mine"), 0o600))
 		require.NoError(t, os.Mkdir(filepath.Join(root, "a (2).txt"), 0o700))
 		symlink(t, "nowhere", filepath.Join(root, "a (3).txt"))
-		saved, _, err := d.Save("a.txt", strings.NewReader("x"))
+		saved, _, err := d.Save(ctx, "a.txt", strings.NewReader("x"))
 		require.NoError(t, err)
 		assert.Equal(t, "a (4).txt", saved, "a folder and a dangling link hold their names too")
 		for n := 5; n <= 100; n++ {
 			require.NoError(t, os.WriteFile(filepath.Join(root, fmt.Sprintf("a (%d).txt", n)), nil, 0o600))
 		}
-		saved, _, err = d.Save("a.txt", strings.NewReader("x"))
+		saved, _, err = d.Save(ctx, "a.txt", strings.NewReader("x"))
 		require.NoError(t, err)
 		assert.Regexp(t, `^a-[0-9a-f]{8}\.txt$`, saved)
 		raw, _ := os.ReadFile(filepath.Join(root, "a.txt"))
@@ -305,34 +397,54 @@ func TestSave(t *testing.T) {
 
 	t.Run("a body that breaks leaves nothing", func(t *testing.T) {
 		d, root := openDir(t)
-		_, _, err := d.Save("a.txt", io.MultiReader(strings.NewReader("half"), &failing{}))
+		_, _, err := d.Save(ctx, "a.txt", io.MultiReader(strings.NewReader("half"), &failing{}))
 		require.Error(t, err)
 		assert.Empty(t, entries(t, root))
 	})
 
 	for _, code := range []syscall.Errno{syscall.EPERM, syscall.ENOTSUP, syscall.EXDEV} {
-		t.Run("without hard links ("+code.Error()+") the name is taken first and nothing is replaced", func(t *testing.T) {
+		t.Run("without hard links ("+code.Error()+") the download fails and leaves nothing", func(t *testing.T) {
 			d, root := openDir(t)
 			require.NoError(t, os.WriteFile(filepath.Join(root, "a.txt"), []byte("mine"), 0o600))
 			d.link = func(oldname, newname string) error {
 				return &os.LinkError{Op: "link", Old: oldname, New: newname, Err: code}
 			}
-			saved, size, err := d.Save("a.txt", strings.NewReader("hello"))
-			require.NoError(t, err)
-			assert.Equal(t, "a (2).txt", saved)
-			assert.Equal(t, int64(5), size)
-			assert.Equal(t, []string{"a (2).txt", "a.txt"}, entries(t, root))
-			raw, _ := os.ReadFile(filepath.Join(root, "a.txt"))
-			assert.Equal(t, "mine", string(raw))
-			raw, _ = os.ReadFile(filepath.Join(root, "a (2).txt"))
-			assert.Equal(t, "hello", string(raw))
+			_, _, err := d.Save(ctx, "b.txt", strings.NewReader("hello"))
+			text := refusal(t, err)
+			assert.Regexp(t, "could not be saved in .*hard link, which failed.*not FAT or exFAT.*nothing was saved", text)
+			assert.Contains(t, text, root)
+			assert.Equal(t, []string{"a.txt"}, entries(t, root))
 		})
 	}
+
+	t.Run("a transfer that ended before publication publishes nothing", func(t *testing.T) {
+		d, root := openDir(t)
+		ctx, cancel := context.WithCancel(context.Background())
+		// the body is complete; the cancellation arrives before the name
+		// is given
+		d.beforePublish = cancel
+		_, _, err := d.Save(ctx, "a.txt", strings.NewReader("whole"))
+		require.ErrorIs(t, err, context.Canceled)
+		assert.Empty(t, entries(t, root))
+	})
+
+	t.Run("what is published is the file that was written, or nothing is reported", func(t *testing.T) {
+		d, root := openDir(t)
+		d.beforePublish = func() {
+			// another writer takes the part file's name
+			for _, name := range entries(t, root) {
+				require.NoError(t, os.Remove(filepath.Join(root, name)))
+				require.NoError(t, os.WriteFile(filepath.Join(root, name), []byte("planted"), 0o600))
+			}
+		}
+		_, _, err := d.Save(ctx, "a.txt", strings.NewReader("whole"))
+		require.ErrorContains(t, err, "changed while")
+	})
 
 	t.Run("a name can't leave the folder or hide in it", func(t *testing.T) {
 		d, root := openDir(t)
 		for _, name := range []string{"../../escape.txt", "/etc/passwd", `..\..\escape.txt`, ".hidden", "..", "", partPrefix + "x" + partSuffix} {
-			saved, _, err := d.Save(name, strings.NewReader("x"))
+			saved, _, err := d.Save(ctx, name, strings.NewReader("x"))
 			require.NoError(t, err, name)
 			assert.Equal(t, saved, filepath.Base(saved))
 			assert.False(t, strings.HasPrefix(saved, "."), saved)

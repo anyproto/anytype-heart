@@ -11,6 +11,7 @@
 package files
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -39,47 +40,91 @@ type Dir struct {
 	path string
 	temp bool
 	root *os.Root
+	info os.FileInfo // the open folder itself
 
 	// Test hooks: link replaces the hard link of publish; afterLstat runs
-	// between the look at an upload's name and its open.
-	link       func(oldname, newname string) error
-	afterLstat func()
+	// between the look at an upload's name and its open; beforePublish
+	// once a download is written whole.
+	link          func(oldname, newname string) error
+	afterLstat    func()
+	beforePublish func()
 }
 
-// Open opens the folder the user named. It must be an absolute path; it is
-// created private (0700) when missing; it must be a real directory (not a
-// link or a junction) that belongs to this user and that no other user can
-// write.
-func Open(path string) (*Dir, error) {
+// Open opens the folder the user named. It must be an absolute path with
+// no ".." in it (behind a linked ancestor that would name another place
+// than its text says); it is created private when missing; it must be a
+// real directory (not a link or a junction) that belongs to this user and
+// that no other user can write or was granted access to. It must not
+// overlap any of the avoid folders (Anytype's own, where the connection
+// keys live): not one of them, not inside one, not around one.
+func Open(path string, avoid ...string) (*Dir, error) {
 	if !filepath.IsAbs(path) {
 		return nil, fmt.Errorf("the files folder must be an absolute path: %s", path)
 	}
-	path = filepath.Clean(path)
-	if _, err := os.Lstat(path); errors.Is(err, fs.ErrNotExist) {
-		if err := os.MkdirAll(path, 0o700); err != nil {
-			return nil, fmt.Errorf("the files folder can't be created: %w", err)
-		}
-		// the mode again, because of the umask
-		if err := os.Chmod(path, 0o700); err != nil {
-			return nil, fmt.Errorf("the files folder can't be made private: %w", err)
+	for _, part := range strings.FieldsFunc(path, func(r rune) bool { return r == '/' || os.IsPathSeparator(uint8(r)) }) { //nolint:gosec // a separator is ASCII
+		if part == ".." {
+			return nil, fmt.Errorf("the files folder must be an absolute path without \"..\": %s", path)
 		}
 	}
-	return open(path, false)
+	path = filepath.Clean(path)
+	if _, err := os.Lstat(path); errors.Is(err, fs.ErrNotExist) {
+		// parents as the system makes them; only the folder itself is
+		// ours to make private, and nothing that exists is changed
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+			return nil, fmt.Errorf("the files folder can't be created: %w", err)
+		}
+		if err := mkdirPrivate(path); err != nil && !errors.Is(err, fs.ErrExist) {
+			return nil, fmt.Errorf("the files folder can't be created: %w", err)
+		}
+	}
+	d, err := open(path, false)
+	if err != nil {
+		return nil, err
+	}
+	for _, other := range avoid {
+		if d.overlaps(other) {
+			_ = d.Close()
+			return nil, fmt.Errorf("the files folder must be apart from Anytype's own folder %s: %s", other, path)
+		}
+	}
+	return d, nil
 }
 
 // Temp makes a private folder for this process under the system's
 // temporary folder. Nothing removes it: what was downloaded stays until
 // the system cleans up.
 func Temp() (*Dir, error) {
-	path, err := os.MkdirTemp("", "anytype-mcp-files-")
-	if err != nil {
-		return nil, fmt.Errorf("no temporary files folder: %w", err)
+	for range 10 {
+		id, err := randomHex(8)
+		if err != nil {
+			return nil, err
+		}
+		path := filepath.Join(os.TempDir(), "anytype-mcp-files-"+id)
+		err = mkdirPrivate(path)
+		if errors.Is(err, fs.ErrExist) {
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("no temporary files folder: %w", err)
+		}
+		return open(path, true)
 	}
-	return open(path, true)
+	return nil, errors.New("no temporary files folder: no free name")
 }
 
+// open pins the folder and judges what it pinned: the checks read the
+// open folder, and the root every later access goes through must be that
+// same folder.
 func open(path string, temp bool) (*Dir, error) {
-	fi, err := os.Lstat(path)
+	h, err := openFolder(path)
+	if err != nil {
+		if fi, lerr := os.Lstat(path); lerr == nil && (fi.Mode()&(os.ModeSymlink|os.ModeIrregular) != 0 || !fi.IsDir()) {
+			return nil, fmt.Errorf("the files folder is not a real directory (a link is not accepted): %s", path)
+		}
+		return nil, fmt.Errorf("the files folder can't be opened: %w", err)
+	}
+	defer h.Close()
+	fi, err := h.Stat()
 	if err != nil {
 		return nil, fmt.Errorf("the files folder can't be read: %w", err)
 	}
@@ -87,20 +132,51 @@ func open(path string, temp bool) (*Dir, error) {
 	if fi.Mode()&(os.ModeSymlink|os.ModeIrregular) != 0 || !fi.IsDir() {
 		return nil, fmt.Errorf("the files folder is not a real directory (a link is not accepted): %s", path)
 	}
-	if err := checkOwner(path, fi); err != nil {
+	if err := checkFolder(h, fi, path); err != nil {
 		return nil, err
 	}
 	root, err := os.OpenRoot(path)
 	if err != nil {
 		return nil, fmt.Errorf("the files folder can't be opened: %w", err)
 	}
-	// the folder opened is the folder judged
 	opened, err := root.Stat(".")
 	if err != nil || !os.SameFile(fi, opened) {
 		_ = root.Close()
 		return nil, fmt.Errorf("the files folder changed while it was being opened: %s", path)
 	}
-	return &Dir{path: path, temp: temp, root: root, link: root.Link}, nil
+	return &Dir{path: path, temp: temp, root: root, info: opened, link: root.Link}, nil
+}
+
+// overlaps reports whether other is the folder, lies inside it, or holds
+// it. Folders are compared by identity on the way up from each, so another
+// spelling, a link or a letter's case hides nothing.
+func (d *Dir) overlaps(other string) bool {
+	climb := func(from string, target os.FileInfo) bool {
+		for p := filepath.Clean(from); ; p = filepath.Dir(p) {
+			if fi, err := os.Stat(p); err == nil && os.SameFile(fi, target) {
+				return true
+			}
+			if filepath.Dir(p) == p {
+				return false
+			}
+		}
+	}
+	// the folder is other or holds it (other need not exist yet)
+	if climb(other, d.info) {
+		return true
+	}
+	// the folder is inside other
+	if fi, err := os.Stat(other); err == nil && climb(d.path, fi) {
+		return true
+	}
+	return false
+}
+
+// Located reports whether the folder's path still names the folder: it
+// may have been moved, and something else put at its path.
+func (d *Dir) Located() bool {
+	fi, err := os.Lstat(d.path)
+	return err == nil && fi.IsDir() && os.SameFile(fi, d.info)
 }
 
 // Path is the folder's absolute path, as the user and the model know it.
@@ -148,9 +224,13 @@ func (d *Dir) OpenUpload(path string) (f *os.File, name string, err error) {
 		return nil, "", refuse("path must be relative to %s; got an absolute path. Ask the user to copy the file into %s.", d.path, d.path)
 	}
 	local := filepath.FromSlash(path)
+	climbs := false
+	for _, part := range strings.Split(local, string(filepath.Separator)) {
+		climbs = climbs || part == ".."
+	}
 	// what the texts quote of it: one line, bounded
 	path = quoted(path)
-	if !filepath.IsLocal(local) {
+	if climbs || !filepath.IsLocal(local) {
 		return nil, "", refuse("%s is outside %s. Ask the user to copy the file into %s.", path, d.path, d.path)
 	}
 	local = filepath.Clean(local)
@@ -180,6 +260,16 @@ func (d *Dir) OpenUpload(path string) (f *os.File, name string, err error) {
 		_ = f.Close()
 		return nil, "", refuse("%s in %s changed while it was being opened", path, d.path)
 	}
+	// a second name may be anywhere on the disk: the file was not put
+	// into the folder, something in the folder was made to point at it
+	if n, err := links(f, fi); err != nil || n != 1 {
+		_ = f.Close()
+		return nil, "", refuse("%s in %s has more than one name (a hard link), which is not uploaded. Ask the user to copy the file itself into %s.", path, d.path, d.path)
+	}
+	if !sameDevice(d.info, fi) {
+		_ = f.Close()
+		return nil, "", refuse("%s in %s is on another file system mounted there, which is not uploaded. Ask the user to copy the file itself into %s.", path, d.path, d.path)
+	}
 	return f, filepath.Base(local), nil
 }
 
@@ -196,8 +286,9 @@ func randomHex(n int) (string, error) {
 // Save stores body in the folder as a new file named after name and
 // returns the name it got. The bytes go to a private part file first; only
 // a complete file is published, under a name nothing else holds, and a
-// failure removes the part file and nothing else.
-func (d *Dir) Save(name string, body io.Reader) (saved string, size int64, err error) {
+// failure removes the part file and nothing else. A transfer whose ctx
+// ended before publication publishes nothing.
+func (d *Dir) Save(ctx context.Context, name string, body io.Reader) (saved string, size int64, err error) {
 	id, err := randomHex(16)
 	if err != nil {
 		return "", 0, err
@@ -207,27 +298,38 @@ func (d *Dir) Save(name string, body io.Reader) (saved string, size int64, err e
 	if err != nil {
 		return "", 0, err
 	}
-	// ours by its random name; a published file keeps its own link
-	defer d.root.Remove(part) //nolint:errcheck // gone already when a rename published it
+	defer d.root.Remove(part) //nolint:errcheck // ours by its random name; a published file keeps its own link
 	size, err = io.Copy(f, body)
+	written, serr := f.Stat()
+	if err == nil {
+		err = serr
+	}
 	if cerr := f.Close(); err == nil {
 		err = cerr
+	}
+	if d.beforePublish != nil {
+		d.beforePublish()
+	}
+	if err == nil {
+		err = ctx.Err()
 	}
 	if err != nil {
 		return "", 0, err
 	}
-	saved, err = d.publish(part, SafeName(name))
+	saved, err = d.publish(part, SafeName(name), written)
 	if err != nil {
 		return "", 0, err
 	}
 	return saved, size, nil
 }
 
-// publish gives the finished part file its name: numbered on a collision,
-// never over an existing entry. A hard link does it in one step. Where the
-// file system has none (FAT, exFAT), the name is first taken with an empty
-// file of our own, which the part file then replaces.
-func (d *Dir) publish(part, name string) (string, error) {
+// publish gives the finished part file its name with a hard link: one
+// step that fails rather than replace an existing entry, so a file appears
+// under its name only complete and never over another. Numbered on a
+// collision. Where the file system has no hard links (FAT, exFAT) there is
+// no such step, and the download fails rather than risk another file. What
+// was published must be the file that was written.
+func (d *Dir) publish(part, name string, written os.FileInfo) (string, error) {
 	ext := extensionOf(name)
 	stem := strings.TrimSuffix(name, ext)
 	candidates := make([]string, 0, 101)
@@ -238,29 +340,17 @@ func (d *Dir) publish(part, name string) (string, error) {
 	if tail, err := randomHex(4); err == nil {
 		candidates = append(candidates, stem+"-"+tail+ext)
 	}
-	linked := true
 	for _, candidate := range candidates {
-		if linked {
-			err := d.link(part, candidate)
-			if err == nil {
-				return candidate, nil
-			}
-			if errors.Is(err, fs.ErrExist) {
-				continue
-			}
-			linked = false
-		}
-		held, err := d.root.OpenFile(candidate, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+		err := d.link(part, candidate)
 		if errors.Is(err, fs.ErrExist) {
 			continue
 		}
 		if err != nil {
-			return "", err
+			return "", refuse("the download could not be saved in %s: giving it its name needs a hard link, which failed there. "+
+				"Ask the user to choose a folder on a file system with hard links (not FAT or exFAT); nothing was saved.", d.path)
 		}
-		_ = held.Close()
-		if err := d.root.Rename(part, candidate); err != nil {
-			d.root.Remove(candidate) //nolint:errcheck // the empty file is ours; the rename's error is the one to report
-			return "", err
+		if fi, err := d.root.Lstat(candidate); err != nil || !os.SameFile(fi, written) {
+			return "", fmt.Errorf("the files folder changed while %s was being published", candidate)
 		}
 		return candidate, nil
 	}
