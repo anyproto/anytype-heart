@@ -17,11 +17,31 @@ import (
 )
 
 // countingFTS records the tantivy searches a query runs: whether each read
-// highlights.
+// highlights, and how many docs each highlighted doc read asked for.
 type countingFTS struct {
 	ftsearch.FTSearch
 	mu         sync.Mutex
 	highlights []bool
+	docReads   []int
+}
+
+func (c *countingFTS) SearchDocs(spaceId, query string, docIds []string) ([]*ftsearch.DocumentMatch, error) {
+	c.mu.Lock()
+	c.docReads = append(c.docReads, len(docIds))
+	c.mu.Unlock()
+	return c.FTSearch.SearchDocs(spaceId, query, docIds)
+}
+
+func (c *countingFTS) reset() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.highlights, c.docReads = nil, nil
+}
+
+func (c *countingFTS) highlightedDocReads() []int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]int(nil), c.docReads...)
 }
 
 func (c *countingFTS) Search(spaceId, query string, limit int, withHighlights bool) ([]*ftsearch.DocumentMatch, error) {
@@ -115,6 +135,48 @@ func TestFulltextSettledCandidates(t *testing.T) {
 		assert.NotContains(t, calls[1:], true)
 	})
 
+	t.Run("weak tied matches read highlights only for the candidates a page can serve", func(t *testing.T) {
+		// given: every body ties under the score gate, which needs the
+		// highlights of a weak match
+		fx, counter := settleFixture(t, 300, func(int) string { return "needle " + strings.Repeat("haystack ", 24) })
+		matches, err := counter.FTSearch.Search("space1", "needle absentword", 1, true)
+		require.NoError(t, err)
+		require.Less(t, matches[0].Score, minFulltextScore, "the fixture must score under the gate")
+		counter.reset()
+		want := make([]string, 26)
+		for i := range want {
+			want[i] = fmt.Sprintf("obj%04d", i)
+		}
+
+		// when
+		records, err := fx.Query(database.Query{SpaceId: "space1", TextQuery: "needle absentword", Sorts: pagedSorts, Limit: 26})
+
+		// then: the wide round reads no highlights, the gate reads them for
+		// the re-rank head only
+		require.NoError(t, err)
+		assert.Equal(t, want, ids(records))
+		assert.Equal(t, []bool{true, false}, counter.calls())
+		assert.Equal(t, []int{ftRerankPoolSize}, counter.highlightedDocReads())
+	})
+
+	t.Run("a tie past the hard limit is kept where the index cuts it", func(t *testing.T) {
+		// given: more tied matches than the hard limit reads
+		fx, _ := settleFixture(t, ftCandidatesHardLimit+50, func(int) string { return "needle in every body" })
+		page := func(limit int) []string {
+			records, err := fx.Query(database.Query{SpaceId: "space1", TextQuery: "needle", Sorts: pagedSorts, Limit: limit})
+			require.NoError(t, err)
+			return ids(records)
+		}
+
+		// when
+		small, big := page(26), page(1000)
+
+		// then: a full page, the head of a big page's
+		require.Len(t, small, 26)
+		require.Len(t, big, 1000)
+		assert.Equal(t, big[:26], small)
+	})
+
 	t.Run("a query without the tie-break keeps one search", func(t *testing.T) {
 		// given
 		fx, counter := settleFixture(t, 300, func(int) string { return "needle in every body" })
@@ -166,5 +228,93 @@ func TestFulltextSettledCandidates(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, []string{"real"}, ids(records))
+	})
+}
+
+// gateStubFTS serves the highlighted docs a lazy score gate reads.
+type gateStubFTS struct {
+	ftsearch.FTSearch
+	highlighted map[string]*ftsearch.DocumentMatch
+	reads       [][]string
+}
+
+func (f *gateStubFTS) SearchDocs(_, _ string, docIds []string) ([]*ftsearch.DocumentMatch, error) {
+	f.reads = append(f.reads, docIds)
+	var out []*ftsearch.DocumentMatch
+	for _, id := range docIds {
+		if doc, ok := f.highlighted[id]; ok {
+			out = append(out, doc)
+		}
+	}
+	return out, nil
+}
+
+func TestLazyScoreGate(t *testing.T) {
+	// weakDocs builds one weak body doc per object, scores falling, every
+	// third one without highlight ranges
+	weakDocs := func(n int) (plain []*ftsearch.DocumentMatch, highlighted []*ftsearch.DocumentMatch) {
+		for i := 0; i < n; i++ {
+			id := fmt.Sprintf("obj%02d/b/body", i)
+			score := 0.01 - float64(i/2)*0.0001 // pairs tie
+			plain = append(plain, &ftsearch.DocumentMatch{ID: id, Score: score})
+			doc := &ftsearch.DocumentMatch{ID: id, Score: score}
+			if i%3 != 0 {
+				doc.Fragments = map[string]*ftsearch.Highlight{"Text": {Text: "needle", Ranges: [][]int{{0, 6}}}}
+			}
+			highlighted = append(highlighted, doc)
+		}
+		return plain, highlighted
+	}
+	resultIds := func(t *testing.T, docs []*ftsearch.DocumentMatch, enforceMinScore bool) []string {
+		results, err := GroupFulltextResults(docs, enforceMinScore)
+		require.NoError(t, err)
+		out := make([]string, len(results))
+		for i, result := range results {
+			out[i] = result.Path.ObjectId
+		}
+		return out
+	}
+
+	t.Run("it admits the first objects the full gate admits", func(t *testing.T) {
+		// given
+		plain, highlighted := weakDocs(12)
+		fts := &gateStubFTS{highlighted: map[string]*ftsearch.DocumentMatch{}}
+		for _, doc := range highlighted {
+			fts.highlighted[doc.ID] = doc
+		}
+		want := resultIds(t, highlighted, true)[:5]
+		gate := &lazyScoreGate{target: 5, passes: map[string]bool{}}
+
+		// when
+		gated, pending, err := gate.apply(fts, database.Query{SpaceId: "space1", TextQuery: "needle"}, plain)
+
+		// then: the first five, read for the objects up to them only
+		require.NoError(t, err)
+		assert.Equal(t, want, resultIds(t, gated, false))
+		assert.True(t, pending)
+		read := 0
+		for _, ids := range fts.reads {
+			read += len(ids)
+		}
+		assert.Less(t, read, len(plain))
+	})
+
+	t.Run("a target past every object admits what the full gate admits", func(t *testing.T) {
+		// given
+		plain, highlighted := weakDocs(12)
+		fts := &gateStubFTS{highlighted: map[string]*ftsearch.DocumentMatch{}}
+		for _, doc := range highlighted {
+			fts.highlighted[doc.ID] = doc
+		}
+		want := resultIds(t, highlighted, true)
+		gate := &lazyScoreGate{target: 100, passes: map[string]bool{}}
+
+		// when
+		gated, pending, err := gate.apply(fts, database.Query{SpaceId: "space1", TextQuery: "needle"}, plain)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, want, resultIds(t, gated, false))
+		assert.False(t, pending)
 	})
 }

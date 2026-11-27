@@ -591,8 +591,9 @@ func (s *dsObjectStore) performFulltextQuery(q database.Query, filters *database
 	settle := needed > 0 && database.HasIdTieBreak(q.Sorts)
 	ftLimit := ftCandidatesLimit(q)
 	highlights := true
+	gate := &lazyScoreGate{target: max(ftRerankPoolSize, needed), passes: map[string]bool{}}
 	for {
-		round, err := s.fulltextRound(q, ftLimit, settle, highlights)
+		round, err := s.fulltextRound(q, ftLimit, settle, highlights, gate)
 		if err != nil {
 			return nil, fmt.Errorf("perform fulltext search: %w", err)
 		}
@@ -608,6 +609,12 @@ func (s *dsObjectStore) performFulltextQuery(q database.Query, filters *database
 			// offset pagination drifts: keep escalating until the full head pool
 			// is materialized (or the index has no more docs to offer)
 			headMaterialized := len(round.results) >= ftRerankPoolSize
+			if round.gatePending && !round.split && (!pageFilled || !headMaterialized) {
+				// the score gate stopped short of objects the page needs:
+				// let it pass more of the same candidates
+				gate.target *= 2
+				continue
+			}
 			if (pageFilled && headMaterialized) || round.exhausted || atHardLimit {
 				if !pageFilled && !round.exhausted {
 					// the page stays underfilled although more matches exist:
@@ -629,7 +636,7 @@ func (s *dsObjectStore) performFulltextQuery(q database.Query, filters *database
 		}
 		// a wider round of a settling query only selects candidates: its
 		// caller serves no highlights, and the score gate reads them only
-		// when a doc scores under it (fulltextRound)
+		// for the weak docs it must decide (lazyScoreGate)
 		highlights = !settle
 	}
 }
@@ -643,6 +650,11 @@ type fulltextRoundResult struct {
 	// tiedDocs counts the docs within the budget tied with a lookahead
 	// doc beyond it: the part of a split tie the round saw
 	tiedDocs int
+	// split reports that the results tied at the budget cut were dropped
+	split bool
+	// gatePending reports that the score gate left objects undecided
+	// (lazyScoreGate)
+	gatePending bool
 }
 
 // fulltextRound reads up to budget docs and groups them per object. With
@@ -652,9 +664,9 @@ type fulltextRoundResult struct {
 // others. The results tied at that score are then dropped
 // (SettledFulltextResults) and the caller widens the budget for them, up to
 // the hard limit, where the tie is kept as it is. A round without
-// highlights reads them after all when a doc scores under the score gate,
-// which needs them.
-func (s *dsObjectStore) fulltextRound(q database.Query, budget int, settle, highlights bool) (fulltextRoundResult, error) {
+// highlights leaves the score gate to gate (lazyScoreGate), which reads the
+// highlights of the weak docs it must decide.
+func (s *dsObjectStore) fulltextRound(q database.Query, budget int, settle, highlights bool, gate *lazyScoreGate) (fulltextRoundResult, error) {
 	ask := budget
 	if settle {
 		ask++
@@ -663,11 +675,6 @@ func (s *dsObjectStore) fulltextRound(q database.Query, budget int, settle, high
 	docs, err := s.fulltextDocs(q, ask, highlights)
 	if err != nil {
 		return fulltextRoundResult{}, err
-	}
-	if !highlights && enforceMinScore && len(docs) > 0 && MinDocScore(docs) < minFulltextScore {
-		if docs, err = s.fulltextDocs(q, ask, true); err != nil {
-			return fulltextRoundResult{}, err
-		}
 	}
 	round := fulltextRoundResult{exhausted: len(docs) < ask}
 	tied := false
@@ -682,15 +689,106 @@ func (s *dsObjectStore) fulltextRound(q database.Query, budget int, settle, high
 		}
 		docs = docs[:budget]
 	}
-	results, err := GroupFulltextResults(docs, enforceMinScore)
+	gated := docs
+	if !highlights && enforceMinScore {
+		if gated, round.gatePending, err = gate.apply(s.fts, q, docs); err != nil {
+			return fulltextRoundResult{}, err
+		}
+		enforceMinScore = false
+	}
+	results, err := GroupFulltextResults(gated, enforceMinScore)
 	if err != nil {
 		return fulltextRoundResult{}, fmt.Errorf("group fulltext results: %w", err)
 	}
 	if tied && budget < ftCandidatesHardLimit {
 		results = SettledFulltextResults(results, MinDocScore(docs))
+		round.split = true
 	}
 	round.results = results
 	return round, nil
+}
+
+// lazyScoreGate applies the near-zero-score gate (passesScoreGate) to docs
+// read without highlights. A doc scoring under the gate passes only with
+// highlight ranges, and highlights cost a read per doc. The gate reads them
+// only for the best docs of the objects in settled order (score desc, then
+// object id), batch by batch, until target objects passed: no page serves
+// the objects after those. It leaves the rest out and reports them pending,
+// and the caller raises target when a page needs more. The answers are kept
+// across rounds.
+type lazyScoreGate struct {
+	target int
+	// passes holds each doc id read with highlights: whether it has ranges
+	passes map[string]bool
+}
+
+func (g *lazyScoreGate) apply(fts ftsearch.FTSearch, q database.Query, docs []*ftsearch.DocumentMatch) ([]*ftsearch.DocumentMatch, bool, error) {
+	if len(docs) == 0 || MinDocScore(docs) >= minFulltextScore {
+		return docs, false, nil
+	}
+	objectIds := make([]string, len(docs))
+	bestByObject := map[string]*ftsearch.DocumentMatch{}
+	var objects []string
+	for i, doc := range docs {
+		path, err := domain.NewFromPath(doc.ID)
+		if err != nil {
+			// GroupFulltextResults skips it
+			continue
+		}
+		objectIds[i] = path.ObjectId
+		// the object's best doc, as GroupFulltextResults picks it
+		best, seen := bestByObject[path.ObjectId]
+		if !seen {
+			objects = append(objects, path.ObjectId)
+		}
+		if !seen || doc.Score > best.Score || (doc.Score == best.Score && doc.ID > best.ID) {
+			bestByObject[path.ObjectId] = doc
+		}
+	}
+	sort.Slice(objects, func(i, j int) bool {
+		a, b := objects[i], objects[j]
+		return cmp.Or(cmp.Compare(bestByObject[b].Score, bestByObject[a].Score), strings.Compare(a, b)) < 0
+	})
+
+	admitted := make(map[string]bool, min(len(objects), g.target))
+	next := 0
+	for next < len(objects) && len(admitted) < g.target {
+		batch := objects[next:min(len(objects), next+g.target-len(admitted))]
+		var unread []string
+		for _, objectId := range batch {
+			best := bestByObject[objectId]
+			if _, read := g.passes[best.ID]; !read && best.Score < minFulltextScore {
+				unread = append(unread, best.ID)
+			}
+		}
+		if len(unread) > 0 {
+			matches, err := fts.SearchDocs(q.SpaceId, q.TextQuery, unread)
+			if err != nil {
+				return nil, false, fmt.Errorf("read highlights of weak matches: %w", err)
+			}
+			for _, docId := range unread {
+				g.passes[docId] = false
+			}
+			for _, match := range matches {
+				if _, asked := g.passes[match.ID]; asked {
+					g.passes[match.ID] = hasHighlightRanges(match)
+				}
+			}
+		}
+		for _, objectId := range batch {
+			if best := bestByObject[objectId]; best.Score >= minFulltextScore || g.passes[best.ID] {
+				admitted[objectId] = true
+			}
+		}
+		next += len(batch)
+	}
+	gated := make([]*ftsearch.DocumentMatch, 0, len(docs))
+	for i, doc := range docs {
+		if admitted[objectIds[i]] {
+			gated = append(gated, doc)
+		}
+	}
+	return gated, next < len(objects), nil
 }
 
 // fulltextDocs runs the tantivy search of q for up to limit docs.
@@ -786,6 +884,13 @@ func GroupFulltextResults(ftsResults []*ftsearch.DocumentMatch, enforceMinScore 
 		if len(objectPerBlockResults) == 0 {
 			continue
 		}
+		// the best doc, which gives the object its score, decides whether
+		// it passes the score gate: the preferred pluralName doc enters with
+		// the budget, so its highlights would admit the object at one
+		// budget and drop it at another
+		if enforceMinScore && !passesScoreGate(objectPerBlockResults[0]) {
+			continue
+		}
 		chosen := preferPluralNameRelation(objectPerBlockResults)
 		if chosen.Score != objectPerBlockResults[0].Score {
 			// the object must be ORDERED by its best doc score: the preferred
@@ -826,14 +931,23 @@ func GroupFulltextResults(ftsResults []*ftsearch.DocumentMatch, enforceMinScore 
 		// representative when the budget grows, and a budget-dependent boost
 		// would reorder the re-ranked head between page requests
 		result.NameMatch = isNameDocId(bestDocByChosenId[docMatch.ID])
-		if enforceMinScore && result.Score < minFulltextScore && len(result.HighlightRanges) == 0 {
-			continue
-		}
 		results = append(results, result)
-
 	}
 
 	return results, nil
+}
+
+// passesScoreGate reports whether a doc match is kept by the near-zero-score
+// gate: a match scoring under minFulltextScore needs highlight ranges.
+func passesScoreGate(doc *ftsearch.DocumentMatch) bool {
+	return doc.Score >= minFulltextScore || hasHighlightRanges(doc)
+}
+
+// hasHighlightRanges reports whether a doc match read with highlights
+// carries highlight ranges, as its fulltext result would.
+func hasHighlightRanges(doc *ftsearch.DocumentMatch) bool {
+	result, err := database.FTDocumentMatchToFulltextResult(doc)
+	return err == nil && len(result.HighlightRanges) > 0
 }
 
 // isNameDocId reports whether the doc id is the object's name or pluralName

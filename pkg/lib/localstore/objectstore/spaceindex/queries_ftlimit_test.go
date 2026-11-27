@@ -127,6 +127,26 @@ func TestFulltextNameMatchBudgetStable(t *testing.T) {
 	assert.True(t, big[0].NameMatch)
 	assert.Equal(t, bundle.RelationKeyPluralName.String(), big[0].Path.RelationKey,
 		"representative doc keeps the pluralName preference for metadata")
+
+	t.Run("the best doc decides the score gate", func(t *testing.T) {
+		// given: a weak body match with highlights, and a weaker pluralName
+		// match without, which only a bigger budget reads
+		bodyDoc := &ftsearch.DocumentMatch{Score: 0.015, ID: "obj2/b/body", Fragments: map[string]*ftsearch.Highlight{
+			"Text": {Text: "needle", Ranges: [][]int{{0, 6}}},
+		}}
+		weakPluralDoc := &ftsearch.DocumentMatch{Score: 0.010, ID: "obj2/r/pluralName"}
+
+		// when
+		small, err := GroupFulltextResults([]*ftsearch.DocumentMatch{bodyDoc}, true)
+		require.NoError(t, err)
+		big, err := GroupFulltextResults([]*ftsearch.DocumentMatch{bodyDoc, weakPluralDoc}, true)
+		require.NoError(t, err)
+
+		// then: admitted at both budgets, with the best doc's score
+		require.Len(t, small, 1)
+		require.Len(t, big, 1, "a bigger budget must not drop an admitted object")
+		assert.Equal(t, small[0].Score, big[0].Score)
+	})
 }
 
 // The tail beyond the re-rank head is already in final order, so it must be

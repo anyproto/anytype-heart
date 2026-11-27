@@ -626,6 +626,66 @@ func (_c *MockFTSearch_Search_Call) RunAndReturn(run func(string, string, int, b
 	return _c
 }
 
+// SearchDocs provides a mock function with given fields: spaceId, query, docIds
+func (_m *MockFTSearch) SearchDocs(spaceId string, query string, docIds []string) ([]*ftsearch.DocumentMatch, error) {
+	ret := _m.Called(spaceId, query, docIds)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SearchDocs")
+	}
+
+	var r0 []*ftsearch.DocumentMatch
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, string, []string) ([]*ftsearch.DocumentMatch, error)); ok {
+		return rf(spaceId, query, docIds)
+	}
+	if rf, ok := ret.Get(0).(func(string, string, []string) []*ftsearch.DocumentMatch); ok {
+		r0 = rf(spaceId, query, docIds)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*ftsearch.DocumentMatch)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string, []string) error); ok {
+		r1 = rf(spaceId, query, docIds)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockFTSearch_SearchDocs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SearchDocs'
+type MockFTSearch_SearchDocs_Call struct {
+	*mock.Call
+}
+
+// SearchDocs is a helper method to define mock.On call
+//   - spaceId string
+//   - query string
+//   - docIds []string
+func (_e *MockFTSearch_Expecter) SearchDocs(spaceId interface{}, query interface{}, docIds interface{}) *MockFTSearch_SearchDocs_Call {
+	return &MockFTSearch_SearchDocs_Call{Call: _e.mock.On("SearchDocs", spaceId, query, docIds)}
+}
+
+func (_c *MockFTSearch_SearchDocs_Call) Run(run func(spaceId string, query string, docIds []string)) *MockFTSearch_SearchDocs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string), args[2].([]string))
+	})
+	return _c
+}
+
+func (_c *MockFTSearch_SearchDocs_Call) Return(results []*ftsearch.DocumentMatch, err error) *MockFTSearch_SearchDocs_Call {
+	_c.Call.Return(results, err)
+	return _c
+}
+
+func (_c *MockFTSearch_SearchDocs_Call) RunAndReturn(run func(string, string, []string) ([]*ftsearch.DocumentMatch, error)) *MockFTSearch_SearchDocs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SearchChat provides a mock function with given fields: spaceId, chatId, query, limit
 func (_m *MockFTSearch) SearchChat(spaceId string, chatId string, query string, creators []string, limit int) ([]*ftsearch.DocumentMatch, error) {
 	ret := _m.Called(spaceId, chatId, query, creators, limit)

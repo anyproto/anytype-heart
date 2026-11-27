@@ -36,7 +36,7 @@ func TestQueryCrossSpaceIdTieBreak(t *testing.T) {
 		fx := NewStoreFixture(t)
 		batcher := fx.FullText.NewAutoBatcher()
 		for i := 0; i < n; i++ {
-			id := fmt.Sprintf("obj%03d", i)
+			id := fmt.Sprintf("obj%04d", i)
 			fx.AddObjects(t, "space1", []TestObject{{bundle.RelationKeyId: domain.String(id), bundle.RelationKeyName: domain.String("Untitled")}})
 			require.NoError(t, batcher.UpsertDoc(ftsearch.SearchDoc{Id: id + "/b/body", SpaceId: "space1", Text: "needle in every body"}))
 		}
@@ -68,7 +68,7 @@ func TestQueryCrossSpaceIdTieBreak(t *testing.T) {
 		}
 		want := make([]string, 150)
 		for i := range want {
-			want[i] = fmt.Sprintf("obj%03d", i)
+			want[i] = fmt.Sprintf("obj%04d", i)
 		}
 
 		// when
@@ -80,6 +80,24 @@ func TestQueryCrossSpaceIdTieBreak(t *testing.T) {
 		// then
 		assert.Equal(t, want, walked)
 		assert.Equal(t, want, page(0, 1000))
+	})
+
+	t.Run("a tie past the hard limit is kept where the index cuts it", func(t *testing.T) {
+		// given: more tied matches than the 2000-doc hard limit reads
+		fx := tiedFixture(t, 2050)
+		page := func(limit int) []string {
+			records, _, err := fx.QueryCrossSpaceNoWait(marked, database.Query{TextQuery: "needle", Sorts: wireSorts, Limit: limit})
+			require.NoError(t, err)
+			return recordIds(records)
+		}
+
+		// when
+		small, big := page(26), page(1000)
+
+		// then: a full page, the head of a big page's
+		require.Len(t, small, 26)
+		require.Len(t, big, 1000)
+		assert.Equal(t, big[:26], small)
 	})
 
 	t.Run("a plain merge keys each space's rows with its own linked objects", func(t *testing.T) {
