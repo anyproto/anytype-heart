@@ -765,7 +765,7 @@
   },
   {
    "name": "upload_file",
-   "description": "Upload a file. Stores a file fetched from a URL in the space. A source that refuses the fetch, or a URL that cannot be fetched, is a 400 naming /url. The id that comes back is the one file blocks, image blocks and icon_image values reference. over_limit true: the file will not fit in the storage left and is not backed up until there is room; note says what fixes it.",
+   "description": "Upload a file. Save a URL's file in the space. Failed or refused fetches return 400 at /url. Use the returned id in file and image blocks and icon_image. `storage` includes this file in the space's quota. With over_limit=true, the file stays local until backup has room. See note for the fix.",
    "inputSchema": {
     "additionalProperties": false,
     "properties": {
@@ -2734,26 +2734,22 @@
   },
   {
    "name": "get_sync_status",
-   "description": "Get the sync status. The sync of the space's objects as the app shows it, what is not in sync, files not backed up for the storage limit, and the quota the space's files count against: the owner's, or in a one-to-one space the caller's. upgrade_needed is true only when a plan upgrade would fix a shortage the caller pays for. notes say what is wrong and what fixes it.",
+   "description": "Get the sync status. App sync status and counts of pending objects, uploads and files over quota. Outside local_only, storage estimates the owner's quota (yours in one-to-one spaces) once the backup node reports it. notes give issues and fixes.",
    "inputSchema": {
     "additionalProperties": false,
     "properties": {
-     "count_only": {
-      "description": "Leave out the pending object list (default false)",
-      "type": "boolean"
-     },
-     "ids": {
-      "description": "compact (default) is the short space reference; full is the whole \u003ccid\u003e.\u003creplicationKey\u003e id, and the spelling to store outside this API",
-      "type": "string"
-     },
      "limit": {
       "default": 25,
-      "description": "Pending objects to return",
+      "description": "Page size",
       "type": "integer"
+     },
+     "objects": {
+      "description": "List out-of-sync objects (counts only by default)",
+      "type": "boolean"
      },
      "offset": {
       "default": 0,
-      "description": "Pending objects to skip",
+      "description": "Objects to skip",
       "type": "integer"
      },
      "space_id": {

@@ -432,9 +432,8 @@ limit. `connecting` means this device has not reached the backup node yet.
 It returns counts; add `?objects=true` for the list of what is out of sync.
 
 `storage` is the quota the space's files count against: the owner's, or in a
-one-to-one space your own. Its numbers are estimates. `upgrade_needed` is true
-only when the space is short of storage and upgrading your plan would make
-room. `notes` say what is wrong and who can fix it.
+one-to-one space your own. Its numbers are estimates. `notes` say what is wrong
+and who can fix it.
 
 A file upload reports the same `storage` with the new file counted. Its
 `over_limit` says whether that file will fit, and `note` says what fixes it

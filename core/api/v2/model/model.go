@@ -608,14 +608,14 @@ type UploadFileRequest struct {
 // different thing wearing the same word — the FORMAT's file-block field
 // name — and is renamed on the anyblock branch, not here.
 type FileUploadResult struct {
-	Id        string   `json:"id,omitempty"` // Absent on a dry run, which stores nothing.
+	Id        string   `json:"id,omitempty"` // Dry runs store nothing and omit id.
 	Name      string   `json:"name,omitempty"`
 	MimeType  string   `json:"mime_type,omitempty"`
 	Size      int64    `json:"size,omitempty"`
 	DryRun    bool     `json:"dry_run,omitempty"`
 	Storage   *Storage `json:"storage,omitempty"`
-	OverLimit *bool    `json:"over_limit,omitempty"` // Whether this file will not fit in the storage left, an estimate. If true it stays on this device, not backed up, until there is room. Absent when it cannot be judged. A dry run judges the bytes as new.
-	Note      string   `json:"note,omitempty"`       // When over_limit is true: what fixes it.
+	OverLimit *bool    `json:"over_limit,omitempty"` // True if the file won't fit. It then stays local until backup has room. Present whenever fit can be estimated. Dry runs count bytes as new.
+	Note      string   `json:"note,omitempty"`       // How to fix over_limit=true.
 }
 
 //

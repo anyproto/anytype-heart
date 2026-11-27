@@ -815,19 +815,19 @@ components:
         dry_run:
           type: boolean
         id:
-          description: Absent on a dry run, which stores nothing.
+          description: Dry runs store nothing and omit id.
           type: string
         mime_type:
           type: string
         name:
           type: string
         note:
-          description: 'When over_limit is true: what fixes it.'
+          description: How to fix over_limit=true.
           type: string
         over_limit:
-          description: Whether this file will not fit in the storage left, an estimate.
-            If true it stays on this device, not backed up, until there is room. Absent
-            when it cannot be judged. A dry run judges the bytes as new.
+          description: True if the file won't fit. It then stays local until backup
+            has room. Present whenever fit can be estimated. Dry runs count bytes
+            as new.
           type: boolean
         size:
           type: integer
@@ -1139,7 +1139,7 @@ components:
     PendingObject:
       properties:
         error:
-          description: Why the status is error.
+          description: Cause of the error.
           enum:
           - network_error
           type: string
@@ -1148,7 +1148,7 @@ components:
         name:
           type: string
         status:
-          description: 'not_backed_up: a file that did not fit in the storage limit.'
+          description: not_backed_up means the file didn't fit the quota.
           enum:
           - syncing
           - queued
@@ -1280,71 +1280,65 @@ components:
     Storage:
       properties:
         left_bytes:
-          description: What is left once the pending files that fit have uploaded.
-            A file that does not fit is refused without taking room.
+          description: Free space after pending uploads that fit. Refused files take
+            no room.
           type: integer
         limit_bytes:
-          description: The storage limit of whoever pays for the space.
+          description: Payer's storage limit.
           type: integer
         pending_bytes:
-          description: This account's files in the space still waiting to upload.
-            The node has not counted them yet.
+          description: This account's files here awaiting upload, still uncounted
+            by the node.
           type: integer
         used_bytes:
-          description: 'Usage against this limit: the backup node''s last report and
-            the uploads it confirmed since.'
+          description: Node's last reported usage plus uploads it confirmed since.
           type: integer
       type: object
     SyncStatus:
       properties:
         error:
-          description: Why the status is offline or error.
+          description: Cause of offline or error.
           enum:
           - network_error
           - incompatible_version
           type: string
         has_more:
-          description: More objects past this page.
+          description: More objects follow.
           type: boolean
         network:
-          description: 'Where the space is backed up: the Anytype network, a self-hosted
-            one, or no node.'
+          description: Backup network, or local_only for none.
           enum:
           - anytype
           - self_hosted
           - local_only
           type: string
         not_backed_up_file_count:
-          description: Files that did not fit in the storage limit. They stay on the
-            device that added them, and upload from it once there is room.
+          description: Files refused for lack of room stay on the device that added
+            them and upload once they fit.
           type: integer
         notes:
-          description: One sentence each on what is wrong with the space's sync or
-            storage and what fixes it.
+          description: One sentence per sync or storage issue and its fix.
           items:
             type: string
           type: array
           uniqueItems: false
         objects:
-          description: What is not in sync on this device, most recently changed first,
-            paged by offset and limit. Absent with count_only=true, in local-only
-            mode, or when nothing is pending.
+          description: This device's out-of-sync objects, last changed first. Page
+            with objects=true, offset and limit. Omitted in local_only or when empty.
           items:
             $ref: '#/components/schemas/PendingObject'
           type: array
           uniqueItems: false
         pending_object_count:
-          description: Objects not yet in sync with the backup node, as the app counts
-            them. It includes objects not downloaded to this device yet, which objects
-            does not list.
+          description: App count of objects out of sync with the backup node. Includes
+            objects not yet downloaded, which `objects` omits.
           type: integer
         space_id:
           type: string
         status:
-          description: 'How objects sync, as the app shows it. local_only: nothing
-            is backed up to a node, though devices on one network still sync. connecting:
-            this device has not reached the backup node yet. Files refused for the
-            storage limit do not change it.'
+          description: The app's object sync status. In local_only, devices sync on
+            one network without node backup. While connecting, this device hasn't
+            reached the backup node. Quota refusals don't affect status.
           enum:
           - synced
           - syncing
@@ -1357,12 +1351,9 @@ components:
         storage:
           $ref: '#/components/schemas/Storage'
         upgrade_needed:
-          description: The space is short of storage by the backup node's own report,
-            the caller pays for it on the Anytype network, and the account's whole
-            limit is its plan's, so an upgrade raises it.
           type: boolean
         uploading_file_count:
-          description: This account's files in the space still uploading.
+          description: This account's files uploading here.
           type: integer
         warnings:
           items:
@@ -2035,12 +2026,11 @@ info:
     app shows it, and what is out of sync: pending objects, files still
     uploading, and files not backed up because they did not fit in the storage
     limit. `connecting` means this device has not reached the backup node yet.
-    Add `?count_only=true` to skip the object list.
+    It returns counts; add `?objects=true` for the list of what is out of sync.
 
     `storage` is the quota the space's files count against: the owner's, or in a
-    one-to-one space your own. Its numbers are estimates. `upgrade_needed` is true
-    only when the space is short of storage and upgrading your plan would make
-    room. `notes` say what is wrong and who can fix it.
+    one-to-one space your own. Its numbers are estimates. `notes` say what is wrong
+    and who can fix it.
 
     A file upload reports the same `storage` with the new file counted. Its
     `over_limit` says whether that file will fit, and `note` says what fixes it
@@ -3748,12 +3738,11 @@ paths:
       - Lists
   /v2/spaces/{space_id}/files:
     post:
-      description: 'Send multipart/form-data with a `file` field, or JSON {"url":
-        …}. A source that refuses the fetch, or a URL that cannot be fetched, is a
-        400 naming /url; only a server fault answers 500. The returned id is what
-        file blocks, image blocks and icon_image reference. over_limit true: the file
-        will not fit in the storage left and is not backed up until there is room.
-        A multipart dry run says so first.'
+      description: Send multipart/form-data field `file` or JSON {"url":…}. Failed
+        or refused fetches return 400 at /url. Only server faults return 500. Use
+        the returned id in file and image blocks and icon_image. `storage` includes
+        this file in the space's quota. With over_limit=true, backup waits for room.
+        Multipart dry runs check fit before upload.
       operationId: upload_file
       parameters:
       - description: Space id, from GET /v2/spaces
@@ -5754,11 +5743,10 @@ paths:
       - Search
   /v2/spaces/{space_id}/sync:
     get:
-      description: 'The sync of the space''s objects as the app shows it, what is
-        not in sync, files not backed up for the storage limit, and the quota the
-        space''s files count against: the owner''s, or in a one-to-one space the caller''s.
-        upgrade_needed is true only when a plan upgrade would fix a shortage the caller
-        pays for. notes say what is wrong and what fixes it.'
+      description: App sync status and counts of pending objects, uploads and files
+        over quota. Outside local_only, storage estimates the owner's quota (yours
+        in one-to-one spaces) once the backup node reports it. notes give issues and
+        fixes.
       operationId: get_sync_status
       parameters:
       - description: Space id, from GET /v2/spaces
@@ -5767,24 +5755,18 @@ paths:
         required: true
         schema:
           type: string
-      - description: compact (default) is the short space reference; full is the whole
-          <cid>.<replicationKey> id, and the spelling to store outside this API
+      - description: List out-of-sync objects (counts only by default)
         in: query
-        name: ids
-        schema:
-          type: string
-      - description: Leave out the pending object list (default false)
-        in: query
-        name: count_only
+        name: objects
         schema:
           type: boolean
-      - description: Pending objects to skip
+      - description: Objects to skip
         in: query
         name: offset
         schema:
           default: 0
           type: integer
-      - description: Pending objects to return
+      - description: Page size
         in: query
         name: limit
         schema:
@@ -5796,13 +5778,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SyncStatus'
-          description: The space's sync status
+          description: Space sync status
         "400":
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-          description: An invalid count_only or limit value
+          description: Invalid objects or limit
         "401":
           $ref: '#/components/responses/Unauthorized'
         "403":
@@ -5812,19 +5794,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-          description: Space not found or unavailable
+          description: Space missing or unavailable
         "500":
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-          description: The sync counts could not be read
+          description: Failed to read sync counts
         "501":
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-          description: This server does not serve sync status
+          description: Sync status unsupported
       security:
       - bearerauth: []
       summary: Get the sync status

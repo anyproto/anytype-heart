@@ -397,7 +397,7 @@ func CreateCollectionHandler(s *v2service.Service) gin.HandlerFunc {
 // UploadFileHandler uploads a file (multipart or URL)
 //
 //	@Summary		Upload a file
-//	@Description	Send multipart/form-data with a `file` field, or JSON {"url": …}. A source that refuses the fetch, or a URL that cannot be fetched, is a 400 naming /url; only a server fault answers 500. The returned id is what file blocks, image blocks and icon_image reference. over_limit true: the file will not fit in the storage left and is not backed up until there is room. A multipart dry run says so first.
+//	@Description	Send multipart/form-data field `file` or JSON {"url":…}. Failed or refused fetches return 400 at /url. Only server faults return 500. Use the returned id in file and image blocks and icon_image. `storage` includes this file in the space's quota. With over_limit=true, backup waits for room. Multipart dry runs check fit before upload.
 //	@Id				upload_file
 //	@Tags			Files
 //	@Accept			multipart/form-data,json

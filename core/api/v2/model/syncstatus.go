@@ -43,17 +43,17 @@ const (
 // shared schema.
 type SyncStatus struct {
 	SpaceId              string          `json:"space_id"`
-	Status               string          `json:"status" enums:"synced,syncing,offline,error,network_needs_update,local_only,connecting"` // How objects sync, as the app shows it. local_only: nothing is backed up to a node, though devices on one network still sync. connecting: this device has not reached the backup node yet. Files refused for the storage limit do not change it.
-	Network              string          `json:"network" enums:"anytype,self_hosted,local_only"`                                         // Where the space is backed up: the Anytype network, a self-hosted one, or no node.
-	Error                string          `json:"error,omitempty" enums:"network_error,incompatible_version"`                             // Why the status is offline or error.
-	PendingObjectCount   int             `json:"pending_object_count"`                                                                   // Objects not yet in sync with the backup node, as the app counts them. It includes objects not downloaded to this device yet, which objects does not list.
-	UploadingFileCount   int             `json:"uploading_file_count"`                                                                   // This account's files in the space still uploading.
-	NotBackedUpFileCount int             `json:"not_backed_up_file_count"`                                                               // Files that did not fit in the storage limit. They stay on the device that added them, and upload from it once there is room.
-	UpgradeNeeded        bool            `json:"upgrade_needed"`                                                                         // The space is short of storage by the backup node's own report, the caller pays for it on the Anytype network, and the account's whole limit is its plan's, so an upgrade raises it.
+	Status               string          `json:"status" enums:"synced,syncing,offline,error,network_needs_update,local_only,connecting"` // The app's object sync status. In local_only, devices sync on one network without node backup. While connecting, this device hasn't reached the backup node. Quota refusals don't affect status.
+	Network              string          `json:"network" enums:"anytype,self_hosted,local_only"`                                         // Backup network, or local_only for none.
+	Error                string          `json:"error,omitempty" enums:"network_error,incompatible_version"`                             // Cause of offline or error.
+	PendingObjectCount   int             `json:"pending_object_count"`                                                                   // App count of objects out of sync with the backup node. Includes objects not yet downloaded, which `objects` omits.
+	UploadingFileCount   int             `json:"uploading_file_count"`                                                                   // This account's files uploading here.
+	NotBackedUpFileCount int             `json:"not_backed_up_file_count"`                                                               // Files refused for lack of room stay on the device that added them and upload once they fit.
+	UpgradeNeeded        bool            `json:"upgrade_needed"`
 	Storage              *Storage        `json:"storage,omitempty"`
-	Objects              []PendingObject `json:"objects,omitempty"`  // What is not in sync on this device, most recently changed first, paged by offset and limit. Only with objects=true; absent in local-only mode or when nothing is pending.
-	HasMore              bool            `json:"has_more,omitempty"` // More objects past this page.
-	Notes                []string        `json:"notes,omitempty"`    // One sentence each on what is wrong with the space's sync or storage and what fixes it.
+	Objects              []PendingObject `json:"objects,omitempty"`  // This device's out-of-sync objects, last changed first. Page with objects=true, offset and limit. Omitted in local_only or when empty.
+	HasMore              bool            `json:"has_more,omitempty"` // More objects follow.
+	Notes                []string        `json:"notes,omitempty"`    // One sentence per sync or storage issue and its fix.
 	Warnings             []Issue         `json:"warnings,omitempty"`
 }
 
@@ -63,10 +63,10 @@ type SyncStatus struct {
 // are left out. It is absent in local-only mode and until the backup node
 // has reported the quota.
 type Storage struct {
-	UsedBytes    int64 `json:"used_bytes"`    // Usage against this limit: the backup node's last report and the uploads it confirmed since.
-	PendingBytes int64 `json:"pending_bytes"` // This account's files in the space still waiting to upload. The node has not counted them yet.
-	LimitBytes   int64 `json:"limit_bytes"`   // The storage limit of whoever pays for the space.
-	LeftBytes    int64 `json:"left_bytes"`    // What is left once the pending files that fit have uploaded. A file that does not fit is refused without taking room.
+	UsedBytes    int64 `json:"used_bytes"`    // Node's last reported usage plus uploads it confirmed since.
+	PendingBytes int64 `json:"pending_bytes"` // This account's files here awaiting upload, still uncounted by the node.
+	LimitBytes   int64 `json:"limit_bytes"`   // Payer's storage limit.
+	LeftBytes    int64 `json:"left_bytes"`    // Free space after pending uploads that fit. Refused files take no room.
 }
 
 // PendingObject is one object or file not in sync with the backup node.
@@ -74,6 +74,6 @@ type PendingObject struct {
 	Id     string `json:"id"`
 	Name   string `json:"name"`
 	Type   string `json:"type"`
-	Status string `json:"status" enums:"syncing,queued,error,not_backed_up"` // not_backed_up: a file that did not fit in the storage limit.
-	Error  string `json:"error,omitempty" enums:"network_error"`             // Why the status is error.
+	Status string `json:"status" enums:"syncing,queued,error,not_backed_up"` // not_backed_up means the file didn't fit the quota.
+	Error  string `json:"error,omitempty" enums:"network_error"`             // Cause of the error.
 }
