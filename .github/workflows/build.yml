@@ -7,7 +7,7 @@ name: Build
 # and arm64, both with musl); and Android on x86_64 Linux (the NDK has no Linux arm64 host build).
 # The protos are generated once, on macOS for the Swift plugin. Each server job also builds
 # anytype-mcp, the stdio forwarder AI apps start, twice per target (the development and the release
-# keychain namespace); both go into the js_ archive next to the server. The release job
+# namespace); both go into the js_ archive next to the server. The release job
 # packs the archives, publishes the libraries to Maven and makes the GitHub release only once every
 # build has succeeded.
 

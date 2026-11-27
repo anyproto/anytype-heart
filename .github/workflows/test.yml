@@ -137,9 +137,8 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
       - uses: seriousben/go-patch-cover-action@v1
 
-  # cmd/anytype-mcp on the other two systems it ships for, each with its real key store: the Windows
-  # Credential Manager, and gnome-keyring over a private session bus (unlocked, locked, not started,
-  # no Secret Service, no bus). macOS is covered by the unit-test job above.
+  # cmd/anytype-mcp natively on the other two systems it ships for (macOS is the unit-test job
+  # above): the item store's rules differ per OS, modes on Unix and owner and DACL on Windows.
   anytype-mcp:
     name: anytype-mcp ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -161,15 +160,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
       - name: Go test anytype-mcp
-        env:
-          ANYTYPE_MCP_REAL_STORE: ${{ runner.os == 'Windows' && '1' || '' }}
         run: go test ./cmd/anytype-mcp/...
       - name: Go test anytype-mcp with the race detector
         if: runner.os == 'Linux'
         run: go test -race ./cmd/anytype-mcp/...
-      - name: Go test anytype-mcp against gnome-keyring
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq dbus gnome-keyring
-          bash cmd/anytype-mcp/testdata/linux-keyring.sh

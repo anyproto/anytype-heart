@@ -1,8 +1,8 @@
 # anytype-mcp, the stdio forwarder AI apps start (cmd/anytype-mcp). Each target builds it twice:
-#   <os-arch>-mcp-dev      the default build: the development keychain namespace
-#   <os-arch>-mcp-release  the production namespace, fixed at link time; only release and nightly
-#                          desktop builds pick this one
-# darwin needs cgo (the keychain) and so a macOS host; windows and linux are static, without cgo.
+#   <os-arch>-mcp-dev      the default build: the development namespace (items folder items-dev)
+#   <os-arch>-mcp-release  the production namespace (items), fixed at link time; only release and
+#                          nightly desktop builds pick this one
+# All five are static, built without cgo, so any host builds any target.
 # The binaries are not signed here: anytype-ts CI signs them with the app.
 MCP_PACKAGE := github.com/anyproto/anytype-heart/cmd/anytype-mcp
 MCP_LDFLAGS := -s -w -X main.version=$(or $(VERSION),dev)
@@ -15,7 +15,7 @@ define mcp-build
 	$(1) go build -trimpath -ldflags="$(MCP_LDFLAGS) $(MCP_RELEASE)" -o $(2)-mcp-release $(MCP_PACKAGE)
 endef
 
-MCP_DARWIN_ENV := GOOS=darwin CGO_ENABLED=1 CGO_CFLAGS="-mmacosx-version-min=11" MACOSX_DEPLOYMENT_TARGET=11.0
+MCP_DARWIN_ENV := GOOS=darwin CGO_ENABLED=0
 
 cross-compile-mcp: $(addprefix cross-compile-mcp-,$(MCP_OS_ARCHS))
 

@@ -8,7 +8,7 @@
 #   check-server-archives.sh verify <version> <release dir> <digests dir>
 #       Opens the five final archives and asserts, for each: the member names; the execute bit; the
 #       architecture; static linkage of the linux binaries; each binary's digest against its build
-#       output (server-<os-arch>.sha256, found anywhere under the digests dir); and the keychain
+#       output (server-<os-arch>.sha256, found anywhere under the digests dir); and the
 #       namespace each anytype-mcp carries, by the marker linked into it and, where this host can run
 #       the binary, by what `version --json` reports.
 set -euo pipefail
