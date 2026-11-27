@@ -100,6 +100,11 @@ type creatingResolvers struct {
 	mintedSlugByKey map[string]string
 	sideEffects     v2model.SideEffects
 	errs            []error
+	// optionSite is the member being resolved while the PATCH prewarm walks
+	// one set_properties entry: the consent refusal is addressed to it, in
+	// the spelling the caller wrote. Nil elsewhere, where /properties/<served
+	// key> is the member the caller wrote.
+	optionSite *optionErrorSite
 
 	// echoPropertyIds are relation object ids the PATCHed type's recommended
 	// lists ALREADY carry (UpdateType primes them; empty on create). They are
@@ -329,7 +334,12 @@ func (r *creatingResolvers) OptionId(key domain.RelationKey, name string) (strin
 		// caller. Refusing beats returning "unresolved": that would store the
 		// NAME where an option id belongs — a value matching nothing that
 		// reads as if it matched.
-		r.errs = append(r.errs, optionConsentError(r.spaceId, r.keys.PropertySlug(string(key)), name))
+		servedKey := r.keys.PropertySlug(string(key))
+		if site := r.optionSite; site != nil {
+			r.errs = append(r.errs, optionConsentErrorAs(r.spaceId, site.spelling, servedKey, name, site.path))
+		} else {
+			r.errs = append(r.errs, optionConsentError(r.spaceId, servedKey, name))
+		}
 		return "", false
 	}
 	if r.dryRun {
@@ -421,13 +431,25 @@ func optionConsentError(spaceId, servedKey, name string) error {
 // all — the flat path rejects one by name — so the default path above would
 // point at a field the caller could not have written.
 func optionConsentErrorAt(spaceId, servedKey, name, path string) error {
+	return optionConsentErrorAs(spaceId, servedKey, servedKey, name, path)
+}
+
+// optionConsentErrorAs is the refusal for a property the caller spelled
+// differently from its served key: the message quotes the spelling (a
+// display name under ?keys=name), while the options route keeps the served
+// key, which is always a valid path segment.
+func optionConsentErrorAs(spaceId, spelling, servedKey, name, path string) error {
 	return v2model.ValidationFailed("option does not exist",
 		v2model.Issue{
 			Path:    path,
-			Message: fmt.Sprintf("property %q has no option named %q, and this request did not ask to create one", servedKey, name),
+			Message: fmt.Sprintf("property %q has no option named %q, and this request did not ask to create one", spelling, name),
 		}.Hintf("check the spelling against %s, or resend with %s to create it",
 			v2model.RefListPropertyOptions(spaceId, servedKey), v2model.Resend("create_missing_options", "true")))
 }
+
+// optionErrorSite is the request member an option refusal is addressed to,
+// and the spelling the caller gave its property there.
+type optionErrorSite struct{ path, spelling string }
 
 // prewarmCreateMissing resolves a PATCH's create-missing references BEFORE
 // the object lock is taken (review B6/A6): the create surfaces in PATCH
@@ -441,7 +463,7 @@ func optionConsentErrorAt(spaceId, servedKey, name, path string) error {
 // from the in-lock op pass, in unchanged order — and create failures ride
 // resolvers.err(), exactly where the in-lock path checks them.
 func (s *Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creatingResolvers) {
-	for _, raw := range ops {
+	for i, raw := range ops {
 		var probe struct {
 			Op  string                     `json:"op"`
 			Set map[string]json.RawMessage `json:"set"`
@@ -466,8 +488,15 @@ func (s *Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creatin
 		if probe.Op != "set_properties" {
 			continue
 		}
-		for field, values := range map[string]map[string]json.RawMessage{"set": probe.Set, "add": probe.Add} {
-			for rawKey, rawValue := range values {
+		// set, then add, each in key order: the first refusal recorded is the
+		// one reported, so the walk must not depend on map iteration order
+		for _, field := range []string{"set", "add"} {
+			values := probe.Set
+			if field == "add" {
+				values = probe.Add
+			}
+			for _, rawKey := range sortedKeys(values) {
+				rawValue := values[rawKey]
 				// A key claimed by more than one field is rejected by the apply
 				// path, so prewarming it would create an option for a PATCH
 				// that cannot succeed. Skip it here and let the op error.
@@ -501,7 +530,12 @@ func (s *Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creatin
 						continue
 					}
 				}
+				// a refusal is addressed to this entry, in the caller's spelling:
+				// the default /properties/<served key> names a member a PATCH
+				// does not have, and under ?keys=name a spelling it did not use
+				resolvers.optionSite = &optionErrorSite{path: fmt.Sprintf("ops[%d].%s.%s", i, field, rawKey), spelling: rawKey}
 				anyblockjson.UnmarshalPropertyValue(key, value, resolvers.Options())
+				resolvers.optionSite = nil
 			}
 		}
 	}

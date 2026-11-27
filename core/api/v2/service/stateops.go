@@ -1093,16 +1093,13 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	if err != nil {
 		return err
 	}
-	// spelledAs is the ONE spelling every refusal below names a property by,
+	// spelledIn is the ONE spelling every refusal below names a property by,
 	// in its path and its message alike: the slug or display name the caller
-	// sent, never the stored key the rewrite produced (a bson id the caller
-	// was never served, for a space-minted property)
-	spelledAs := func(key string) string {
-		if original, ok := spellings[key]; ok {
-			return original
-		}
-		return key
-	}
+	// sent in THAT field, never the stored key the rewrite produced (a bson
+	// id the caller was never served, for a space-minted property). It is
+	// kept per field because one op may spell one property two ways in two
+	// fields, and each refusal must address the member it is about.
+	spelledIn := spellings.in
 	doc, err := a.doc()
 	if err != nil {
 		return err
@@ -1112,7 +1109,7 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 
 	// checkKey is the shared key validation (envelope keys, output-only,
 	// unknown with did-you-mean); false = the key is unusable.
-	checkKey := func(key, path string) bool {
+	checkKey := func(key, spelling, path string) bool {
 		switch {
 		case key == bundle.RelationKeyIsFavorite.String():
 			return true // routed to the favorite RPC below, never a detail
@@ -1120,16 +1117,16 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 			// the one envelope member that IS writable, through its own op:
 			// name it, or the caller is left with a dead end (typed hints)
 			issues = append(issues, v2model.Issue{Path: path,
-				Message: "\"type\" is not a property — it is the document envelope's type, and changes through the set_type op"}.
+				Message: fmt.Sprintf("%q is not a property — it is the document envelope's type, and changes through the set_type op", spelling)}.
 				Hintf("send {\"op\":\"set_type\",\"type\":…} instead; %s describes it", v2model.RefGetOpSchema("set_type")))
 			return false
 		case key == "id":
 			issues = append(issues, v2model.Issue{Path: path,
-				Message: fmt.Sprintf("%q is not a property — it is lifted to the document envelope and cannot be set here", key)})
+				Message: fmt.Sprintf("%q is not a property — it is lifted to the document envelope and cannot be set here", spelling)})
 			return false
 		case v2OutputOnlyPropertyKeys(key):
 			issues = append(issues, v2model.Issue{Path: path,
-				Message: fmt.Sprintf("%q is output-only — export writes it, writes must not", spelledAs(key))})
+				Message: fmt.Sprintf("%q is output-only — export writes it, writes must not", spelling)})
 			return false
 		default:
 			entries, err := a.propEntries() // primed once per PATCH (§7.5a-2)
@@ -1142,14 +1139,14 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 			// well as by its stored key
 			_, inDoc := doc.properties[key]
 			if !inDoc {
-				_, inDoc = doc.properties[spelledAs(key)]
+				_, inDoc = doc.properties[spelling]
 			}
 			if !inDoc {
 				if !propertyKeyExistsIn(entries, key) {
 					// a REMOVED space-minted property, by the slug its values
 					// still serve under elsewhere: refused as removed
 					if entry, removed := a.s.removedCustomProperty(a.spaceId, key); removed {
-						issues = append(issues, removedCustomPropertyIssue(a.spaceId, entry, spelledAs(key), path, a.v))
+						issues = append(issues, removedCustomPropertyIssue(a.spaceId, entry, spelling, path, a.v))
 						return false
 					}
 					if known == nil {
@@ -1167,7 +1164,7 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 					return false
 				}
 				if refused {
-					issues = append(issues, removedPropertyIssue(a.spaceId, key, spelledAs(key), path, a.v))
+					issues = append(issues, removedPropertyIssue(a.spaceId, key, spelling, path, a.v))
 					return false
 				}
 			}
@@ -1176,15 +1173,20 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	}
 	// claim enforces that a key appears in at most one of set/unset/add/
 	// remove (v0.3.5); the fields are claimed in documentation order, so the
-	// error names the earlier field.
-	seenIn := map[string]string{}
-	claim := func(key, field, path string) bool {
+	// error names the earlier field — by the spelling it was claimed with,
+	// when the two fields spell the property differently.
+	type claimed struct{ field, spelling string }
+	seenIn := map[string]claimed{}
+	claim := func(key, spelling, field, path string) bool {
 		if prev, ok := seenIn[key]; ok {
-			issues = append(issues, v2model.Issue{Path: path,
-				Message: fmt.Sprintf("%q appears in both %s and %s — pick one", spelledAs(key), prev, field)})
+			message := fmt.Sprintf("%q appears in both %s and %s — pick one", spelling, prev.field, field)
+			if prev.spelling != spelling {
+				message = fmt.Sprintf("%q in %s and %q in %s both address one property — pick one", prev.spelling, prev.field, spelling, field)
+			}
+			issues = append(issues, v2model.Issue{Path: path, Message: message})
 			return false
 		}
-		seenIn[key] = field
+		seenIn[key] = claimed{field: field, spelling: spelling}
 		return true
 	}
 
@@ -1193,26 +1195,30 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 		// issue paths and messages spell the key as the CALLER sent it —
 		// canonicalization already ran, and naming the rewrite is
 		// unactionable (§8.41-10)
-		path := opPath + ".set." + spelledAs(key)
-		claim(key, "set", path) // set goes first — it can never collide
-		checkKey(key, path)
+		spelling := spelledIn("set", key)
+		path := opPath + ".set." + spelling
+		claim(key, spelling, "set", path) // set goes first — it can never collide
+		checkKey(key, spelling, path)
 	}
 	unset := map[string]bool{}
-	for _, key := range op.Unset {
-		path := opPath + ".unset." + spelledAs(key)
+	for i, key := range op.Unset {
+		// unset is a list, so its spellings are kept per entry: two entries
+		// may spell one property two ways
+		spelling := spellings.unset[i]
+		path := opPath + ".unset." + spelling
 		if v2OutputOnlyPropertyKeys(key) {
 			issues = append(issues, v2model.Issue{Path: path,
-				Message: fmt.Sprintf("%q is output-only and cannot be unset", spelledAs(key))})
+				Message: fmt.Sprintf("%q is output-only and cannot be unset", spelling)})
 			continue
 		}
 		if key == "type" || key == "id" {
 			// envelope members: an object always has both, so there is no
 			// set_type recipe to offer here — only the fact
 			issues = append(issues, v2model.Issue{Path: path,
-				Message: fmt.Sprintf("%q is not a property and cannot be unset — an object always has one", key)})
+				Message: fmt.Sprintf("%q is not a property and cannot be unset — an object always has one", spelling)})
 			continue
 		}
-		if !claim(key, "unset", path) {
+		if !claim(key, spelling, "unset", path) {
 			continue
 		}
 		if key == bundle.RelationKeyIsFavorite.String() {
@@ -1226,13 +1232,14 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	checkListField := func(field string, m map[string]json.RawMessage) map[string][]any {
 		decoded := map[string][]any{}
 		for _, key := range sortedKeys(m) {
-			path := opPath + "." + field + "." + spelledAs(key)
-			if !claim(key, field, path) || !checkKey(key, path) {
+			spelling := spelledIn(field, key)
+			path := opPath + "." + field + "." + spelling
+			if !claim(key, spelling, field, path) || !checkKey(key, spelling, path) {
 				continue
 			}
 			if format := a.propertyFormat(key); !v2ListShapedFormats[format] {
 				issues = append(issues, v2model.Issue{Path: path,
-					Message: fmt.Sprintf("%q has format %q — %s only applies to list-shaped formats (%s); use set", spelledAs(key), anyblockjson.FormatName(format), field, v2ListShapedFormatNames)})
+					Message: fmt.Sprintf("%q has format %q — %s only applies to list-shaped formats (%s); use set", spelling, anyblockjson.FormatName(format), field, v2ListShapedFormatNames)})
 				continue
 			}
 			var entries []any
@@ -1261,18 +1268,21 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	for key := range addEntries {
 		offTypeFields[key] = "add"
 	}
-	a.warnOffTypeKeys(doc, opPath, offTypeFields, spelledAs)
+	a.warnOffTypeKeys(doc, opPath, offTypeFields, func(key string) string {
+		return spelledIn(offTypeFields[key], key)
+	})
 	for _, key := range setKeys {
+		spelling := spelledIn("set", key)
 		var raw any
 		if err := decodeJSONUseNumber(op.Set[key], &raw); err != nil {
 			return v2model.ValidationFailed("invalid set value",
-				v2model.Issue{Path: opPath + ".set." + spelledAs(key), Message: err.Error()})
+				v2model.Issue{Path: opPath + ".set." + spelling, Message: err.Error()})
 		}
 		if key == bundle.RelationKeyIsFavorite.String() {
 			flag, isBool := raw.(bool)
 			if !isBool {
 				return v2model.ValidationFailed("invalid set value",
-					v2model.Issue{Path: opPath + ".set." + spelledAs(key), Message: "is_favorite takes true or false"})
+					v2model.Issue{Path: opPath + ".set." + spelling, Message: spelling + " takes true or false"})
 			}
 			a.favorite = &flag
 			a.st.SetDetail(bundle.RelationKeyIsFavorite, domain.Bool(flag))
@@ -1286,7 +1296,7 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 		// retired exact-integer sidecar a legacy object may still carry
 		// (State.removeExactJSONIntegerMetadata), so nothing mints or
 		// sweeps it here.
-		value, err := a.checkedPropertyValue(key, spelledAs(key), opPath+".set.", raw, a.resolvers.Options())
+		value, err := a.checkedPropertyValue(key, spelling, opPath+".set.", raw, a.resolvers.Options())
 		if err != nil {
 			return err
 		}
@@ -1303,6 +1313,7 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	// add appends without duplicating an existing entry; entry resolution is
 	// the same create-missing path as set (option names → ids, §3)
 	for _, key := range sortedKeys(addEntries) {
+		spelling := spelledIn("add", key)
 		// select holds ONE value: appending to a non-empty one would leave a
 		// two-valued single-select the UI renders arbitrarily. Steer to set
 		// rather than silently breaking the invariant (v0.3.5 review).
@@ -1310,8 +1321,8 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 			len(a.st.CombinedDetails().Get(domain.RelationKey(key)).WrapToStringList()) > 0 {
 			return v2model.ValidationFailed("add on a select property that already has a value",
 				v2model.Issue{
-					Path:    opPath + ".add." + spelledAs(key),
-					Message: fmt.Sprintf("%q has format \"select\" and holds a single value", spelledAs(key)),
+					Path:    opPath + ".add." + spelling,
+					Message: fmt.Sprintf("%q has format \"select\" and holds a single value", spelling),
 					Hint:    "use set to replace it, or unset to clear it first",
 				})
 		}
@@ -1319,7 +1330,7 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 		// cannot represent and returns the rest, so a list carrying one bad
 		// member landed as a 200 that added nothing — losing the good
 		// entries with it
-		value, err := a.checkedPropertyValue(key, spelledAs(key), opPath+".add.", addEntries[key], a.resolvers.Options())
+		value, err := a.checkedPropertyValue(key, spelling, opPath+".add.", addEntries[key], a.resolvers.Options())
 		if err != nil {
 			return err
 		}
@@ -1346,7 +1357,7 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	for _, key := range sortedKeys(removeEntries) {
 		opts := a.marshalOptions()
 		opts.ResolveOptions = ambiguityAwareReadOnlyOptionResolver{r: a.resolvers}
-		value, err := a.checkedPropertyValue(key, spelledAs(key), opPath+".remove.", removeEntries[key], opts)
+		value, err := a.checkedPropertyValue(key, spelledIn("remove", key), opPath+".remove.", removeEntries[key], opts)
 		if err != nil {
 			return err
 		}
@@ -1420,17 +1431,38 @@ func (a *v2StateApplier) refusesRemovedBundled(entries []propertyEntry, key stri
 	return a.s.bundledPropertyRemoved(a.resolvers.ctx, a.spaceId, entries, removed, key)
 }
 
+// setPropertySpellings remembers what a set_properties op's caller wrote for
+// each canonical key: per map field (set, add, remove), where a key occurs
+// once, and per entry for unset, which is a list. A single canonical → spelling
+// map let a later field overwrite an earlier one, so a refusal about `add`
+// could name the spelling `remove` used and point at a member the request
+// does not contain.
+type setPropertySpellings struct {
+	fields map[string]map[string]string // field → canonical → as sent
+	unset  []string                     // op.Unset[i] as sent
+}
+
+// in is the caller's spelling of a canonical key in one map field, the key
+// itself when the field does not carry it.
+func (s setPropertySpellings) in(field, key string) string {
+	if original, ok := s.fields[field][key]; ok {
+		return original
+	}
+	return key
+}
+
 // canonicalizeSetPropertyKeys rewrites slug-spelled property terms in a
 // set_properties op to their canonical stored keys (§7.5a-5). Rewrites apply
 // only when the chain resolves to a DIFFERENT stored spelling; two spellings
-// landing on one key is a loud 400, as is an ambiguous slug. The returned
-// map remembers every rewrite (canonical → caller's spelling) so refusals
-// raised after the rewrite can address the request as sent (§8.41-10).
-func (a *v2StateApplier) canonicalizeSetPropertyKeys(op *opSetProperties, opPath string) (map[string]string, error) {
-	spellings := map[string]string{}
+// landing on one key in one field is a loud 400, as is an ambiguous slug.
+// The returned spellings keep what the caller wrote, field by field, so
+// refusals raised after the rewrite can address the request as sent
+// (§8.41-10).
+func (a *v2StateApplier) canonicalizeSetPropertyKeys(op *opSetProperties, opPath string) (setPropertySpellings, error) {
+	spellings := setPropertySpellings{fields: map[string]map[string]string{}}
 	entries, err := a.propEntries()
 	if err != nil {
-		return nil, err
+		return spellings, err
 	}
 	// the vocabulary that rendered this document may have served a key for
 	// a REMOVED property (apikeyvocab.go rememberCorpse), and what it served
@@ -1458,7 +1490,6 @@ func (a *v2StateApplier) canonicalizeSetPropertyKeys(op *opSetProperties, opPath
 	canon := func(key, path string) (string, error) {
 		if onDocument(key) {
 			if stored, ok := servedCorpse(key); ok {
-				spellings[stored] = key
 				return stored, nil
 			}
 		}
@@ -1467,11 +1498,9 @@ func (a *v2StateApplier) canonicalizeSetPropertyKeys(op *opSetProperties, opPath
 			return "", ambiguousKeyError("property key", key, path, ambiguous)
 		}
 		if ok && entry.Key != key {
-			spellings[entry.Key] = key
 			return entry.Key, nil
 		}
 		if stored, ok := servedCorpse(key); ok {
-			spellings[stored] = key
 			return stored, nil
 		}
 		return key, nil
@@ -1481,9 +1510,11 @@ func (a *v2StateApplier) canonicalizeSetPropertyKeys(op *opSetProperties, opPath
 			return m, nil
 		}
 		out := make(map[string]json.RawMessage, len(m))
-		// the refusal names both spellings the caller sent; the canonical
+		// what the caller wrote for each canonical key of this field; the
+		// duplicate refusal names both spellings from it, since the canonical
 		// one is the stored key, a bson id for a space-minted property
 		spelledBy := make(map[string]string, len(m))
+		spellings.fields[field] = spelledBy
 		for _, key := range sortedKeys(m) {
 			path := opPath + "." + field + "." + key
 			canonical, err := canon(key, path)
@@ -1501,19 +1532,21 @@ func (a *v2StateApplier) canonicalizeSetPropertyKeys(op *opSetProperties, opPath
 		return out, nil
 	}
 	if op.Set, err = rewriteMap(op.Set, "set"); err != nil {
-		return nil, err
+		return spellings, err
 	}
 	if op.Add, err = rewriteMap(op.Add, "add"); err != nil {
-		return nil, err
+		return spellings, err
 	}
 	if op.Remove, err = rewriteMap(op.Remove, "remove"); err != nil {
-		return nil, err
+		return spellings, err
 	}
+	spellings.unset = make([]string, len(op.Unset))
 	for i, key := range op.Unset {
 		canonical, err := canon(key, opPath+".unset."+key)
 		if err != nil {
-			return nil, err
+			return spellings, err
 		}
+		spellings.unset[i] = key
 		op.Unset[i] = canonical
 	}
 	return spellings, nil
