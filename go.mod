@@ -126,6 +126,9 @@ require (
 )
 
 require (
+	github.com/danieljoos/wincred v1.2.3
+	github.com/godbus/dbus/v5 v5.2.2
+	github.com/keybase/go-keychain v0.0.1
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2
 	github.com/swaggo/swag/v2 v2.0.0-rc4
 )
