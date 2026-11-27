@@ -57,14 +57,19 @@ type Options struct {
 	ErrorBodyWait    time.Duration
 	StoreTimeout     time.Duration
 	TransferTimeout  time.Duration
-	Now              func() time.Time
+	// FileGrace is how long a file transfer that was told to stop may
+	// take to unwind before its worker answers without it.
+	FileGrace time.Duration
+	Now       func() time.Time
 
 	// Test hooks. httpClient replaces the loopback client, so a test can
 	// drop idle connections at a known moment; onServer hands out the
-	// running server; afterAdmit runs once a request has passed the gate.
+	// running server; afterAdmit runs once a request has passed the gate;
+	// wrapFolder stands in front of the files folder.
 	httpClient *http.Client
 	onServer   func(*server)
 	afterAdmit func(*call)
+	wrapFolder func(folder) folder
 }
 
 func (o *Options) defaults() {
@@ -88,6 +93,9 @@ func (o *Options) defaults() {
 	}
 	if o.TransferTimeout == 0 {
 		o.TransferTimeout = contract.TransferTimeout
+	}
+	if o.FileGrace == 0 {
+		o.FileGrace = time.Second
 	}
 	if o.Now == nil {
 		o.Now = time.Now
@@ -292,16 +300,22 @@ func (s *server) drain(ctx, deadline context.Context) int {
 		s.accepted.Wait()
 		close(drained)
 	}()
-	// a file transfer still running near the deadline is stopped a
-	// little before it, so that it can remove its part file in time
+	// a little before the deadline no file transfer starts any more, and
+	// one still running is stopped, so that it can remove its part file in
+	// time
 	reserve := time.NewTimer(o.ShutdownDeadline - o.ShutdownDeadline/5)
 	defer reserve.Stop()
 	early := make(chan struct{})
 	go func() {
 		select {
 		case <-reserve.C:
-			if s.local != nil && s.local.running.Load() > 0 {
-				close(early)
+			// closed first, counted second: a transfer that starts now
+			// either sees the door closed or is seen here
+			if s.local != nil {
+				s.local.closed.Store(true)
+				if s.local.running.Load() > 0 {
+					close(early)
+				}
 			}
 		case <-drained:
 		case <-deadline.Done():
@@ -322,6 +336,10 @@ func (s *server) drain(ctx, deadline context.Context) int {
 		code = 1
 	case <-ctx.Done():
 	case <-s.broken:
+		code = 1
+	}
+	if s.local != nil && s.local.dropped.Load() {
+		// a transfer was turned away: its reply is lost
 		code = 1
 	}
 	return code
@@ -348,7 +366,11 @@ func (s *server) openFiles() func() {
 			return release
 		}
 	}
-	local, err := newLocalTools(s, dir, s.o.TransferTimeout)
+	var where folder = dirFolder{dir}
+	if s.o.wrapFolder != nil {
+		where = s.o.wrapFolder(where)
+	}
+	local, err := newLocalTools(s, where, s.o.TransferTimeout)
 	if err != nil {
 		s.log.printf("file tools are off: %v", err)
 		return release
@@ -761,8 +783,8 @@ func (s *server) handle(c *call) *reply {
 	}
 	if isTool && s.local != nil {
 		// heart wins a name it serves itself; the rest never reaches it
-		if name, args, ok := s.local.claims(m.params); ok {
-			return s.local.call(c, name, args)
+		if name, params, ok := s.local.claims(m.params); ok {
+			return s.local.call(c, name, params)
 		}
 	}
 	snap, err := s.conn.current(c.ctx)

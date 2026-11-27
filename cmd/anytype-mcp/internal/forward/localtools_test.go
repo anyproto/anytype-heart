@@ -2,8 +2,10 @@ package forward
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -14,11 +16,13 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"testing/iotest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/contract"
 	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/internal/store"
 )
 
@@ -688,6 +692,24 @@ func TestDownloadFile(t *testing.T) {
 		h.noSecret()
 	})
 
+	t.Run("a file that spells the key with JSON escapes is not saved either", func(t *testing.T) {
+		h := fileTools(t)
+		h.heart.setHook(func(w http.ResponseWriter, r *http.Request, _ recorded) bool {
+			if !strings.HasSuffix(r.URL.Path, "/content") {
+				return false
+			}
+			// the Phase 1 canary spelling: one letter as \uXXXX
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = io.WriteString(w, `{"headers":{"Authorization":"Bearer \u0043`+canaryKey[1:]+`"}}`)
+			return true
+		})
+		g := h.tool("download_file", map[string]any{"space_id": "s", "file_id": "f"})
+		assert.True(t, g.isError())
+		assert.Equal(t, "The file contains this connection's key and was not saved.", g.text())
+		assert.Empty(t, h.entries())
+		h.noSecret()
+	})
+
 	t.Run("a long error from Anytype still arrives as JSON", func(t *testing.T) {
 		h := fileTools(t)
 		h.heart.setHook(func(w http.ResponseWriter, r *http.Request, _ recorded) bool {
@@ -755,6 +777,115 @@ func TestDownloadFile(t *testing.T) {
 	})
 }
 
+// stuckFolder is a files folder on a file system that stopped answering.
+type stuckFolder struct {
+	folder
+	release chan struct{}
+}
+
+func (f stuckFolder) Save(context.Context, string, io.Reader) (string, int64, error) {
+	<-f.release
+	return "", 0, errors.New("released")
+}
+
+func (f stuckFolder) OpenUpload(string) (io.ReadCloser, string, error) {
+	<-f.release
+	return nil, "", errors.New("released")
+}
+
+func TestStalledFileSystem(t *testing.T) {
+	release := make(chan struct{})
+	t.Cleanup(func() { close(release) })
+	h := fileTools(t, withFiles(pdf), withTransferTimeout(150*time.Millisecond), withOptions(func(o *Options) {
+		o.FileGrace = 50 * time.Millisecond
+		o.wrapFolder = func(f folder) folder { return stuckFolder{f, release} }
+	}))
+	// more transfers than there are workers, every one stuck in the folder
+	for i := range 4 {
+		name, args := "download_file", map[string]any{"space_id": "s", "file_id": "file-1"}
+		if i%2 == 1 {
+			name, args = "upload_local_file", map[string]any{"space_id": "s", "path": "a.txt"}
+		}
+		start := time.Now()
+		g := h.tool(name, args)
+		assert.True(t, g.isError())
+		assert.Equal(t, "the transfer did not finish within 1 minutes", g.text())
+		assert.Less(t, time.Since(start), 3*time.Second, "the worker is released at the deadline")
+	}
+	g := h.tool("download_file", map[string]any{"space_id": "s", "file_id": "file-1"})
+	assert.True(t, g.isError())
+	assert.Contains(t, g.text(), "does not answer")
+	// the workers are free for everything else
+	g = h.call(toolCall(99))
+	assert.Equal(t, "done", g.text())
+}
+
+func TestQueuedDownloadAtEOF(t *testing.T) {
+	h := fileTools(t, withFiles(pdf))
+	// every worker is busy with an ordinary call until after the point
+	// where transfers stop being admitted (80% of the 2 s deadline)
+	hold := make(chan struct{})
+	time.AfterFunc(1750*time.Millisecond, func() { close(hold) })
+	h.heart.setHook(func(_ http.ResponseWriter, _ *http.Request, rec recorded) bool {
+		if rec.RPC == "tools/call" {
+			<-hold
+		}
+		return false
+	})
+	for i := range contract.Workers {
+		h.send(toolCall(i + 1))
+	}
+	require.Eventually(t, func() bool { return h.heart.count("tools/call") == contract.Workers }, 3*time.Second, 5*time.Millisecond)
+	h.send(namedCall("queued", "download_file", map[string]any{"space_id": "s", "file_id": "file-1"}))
+	require.NoError(t, h.in.Close())
+	sawPart := false
+	for {
+		select {
+		case code := <-h.exit:
+			assert.Equal(t, 1, code, "the download's reply is lost")
+			assert.False(t, sawPart, "no part file was ever made")
+			assert.Empty(t, h.entries())
+			assert.Empty(t, h.rest(), "the queued download never started")
+			return
+		case <-time.After(5 * time.Millisecond):
+			sawPart = sawPart || len(h.entries()) > 0
+		}
+	}
+}
+
+func TestExactArgumentNames(t *testing.T) {
+	h := fileTools(t, withFiles(pdf))
+	h.put("a.txt", []byte("x"))
+	line := func(params string) string {
+		return `{"jsonrpc":"2.0","id":"x","method":"tools/call","params":` + params + `}`
+	}
+	for name, params := range map[string]string{
+		"a second arguments member in another case":  `{"name":"upload_local_file","arguments":{"space_id":"s","path":"a.txt","dry_run":true},"Arguments":{"space_id":"s","path":"a.txt"}}`,
+		"the other way round":                        `{"name":"upload_local_file","Arguments":{"space_id":"s","path":"a.txt","dry_run":true},"arguments":{"space_id":"s","path":"a.txt"}}`,
+		"arguments twice":                            `{"name":"upload_local_file","arguments":{"space_id":"s","path":"a.txt","dry_run":true},"arguments":{"space_id":"s","path":"a.txt"}}`,
+		"the name twice":                             `{"name":"x","name":"upload_local_file","arguments":{"space_id":"s","path":"a.txt"}}`,
+		"a case variant of dry_run":                  `{"name":"upload_local_file","arguments":{"space_id":"s","path":"a.txt","Dry_Run":true}}`,
+		"dry_run and a case variant of it":           `{"name":"upload_local_file","arguments":{"space_id":"s","path":"a.txt","dry_run":true,"DRY_RUN":false}}`,
+		"dry_run twice":                              `{"name":"upload_local_file","arguments":{"space_id":"s","path":"a.txt","dry_run":true,"dry_run":false}}`,
+		"a case variant of path":                     `{"name":"upload_local_file","arguments":{"space_id":"s","Path":"a.txt"}}`,
+		"an unknown member of params":                `{"name":"upload_local_file","arguments":{"space_id":"s","path":"a.txt"},"args":{}}`,
+		"download: a case variant of file_id":        `{"name":"download_file","arguments":{"space_id":"s","File_Id":"file-1"}}`,
+		"download: a second arguments member":        `{"name":"download_file","arguments":{"space_id":"s","file_id":"file-1"},"ARGUMENTS":{"space_id":"s","file_id":"other"}}`,
+		"download: width in another case and normal": `{"name":"download_file","arguments":{"space_id":"s","file_id":"file-1","width":1,"Width":2}}`,
+	} {
+		g := h.call(line(params))
+		require.Nil(t, g.Error, "%s: %s", name, g.raw)
+		assert.True(t, g.isError(), "%s: %s", name, g.raw)
+		assert.Empty(t, h.rest(), "%s: nothing reached Anytype's REST routes", name)
+		assert.Zero(t, h.heart.count("tools/call"), "%s: nor its MCP route", name)
+		assert.Empty(t, h.entries()[1:], name)
+	}
+	// _meta is the protocol's own member
+	g := h.call(line(`{"name":"upload_local_file","arguments":{"space_id":"s","path":"a.txt","dry_run":true},"_meta":{"progressToken":1}}`))
+	require.False(t, g.isError(), g.text())
+	assert.Equal(t, "dry_run=true", h.rest()[0].Query)
+}
+
 func TestKeyGuard(t *testing.T) {
 	const key = `k"ey/with<odd>&chars\1234567890`
 	plain, _ := json.Marshal(map[string]string{"a": key})
@@ -770,6 +901,46 @@ func TestKeyGuard(t *testing.T) {
 			_, err := io.ReadAll(guard)
 			require.ErrorIs(t, err, errCarriesKey, "%s cut at %d", name, cut)
 		}
+	}
+	// any letter may be spelled as an escape, by any writer's choice
+	escaped := func(every int) []byte {
+		var b bytes.Buffer
+		b.WriteString(`{"reflected":"Bearer `)
+		for i, c := range []byte(key) {
+			switch {
+			case i%every == 0:
+				fmt.Fprintf(&b, `\u%04X`, c)
+			case c == '"' || c == '\\':
+				b.WriteByte('\\')
+				b.WriteByte(c)
+			case c == '/':
+				b.WriteString(`\/`)
+			default:
+				b.WriteByte(c)
+			}
+		}
+		b.WriteString(`"}`)
+		return b.Bytes()
+	}
+	for _, every := range []int{1, 2, 3, 7} {
+		body := escaped(every)
+		var decoded map[string]string
+		require.NoError(t, json.Unmarshal(body, &decoded))
+		require.Equal(t, "Bearer "+key, decoded["reflected"], "the test's own spelling")
+		for cut := 0; cut <= len(body); cut++ {
+			guard := newKeyGuard(io.MultiReader(bytes.NewReader(body[:cut]), bytes.NewReader(body[cut:])), key)
+			_, err := io.ReadAll(guard)
+			require.ErrorIs(t, err, errCarriesKey, "every %d cut at %d", every, cut)
+		}
+		// byte by byte
+		_, err := io.ReadAll(newKeyGuard(iotest.OneByteReader(bytes.NewReader(body)), key))
+		require.ErrorIs(t, err, errCarriesKey)
+	}
+	// escapes that lead nowhere pass, unchanged
+	for _, body := range []string{`\u00`, `a\`, `\uZZZZ` + key[1:], `\x` + key[:5], strings.Repeat(`\u0041`, 5000), `\\\\` + key[:len(key)-1]} {
+		got, err := io.ReadAll(newKeyGuard(iotest.OneByteReader(strings.NewReader(body)), key))
+		require.NoError(t, err, body[:min(len(body), 20)])
+		assert.Equal(t, body, string(got))
 	}
 	clean := bytes.Repeat([]byte(key[:len(key)-1]), 1000)
 	got, err := io.ReadAll(newKeyGuard(bytes.NewReader(clean), key))

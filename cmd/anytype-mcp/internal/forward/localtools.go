@@ -19,6 +19,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"unicode/utf8"
 
 	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/contract"
 	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/internal/files"
@@ -81,14 +82,25 @@ type toolDefinition struct {
 }
 
 type localTools struct {
-	s       *server
-	dir     *files.Dir
+	s   *server
+	dir folder
+	// grace is how long a transfer that was told to stop may take to
+	// unwind before its worker stops waiting for it
+	grace   time.Duration
 	timeout time.Duration
 	defs    []toolDefinition
 
 	// running counts the transfers under way: shutdown leaves them time
 	// to remove their part files
 	running atomic.Int32
+	// stalled counts transfers whose worker gave up waiting for them: a
+	// file system that does not answer. Once every worker has lost one,
+	// no new transfer starts.
+	stalled atomic.Int32
+	// closed: shutdown has reached the point after which a new transfer
+	// could no longer clean up after itself; dropped: one was turned away
+	closed  atomic.Bool
+	dropped atomic.Bool
 
 	mu sync.Mutex
 	// served are the names heart listed, over the pages of one listing;
@@ -97,19 +109,39 @@ type localTools struct {
 	active map[string]bool
 }
 
-func newLocalTools(s *server, dir *files.Dir, timeout time.Duration) (*localTools, error) {
+// folder is what the tools need of the files folder (files.Dir).
+type folder interface {
+	Path() string
+	Temporary() bool
+	Located() bool
+	OpenUpload(path string) (io.ReadCloser, string, error)
+	Save(ctx context.Context, name string, body io.Reader) (string, int64, error)
+}
+
+// dirFolder is a files.Dir as a folder.
+type dirFolder struct{ *files.Dir }
+
+func (d dirFolder) OpenUpload(path string) (io.ReadCloser, string, error) {
+	f, name, err := d.Dir.OpenUpload(path)
+	if err != nil {
+		return nil, "", err
+	}
+	return f, name, nil
+}
+
+func newLocalTools(s *server, dir folder, timeout time.Duration) (*localTools, error) {
 	defs, err := definitions(dir)
 	if err != nil {
 		return nil, err
 	}
-	l := &localTools{s: s, dir: dir, timeout: timeout, defs: defs, served: map[string]bool{}, active: map[string]bool{}}
+	l := &localTools{s: s, dir: dir, timeout: timeout, grace: s.o.FileGrace, defs: defs, served: map[string]bool{}, active: map[string]bool{}}
 	for _, d := range defs {
 		l.active[d.name] = true
 	}
 	return l, nil
 }
 
-func definitions(dir *files.Dir) ([]toolDefinition, error) {
+func definitions(dir folder) ([]toolDefinition, error) {
 	where := dir.Path()
 	kept := ""
 	if dir.Temporary() {
@@ -230,19 +262,81 @@ func (l *localTools) extend(params, result json.RawMessage) json.RawMessage {
 	return extended
 }
 
-// claims reports whether a tools/call names a local tool that heart does
-// not serve itself, and returns its arguments.
-func (l *localTools) claims(params json.RawMessage) (name string, args json.RawMessage, ok bool) {
-	var p struct {
-		Name      string          `json:"name"`
-		Arguments json.RawMessage `json:"arguments"`
+// members reads a JSON object by its exact member names. A name that
+// occurs twice makes the object ambiguous: an error.
+func members(raw json.RawMessage) (map[string]json.RawMessage, error) {
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	if tok, err := dec.Token(); err != nil || tok != json.Delim('{') {
+		return nil, errors.New("not an object")
 	}
-	if json.Unmarshal(params, &p) != nil {
-		return "", nil, false
+	out := map[string]json.RawMessage{}
+	for dec.More() {
+		tok, err := dec.Token()
+		key, isString := tok.(string)
+		if err != nil || !isString {
+			return nil, errors.New("not an object")
+		}
+		var value json.RawMessage
+		if err := dec.Decode(&value); err != nil {
+			return nil, err
+		}
+		if _, twice := out[key]; twice {
+			return nil, fmt.Errorf("%q occurs twice", clip(key, 40))
+		}
+		out[key] = value
+	}
+	return out, nil
+}
+
+// claims reports whether a tools/call names a local tool that heart does
+// not serve itself, and returns the call's params by their exact member
+// names. Only the exact member "name" names the tool.
+func (l *localTools) claims(params json.RawMessage) (name string, exact map[string]json.RawMessage, ok bool) {
+	exact, err := members(params)
+	if err != nil || json.Unmarshal(exact["name"], &name) != nil {
+		// not a call of ours: heart answers it as it sees fit
+		var p struct {
+			Name string `json:"name"`
+		}
+		if json.Unmarshal(params, &p) != nil {
+			return "", nil, false
+		}
+		// a local tool's name in an ambiguous call never reaches heart
+		// as something else, and never runs here
+		name, exact = p.Name, nil
 	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	return p.Name, p.Arguments, l.active[p.Name]
+	return name, exact, l.active[name]
+}
+
+// arguments are the tool's arguments by their exact names. Nothing is
+// guessed: a member of params that is not the protocol's (another
+// spelling of "arguments", say) is an error, so no argument can be
+// overlooked and none can be replaced.
+func arguments(name string, params map[string]json.RawMessage) (map[string]json.RawMessage, error) {
+	if params == nil {
+		return nil, failf("%s was called with params that are not one plain object", name)
+	}
+	var unexpected []string
+	for key := range params {
+		if key != "name" && key != "arguments" && key != "_meta" {
+			unexpected = append(unexpected, clip(key, 40))
+		}
+	}
+	if len(unexpected) > 0 {
+		sort.Strings(unexpected)
+		return nil, failf("%s was called with unexpected members beside name and arguments: %s", name, strings.Join(unexpected, ", "))
+	}
+	raw, ok := params["arguments"]
+	if !ok || isNull(raw) {
+		return map[string]json.RawMessage{}, nil
+	}
+	args, err := members(raw)
+	if err != nil {
+		return nil, failf("%s takes its arguments as one object, each name once", name)
+	}
+	return args, nil
 }
 
 func (l *localTools) minutes() int {
@@ -253,33 +347,71 @@ func (l *localTools) minutes() int {
 // canceled or the forwarder is stopping. The whole transfer runs on the
 // snapshot it started with and ends within the transfer deadline. Failures
 // the model can act on are tool results.
-func (l *localTools) call(c *call, name string, rawArgs json.RawMessage) *reply {
-	l.running.Add(1)
-	defer l.running.Add(-1)
+func (l *localTools) call(c *call, name string, params map[string]json.RawMessage) *reply {
 	id := c.msg.id
+	l.running.Add(1)
+	if l.closed.Load() || c.ctx.Err() != nil {
+		// too late to start: it could not clean up after itself
+		l.running.Add(-1)
+		l.dropped.Store(true)
+		return nil
+	}
+	if int(l.stalled.Load()) >= contract.Workers {
+		l.running.Add(-1)
+		return toolErrorReply(id, fmt.Sprintf("the files folder %s does not answer: earlier transfers are still stuck in it. Restart this app.", l.dir.Path()))
+	}
 	snap, err := l.s.conn.current(c.ctx)
 	if err != nil {
+		l.running.Add(-1)
 		return l.s.notConnected(id)
 	}
 	ctx, cancel := context.WithTimeout(c.ctx, l.timeout)
 	defer cancel()
 
-	var text string
-	var structured json.RawMessage
-	args := map[string]json.RawMessage{}
-	if len(rawArgs) > 0 && !isNull(rawArgs) {
-		if json.Unmarshal(rawArgs, &args) != nil {
-			err = failf("%s takes its arguments as an object", name)
-		}
+	// The transfer runs beside the worker. A file system that stops
+	// answering (a network mount) can hold the transfer for ever, but not
+	// the worker: once the transfer was told to stop, the worker waits a
+	// moment for it to unwind and then answers without it. Whatever it
+	// does later, it publishes nothing: its context is over.
+	type outcome struct {
+		text       string
+		structured json.RawMessage
+		err        error
 	}
-	if err == nil {
-		switch name {
-		case toolDownload:
-			text, structured, err = l.download(ctx, snap, args)
+	done := make(chan outcome, 1)
+	go func() { //nolint:gosec // it outlives the request only while the file system is stuck
+		defer l.running.Add(-1)
+		var o outcome
+		args, err := arguments(name, params)
+		switch {
+		case err != nil:
+			o.err = err
+		case name == toolDownload:
+			o.text, o.structured, o.err = l.download(ctx, snap, args)
 		default:
-			text, structured, err = l.upload(ctx, snap, args)
+			o.text, o.structured, o.err = l.upload(ctx, snap, args)
+		}
+		done <- o
+	}()
+	var o outcome
+	select {
+	case o = <-done:
+	case <-ctx.Done():
+		grace := time.NewTimer(l.grace)
+		defer grace.Stop()
+		select {
+		case o = <-done:
+		case <-grace.C:
+			l.stalled.Add(1)
+			go func() { //nolint:gosec // counts the stuck transfer out again if it ever returns
+				<-done
+				l.stalled.Add(-1)
+			}()
+			l.s.log.printf("%s: the files folder does not answer; the transfer was abandoned", name)
+			o.err = errors.New("the files folder does not answer")
 		}
 	}
+	text, structured, err := o.text, o.structured, o.err
 
 	var failure *toolFailure
 	var refusal *files.Refusal
@@ -503,52 +635,116 @@ func wholeNumber(raw json.RawMessage) (int64, bool) {
 var errCarriesKey = errors.New("the download contains the connection's key")
 
 // keyGuard passes a download through and stops it when the key shows up
-// in it: raw, or spelled as a JSON string would spell it. The key never
-// rests in a file the forwarder wrote. A match across two reads is found
-// in the tail kept from the read before.
+// in it: as it is, or behind JSON's escapes, whichever of them a writer
+// chose (\u0041 for a letter, \/ for a slash), as the transport's own
+// check reads a reply. The key never rests in a file the forwarder wrote.
+// Both forms are matched across reads: a tail of each is kept.
 type keyGuard struct {
-	src      io.Reader
-	patterns [][]byte
-	tail     []byte
-	longest  int
+	src io.Reader
+	key []byte
+	// the last len(key)-1 bytes of the stream, as they are and unescaped
+	raw, plain []byte
+	// an escape that has begun and not ended: the backslash and what
+	// followed it so far
+	pending []byte
+	scratch []byte
 }
 
 func newKeyGuard(src io.Reader, key string) io.Reader {
 	if key == "" {
 		return src
 	}
-	g := &keyGuard{src: src}
-	add := func(p []byte) {
-		for _, have := range g.patterns {
-			if bytes.Equal(have, p) {
-				return
+	return &keyGuard{src: src, key: []byte(key)}
+}
+
+var simpleEscapes = map[byte]byte{'"': '"', '\\': '\\', '/': '/', 'b': '\b', 'f': '\f', 'n': '\n', 'r': '\r', 't': '\t'}
+
+func unhex(b byte) (byte, bool) {
+	switch {
+	case b >= '0' && b <= '9':
+		return b - '0', true
+	case b >= 'a' && b <= 'f':
+		return b - 'a' + 10, true
+	case b >= 'A' && b <= 'F':
+		return b - 'A' + 10, true
+	}
+	return 0, false
+}
+
+// unescape appends chunk to out with JSON's escapes resolved, carrying an
+// unfinished escape over to the next chunk. What is not an escape stays
+// as it is.
+func (g *keyGuard) unescape(out, chunk []byte) []byte {
+	for _, b := range chunk {
+		if len(g.pending) == 0 {
+			if b == '\\' {
+				g.pending = append(g.pending, b)
+			} else {
+				out = append(out, b)
 			}
+			continue
 		}
-		g.patterns = append(g.patterns, p)
-		g.longest = max(g.longest, len(p))
+		g.pending = append(g.pending, b)
+		if len(g.pending) == 2 {
+			if b == 'u' {
+				continue
+			}
+			if plain, ok := simpleEscapes[b]; ok {
+				out = append(out, plain)
+			} else {
+				out = append(out, g.pending...)
+			}
+			g.pending = g.pending[:0]
+			continue
+		}
+		// \uXXXX
+		if _, ok := unhex(b); !ok {
+			// not an escape after all; the byte may begin one itself
+			out = append(out, g.pending[:len(g.pending)-1]...)
+			g.pending = g.pending[:0]
+			if b == '\\' {
+				g.pending = append(g.pending, b)
+			} else {
+				out = append(out, b)
+			}
+			continue
+		}
+		if len(g.pending) == 6 {
+			var r rune
+			for _, h := range g.pending[2:] {
+				v, _ := unhex(h)
+				r = r<<4 | rune(v)
+			}
+			out = utf8.AppendRune(out, r)
+			g.pending = g.pending[:0]
+		}
 	}
-	add([]byte(key))
-	if quoted, err := json.Marshal(key); err == nil {
-		add(quoted[1 : len(quoted)-1]) // HTML characters escaped
-	}
-	if quoted, err := marshalPlain(key); err == nil {
-		add(quoted[1 : len(quoted)-1])
-		add(bytes.ReplaceAll(quoted[1:len(quoted)-1], []byte("/"), []byte(`\/`)))
-	}
-	return g
+	return out
+}
+
+func keep(window []byte, n int) []byte {
+	return append([]byte(nil), window[max(0, len(window)-n):]...)
 }
 
 func (g *keyGuard) Read(p []byte) (int, error) {
 	n, err := g.src.Read(p)
 	if n > 0 {
-		window := append(g.tail, p[:n]...) //nolint:gocritic // a new window per read, by design
-		for _, pattern := range g.patterns {
-			if bytes.Contains(window, pattern) {
-				return 0, errCarriesKey
-			}
+		raw := append(g.raw, p[:n]...) //nolint:gocritic // a new window per read, by design
+		if bytes.Contains(raw, g.key) {
+			return 0, errCarriesKey
 		}
-		keep := min(len(window), g.longest-1)
-		g.tail = append(g.tail[:0:0], window[len(window)-keep:]...)
+		g.raw = keep(raw, len(g.key)-1)
+		g.scratch = append(g.scratch[:0], g.plain...)
+		if len(g.pending) == 0 && bytes.IndexByte(p[:n], '\\') < 0 {
+			// no escape in sight: the unescaped stream is the stream
+			g.scratch = append(g.scratch, p[:n]...)
+		} else {
+			g.scratch = g.unescape(g.scratch, p[:n])
+		}
+		if bytes.Contains(g.scratch, g.key) {
+			return 0, errCarriesKey
+		}
+		g.plain = keep(g.scratch, len(g.key)-1)
 	}
 	return n, err
 }
