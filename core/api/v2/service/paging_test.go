@@ -888,3 +888,24 @@ func TestV2OffsetPagingTieBreak(t *testing.T) {
 		})
 	})
 }
+
+func TestGlobalSearchNarrowHint(t *testing.T) {
+	t.Run("a page within the depth cap steers to the next offset", func(t *testing.T) {
+		// when
+		got := GlobalSearchNarrowHint(0, 25)
+
+		// then
+		assert.Equal(t, SearchNarrowHint, got)
+	})
+
+	t.Run("a page whose next offset passes the cap steers to space search", func(t *testing.T) {
+		// given
+		want := "global search pages at most 2000 rows deep; narrow with filter or query, or search one space at a time"
+
+		// when
+		got := GlobalSearchNarrowHint(2000, 1)
+
+		// then
+		assert.Equal(t, want, got)
+	})
+}

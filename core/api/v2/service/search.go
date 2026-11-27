@@ -67,6 +67,16 @@ var v2BundledQueryKeys = []string{"unreadMentionCount", "unreadMessageCount"}
 // SearchNarrowHint is the C10 truncation steering for search results.
 const SearchNarrowHint = "narrow with filter or query, or request the next offset"
 
+// GlobalSearchNarrowHint is the truncation steering of one global search
+// page: the next offset while it is within the global depth cap, the
+// narrowing and the space search past it, where the next offset is refused.
+func GlobalSearchNarrowHint(offset, limit int) string {
+	if offset+limit > maxGlobalSearchOffset {
+		return fmt.Sprintf("global search pages at most %d rows deep; narrow with filter or query, or search one space at a time", maxGlobalSearchOffset)
+	}
+	return SearchNarrowHint
+}
+
 // maxGlobalSearchOffset bounds how deep the global merge pages: each resolved
 // query group materializes up to offset+limit+1 records, so an unbounded
 // offset lets one request decode the whole account into memory. Deeper

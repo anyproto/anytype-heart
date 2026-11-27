@@ -279,18 +279,14 @@ func (s *Service) ListTypes(ctx context.Context, spaceId string, offset, limit i
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, 0, false, err
 	}
-	// the whole list is read and paged here: a record without a valid
-	// unique key serves no row, so it must not count toward total or
-	// has_more (a space holds few types)
+	// one read of the live types serves the rows and the spelling sets,
+	// which count hidden types too, and it is paged here: a record without a
+	// valid unique key serves no row, so it must not count toward total or
+	// has_more (a space holds few types). Live filters: a UI-deleted
+	// (uninstalled) type must not list — the §7.5-requirement-2 corpse
+	// policy (keys.go)
 	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
-		// live filters: a UI-deleted (uninstalled) type must not list — the
-		// §7.5-requirement-2 corpse policy (keys.go)
-		Filters: append(liveTypeFilters(),
-			database.FilterRequest{
-				RelationKey: bundle.RelationKeyIsHidden,
-				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       domain.Bool(true),
-			}),
+		Filters: liveTypeFilters(),
 		Sorts: database.WithIdTieBreak([]database.SortRequest{{
 			RelationKey: bundle.RelationKeyName,
 			Type:        model.BlockContentDataviewSort_Asc,
@@ -299,21 +295,16 @@ func (s *Service) ListTypes(ctx context.Context, spaceId string, offset, limit i
 	if err != nil {
 		return nil, 0, false, fmt.Errorf("query types in space %s: %w", spaceId, err)
 	}
-
-	liveEntries, err := s.liveTypes(spaceId)
-	if err != nil {
-		return nil, 0, false, err
-	}
-	keyTaken, slugHolders := servedTypeKeySets(liveEntries)
-	rows := make([]v2model.TypeRow, 0, len(records))
-	for _, record := range records {
-		key, err := domain.GetTypeKeyFromRawUniqueKey(record.Details.GetString(bundle.RelationKeyUniqueKey))
-		if err != nil {
+	entries := typeEntriesOf(records)
+	keyTaken, slugHolders := servedTypeKeySets(entries)
+	rows := make([]v2model.TypeRow, 0, len(entries))
+	for _, entry := range entries {
+		if entry.Hidden {
 			continue
 		}
 		rows = append(rows, v2model.TypeRow{
-			Key:  servedTypeKeyOf(string(key), record.Details.GetString(bundle.RelationKeyApiObjectKey), keyTaken, slugHolders),
-			Name: record.Details.GetString(bundle.RelationKeyName),
+			Key:  servedTypeKeyOf(entry.Key, entry.Slug, keyTaken, slugHolders),
+			Name: entry.Name,
 		})
 	}
 	page, hasMore := pagination.Paginate(rows, offset, limit)
@@ -341,19 +332,15 @@ func (s *Service) ListProperties(ctx context.Context, spaceId string, offset, li
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, 0, false, err
 	}
-	// the whole list is read and paged here: a record without a relation
-	// key serves no row, so it must not count toward total or has_more (a
-	// space holds few properties)
+	// one read of the live properties serves the rows and the spelling
+	// sets, which count hidden properties too, and it is paged here: a
+	// record without a relation key serves no row, so it must not count
+	// toward total or has_more (a space holds few properties). Live filters:
+	// a UI-deleted (uninstalled) property still carried the relation layout
+	// and passed every filter here — the §2.3-6 defect; the corpse policy
+	// excludes it (keys.go)
 	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
-		// live filters: a UI-deleted (uninstalled) property still carried the
-		// relation layout and passed every filter here — the §2.3-6 defect;
-		// the corpse policy excludes it (keys.go)
-		Filters: append(livePropertyFilters(),
-			database.FilterRequest{
-				RelationKey: bundle.RelationKeyIsHidden,
-				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       domain.Bool(true),
-			}),
+		Filters: livePropertyFilters(),
 		Sorts: database.WithIdTieBreak([]database.SortRequest{{
 			RelationKey: bundle.RelationKeyName,
 			Type:        model.BlockContentDataviewSort_Asc,
@@ -362,25 +349,20 @@ func (s *Service) ListProperties(ctx context.Context, spaceId string, offset, li
 	if err != nil {
 		return nil, 0, false, fmt.Errorf("query properties in space %s: %w", spaceId, err)
 	}
-
 	// the served spelling (§7.5a): a BSON-keyed property answers to its
 	// slug, so the slug is what the row advertises — iff it round-trips
 	// (servedKey); the count maps come from the full live set, not the page
-	liveEntries, err := s.liveProperties(spaceId)
-	if err != nil {
-		return nil, 0, false, err
-	}
-	keyTaken, slugHolders := servedPropertyKeySets(liveEntries)
-	rows := make([]v2model.PropertyRow, 0, len(records))
-	for _, record := range records {
-		key := record.Details.GetString(bundle.RelationKeyRelationKey)
-		if key == "" {
+	entries := propertyEntriesOf(records)
+	keyTaken, slugHolders := servedPropertyKeySets(entries)
+	rows := make([]v2model.PropertyRow, 0, len(entries))
+	for _, entry := range entries {
+		if entry.Hidden {
 			continue
 		}
 		rows = append(rows, v2model.PropertyRow{
-			Key:    servedKey(key, record.Details.GetString(bundle.RelationKeyApiObjectKey), keyTaken, slugHolders),
-			Name:   record.Details.GetString(bundle.RelationKeyName),
-			Format: anyblockjson.FormatName(model.RelationFormat(record.Details.GetInt64(bundle.RelationKeyRelationFormat))),
+			Key:    servedKey(entry.Key, entry.Slug, keyTaken, slugHolders),
+			Name:   entry.Name,
+			Format: anyblockjson.FormatName(entry.Format),
 		})
 	}
 	page, hasMore := pagination.Paginate(rows, offset, limit)
