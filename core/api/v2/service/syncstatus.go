@@ -42,9 +42,10 @@ import (
 // may have changed since.
 const storageReportMaxAge = 5 * time.Minute
 
-// GetSyncStatus reads the space's sync status. countOnly leaves out the
-// object list; offset and limit page it.
-func (s *Service) GetSyncStatus(ctx context.Context, spaceId string, countOnly bool, offset, limit int) (*v2model.SyncStatus, error) {
+// GetSyncStatus reads the space's sync status. withObjects adds the list of
+// objects out of sync, which offset and limit page; counts alone are the
+// default, the answer to "is sync working?".
+func (s *Service) GetSyncStatus(ctx context.Context, spaceId string, withObjects bool, offset, limit int) (*v2model.SyncStatus, error) {
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, fmt.Errorf("get sync status: %w", err)
 	}
@@ -73,7 +74,7 @@ func (s *Service) GetSyncStatus(ctx context.Context, spaceId string, countOnly b
 	out.NotBackedUpFileCount = refused.count
 	// a local-only account confirms nothing, so its objects would list
 	// forever against a count of zero
-	if !countOnly && out.Network != v2model.SyncNetworkLocalOnly {
+	if withObjects && out.Network != v2model.SyncNetworkLocalOnly {
 		objects, hasMore, err := s.outOfSyncObjects(spaceId, offset, limit)
 		if err != nil {
 			return nil, fmt.Errorf("objects out of sync in space %s: %w", spaceId, err)

@@ -124,8 +124,8 @@ func reported(limit, used int64) apicore.SpaceStorage {
 }
 
 func TestGetSyncStatus(t *testing.T) {
-	get := func(t *testing.T, fx *v2Fixture, countOnly bool) *v2model.SyncStatus {
-		got, err := fx.GetSyncStatus(context.Background(), testSpaceId, countOnly, 0, 25)
+	get := func(t *testing.T, fx *v2Fixture, withObjects bool) *v2model.SyncStatus {
+		got, err := fx.GetSyncStatus(context.Background(), testSpaceId, withObjects, 0, 25)
 		require.NoError(t, err)
 		return got
 	}
@@ -186,7 +186,7 @@ func TestGetSyncStatus(t *testing.T) {
 		}
 
 		// when
-		got := get(t, fx, false)
+		got := get(t, fx, true)
 
 		// then
 		assert.Equal(t, want, got)
@@ -201,7 +201,7 @@ func TestGetSyncStatus(t *testing.T) {
 		expect(syncStatus, &pb.EventSpaceSyncStatusUpdate{Status: pb.EventSpace_Syncing, SyncingObjectsCounter: 3}, nil)
 
 		// when
-		got, err := fx.GetSyncStatus(context.Background(), testSpaceId, false, 1, 1)
+		got, err := fx.GetSyncStatus(context.Background(), testSpaceId, true, 1, 1)
 
 		// then
 		require.NoError(t, err)
@@ -210,14 +210,14 @@ func TestGetSyncStatus(t *testing.T) {
 		assert.True(t, got.HasMore)
 	})
 
-	t.Run("count_only leaves out the list", func(t *testing.T) {
+	t.Run("counts alone by default", func(t *testing.T) {
 		// given
 		fx, syncStatus := newSyncFixture(t)
 		fx.addPendingObject(t, "obj1", domain.ObjectSyncStatusSyncing, domain.SyncErrorNull, 100)
 		expect(syncStatus, &pb.EventSpaceSyncStatusUpdate{Status: pb.EventSpace_Syncing, SyncingObjectsCounter: 1}, nil)
 
 		// when
-		got := get(t, fx, true)
+		got := get(t, fx, false)
 
 		// then
 		assert.Equal(t, 1, got.PendingObjectCount)
@@ -235,7 +235,7 @@ func TestGetSyncStatus(t *testing.T) {
 		expect(syncStatus, anytype, &q)
 
 		// when
-		got := get(t, fx, true)
+		got := get(t, fx, false)
 
 		// then
 		assert.Equal(t, &v2model.Storage{UsedBytes: 400, PendingBytes: 200, LimitBytes: 1000, LeftBytes: 400}, got.Storage)
@@ -254,7 +254,7 @@ func TestGetSyncStatus(t *testing.T) {
 		})
 
 		// when
-		got := get(t, fx, true)
+		got := get(t, fx, false)
 
 		// then
 		assert.Equal(t, &v2model.Storage{UsedBytes: 100, PendingBytes: 300, LimitBytes: 1000, LeftBytes: 600}, got.Storage)
@@ -269,7 +269,7 @@ func TestGetSyncStatus(t *testing.T) {
 		expect(syncStatus, anytype, &q)
 
 		// when
-		got := get(t, fx, true)
+		got := get(t, fx, false)
 
 		// then
 		assert.Equal(t, &v2model.Storage{UsedBytes: 400, PendingBytes: 0, LimitBytes: 1000, LeftBytes: 600}, got.Storage)
@@ -288,7 +288,7 @@ func TestGetSyncStatus(t *testing.T) {
 		expect(syncStatus, anytype, &q)
 
 		// when
-		got := get(t, fx, true)
+		got := get(t, fx, false)
 
 		// then
 		assert.False(t, got.UpgradeNeeded)
@@ -304,7 +304,7 @@ func TestGetSyncStatus(t *testing.T) {
 		expect(syncStatus, anytype, &q)
 
 		// when
-		got := get(t, fx, true)
+		got := get(t, fx, false)
 
 		// then
 		assert.Equal(t, int64(1100), got.Storage.UsedBytes)
@@ -339,7 +339,7 @@ func TestGetSyncStatus(t *testing.T) {
 		}
 
 		// when
-		got := get(t, fx, true)
+		got := get(t, fx, false)
 
 		// then
 		assert.Equal(t, want, got)
@@ -355,7 +355,7 @@ func TestGetSyncStatus(t *testing.T) {
 		expect(syncStatus, anytype, quota(reported(100_000, 900)))
 
 		// when
-		got := get(t, fx, true)
+		got := get(t, fx, false)
 
 		// then
 		assert.Equal(t, 2, got.NotBackedUpFileCount)
@@ -371,7 +371,7 @@ func TestGetSyncStatus(t *testing.T) {
 		expect(syncStatus, anytype, nil)
 
 		// when
-		got := get(t, fx, true)
+		got := get(t, fx, false)
 
 		// then
 		assert.False(t, got.UpgradeNeeded)
@@ -390,7 +390,7 @@ func TestGetSyncStatus(t *testing.T) {
 				expect(syncStatus, anytype, &q)
 
 				// when
-				got := get(t, fx, true)
+				got := get(t, fx, false)
 
 				// then
 				assert.True(t, got.UpgradeNeeded)
@@ -409,7 +409,7 @@ func TestGetSyncStatus(t *testing.T) {
 		expect(syncStatus, anytype, &q)
 
 		// when
-		got := get(t, fx, true)
+		got := get(t, fx, false)
 
 		// then
 		assert.False(t, got.UpgradeNeeded)
@@ -426,7 +426,7 @@ func TestGetSyncStatus(t *testing.T) {
 		expect(syncStatus, anytype, &q)
 
 		// when
-		got := get(t, fx, true)
+		got := get(t, fx, false)
 
 		// then
 		assert.False(t, got.UpgradeNeeded)
@@ -441,7 +441,7 @@ func TestGetSyncStatus(t *testing.T) {
 		expect(syncStatus, anytype, quota(reported(1000, 1000)))
 
 		// when
-		got := get(t, fx, true)
+		got := get(t, fx, false)
 
 		// then
 		assert.False(t, got.UpgradeNeeded)
@@ -454,7 +454,7 @@ func TestGetSyncStatus(t *testing.T) {
 		expect(syncStatus, anytype, quota(reported(1000, 1000)))
 
 		// when
-		got := get(t, fx, true)
+		got := get(t, fx, false)
 
 		// then
 		assert.False(t, got.UpgradeNeeded)
@@ -473,7 +473,7 @@ func TestGetSyncStatus(t *testing.T) {
 		expect(syncStatus, anytype, quota(reported(1000, 900)))
 
 		// when
-		got := get(t, fx, false)
+		got := get(t, fx, true)
 
 		// then
 		assert.Equal(t, 2, got.NotBackedUpFileCount)
@@ -490,7 +490,7 @@ func TestGetSyncStatus(t *testing.T) {
 		expect(syncStatus, anytype, quota(reported(1000, 900)))
 
 		// when
-		got := get(t, fx, true)
+		got := get(t, fx, false)
 
 		// then
 		assert.True(t, got.UpgradeNeeded)
@@ -505,7 +505,7 @@ func TestGetSyncStatus(t *testing.T) {
 		expect(syncStatus, anytype, quota(reported(1000, 100)))
 
 		// when
-		got := get(t, fx, true)
+		got := get(t, fx, false)
 
 		// then
 		assert.Equal(t, []string{"2 files did not fit in the storage limit and are not backed up. In a one-to-one space each member's files count against their own storage. There is room now for yours: they upload from the device that added them."}, got.Notes)
@@ -519,7 +519,7 @@ func TestGetSyncStatus(t *testing.T) {
 		expect(syncStatus, anytype, quota(reported(1000, 1000)))
 
 		// when
-		got := get(t, fx, true)
+		got := get(t, fx, false)
 
 		// then: the refusal is theirs; the caller's own shortage is a note of its own
 		assert.True(t, got.UpgradeNeeded)
@@ -537,7 +537,7 @@ func TestGetSyncStatus(t *testing.T) {
 		expect(syncStatus, anytype, quota(reported(1000, 100)))
 
 		// when
-		got := get(t, fx, true)
+		got := get(t, fx, false)
 
 		// then
 		assert.Equal(t, 1, got.NotBackedUpFileCount)
@@ -553,7 +553,7 @@ func TestGetSyncStatus(t *testing.T) {
 		expect(syncStatus, anytype, quota(reported(1000, 900)))
 
 		// when
-		got := get(t, fx, true)
+		got := get(t, fx, false)
 
 		// then
 		assert.False(t, got.UpgradeNeeded)
@@ -568,7 +568,7 @@ func TestGetSyncStatus(t *testing.T) {
 		expect(syncStatus, &pb.EventSpaceSyncStatusUpdate{Network: pb.EventSpace_SelfHost}, quota(reported(1000, 1000)))
 
 		// when
-		got := get(t, fx, true)
+		got := get(t, fx, false)
 
 		// then
 		assert.Equal(t, v2model.SyncNetworkSelfHosted, got.Network)
@@ -592,7 +592,7 @@ func TestGetSyncStatus(t *testing.T) {
 		}
 
 		// when
-		got := get(t, fx, false)
+		got := get(t, fx, true)
 
 		// then
 		assert.Equal(t, want, got)
@@ -607,7 +607,7 @@ func TestGetSyncStatus(t *testing.T) {
 		syncStatus.EXPECT().SpaceStorage(testSpaceId).Return(apicore.SpaceStorage{}, false, nil)
 
 		// when
-		got := get(t, fx, true)
+		got := get(t, fx, false)
 
 		// then
 		assert.Equal(t, v2model.SyncStatusConnecting, got.Status)
@@ -622,7 +622,7 @@ func TestGetSyncStatus(t *testing.T) {
 		}, nil)
 
 		// when
-		got := get(t, fx, true)
+		got := get(t, fx, false)
 
 		// then
 		assert.Equal(t, v2model.SyncStatusOffline, got.Status)
@@ -641,7 +641,7 @@ func TestGetSyncStatus(t *testing.T) {
 		}, nil)
 
 		// when
-		got := get(t, fx, true)
+		got := get(t, fx, false)
 
 		// then
 		assert.Equal(t, v2model.SyncStatusSyncing, got.Status)
@@ -655,7 +655,7 @@ func TestGetSyncStatus(t *testing.T) {
 		expect(syncStatus, &pb.EventSpaceSyncStatusUpdate{Status: pb.EventSpace_NetworkNeedsUpdate}, nil)
 
 		// when
-		got := get(t, fx, true)
+		got := get(t, fx, false)
 
 		// then
 		assert.Equal(t, v2model.SyncStatusNetworkNeedsUpdate, got.Status)
@@ -667,7 +667,7 @@ func TestGetSyncStatus(t *testing.T) {
 		fx, _ := newSyncFixture(t)
 
 		// when
-		_, err := fx.GetSyncStatus(context.Background(), "unknownSpace", false, 0, 25)
+		_, err := fx.GetSyncStatus(context.Background(), "unknownSpace", true, 0, 25)
 
 		// then
 		requireV2Status(t, err, http.StatusNotFound)
@@ -679,7 +679,7 @@ func TestGetSyncStatus(t *testing.T) {
 		syncStatus.EXPECT().SpaceSyncStatus(testSpaceId).Return(nil, false, errors.New("store closed"))
 
 		// when
-		_, err := fx.GetSyncStatus(context.Background(), testSpaceId, true, 0, 25)
+		_, err := fx.GetSyncStatus(context.Background(), testSpaceId, false, 0, 25)
 
 		// then
 		require.ErrorContains(t, err, "store closed")
@@ -690,7 +690,7 @@ func TestGetSyncStatus(t *testing.T) {
 		fx := newV2Fixture(t)
 
 		// when
-		_, err := fx.GetSyncStatus(context.Background(), testSpaceId, false, 0, 25)
+		_, err := fx.GetSyncStatus(context.Background(), testSpaceId, true, 0, 25)
 
 		// then
 		requireV2Status(t, err, http.StatusNotImplemented)

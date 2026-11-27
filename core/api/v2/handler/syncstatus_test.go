@@ -36,8 +36,8 @@ func TestGetSyncStatusHandler(t *testing.T) {
 		return fx, syncStatus
 	}
 
-	t.Run("serves the status with snake_case fields; count_only drops the list", func(t *testing.T) {
-		// given: one pending object, so a handler ignoring count_only shows
+	t.Run("serves counts with snake_case fields by default; objects=true adds the list", func(t *testing.T) {
+		// given: one pending object, so a handler ignoring objects shows
 		fx, syncStatus := newRouter(t)
 		fx.store.AddObjects(t, "space1", []objectstore.TestObject{{
 			bundle.RelationKeyId:             domain.String("obj1"),
@@ -78,22 +78,22 @@ func TestGetSyncStatusHandler(t *testing.T) {
 		}
 
 		// when
-		countOnly := serve("/v2/spaces/space1/sync?count_only=true")
-		full := serve("/v2/spaces/space1/sync")
+		counts := serve("/v2/spaces/space1/sync")
+		full := serve("/v2/spaces/space1/sync?objects=true")
 
 		// then
-		assert.Equal(t, want, countOnly)
+		assert.Equal(t, want, counts)
 		require.Contains(t, full, "objects")
 		assert.Equal(t, []any{map[string]any{"id": "obj1", "name": "Draft", "type": "", "status": "syncing"}}, full["objects"])
 	})
 
-	t.Run("an invalid count_only is a 400 before anything is read", func(t *testing.T) {
+	t.Run("an invalid objects is a 400 before anything is read", func(t *testing.T) {
 		// given
 		fx, _ := newRouter(t)
 
 		// when
 		w := httptest.NewRecorder()
-		fx.router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/v2/spaces/space1/sync?count_only=yes", nil))
+		fx.router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/v2/spaces/space1/sync?objects=yes", nil))
 
 		// then
 		require.Equal(t, http.StatusBadRequest, w.Code)
@@ -101,6 +101,6 @@ func TestGetSyncStatusHandler(t *testing.T) {
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
 		assert.Equal(t, v2model.CodeValidationFailed, got.Code)
 		require.Len(t, got.Issues, 1)
-		assert.Equal(t, "count_only", got.Issues[0].Path)
+		assert.Equal(t, "objects", got.Issues[0].Path)
 	})
 }

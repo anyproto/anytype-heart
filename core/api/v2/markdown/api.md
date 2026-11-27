@@ -429,7 +429,7 @@ the set.
 app shows it, and what is out of sync: pending objects, files still
 uploading, and files not backed up because they did not fit in the storage
 limit. `connecting` means this device has not reached the backup node yet.
-Add `?count_only=true` to skip the object list.
+It returns counts; add `?objects=true` for the list of what is out of sync.
 
 `storage` is the quota the space's files count against: the owner's, or in a
 one-to-one space your own. Its numbers are estimates. `upgrade_needed` is true

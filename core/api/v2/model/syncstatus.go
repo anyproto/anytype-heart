@@ -51,7 +51,7 @@ type SyncStatus struct {
 	NotBackedUpFileCount int             `json:"not_backed_up_file_count"`                                                               // Files that did not fit in the storage limit. They stay on the device that added them, and upload from it once there is room.
 	UpgradeNeeded        bool            `json:"upgrade_needed"`                                                                         // The space is short of storage by the backup node's own report, the caller pays for it on the Anytype network, and the account's whole limit is its plan's, so an upgrade raises it.
 	Storage              *Storage        `json:"storage,omitempty"`
-	Objects              []PendingObject `json:"objects,omitempty"`  // What is not in sync on this device, most recently changed first, paged by offset and limit. Absent with count_only=true, in local-only mode, or when nothing is pending.
+	Objects              []PendingObject `json:"objects,omitempty"`  // What is not in sync on this device, most recently changed first, paged by offset and limit. Only with objects=true; absent in local-only mode or when nothing is pending.
 	HasMore              bool            `json:"has_more,omitempty"` // More objects past this page.
 	Notes                []string        `json:"notes,omitempty"`    // One sentence each on what is wrong with the space's sync or storage and what fixes it.
 	Warnings             []Issue         `json:"warnings,omitempty"`

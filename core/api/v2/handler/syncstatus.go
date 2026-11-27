@@ -18,12 +18,11 @@ import (
 //	@Tags			Spaces
 //	@Produce		json
 //	@Param			space_id	path		string				true	"Space id, from GET /v2/spaces"
-//	@Param			ids			query		string				false	"compact (default) is the short space reference; full is the whole <cid>.<replicationKey> id, and the spelling to store outside this API"
-//	@Param			count_only	query		bool				false	"Leave out the pending object list (default false)"
-//	@Param			offset		query		int					false	"Pending objects to skip"	default(0)
-//	@Param			limit		query		int					false	"Pending objects to return"	default(25)
+//	@Param			objects		query		bool				false	"List the objects out of sync (default false: counts only)"
+//	@Param			offset		query		int					false	"Listed objects to skip"	default(0)
+//	@Param			limit		query		int					false	"Listed objects to return"	default(25)
 //	@Success		200			{object}	v2model.SyncStatus	"The space's sync status"
-//	@Failure		400			{object}	v2model.Error		"An invalid count_only or limit value"
+//	@Failure		400			{object}	v2model.Error		"An invalid objects or limit value"
 //	@Failure		404			{object}	v2model.Error		"Space not found or unavailable"
 //	@Failure		500			{object}	v2model.Error		"The sync counts could not be read"
 //	@Failure		501			{object}	v2model.Error		"This server does not serve sync status"
@@ -31,19 +30,19 @@ import (
 //	@Router			/v2/spaces/{space_id}/sync [get]
 func GetSyncStatusHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var countOnly bool
-		switch c.Query("count_only") {
+		var withObjects bool
+		switch c.Query("objects") {
 		case "", "false":
 		case "true":
-			countOnly = true
+			withObjects = true
 		default:
-			RespondError(c, v2model.ValidationFailed("invalid count_only value",
-				v2model.Issue{Path: "count_only", Message: "allowed values: true, false"}))
+			RespondError(c, v2model.ValidationFailed("invalid objects value",
+				v2model.Issue{Path: "objects", Message: "allowed values: true, false"}))
 			return
 		}
 		offset := c.GetInt(pagination.QueryParamOffset)
 		limit := c.GetInt(pagination.QueryParamLimit)
-		status, err := s.GetSyncStatus(c.Request.Context(), c.Param("space_id"), countOnly, offset, limit)
+		status, err := s.GetSyncStatus(c.Request.Context(), c.Param("space_id"), withObjects, offset, limit)
 		if err != nil {
 			RespondError(c, err)
 			return

@@ -1889,7 +1889,8 @@ GET   /v2/spaces/{space_id}/sync # the app's sync status + the storage quota
     oversized excluded) and the files refused for the limit as
     `not_backed_up`, which the app marks oversized and counts apart. Refused
     files are counted and listed space-wide, also in a one-to-one space.
-    `?count_only=true` leaves the list out; local-only lists nothing.
+    Counts alone are the default; `?objects=true` adds the list. Local-only
+    lists nothing.
     Objects not downloaded yet are counted, not listed: an agent can neither
     read nor name them.
   - **`storage` is the quota the uploader itself checks for the space**:
