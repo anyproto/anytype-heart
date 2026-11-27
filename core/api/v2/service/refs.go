@@ -642,6 +642,19 @@ func offTypeJudge(kind, docType, templateFor string) (typeKey string, forTemplat
 	return docType, false
 }
 
+// scopeTypeKey names the type whose list settles a property term two
+// properties answer to (resolvePropertyInputIn), by offTypeJudge's rule: a
+// template is scoped by the type it is for, because its own type lists none
+// of its properties. A template whose target is not known keeps its own
+// type, as before. Callers fall back to docType too when the target has no
+// row to read a list from.
+func scopeTypeKey(kind, docType, templateFor string) string {
+	if target, forTemplate := offTypeJudge(kind, docType, templateFor); forTemplate && target != "" {
+		return target
+	}
+	return docType
+}
+
 // offTypePropertyIssue is the F16 warning: the value lands, but the type's
 // own surfaces do not reach it. On a template the type is the one the
 // template is for, whose objects take the value from it.

@@ -339,7 +339,12 @@ its fold, on the same one-or-refuse rule. The format's own chain underneath
 degrades to the verbatim term wherever v2 would refuse — it never guesses
 either. Ambiguity at any step lists every holder by stored key and id (the
 addresses that always resolve) and never picks by store order; a full miss
-falls to the unknown-key refusal with did-you-mean (§1.3). The chain is wired
+falls to the unknown-key refusal with did-you-mean (§1.3). The one tie-break
+is the object's type: of several holders, the single one the type lists wins
+(`core/api/v2/service/keys.go:242`). A template is scoped by its
+`template_for`, because the type `template` lists none of its properties; a
+template whose target is unknown keeps its own type
+(`core/api/v2/service/refs.go:651`). The chain is wired
 into route params, search and set type scopes, document creates,
 `set_properties` keys and the option pre-resolution pass, so one spelling
 works at every level and no channel keeps a private resolution.

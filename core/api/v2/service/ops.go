@@ -319,7 +319,12 @@ func (d *v2EditDoc) docType() string {
 // envelopeString returns one string member of the envelope (`kind`,
 // `template_for`), empty when it is absent or not a string.
 func (d *v2EditDoc) envelopeString(member string) string {
-	raw, ok := d.fields[member]
+	return envelopeString(d.fields, member)
+}
+
+// envelopeString is the member read on a parsed envelope.
+func envelopeString(fields map[string]json.RawMessage, member string) string {
+	raw, ok := fields[member]
 	if !ok {
 		return ""
 	}

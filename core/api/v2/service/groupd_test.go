@@ -12,6 +12,7 @@ import (
 
 	"github.com/anyproto/any-block/codec/anyblockjson"
 
+	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -19,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // Round-two eval F11, F16, F18, F19, F20: writes say what they did and
@@ -467,6 +469,122 @@ func TestV2TemplatePropertiesJudgedAgainstTarget(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, []v2model.Issue{want}, result.Warnings)
+	})
+}
+
+// GO-7614: a property name two properties answer to is settled by the type
+// that lists one of them (resolvePropertyInputIn). A template's own type
+// lists neither, so a template is scoped by the type it is for, by the rule
+// offTypeJudge applies.
+func TestV2TemplateNamesResolveAgainstTarget(t *testing.T) {
+	const (
+		pointsKey = "6a8f2c1d9e4b7a3f5c2d8e90"
+		hoursKey  = "6a8f2c1d9e4b7a3f5c2d8e91"
+	)
+	ctx := context.Background()
+	setup := func(t *testing.T) *v2Fixture {
+		fx := newV2Fixture(t)
+		fx.addTemplateType(t)
+		// two properties named "Effort"; only the first is on sprint
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:           domain.String("rel-effort-points"),
+			bundle.RelationKeyRelationKey:  domain.String(pointsKey),
+			bundle.RelationKeyApiObjectKey: domain.String("effort_points"),
+			bundle.RelationKeyName:         domain.String("Effort"),
+		})
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:           domain.String("rel-effort-hours"),
+			bundle.RelationKeyRelationKey:  domain.String(hoursKey),
+			bundle.RelationKeyApiObjectKey: domain.String("effort_hours"),
+			bundle.RelationKeyName:         domain.String("Effort"),
+		})
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:                   domain.String("type-sprint"),
+			bundle.RelationKeyUniqueKey:            domain.String("ot-sprint"),
+			bundle.RelationKeyName:                 domain.String("Sprint"),
+			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-effort-points"}),
+		})
+		return fx
+	}
+	// the read a template comes back as: its type detail is the template
+	// type's id, and its target rides as the second type key
+	templateRead := func(t *testing.T, doc string) apicore.ObjectRead {
+		read := editRead(t, doc)
+		read.Snapshot.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(testTemplateTypeId)
+		return read
+	}
+	const sprintTemplateDoc = `{"formatVersion":"2.0","id":"obj1","kind":"template","type":"template","template_for":"sprint","properties":{"name":"Weekly"}}`
+
+	t.Run("a template create writes the property its target lists", func(t *testing.T) {
+		// given
+		fx := setup(t)
+		captured := fx.expectCreate("tpl1")
+		fx.expectEtagRead("tpl1")
+
+		// when
+		_, err := fx.CreateTemplate(ctx, testSpaceId,
+			[]byte(`{"formatVersion":"2.0","template_for":"sprint","properties":{"name":"Weekly","Effort":"3"}}`), false, true)
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, *captured)
+		details := (*captured).Details
+		assert.Equal(t, "3", pbtypes.GetString(details, pointsKey))
+		assert.False(t, pbtypes.HasField(details, hoursKey))
+	})
+
+	t.Run("a template create's property block binds the property its target lists", func(t *testing.T) {
+		// given
+		fx := setup(t)
+		captured := fx.expectCreate("tpl1")
+		fx.expectEtagRead("tpl1")
+
+		// when
+		_, err := fx.CreateTemplate(ctx, testSpaceId,
+			[]byte(`{"formatVersion":"2.0","template_for":"sprint","properties":{"name":"Weekly"},"blocks":[{"type":"property","property":"Effort"}]}`), false, true)
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, *captured)
+		var keys []string
+		for _, b := range (*captured).Blocks {
+			if rel := b.GetRelation(); rel != nil {
+				keys = append(keys, rel.Key)
+			}
+		}
+		assert.Equal(t, []string{pointsKey}, keys)
+	})
+
+	t.Run("set_properties on a template writes the property its target lists", func(t *testing.T) {
+		// given
+		fx := setup(t)
+		captured := fx.expectMutate(templateRead(t, sprintTemplateDoc), "headB")
+
+		// when
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"set_properties","set":{"Effort":"3"}}`), "", false, true)
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, *captured)
+		details := (*captured).CombinedDetails()
+		assert.Equal(t, "3", details.GetString(domain.RelationKey(pointsKey)))
+		assert.False(t, details.Has(domain.RelationKey(hoursKey)))
+	})
+
+	t.Run("a template whose target is not known keeps the name ambiguous", func(t *testing.T) {
+		// given: no template_for, so the scope stays the template's own type
+		fx := setup(t)
+		fx.expectMutate(templateRead(t, `{"formatVersion":"2.0","id":"obj1","kind":"template","type":"template","properties":{"name":"Weekly"}}`))
+
+		// when
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"set_properties","set":{"Effort":"3"}}`), "", false, true)
+
+		// then
+		issue := issueAt(t, err, "ops[0].set.Effort")
+		assert.Contains(t, issue.Message, pointsKey)
+		assert.Contains(t, issue.Message, hoursKey)
 	})
 }
 

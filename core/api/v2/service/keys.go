@@ -294,6 +294,18 @@ func (s *Service) typeKeyPropertyScope(spaceId, typeKey string) map[string]bool 
 	return nil
 }
 
+// documentPropertyScope is the scope of a created document's own keys, by
+// stored keys: a template's is the type it is for (scopeTypeKey), and its
+// own type's when the target has no row.
+func (s *Service) documentPropertyScope(spaceId, kind, docType, templateFor string) map[string]bool {
+	if key := scopeTypeKey(kind, docType, templateFor); key != docType {
+		if scope := s.typeKeyPropertyScope(spaceId, key); scope != nil {
+			return scope
+		}
+	}
+	return s.typeKeyPropertyScope(spaceId, docType)
+}
+
 // propertyCandidate is one holder of an ambiguous term, with the words the
 // refusal names it by.
 type propertyCandidate struct {
@@ -1275,9 +1287,8 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 	changed := false
 
 	var typeEntries []typeEntry
-	// the object's type settles a term two properties answer to
-	// (resolvePropertyInputIn)
-	var scope map[string]bool
+	// the resolved type slots, by field: stored key and type id
+	resolvedKeys, resolvedIds := map[string]string{}, map[string]string{}
 	for _, field := range []string{"type", "template_for"} {
 		raw, ok := fields[field]
 		if !ok {
@@ -1299,8 +1310,8 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 		if len(ambiguous) > 0 {
 			return nil, nil, ambiguousKeyError("type key", term, "/"+field, ambiguous)
 		}
-		if ok && field == "type" {
-			scope = s.typePropertyScope(spaceId, entry.Id)
+		if ok {
+			resolvedKeys[field], resolvedIds[field] = entry.Key, entry.Id
 		}
 		if ok && entry.Key != term {
 			if fields[field], err = rawJSON(entry.Key); err != nil {
@@ -1308,6 +1319,17 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 			}
 			changed = true
 		}
+	}
+	// the object's type settles a term two properties answer to
+	// (resolvePropertyInputIn); a template's, the type it is for
+	// (scopeTypeKey), or its own when that one has no row
+	var scope map[string]bool
+	ownKey := resolvedKeys["type"]
+	if scopeTypeKey(envelopeString(fields, "kind"), ownKey, resolvedKeys["template_for"]) != ownKey {
+		scope = s.typePropertyScope(spaceId, resolvedIds["template_for"])
+	}
+	if scope == nil {
+		scope = s.typePropertyScope(spaceId, resolvedIds["type"])
 	}
 
 	if raw, ok := fields["properties"]; ok {

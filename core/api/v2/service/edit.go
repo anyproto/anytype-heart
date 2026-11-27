@@ -615,10 +615,39 @@ func checkEditPreconditions(sbType model.SmartBlockType, heads []string, ifMatch
 }
 
 // objectPropertyScope is the property scope of an object's own keys: the ids
-// its type lists (resolvePropertyInputIn).
+// its type lists (resolvePropertyInputIn). A template's is the type it is
+// for (scopeTypeKey), and its own type's when the target has no row.
 func (s *Service) objectPropertyScope(spaceId string, cur apicore.ObjectRead) map[string]bool {
 	if cur.Snapshot == nil {
 		return nil
 	}
+	kind, docType, templateFor := readTypeTerms(cur)
+	if key := scopeTypeKey(kind, docType, templateFor); key != docType {
+		if targetId, ok := s.typeIdInSpace(spaceId, key); ok {
+			return s.typePropertyScope(spaceId, targetId)
+		}
+	}
 	return s.typePropertyScope(spaceId, pbtypes.GetString(cur.Snapshot.Details, bundle.RelationKeyType.String()))
+}
+
+// readTypeTerms is a read's kind, type and template_for by stored key, as
+// its document derives them: a template's target is its second type key,
+// and only a template models one.
+func readTypeTerms(cur apicore.ObjectRead) (kind, docType, templateFor string) {
+	var keys []string
+	for _, raw := range cur.Snapshot.GetObjectTypes() {
+		if key, err := domain.GetTypeKeyFromRawUniqueKey(raw); err == nil {
+			keys = append(keys, string(key))
+		}
+	}
+	if len(keys) > 0 {
+		docType = keys[0]
+	}
+	if cur.SbType == model.SmartBlockType_Template {
+		kind = "template"
+		if len(keys) > 1 {
+			templateFor = keys[1]
+		}
+	}
+	return kind, docType, templateFor
 }
