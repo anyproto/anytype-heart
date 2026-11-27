@@ -379,6 +379,8 @@ func TestV2SlugAddressedOps(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
 		require.NotEmpty(t, apiErr.Issues)
 		assert.Contains(t, apiErr.Issues[0].Message, "limit 64")
+		assert.Contains(t, apiErr.Issues[0].Message, ": moodLevel: 70",
+			"the count names the property as the caller spelled it")
 	})
 
 	t.Run("a FOLDED slug spelling reaches the prewarm too (the M5 bypass)", func(t *testing.T) {

@@ -93,6 +93,11 @@ type docCreateOptions struct {
 	// to the resolver that would otherwise mint a select option for a name
 	// that matches nothing.
 	createMissingOptions bool
+	// optionSites locates the request member an option name came from, for
+	// a document the server composed (a query): its option refusals would
+	// otherwise point into the composed document. Nil means the body is the
+	// caller's own, addressed through its properties map.
+	optionSites func(key domain.RelationKey, name string) *optionErrorSite
 	// template is the create body's `template` member, lifted before
 	// validation: a template id, the word none, or empty for absent.
 	// honourTemplates gates the whole mechanism — the type's default template
@@ -800,6 +805,11 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	// the resolvers only record would-be creations
 	resolvers := s.newCreatingResolvers(ctx, spaceId, opts.dryRun, opts.createMissingOptions)
 	resolvers.scope = s.typeKeyPropertyScope(spaceId, envelope.Type)
+	// an option refusal names the member the caller wrote the name in
+	resolvers.siteFor = opts.optionSites
+	if resolvers.siteFor == nil {
+		resolvers.siteFor = propertyOptionSites(envelope.Properties, spellings)
+	}
 	_, snapshot, err := anyblockjson.Unmarshal(body, resolvers.Options())
 	if err != nil {
 		return nil, mapUnmarshalError(body, err, "object")
@@ -1129,6 +1139,20 @@ func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, enve
 
 	// property keys must exist — did-you-mean, never silent create (R9)
 	return s.validatePropertyKeys(ctx, spaceId, envelope.Properties, spellings)
+}
+
+// propertyOptionSites addresses an option refusal on a create body at the
+// properties member the caller wrote, in the spelling they wrote it under.
+// The body is canonicalized by import time, so spellings maps each stored
+// key back to what was sent.
+func propertyOptionSites(props map[string]json.RawMessage, spellings map[string]string) func(domain.RelationKey, string) *optionErrorSite {
+	return func(key domain.RelationKey, _ string) *optionErrorSite {
+		if _, ok := props[string(key)]; !ok {
+			return nil // a name carried elsewhere in the body (a dataview block)
+		}
+		spelling := orDefault(spellings[string(key)], string(key))
+		return &optionErrorSite{path: propertiesPointer(spelling), spelling: spelling}
+	}
 }
 
 // sentTypeTerms are a create body's type slots exactly as the caller wrote

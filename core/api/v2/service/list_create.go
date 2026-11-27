@@ -125,6 +125,9 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 		return nil, err
 	}
 	kc.scope = s.typePropertyScope(spaceId, typeId)
+	// the compact string is the member the caller wrote; its parsed leaves
+	// have no array of their own to be addressed in
+	fromCompact := req.Filter != ""
 	if req.Filter != "" {
 		// "type" joins the reference set only so the discovery-served grammar
 		// example (`type IN (…)`) parses to a targeted error below instead of
@@ -202,7 +205,10 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 	if err != nil {
 		return nil, err
 	}
-	result, err := s.createFromDocument(ctx, spaceId, doc, docCreateOptions{dryRun: dryRun, createMissingOptions: createMissingOptions})
+	result, err := s.createFromDocument(ctx, spaceId, doc, docCreateOptions{
+		dryRun: dryRun, createMissingOptions: createMissingOptions,
+		optionSites: queryOptionSites(spelled, fromCompact, kc.canonKey),
+	})
 	if err != nil {
 		return nil, queryDocumentError(err, len(req.Views) > 0)
 	}
@@ -708,4 +714,98 @@ func convertRawViewDateFilters(raw json.RawMessage, formatName func(string) (str
 		return nil, fmt.Errorf("encode views: %w", err)
 	}
 	return out, nil
+}
+
+// queryOptionSites indexes the option names a query create's filters, sorts
+// and views carry by (stored key, name), at the member the caller wrote each
+// in. The query DOCUMENT is composed by the server, so an option refusal
+// raised while importing it would otherwise point into a document the caller
+// never saw (/properties/<key>), under the served spelling.
+func queryOptionSites(spelled v2model.CreateQueryRequest, compact bool, canon func(string) string) func(domain.RelationKey, string) *optionErrorSite {
+	sites := map[optionRef]*optionErrorSite{}
+	record := func(property string, value json.RawMessage, path string) {
+		if property == "" || len(value) == 0 {
+			return
+		}
+		var decoded any
+		if json.Unmarshal(value, &decoded) != nil {
+			return
+		}
+		var names []string
+		switch v := decoded.(type) {
+		case string:
+			names = append(names, v)
+		case []any:
+			for _, item := range v {
+				if name, ok := item.(string); ok {
+					names = append(names, name)
+				}
+			}
+		}
+		key := canon(property)
+		for _, name := range names {
+			ref := optionRef{property: key, name: name}
+			if _, taken := sites[ref]; !taken {
+				sites[ref] = &optionErrorSite{path: path, spelling: property}
+			}
+		}
+	}
+	var walkFilters func(nodes []viewFilterProbe, base string, flat bool)
+	walkFilters = func(nodes []viewFilterProbe, base string, flat bool) {
+		for j, node := range nodes {
+			at := fmt.Sprintf("%s/%d", base, j)
+			if flat {
+				at = base
+			}
+			if len(node.Filters) > 0 {
+				nested := at + "/filters"
+				if flat {
+					nested = base
+				}
+				walkFilters(node.Filters, nested, flat)
+				continue
+			}
+			leaf := at + "/value"
+			if flat {
+				leaf = base
+			}
+			record(node.Property, node.Value, leaf)
+		}
+	}
+	filters := func(raw json.RawMessage, base string, flat bool) {
+		var nodes []viewFilterProbe
+		if len(raw) > 0 && json.Unmarshal(raw, &nodes) == nil {
+			walkFilters(nodes, base, flat)
+		}
+	}
+	sorts := func(raw json.RawMessage, base string) {
+		var list []struct {
+			Property    string          `json:"property"`
+			CustomOrder json.RawMessage `json:"custom_order"`
+		}
+		if len(raw) > 0 && json.Unmarshal(raw, &list) == nil {
+			for j, sort := range list {
+				record(sort.Property, sort.CustomOrder, fmt.Sprintf("%s/%d/custom_order", base, j))
+			}
+		}
+	}
+	if compact {
+		filters(spelled.Filters, "/filter", true)
+	} else {
+		filters(spelled.Filters, "/filters", false)
+	}
+	sorts(spelled.Sorts, "/sorts")
+	var views []struct {
+		Filters json.RawMessage `json:"filters"`
+		Sorts   json.RawMessage `json:"sorts"`
+	}
+	if len(spelled.Views) > 0 && json.Unmarshal(spelled.Views, &views) == nil {
+		for j, view := range views {
+			filters(view.Filters, fmt.Sprintf("/views/%d/filters", j), false)
+			sorts(view.Sorts, fmt.Sprintf("/views/%d/sorts", j))
+		}
+	}
+	return func(key domain.RelationKey, name string) *optionErrorSite {
+		return sites[optionRef{property: string(key), name: name}]
+	}
 }

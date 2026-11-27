@@ -100,11 +100,18 @@ type creatingResolvers struct {
 	mintedSlugByKey map[string]string
 	sideEffects     v2model.SideEffects
 	errs            []error
-	// optionSite is the member being resolved while the PATCH prewarm walks
-	// one set_properties entry: the consent refusal is addressed to it, in
-	// the spelling the caller wrote. Nil elsewhere, where /properties/<served
-	// key> is the member the caller wrote.
+	// optionSite is the member being resolved right now — a set_properties
+	// entry or a view filter leaf, in the PATCH prewarm or the op itself: an
+	// option refusal is addressed to it, in the spelling the caller wrote.
 	optionSite *optionErrorSite
+	// siteFor locates the member a document create carries an option name
+	// in, when no single entry is being resolved (the whole body imports at
+	// once). Nil falls back to /properties/<served key>.
+	siteFor func(key domain.RelationKey, name string) *optionErrorSite
+	// pendingSpelling is the spelling each property was written under when
+	// a dry pass recorded an option it would create, for the M5 refusal
+	// that names the properties to check (stored key → as sent)
+	pendingSpelling map[string]string
 
 	// echoPropertyIds are relation object ids the PATCHed type's recommended
 	// lists ALREADY carry (UpdateType primes them; empty on create). They are
@@ -335,7 +342,7 @@ func (r *creatingResolvers) OptionId(key domain.RelationKey, name string) (strin
 		// NAME where an option id belongs — a value matching nothing that
 		// reads as if it matched.
 		servedKey := r.keys.PropertySlug(string(key))
-		if site := r.optionSite; site != nil {
+		if site := r.siteOf(key, name); site != nil {
 			r.errs = append(r.errs, optionConsentErrorAs(r.spaceId, site.spelling, servedKey, name, site.path))
 		} else {
 			r.errs = append(r.errs, optionConsentError(r.spaceId, servedKey, name))
@@ -349,6 +356,12 @@ func (r *creatingResolvers) OptionId(key domain.RelationKey, name string) (strin
 		if !r.dryReported[ref] {
 			r.dryReported[ref] = true
 			r.sideEffects.Options = append(r.sideEffects.Options, v2model.CreatedOption{Property: string(key), Name: name})
+			if site := r.siteOf(key, name); site != nil {
+				if r.pendingSpelling == nil {
+					r.pendingSpelling = map[string]string{}
+				}
+				r.pendingSpelling[string(key)] = site.spelling
+			}
 		}
 		return "", false
 	}
@@ -382,10 +395,30 @@ func (r *creatingResolvers) recordOptionAmbiguity(key domain.RelationKey, name s
 	if r.keys == nil {
 		r.Options() // prime the same served slug vocabulary as the document
 	}
-	r.errs = append(r.errs, optionAmbiguityError(r.keys.PropertySlug(string(key)), name, matches))
+	served := r.keys.PropertySlug(string(key))
+	spelling, path := served, propertiesPointer(served)
+	if site := r.siteOf(key, name); site != nil {
+		spelling, path = site.spelling, site.path
+	}
+	r.errs = append(r.errs, optionAmbiguityError(spelling, path, name, matches))
 }
 
-func optionAmbiguityError(servedKey, name string, matches []*model.RelationOption) error {
+// siteOf is where an option refusal about key is addressed: the entry being
+// resolved right now, else the member a create body carries the name in,
+// else nil (the create channel's /properties/<served key>).
+func (r *creatingResolvers) siteOf(key domain.RelationKey, name string) *optionErrorSite {
+	if r.optionSite != nil {
+		return r.optionSite
+	}
+	if r.siteFor != nil {
+		return r.siteFor(key, name)
+	}
+	return nil
+}
+
+// optionAmbiguityError names the property as spelled at path, the member the
+// caller wrote the ambiguous name in.
+func optionAmbiguityError(spelling, path, name string, matches []*model.RelationOption) error {
 	ordered := append([]*model.RelationOption(nil), matches...)
 	sort.SliceStable(ordered, func(i, j int) bool {
 		if ordered[i].Text != ordered[j].Text {
@@ -405,9 +438,9 @@ func optionAmbiguityError(servedKey, name string, matches []*model.RelationOptio
 		descriptions = append(descriptions, fmt.Sprintf("%q (%s)", option.Text, color))
 	}
 	return v2model.AmbiguousInput(
-		fmt.Sprintf("option name %q is ambiguous for property %q", name, servedKey),
+		fmt.Sprintf("option name %q is ambiguous for property %q", name, spelling),
 		v2model.Issue{
-			Path:    propertiesPointer(servedKey),
+			Path:    path,
 			Message: fmt.Sprintf("the name matches %d options: %s", len(matches), strings.Join(descriptions, ", ")),
 			Hint:    "rename or remove one duplicate option before addressing it by name; v2 has no unambiguous bare-name choice",
 		})
@@ -599,10 +632,12 @@ func (s *Service) prewarmViewOptionValues(set map[string]json.RawMessage, setPat
 				walkFilters(node.Filters, nested, compact)
 				continue
 			}
-			// empty/notEmpty/exists leaves carry no meaningful value (§11) —
-			// resolving one here would create an option the view never uses
-			switch node.Condition {
-			case "empty", "notEmpty", "exists":
+			// a presence leaf carries no meaningful value (§11) — resolving one
+			// here would create an option the view never uses. The SAME
+			// predicate the applier strips those values with
+			// (stripValuelessConditionValues), or the wire spelling one of them
+			// misses (not_empty) creates an option the other discards
+			if presenceCondition(node.Condition) {
 				continue
 			}
 			if node.Property != "" && len(node.Value) > 0 {

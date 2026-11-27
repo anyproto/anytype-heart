@@ -335,7 +335,11 @@ func (s *Service) guardCreateMissing(ctx context.Context, spaceId, objectId stri
 		for _, o := range pending {
 			// the caller's spelling, not the store's id: this message names
 			// the fields they must go and check
-			props[probe.keys.PropertySlug(o.Property)]++
+			spelling, ok := probe.pendingSpelling[o.Property]
+			if !ok {
+				spelling = probe.keys.PropertySlug(o.Property)
+			}
+			props[spelling]++
 		}
 		issue := v2model.Issue{
 			Path: "/ops",

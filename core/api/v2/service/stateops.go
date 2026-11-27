@@ -1065,6 +1065,12 @@ func pinTableWrappers(st *state.State, blocks []*model.Block) {
 // caller's own field: field is the op's payload prefix ("ops[0].set.") and
 // spelling is the key as the caller spelled it.
 func (a *v2StateApplier) checkedPropertyValue(key, spelling, field string, raw any, opts anyblockjson.Options) (domain.Value, error) {
+	// an option refusal raised while resolving this value (an ambiguous
+	// name on remove, a missing one on set) is addressed to this entry
+	if a.resolvers != nil {
+		a.resolvers.optionSite = &optionErrorSite{path: field + spelling, spelling: spelling}
+		defer func() { a.resolvers.optionSite = nil }()
+	}
 	value, err := anyblockjson.UnmarshalPropertyValueChecked(key, raw, opts)
 	if err != nil {
 		return domain.Invalid(), invalidPayloadError(field+spelling, "", nil, err)
