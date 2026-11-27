@@ -1198,8 +1198,8 @@ func (s *Service) DeleteType(ctx context.Context, spaceId, typeKey string, dryRu
 	result := &v2model.CreateResult{Id: typeId, Key: typeKey}
 	// the objects of the type survive it, keeping it under the spelling
 	// they were served (round-four eval R4-1): say so, on the real run and
-	// the dry run alike, as delete_property does
-	result.Warnings = append(result.Warnings, s.typeDeleteWarnings(spaceId, entry)...)
+	// the dry run alike, as delete_property does; only the hint differs
+	result.Warnings = append(result.Warnings, s.typeDeleteWarnings(spaceId, entry, dryRun)...)
 	if dryRun {
 		result.DryRun = true
 		// a dry run did not wait for the load: what it found in the index
@@ -1216,8 +1216,9 @@ func (s *Service) DeleteType(ctx context.Context, spaceId, typeKey string, dryRu
 
 // typeDeleteWarnings names the objects a type delete leaves behind: they
 // keep the type, served under its slug, and nothing new is created in it.
-// A store error makes no warning.
-func (s *Service) typeDeleteWarnings(spaceId string, entry typeEntry) []v2model.Issue {
+// A store error makes no warning. The hint follows the run: a dry run's says
+// nothing was deleted, a real delete's says where the type went.
+func (s *Service) typeDeleteWarnings(spaceId string, entry typeEntry, dryRun bool) []v2model.Issue {
 	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
 		Filters: []database.FilterRequest{
 			{RelationKey: bundle.RelationKeyType, Condition: model.BlockContentDataviewFilter_Equal, Value: domain.String(entry.Id)},
@@ -1249,10 +1250,16 @@ func (s *Service) typeDeleteWarnings(spaceId string, entry typeEntry) []v2model.
 			}
 		}
 	}
+	// a real delete already archived the type: the dry run's "keep it"
+	// could not be acted on there, so it says where the type went
+	hint := "the type was moved to the Bin; to use it again, restore it from the Bin in the Anytype app"
+	if dryRun {
+		hint = "a dry run reports this without deleting; to keep the type usable, keep it"
+	}
 	issue := v2model.Issue{
 		Path:    "key",
 		Message: fmt.Sprintf("%s of type %q; they keep it, and %s, but nothing new is created in it and it is not listed or filterable, until this same type is restored in the app", count, served, after),
-	}.WithHint(v2model.Plain("a dry run reports this without deleting; to keep the type usable, keep it"))
+	}.WithHint(v2model.Plain(hint))
 	return []v2model.Issue{issue}
 }
 
@@ -1528,7 +1535,7 @@ func (s *Service) DeleteProperty(ctx context.Context, spaceId, propertyKey strin
 	// here: objects that hold a value of the property, and types that list
 	// it. Say so, on the real run and the dry run alike (round-two eval F1:
 	// a silent 200 here is how a caller destroyed five objects' data).
-	result.Warnings = append(result.Warnings, s.propertyDeleteWarnings(spaceId, entry, s.servedKeySpeller(spaceId)(entry.Key))...)
+	result.Warnings = append(result.Warnings, s.propertyDeleteWarnings(spaceId, entry, s.servedKeySpeller(spaceId)(entry.Key), dryRun)...)
 	if dryRun {
 		result.DryRun = true
 		// a dry run did not wait for the load: what it found in the index
@@ -1553,8 +1560,9 @@ const propertyHolderProbeLimit = 1000
 // deleted it by — a delete by display name or stored key still promises the
 // slug the values will show under. Store errors make no warning — the
 // delete still stands, and a warning the store could not substantiate is
-// worse than none.
-func (s *Service) propertyDeleteWarnings(spaceId string, entry propertyEntry, servedKey string) []v2model.Issue {
+// worse than none. The holders' hint follows the run: a dry run's says
+// nothing was deleted, a real delete's says where the property went.
+func (s *Service) propertyDeleteWarnings(spaceId string, entry propertyEntry, servedKey string, dryRun bool) []v2model.Issue {
 	var issues []v2model.Issue
 	// presence, not emptiness: a stored 0 or false is a value the caller
 	// set; and archived objects hold values too (a restore brings them
@@ -1574,10 +1582,14 @@ func (s *Service) propertyDeleteWarnings(spaceId string, entry propertyEntry, se
 		} else if len(records) >= propertyHolderProbeLimit {
 			count = fmt.Sprintf("at least %d objects hold", propertyHolderProbeLimit)
 		}
+		hint := "the property was moved to the Bin; to use it again, restore it from the Bin in the Anytype app"
+		if dryRun {
+			hint = "a dry run reports this without deleting"
+		}
 		issues = append(issues, v2model.Issue{
 			Path:    "key",
 			Message: fmt.Sprintf("%s a value of %q; those values stay readable and editable in place under that key, but set_properties gives no other object one, until this same property is restored in the app (a new property with the same name is a different property)", count, servedKey),
-		}.WithHint(v2model.Plain("a dry run reports this without deleting")))
+		}.WithHint(v2model.Plain(hint)))
 	}
 	types, err := s.store.SpaceIndex(spaceId).Query(database.Query{Filters: liveTypeFilters()})
 	if err == nil {

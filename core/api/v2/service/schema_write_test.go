@@ -751,3 +751,104 @@ func TestV2UpdateDeleteProperty(t *testing.T) {
 		assert.NotContains(t, result.Warnings[0].Message, `"Severity"`)
 	})
 }
+
+// A schema delete's hint matches the run it rides on. The warning itself is
+// the same on both runs (what the delete leaves behind); a dry run's hint
+// says nothing was deleted, and a real delete's says where the type or
+// property went, because "a dry run reports this" cannot be acted on after
+// the delete happened.
+func TestV2SchemaDeleteHintMatchesTheRun(t *testing.T) {
+	ctx := context.Background()
+	archived := &pb.RpcObjectSetIsArchivedResponse{Error: &pb.RpcObjectSetIsArchivedResponseError{Code: pb.RpcObjectSetIsArchivedResponseError_NULL}}
+	// given: the type "chore" has two objects, and one of them holds a
+	// value of the property "severity"
+	newFx := func(t *testing.T) *v2Fixture {
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		fx.addTaskType(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("c1"),
+				bundle.RelationKeyType:           domain.String("type-chore"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+				"severity":                       domain.String("opt-high"),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("c2"),
+				bundle.RelationKeyType:           domain.String("type-chore"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			},
+		})
+		return fx
+	}
+	noDryRunWording := func(t *testing.T, issues []v2model.Issue) {
+		for _, issue := range issues {
+			assert.NotContains(t, strings.ToLower(issue.Message), "dry run")
+			assert.NotContains(t, strings.ToLower(issue.Hint), "dry run")
+		}
+	}
+
+	t.Run("a real property delete says the property went to the Bin", func(t *testing.T) {
+		// given
+		fx := newFx(t)
+		fx.mwMock.EXPECT().ObjectSetIsArchived(mock.Anything, &pb.RpcObjectSetIsArchivedRequest{ContextId: "rel-severity", IsArchived: true}).Return(archived)
+		want := "the property was moved to the Bin; to use it again, restore it from the Bin in the Anytype app"
+
+		// when
+		result, err := fx.DeleteProperty(ctx, testSpaceId, "severity", false)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, result.Warnings, 2, "the holder and type-list warnings stay")
+		assert.Contains(t, result.Warnings[0].Message, `1 object holds a value of "severity"`)
+		assert.Equal(t, want, result.Warnings[0].Hint)
+		noDryRunWording(t, result.Warnings)
+	})
+
+	t.Run("a property dry run says nothing was deleted", func(t *testing.T) {
+		// given
+		fx := newFx(t)
+		want := "a dry run reports this without deleting"
+
+		// when
+		result, err := fx.DeleteProperty(ctx, testSpaceId, "severity", true)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, result.Warnings, 2)
+		assert.Contains(t, result.Warnings[0].Message, `1 object holds a value of "severity"`)
+		assert.Equal(t, want, result.Warnings[0].Hint)
+	})
+
+	t.Run("a real type delete says the type went to the Bin", func(t *testing.T) {
+		// given
+		fx := newFx(t)
+		fx.mwMock.EXPECT().ObjectSetIsArchived(mock.Anything, &pb.RpcObjectSetIsArchivedRequest{ContextId: "type-chore", IsArchived: true}).Return(archived)
+		want := "the type was moved to the Bin; to use it again, restore it from the Bin in the Anytype app"
+
+		// when
+		result, err := fx.DeleteType(ctx, testSpaceId, "chore", false)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, result.Warnings, 1, "the objects-left-behind warning stays")
+		assert.Contains(t, result.Warnings[0].Message, `2 objects are of type "chore"`)
+		assert.Equal(t, want, result.Warnings[0].Hint)
+		noDryRunWording(t, result.Warnings)
+	})
+
+	t.Run("a type dry run says nothing was deleted", func(t *testing.T) {
+		// given
+		fx := newFx(t)
+		want := "a dry run reports this without deleting; to keep the type usable, keep it"
+
+		// when
+		result, err := fx.DeleteType(ctx, testSpaceId, "chore", true)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, result.Warnings, 1)
+		assert.Contains(t, result.Warnings[0].Message, `2 objects are of type "chore"`)
+		assert.Equal(t, want, result.Warnings[0].Hint)
+	})
+}
