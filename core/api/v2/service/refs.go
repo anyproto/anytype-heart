@@ -329,7 +329,11 @@ func removedCustomPropertyIssue(spaceId string, entry propertyEntry, spelledAs, 
 func removedPropertyIssue(spaceId, key, spelledAs, path string, v errKeys) v2model.Issue {
 	slug := bundle.ApiSlug(key)
 	spelling := slug
-	if v.names {
+	if spelledAs != "" {
+		// the term as written ("DESCRIPTION"): the decision is on the key,
+		// the refusal is addressed to what the caller sent
+		spelling = spelledAs
+	} else if v.names {
 		// a removed bundled property still has its bundled display name —
 		// the spelling a name-mode caller was taught
 		if rel, err := bundle.GetRelation(domain.RelationKey(key)); err == nil && rel.Name != "" {

@@ -351,3 +351,120 @@ func TestV2TypeDefinitionAmbiguityIsA400AtTheDefinition(t *testing.T) {
 	assert.Contains(t, apiErr.Issues[0].Message, "rel-twin1")
 	assert.Contains(t, apiErr.Issues[0].Message, "rel-twin2")
 }
+
+func TestV2SpellingsInRepairs(t *testing.T) {
+	t.Run("a missing option's route binds the served key, the message the name", func(t *testing.T) {
+		// given: a select whose display name is not a path segment
+		fx := newV2Fixture(t)
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("rel-sales"),
+			bundle.RelationKeyRelationKey:    domain.String("6a7663db61fab21cd4b9e8a1"),
+			bundle.RelationKeyApiObjectKey:   domain.String("sales_stage"),
+			bundle.RelationKeyName:           domain.String("Sales/Stage"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_status)),
+		})
+		options := v2model.RefListPropertyOptions(testSpaceId, "sales_stage")
+
+		// when
+		_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, v2model.SearchRequest{
+			Filters: json.RawMessage(`[{"property":"Sales/Stage","condition":"in","value":["Nope"]}]`),
+		}, 0, 25)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, `property "Sales/Stage" has no option named "Nope" — a query never creates options`, apiErr.Issues[0].Message)
+		assert.Contains(t, apiErr.Issues[0].SeeAlso, options)
+	})
+
+	t.Run("a removed built-in is refused by the spelling sent", func(t *testing.T) {
+		// given: the space removed the built-in description
+		fx := newV2Fixture(t)
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:            domain.String("rel-description"),
+			bundle.RelationKeyRelationKey:   domain.String("description"),
+			bundle.RelationKeyName:          domain.String("Description"),
+			bundle.RelationKeyIsUninstalled: domain.Bool(true),
+		})
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"formatVersion":"2.0","type":"page","properties":{"name":"n","DESCRIPTION":"x"}}`), false, true)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Contains(t, apiErr.Issues[0].Message, `property "DESCRIPTION" was removed from this space`)
+	})
+}
+
+func TestV2StrictDecodeAndRouteParamPaths(t *testing.T) {
+	t.Run("a type op's unknown member is a pointer token", func(t *testing.T) {
+		// given
+		fx := newTypeOpsFixture(t)
+
+		// when
+		_, err := fx.UpdateType(context.Background(), testSpaceId, "plant", "",
+			opsBody(`{"op":"add_property","property":"x","a/b":1}`), true, false)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/ops/0/a~1b", apiErr.Issues[0].Path)
+	})
+
+	t.Run("a type op's mistyped member is a pointer token", func(t *testing.T) {
+		// given
+		fx := newTypeOpsFixture(t)
+
+		// when
+		_, err := fx.UpdateType(context.Background(), testSpaceId, "plant", "",
+			opsBody(`{"op":"add_property","property":1}`), true, false)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/ops/0/property", apiErr.Issues[0].Path)
+	})
+
+	t.Run("an object op keeps the op path syntax", func(t *testing.T) {
+		assert.Equal(t, "ops[0].sett", opMemberPath("ops[0]", "sett"))
+	})
+
+	t.Run("a type route's ambiguity names the route parameter", func(t *testing.T) {
+		// given: two types share a name
+		fx := newV2Fixture(t)
+		for _, tp := range []struct{ id, key, slug string }{
+			{"type-errand-a", "6a7663db61fab21cd4b9e9a1", "errand_a"},
+			{"type-errand-b", "6a7663db61fab21cd4b9e9b1", "errand_b"},
+		} {
+			fx.addType(t, testSpaceId, objectstore.TestObject{
+				bundle.RelationKeyId:           domain.String(tp.id),
+				bundle.RelationKeyUniqueKey:    domain.String("ot-" + tp.key),
+				bundle.RelationKeyApiObjectKey: domain.String(tp.slug),
+				bundle.RelationKeyName:         domain.String("Errand"),
+			})
+		}
+
+		// when
+		_, _, err := fx.GetType(context.Background(), testSpaceId, "Errand", ObjectQuery{})
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "type", apiErr.Issues[0].Path)
+	})
+
+	t.Run("a bad layout names the member sent", func(t *testing.T) {
+		// given
+		fx := newTypeOpsFixture(t)
+
+		// when
+		_, err := fx.UpdateType(context.Background(), testSpaceId, "plant", "",
+			[]byte(`{"type_settings":{"layout":true}}`), true, false)
+
+		// then
+		apiErr := v2Err(t, err)
+		assert.Equal(t, "invalid layout", apiErr.Message)
+	})
+}

@@ -1150,7 +1150,9 @@ func typeDetailValue(key, path string, raw json.RawMessage) (*types.Value, error
 		if err := json.Unmarshal(raw, &number); err == nil {
 			return pbtypes.Int64(number), nil
 		}
-		return nil, v2model.ValidationFailed("invalid recommendedLayout",
+		// the member the caller wrote is layout; recommendedLayout is the
+		// stored detail it lands on
+		return nil, v2model.ValidationFailed("invalid layout",
 			v2model.Issue{Path: path, Message: "expected a layout name or number"})
 	}
 	if key == "defaultViewType" {

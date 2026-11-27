@@ -920,7 +920,7 @@ func (s *Service) validateStructuredFilters(spaceId string, raw json.RawMessage,
 						issues = append(issues, v2model.Issue{
 							Path:    nodePath + "/value",
 							Message: fmt.Sprintf("property %q has no option named %q — a query never creates options", node.Property, value),
-						}.WithHint(didYouMean(value, names, v2model.Hintf("list them with %s", v2model.RefListPropertyOptions(spaceId, node.Property)))))
+						}.WithHint(didYouMean(value, names, v2model.Hintf("list them with %s", v2model.RefListPropertyOptions(spaceId, kc.routeKey(canonical, node.Property))))))
 					}
 				}
 			}

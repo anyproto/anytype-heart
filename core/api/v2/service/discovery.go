@@ -329,7 +329,8 @@ func (s *Service) GetType(ctx context.Context, spaceId, typeKey string, q Object
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, "", err
 	}
-	entry, err := s.requireLiveType(spaceId, typeKey, "/key", errKeysFor(ctx))
+	// the route parameter is the member the caller wrote
+	entry, err := s.requireLiveType(spaceId, typeKey, "type", errKeysFor(ctx))
 	if err != nil {
 		return nil, "", err
 	}

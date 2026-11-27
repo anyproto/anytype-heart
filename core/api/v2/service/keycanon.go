@@ -137,6 +137,17 @@ func (k *keyCanon) referenceSpellings(stored []string, v errKeys) []string {
 	return k.candidateSpellings(stored, v)
 }
 
+// routeKey is the key a route takes for a stored key: its served spelling,
+// a valid path segment whatever the caller spelled (a display name such as
+// "Sales/Stage" is not one). Falls back to the caller's spelling for a key
+// the space does not serve.
+func (k *keyCanon) routeKey(stored, spelled string) string {
+	if served := k.servedSpellings([]string{stored}); len(served) == 1 {
+		return served[0]
+	}
+	return spelled
+}
+
 // candidateSpellings is the one builder of a refusal's candidate list. Only
 // a live, visible, publicly addressable property makes it: a removed one a
 // type still recommends has no live entry, and a hidden one (the discussion
