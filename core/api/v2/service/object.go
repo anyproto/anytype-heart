@@ -229,8 +229,8 @@ func (s *Service) GetObject(ctx context.Context, spaceId, objectId string, q Obj
 	// a template names the type it is for as every write resolves it
 	// (templateTargetOf), not by whichever slot a retarget left behind
 	if read.Snapshot != nil {
-		if typeKeys := readTypeKeys(read.Snapshot.GetObjectTypes()); isTemplateObject(read.SbType, typeKeys) {
-			target, err := s.templateTargetOf(spaceId, read.Snapshot.GetDetails(), typeKeys)
+		if isTemplateObject(read.SbType) {
+			target, err := s.templateTargetOf(spaceId, read.Snapshot.GetDetails(), readTypeKeys(read.Snapshot.GetObjectTypes()))
 			if err != nil {
 				return nil, "", err
 			}

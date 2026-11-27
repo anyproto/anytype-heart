@@ -434,14 +434,15 @@ func (s *Service) applyPatchOps(ctx context.Context, spaceId, objectId string, o
 	if err := checkEditPreconditions(edit.SbType, edit.Heads, ifMatch); err != nil {
 		return nil, nil, err
 	}
-	if resolvers.patch != nil {
-		// every pass starts from the object's own scope: a set_type in the
-		// batch moves it, and a pass that ran before must not leave it moved
-		resolvers.scope = resolvers.patch.objectScope
-	}
 	applier := newV2StateApplier(s, spaceId, objectId, edit.SbType, edit.State, resolvers, errKeysFor(ctx))
 	applier.setObjectType = edit.SetObjectType
 	applier.simulate = simulate
+	// every pass starts from the object's own scope, read off the state it
+	// edits: a set_type or a retarget in the batch moves it, and the object
+	// may have moved between the plan's read and the lock
+	if err := applier.loadTarget(); err != nil {
+		return nil, nil, err
+	}
 	beforeDoc, err := applier.begin()
 	if err != nil {
 		return nil, nil, err
@@ -628,8 +629,11 @@ func checkEditPreconditions(sbType model.SmartBlockType, heads []string, ifMatch
 // between its create-missing probe and its apply: whether it is a template,
 // the template's target, and the scope its own property terms resolve in.
 type patchContext struct {
-	template    bool
-	target      templateTarget
+	template bool
+	target   templateTarget
+	// typeKeys are the object's stored type keys, the second-key fallback a
+	// retarget in the batch resolves against (prewarmCreateMissing)
+	typeKeys    []domain.TypeKey
 	objectScope map[string]bool
 	// viewScope settles a view filter or sort key: the list of the type the
 	// object's query source names (v2StateApplier.viewScope, read off the
@@ -650,22 +654,18 @@ func (s *Service) newPatchContext(spaceId string, cur apicore.ObjectRead) (*patc
 	if setOf := pbtypes.GetStringList(cur.Snapshot.GetDetails(), bundle.RelationKeySetOf.String()); len(setOf) == 1 {
 		pc.viewScope = s.typePropertyScope(spaceId, setOf[0])
 	}
-	typeKeys := readTypeKeys(cur.Snapshot.GetObjectTypes())
-	pc.template = isTemplateObject(cur.SbType, typeKeys)
+	pc.typeKeys = readTypeKeys(cur.Snapshot.GetObjectTypes())
+	pc.template = isTemplateObject(cur.SbType)
 	if pc.template {
-		target, err := s.templateTargetOf(spaceId, cur.Snapshot.GetDetails(), typeKeys)
+		target, err := s.templateTargetOf(spaceId, cur.Snapshot.GetDetails(), pc.typeKeys)
 		if err != nil {
 			return nil, err
 		}
 		pc.target = target
-		if target.IsLive {
-			scope, err := s.typePropertyScopeOf(spaceId, target.Live.Id)
-			if err != nil {
-				return nil, fmt.Errorf("read the template target's properties: %w", err)
-			}
-			pc.objectScope = scope
-			return pc, nil
+		if pc.objectScope, err = s.templateScope(spaceId, target); err != nil {
+			return nil, err
 		}
+		return pc, nil
 	}
 	pc.objectScope = s.typePropertyScope(spaceId, pbtypes.GetString(cur.Snapshot.Details, bundle.RelationKeyType.String()))
 	return pc, nil

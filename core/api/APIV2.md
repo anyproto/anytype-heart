@@ -637,9 +637,14 @@ PATCH/DELETE /v2/spaces/{space_id}/properties/{key}    # update / archive
   (`core/api/v2/service/refs.go:652`).
 - **A template's target is one identity.** It is the `targetObjectType`
   detail, which heart's own template application reads and a retarget
-  moves; the second type key counts only when that detail is absent. GET
-  serves it as `template_for`, and name scope and off-type warnings use the
-  same type (`core/api/v2/service/templates.go:238`).
+  moves; the second type key counts only when that detail is absent. A
+  detail naming no type row this space holds is an unknown target, and its
+  stale second key is not served. GET serves the target as `template_for`
+  under the type `template`, and name scope, off-type warnings, a create's
+  `template` check and the template listing use the same type. A retarget
+  written through `set_properties` is stored as one id, as heart reads it,
+  and moves the scope of the batch's later ops. A PATCH re-reads the target
+  under the object lock (`core/api/v2/service/templates.go:246`).
 - **Every side effect a write creates** — properties and options, real on a
   live run and would-be on a dry run — is reported under `created` in the
   response, each option named once however many ops resolved it

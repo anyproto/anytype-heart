@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/any-block/codec/anyblockjson"
+	"github.com/gogo/protobuf/types"
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
@@ -1033,6 +1034,26 @@ func TestV2PatchScopesFollowTheirSource(t *testing.T) {
 		})
 	}
 
+	t.Run("an option after a retarget resolves on the new target's property, creating nothing", func(t *testing.T) {
+		// given: sprint by the detail, backlog by the second key; only
+		// backlog's Stage holds Ready
+		fx := setup(t, stageBacklogKey)
+		read := templateRead(t, `{"formatVersion":"2.0","id":"obj1","kind":"template","type":"template","properties":{"name":"Weekly"}}`)
+		read.Snapshot.ObjectTypes = []string{"ot-template", "ot-backlog"}
+		read.Snapshot.Details.Fields[bundle.RelationKeyTargetObjectType.String()] = pbtypes.String("type-sprint")
+		captured := fx.expectMutate(read, "headB")
+
+		// when: the prewarm must follow the unset as the apply does
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(
+			`{"op":"set_properties","unset":["targetObjectType"]}`,
+			`{"op":"set_properties","set":{"Stage":"Ready"}}`), "", false, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Empty(t, createdOptions(result.Created))
+		assert.Equal(t, []string{"opt-ready"}, (*captured).CombinedDetails().GetStringList(domain.RelationKey(stageBacklogKey)))
+	})
+
 	t.Run("set_properties after set_type writes the new type's property", func(t *testing.T) {
 		// given
 		fx := setup(t, stageSprintKey)
@@ -1062,6 +1083,245 @@ func TestV2PatchScopesFollowTheirSource(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, createdOptions(result.Created))
 		assert.Equal(t, []string{"opt-ready"}, typed.state.CombinedDetails().GetStringList(domain.RelationKey(stageSprintKey)))
+	})
+}
+
+// GO-7614 round two: the target a write and a read use is the one the
+// object has when they run. A retarget through set_properties is stored the
+// way heart reads it, a later op in the batch and a retarget that lands
+// before the lock both move the scope, and rendering keeps every slot the
+// codec needs to report a loss.
+func TestV2TemplateTargetFollowsTheObject(t *testing.T) {
+	ctx := context.Background()
+	setup := func(t *testing.T) *v2Fixture {
+		fx := newEffortFixture(t)
+		fx.addSprintType(t)
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:                   domain.String("type-backlog"),
+			bundle.RelationKeyUniqueKey:            domain.String("ot-backlog"),
+			bundle.RelationKeyName:                 domain.String("Backlog"),
+			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-effort-hours"}),
+		})
+		return fx
+	}
+	// a template stored with typeKeys and, unless nil, targetObjectType
+	stored := func(t *testing.T, sbType model.SmartBlockType, target *types.Value, typeKeys ...string) apicore.ObjectRead {
+		read := templateRead(t, `{"formatVersion":"2.0","id":"obj1","kind":"template","type":"template","properties":{"name":"Weekly"}}`)
+		read.SbType = sbType
+		read.Snapshot.ObjectTypes = typeKeys
+		if target != nil {
+			read.Snapshot.Details.Fields[bundle.RelationKeyTargetObjectType.String()] = target
+		}
+		return read
+	}
+	getDoc := func(t *testing.T, fx *v2Fixture, read apicore.ObjectRead) map[string]json.RawMessage {
+		t.Helper()
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(read, nil).Maybe()
+		body, _, err := fx.GetObject(ctx, testSpaceId, "obj1", ObjectQuery{})
+		require.NoError(t, err)
+		fields, err := parseEnvelope(body)
+		require.NoError(t, err)
+		return fields
+	}
+	stringMember := func(fields map[string]json.RawMessage, member string) string {
+		return envelopeString(fields, member)
+	}
+	committedEffort := func(t *testing.T, st *state.State) string {
+		t.Helper()
+		details := st.CombinedDetails()
+		switch {
+		case details.Has(domain.RelationKey(effortPointsKey)):
+			return "points"
+		case details.Has(domain.RelationKey(effortHoursKey)):
+			return "hours"
+		}
+		return ""
+	}
+	sprint := pbtypes.String("type-sprint")
+
+	t.Run("a retarget through set_properties is stored as one id", func(t *testing.T) {
+		// given
+		fx := setup(t)
+		captured := fx.expectMutate(stored(t, model.SmartBlockType_Template, nil, "ot-template", "ot-backlog"), "headB")
+
+		// when
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"set_properties","set":{"targetObjectType":["type-sprint"]}}`), "", false, true)
+
+		// then
+		require.NoError(t, err)
+		got := (*captured).Details().Get(bundle.RelationKeyTargetObjectType)
+		assert.Equal(t, domain.String("type-sprint"), got)
+	})
+
+	t.Run("a target stored as a one-element list is the target, for a read and for a write", func(t *testing.T) {
+		// given
+		fx := setup(t)
+		read := stored(t, model.SmartBlockType_Template, pbtypes.StringList([]string{"type-sprint"}), "ot-template", "ot-backlog")
+		captured := fx.expectMutate(read, "headB")
+
+		// when
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(`{"op":"set_properties","set":{"Effort":"3"}}`), "", false, true)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "points", committedEffort(t, *captured))
+		assert.Equal(t, "sprint", stringMember(getDoc(t, fx, read), "template_for"))
+	})
+
+	t.Run("an op after a retarget in the same batch resolves against the new target", func(t *testing.T) {
+		// given: sprint by the detail, backlog by the second key
+		fx := setup(t)
+		captured := fx.expectMutate(stored(t, model.SmartBlockType_Template, sprint, "ot-template", "ot-backlog"), "headB")
+
+		// when: unsetting the detail leaves the second key in charge
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(
+			`{"op":"set_properties","unset":["targetObjectType"]}`,
+			`{"op":"set_properties","set":{"Effort":"3"}}`), "", false, true)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "hours", committedEffort(t, *captured))
+	})
+
+	t.Run("a retarget that lands before the lock moves the scope", func(t *testing.T) {
+		// given: the plan reads sprint; by the time the lock is taken the
+		// object has been retargeted to backlog
+		fx := setup(t)
+		committed := fx.expectMutateState(stored(t, model.SmartBlockType_Template, sprint, "ot-template", "ot-backlog"), func(st *state.State) {
+			st.SetDetail(bundle.RelationKeyTargetObjectType, domain.String("type-backlog"))
+		}, "headB")
+
+		// when
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"set_properties","set":{"Effort":"3","effort_points":"4"}}`), "", false, true)
+
+		// then: the name binds backlog's property, and the off-target one warns naming backlog
+		require.NoError(t, err)
+		assert.Equal(t, "3", (*committed).CombinedDetails().GetString(domain.RelationKey(effortHoursKey)))
+		require.Len(t, result.Warnings, 1, "%v", result.Warnings)
+		assert.Contains(t, result.Warnings[0].Message, `is not on type "backlog"`)
+	})
+
+	t.Run("a read keeps a type key past the target slot, so the codec still reports it", func(t *testing.T) {
+		// given
+		fx := setup(t)
+		read := stored(t, model.SmartBlockType_Template, sprint, "ot-template", "ot-sprint", "ot-backlog")
+
+		// when
+		fields := getDoc(t, fx, read)
+
+		// then
+		var warnings []v2model.Issue
+		require.NoError(t, json.Unmarshal(fields["warnings"], &warnings))
+		paths := make([]string, 0, len(warnings))
+		for _, w := range warnings {
+			paths = append(paths, w.Path)
+		}
+		assert.Contains(t, paths, "/type")
+	})
+
+	t.Run("a PATCH of a template with a type key past the target slot is refused as lossy", func(t *testing.T) {
+		// given
+		fx := setup(t)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").
+			Return(stored(t, model.SmartBlockType_Template, sprint, "ot-template", "ot-sprint", "ot-backlog"), nil).Maybe()
+
+		// when
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(`{"op":"set_properties","set":{"name":"Renamed"}}`), "", true, true)
+
+		// then
+		assert.Equal(t, http.StatusUnprocessableEntity, v2Err(t, err).Status)
+	})
+
+	t.Run("a target detail this space cannot resolve leaves no stale template_for", func(t *testing.T) {
+		// given
+		fx := setup(t)
+
+		// when
+		fields := getDoc(t, fx, stored(t, model.SmartBlockType_Template, pbtypes.String("type-ghost"), "ot-template", "ot-backlog"))
+
+		// then
+		assert.Empty(t, stringMember(fields, "template_for"))
+	})
+
+	t.Run("a template whose first type key is not template reads as a template of its target", func(t *testing.T) {
+		// given
+		fx := setup(t)
+
+		// when
+		fields := getDoc(t, fx, stored(t, model.SmartBlockType_Template, nil, "ot-backlog", "ot-sprint"))
+
+		// then
+		assert.Equal(t, "template", stringMember(fields, "kind"))
+		assert.Equal(t, "template", stringMember(fields, "type"))
+		assert.Equal(t, "sprint", stringMember(fields, "template_for"))
+	})
+
+	t.Run("a page whose first type key is template is not scoped as a template", func(t *testing.T) {
+		// given: the codec serves no template_for for a page, so its writes
+		// cannot be judged by one either
+		fx := setup(t)
+		read := stored(t, model.SmartBlockType_Page, sprint, "ot-template")
+		fx.expectMutate(read)
+
+		// when
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(`{"op":"set_properties","set":{"Effort":"3"}}`), "", false, true)
+
+		// then
+		assert.Equal(t, v2model.CodeAmbiguousInput, v2Err(t, err).Code)
+	})
+}
+
+// GO-7614 round two: a template that names its target only in its second
+// type key is a template of that type for a create and for the listing,
+// exactly as GET serves it.
+func TestV2TemplateTargetFromTheSecondTypeKey(t *testing.T) {
+	ctx := context.Background()
+	setup := func(t *testing.T) *v2Fixture {
+		fx := newV2Fixture(t)
+		fx.addTemplateType(t)
+		fx.addMemoType(t)
+		// the index row carries no targetObjectType; the object does
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("tpl-keyed"),
+			bundle.RelationKeyName:           domain.String("Keyed memo"),
+			bundle.RelationKeyType:           domain.String(testTemplateTypeId),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+		}})
+		read := editRead(t, `{"formatVersion":"2.0","id":"tpl-keyed","kind":"template","type":"template","template_for":"memo","properties":{"name":"Keyed memo"}}`)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "tpl-keyed").Return(read, nil).Maybe()
+		return fx
+	}
+
+	t.Run("a create names the template and starts from it", func(t *testing.T) {
+		// given
+		fx := setup(t)
+		applied := fx.expectCreateWithTemplate("newObj")
+		fx.expectEtagRead("newObj")
+
+		// when
+		result, err := fx.CreateObject(ctx, testSpaceId, []byte(`{"type":"memo","name":"Monday","template":"tpl-keyed"}`), false, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "tpl-keyed", *applied)
+		require.NotNil(t, result.Template)
+		assert.Equal(t, "tpl-keyed", result.Template.Id)
+	})
+
+	t.Run("the type's template listing includes it", func(t *testing.T) {
+		// given
+		fx := setup(t)
+		want := []v2model.TemplateRow{{Id: "tpl-keyed", Name: "Keyed memo", TemplateFor: "memo"}}
+
+		// when
+		rows, total, _, err := fx.ListTemplates(ctx, testSpaceId, "memo", 0, 10)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, want, rows)
+		assert.Equal(t, 1, total)
 	})
 }
 

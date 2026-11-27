@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -116,6 +117,13 @@ type v2StateApplier struct {
 	typeKeysCache map[string]map[string]bool
 	// typeWords memoizes offTypeTypeWord per type id for this PATCH.
 	typeWords map[string]string
+	// liveTypeHits memoizes liveTypeByKey per stored key for this PATCH.
+	liveTypeHits map[string]liveTypeHit
+	// template and target are the object's template identity as the state
+	// this pass edits says it, re-derived under the lock (loadTarget) and
+	// after every op that retargets it
+	template bool
+	target   templateTarget
 	// setObjectType is the editor's type change (apicore.ObjectEdit
 	// .SetObjectType). simulate says no editor is behind the state BY
 	// DESIGN — a dry run, or the create-missing probe pass — so set_type
@@ -1290,6 +1298,11 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 		if err != nil {
 			return err
 		}
+		if ids := value.WrapToStringList(); key == bundle.RelationKeyTargetObjectType.String() && len(ids) == 1 {
+			// heart reads a template's target as one id (templateimpl
+			// updateTypeKey); the object channel writes references as lists
+			value = domain.String(ids[0])
+		}
 		a.st.SetDetail(domain.RelationKey(key), value)
 		// a key new to the object needs its relation link, or the detail value
 		// is wiped on replay (review A1 in miniature; AddRelationLinks dedupes)
@@ -1377,6 +1390,13 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 		}
 	}
 	a.mutated()
+	// a retarget moves the scope of the ops after this one
+	target := bundle.RelationKeyTargetObjectType.String()
+	_, inAdd := addEntries[target]
+	_, inRemove := removeEntries[target]
+	if a.template && (slices.Contains(setKeys, target) || unset[target] || inAdd || inRemove) {
+		return a.retarget()
+	}
 	return nil
 }
 
@@ -2757,20 +2777,28 @@ func (a *v2StateApplier) warnOffTypeKeys(doc *v2EditDoc, opPath string, fields m
 // stands now, a set_type earlier in the batch included. found=false means no
 // warning.
 func (a *v2StateApplier) offTypeJudged() (judged liveType, forTemplate, found bool, err error) {
-	if target, ok := a.patchTemplate(); ok {
-		return target.Live, true, target.IsLive, nil
+	if a.template {
+		return a.target.Live, true, a.target.IsLive, nil
 	}
 	keys := a.st.ObjectTypeKeys()
-	if len(keys) == 0 {
-		return liveType{}, false, false, nil
+	if len(keys) == 0 || isTemplateObject(a.sbType) {
+		// a template with no PATCH behind it has no target here, and so is
+		// judged against nothing
+		return liveType{}, isTemplateObject(a.sbType), false, nil
 	}
-	kind := ""
-	if a.sbType == model.SmartBlockType_Template {
-		kind = "template"
+	key := string(keys[0])
+	if hit, ok := a.liveTypeHits[key]; ok {
+		return hit.live, false, hit.found, nil
 	}
-	// a template with no PATCH behind it has no target here, and so is
-	// judged against nothing
-	return a.s.offTypeJudgedType(a.spaceId, kind, string(keys[0]), "")
+	live, found, err := a.s.liveTypeByKey(a.spaceId, key)
+	if err != nil {
+		return liveType{}, false, false, fmt.Errorf("resolve the type to judge properties against: %w", err)
+	}
+	if a.liveTypeHits == nil {
+		a.liveTypeHits = map[string]liveTypeHit{}
+	}
+	a.liveTypeHits[key] = liveTypeHit{live: live, found: found}
+	return live, false, found, nil
 }
 
 // listedKeys is listedKeysOf memoized per type for this PATCH.
@@ -2786,23 +2814,61 @@ func (a *v2StateApplier) listedKeys(typeId string) (map[string]bool, bool) {
 	return keys, readable
 }
 
-// patchTemplate is the template target this PATCH resolved once
-// (patchContext). ok=false: the object is not a template, or no PATCH is
-// behind this applier.
-func (a *v2StateApplier) patchTemplate() (templateTarget, bool) {
-	if a.resolvers == nil || a.resolvers.patch == nil || !a.resolvers.patch.template {
-		return templateTarget{}, false
+// liveTypeHit is one memoized liveTypeByKey answer.
+type liveTypeHit struct {
+	live  liveType
+	found bool
+}
+
+// loadTarget sets this pass's starting scope from the state it edits. The
+// plan (patchContext) was read before the lock; a template retargeted since
+// is re-resolved here, so its names and warnings follow the target the
+// object has now. Only a PATCH has a plan, and only a template is re-read.
+func (a *v2StateApplier) loadTarget() error {
+	if a.resolvers == nil || a.resolvers.patch == nil {
+		return nil
 	}
-	return a.resolvers.patch.target, true
+	pc := a.resolvers.patch
+	a.resolvers.scope = pc.objectScope
+	a.template = isTemplateObject(a.sbType)
+	if !a.template {
+		return nil
+	}
+	target, err := a.s.templateTargetOf(a.spaceId, a.st.Details().ToProto(), a.st.ObjectTypeKeys())
+	if err != nil {
+		return err
+	}
+	a.target = target
+	if target == pc.target {
+		return nil
+	}
+	if a.resolvers.scope, err = a.s.templateScope(a.spaceId, target); err != nil {
+		return err
+	}
+	return nil
+}
+
+// retarget re-reads the template target after an op edited
+// targetObjectType, and moves the scope with it for the ops that follow.
+func (a *v2StateApplier) retarget() error {
+	target, err := a.s.templateTargetOf(a.spaceId, a.st.Details().ToProto(), a.st.ObjectTypeKeys())
+	if err != nil {
+		return err
+	}
+	a.target = target
+	if a.resolvers.scope, err = a.s.templateScope(a.spaceId, target); err != nil {
+		return err
+	}
+	return nil
 }
 
 // renderSnapshot is the state as this PATCH's documents render it: a
-// template names the target the PATCH resolved (withTemplateTarget), as its
-// read does.
+// template names the target it has now (withTemplateTarget), as its read
+// does.
 func (a *v2StateApplier) renderSnapshot() *model.SmartBlockSnapshotBase {
 	snapshot := snapshotFromState(a.st)
-	if target, ok := a.patchTemplate(); ok {
-		return withTemplateTarget(snapshot, target)
+	if a.template {
+		return withTemplateTarget(snapshot, a.target)
 	}
 	return snapshot
 }

@@ -463,7 +463,8 @@ func (s *Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creatin
 			// add resolves option names with the same create-missing
 			// semantics as set (v0.3.5), so it prewarms too — otherwise
 			// option creation moves back inside the object lock
-			Add map[string]json.RawMessage `json:"add"`
+			Add   map[string]json.RawMessage `json:"add"`
+			Unset []string                   `json:"unset"`
 		}
 		if err := json.Unmarshal(raw, &probe); err != nil {
 			continue
@@ -535,7 +536,66 @@ func (s *Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creatin
 				anyblockjson.UnmarshalPropertyValue(key, value, resolvers.Options())
 			}
 		}
+		// a retarget moves the scope of the ops after this one, as the
+		// apply's does (v2StateApplier.retarget)
+		if scope, ok := s.retargetScope(resolvers, probe.Set, probe.Unset); ok {
+			resolvers.scope = scope
+		}
 	}
+}
+
+// retargetScope is the scope a template takes on once a set_properties op
+// sets or unsets its targetObjectType: the new target's, resolved as
+// templateTargetOf resolves a stored one. ok=false: the op does not
+// retarget, or the object is not a template, or the target cannot be read
+// here (the apply reads it again and fails closed).
+func (s *Service) retargetScope(resolvers *creatingResolvers, set map[string]json.RawMessage, unset []string) (map[string]bool, bool) {
+	pc := resolvers.patch
+	if pc == nil || !pc.template {
+		return nil, false
+	}
+	targetKey := bundle.RelationKeyTargetObjectType.String()
+	var details *types.Struct
+	retargets := false
+	for _, rawKey := range unset {
+		if resolvers.canonicalPropertyKey(rawKey) == targetKey {
+			retargets = true
+		}
+	}
+	for rawKey, rawValue := range set {
+		if resolvers.canonicalPropertyKey(rawKey) != targetKey {
+			continue
+		}
+		retargets = true
+		var value any
+		if err := json.Unmarshal(rawValue, &value); err != nil {
+			return nil, false
+		}
+		var ids []string
+		switch v := value.(type) {
+		case string:
+			ids = []string{v}
+		case []any:
+			for _, entry := range v {
+				if id, ok := entry.(string); ok {
+					ids = append(ids, id)
+				}
+			}
+		}
+		details = &types.Struct{Fields: map[string]*types.Value{targetKey: pbtypes.StringList(ids)}}
+	}
+	if !retargets {
+		return nil, false
+	}
+	target, err := s.templateTargetOf(resolvers.spaceId, details, pc.typeKeys)
+	if err != nil {
+		return nil, false
+	}
+	scope, err := s.templateScope(resolvers.spaceId, target)
+	if err != nil {
+		return nil, false
+	}
+	return scope, true
 }
 
 // viewFilterProbe decodes a §6.2 filter tree just deep enough to reach the
