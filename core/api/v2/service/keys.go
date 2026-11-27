@@ -16,6 +16,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -772,8 +773,17 @@ func describePropertyEntries(entries []propertyEntry) []string {
 }
 
 func describeTypeEntries(entries []typeEntry) []string {
-	out := make([]string, 0, len(entries))
-	for _, entry := range entries {
+	// by stored key, then id: the store's row order is not one a caller can
+	// rely on (§1.6)
+	sorted := slices.Clone(entries)
+	sort.SliceStable(sorted, func(i, j int) bool {
+		if sorted[i].Key != sorted[j].Key {
+			return sorted[i].Key < sorted[j].Key
+		}
+		return sorted[i].Id < sorted[j].Id
+	})
+	out := make([]string, 0, len(sorted))
+	for _, entry := range sorted {
 		out = append(out, fmt.Sprintf("%q (key %s, id %s)", entry.Name, entry.Key, entry.Id))
 	}
 	return out

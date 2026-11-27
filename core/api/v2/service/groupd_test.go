@@ -308,7 +308,7 @@ func TestV2TemplatePropertiesJudgedAgainstTarget(t *testing.T) {
 	spicinessOffChore := func(path string) v2model.Issue {
 		return v2model.Issue{
 			Path:    path,
-			Message: `property "spiciness" is not on type "chore", the type this template is for. Objects created from the template take the value, but that type's search and queries refuse the key, and its default columns omit it.`,
+			Message: `property "spiciness" is not on type "chore", the type this template is for. Objects created from the template take the value. That type's search and queries refuse the key. Its default columns omit it.`,
 			SeeAlso: []v2model.Ref{v2model.RefGetOpSchema("add_property")},
 		}
 	}
@@ -423,6 +423,50 @@ func TestV2TemplatePropertiesJudgedAgainstTarget(t *testing.T) {
 		assert.Contains(t, result.Warnings[0].Message, `is not on type "Errand", the type this template is for`)
 		assert.NotContains(t, result.Warnings[0].Message, "6a8f2c1d9e4b7a3f5c2d8e88")
 		assert.NotContains(t, result.Warnings[0].Hint, "6a8f2c1d9e4b7a3f5c2d8e88")
+	})
+
+	t.Run("a target with no minted slug is named by display name, never by its stored key", func(t *testing.T) {
+		// given: a space-minted type whose row carries no api slug
+		fx := setup(t)
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:        domain.String("type-dispatch"),
+			bundle.RelationKeyUniqueKey: domain.String("ot-6a8f2c1d9e4b7a3f5c2d8e87"),
+			bundle.RelationKeyName:      domain.String("Dispatch"),
+		})
+		fx.expectMutate(editRead(t, `{"formatVersion":"2.0","id":"obj1","kind":"template","type":"template","template_for":"6a8f2c1d9e4b7a3f5c2d8e87","properties":{"name":"Weekly"}}`), "headB")
+
+		// when
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"set_properties","set":{"spiciness":"mild"}}`), "", false, true)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, result.Warnings, 1, "%v", result.Warnings)
+		assert.Contains(t, result.Warnings[0].Message, `is not on type "Dispatch", the type this template is for`)
+		assert.NotContains(t, result.Warnings[0].Message, "6a8f2c1d9e4b7a3f5c2d8e87")
+		assert.NotContains(t, result.Warnings[0].Hint, "6a8f2c1d9e4b7a3f5c2d8e87")
+	})
+
+	t.Run("two types answering to one template_for are listed by stored key", func(t *testing.T) {
+		// given: the store's id order is the reverse of the key order
+		fx := setup(t)
+		for _, twin := range []struct{ id, key string }{{"type-z-first", "ot-aaa"}, {"type-a-second", "ot-zzz"}} {
+			fx.addType(t, testSpaceId, objectstore.TestObject{
+				bundle.RelationKeyId:        domain.String(twin.id),
+				bundle.RelationKeyUniqueKey: domain.String(twin.key),
+				bundle.RelationKeyName:      domain.String("Rota"),
+			})
+		}
+
+		// when
+		_, err := fx.CreateTemplate(ctx, testSpaceId,
+			[]byte(`{"formatVersion":"2.0","template_for":"Rota","properties":{"name":"Weekly"}}`), true, true)
+
+		// then
+		issue := issueAt(t, err, "/template_for")
+		require.Contains(t, issue.Message, "key aaa")
+		require.Contains(t, issue.Message, "key zzz")
+		assert.Less(t, strings.Index(issue.Message, "key aaa"), strings.Index(issue.Message, "key zzz"))
 	})
 
 	t.Run("a plain create preview says the value would be stored", func(t *testing.T) {
@@ -637,6 +681,24 @@ func TestV2TemplateNamesResolveAgainstTarget(t *testing.T) {
 		details := (*captured).Details
 		assert.Equal(t, "3", pbtypes.GetString(details, pointsKey))
 		assert.False(t, pbtypes.HasField(details, hoursKey))
+	})
+
+	t.Run("under ?keys=name a template for a type named only by its display name resolves against it", func(t *testing.T) {
+		// given: sprint's display name is not any spelling of its key
+		fx := newEffortFixture(t)
+		fx.addSprintType(t, objectstore.TestObject{bundle.RelationKeyName: domain.String("Iteration")})
+		captured := fx.expectCreate("tpl1")
+		fx.expectEtagRead("tpl1")
+
+		// when
+		_, err := fx.CreateTemplate(CtxWithNameKeys(ctx), testSpaceId,
+			[]byte(`{"formatVersion":"2.0","template_for":"Iteration","properties":{"name":"Weekly","Effort":"3"}}`), false, true)
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, *captured)
+		assert.Equal(t, []string{"ot-template", "ot-sprint"}, (*captured).ObjectTypes)
+		assert.Equal(t, "3", pbtypes.GetString((*captured).Details, pointsKey))
 	})
 
 	t.Run("a template create's property block binds the property its target lists", func(t *testing.T) {
@@ -915,6 +977,16 @@ func TestV2TemplateTargetIdentity(t *testing.T) {
 		assert.True(t, preview.DryRun)
 		assert.Equal(t, committed.DiffStats, preview.DiffStats)
 		assert.Equal(t, []string{effortPointsKey}, relationKeys(*captured))
+		// and the state the dry run simulated binds the same property
+		pc, err := fx.newPatchContext(testSpaceId, read)
+		require.NoError(t, err)
+		resolvers := fx.newCreatingResolvers(ctx, testSpaceId, true, true)
+		resolvers.patch, resolvers.scope = pc, pc.objectScope
+		edit, err := editFromRead("obj1", read)
+		require.NoError(t, err)
+		_, simulated, err := fx.applyPatchOps(ctx, testSpaceId, "obj1", []json.RawMessage{json.RawMessage(op)}, "", edit, resolvers, true)
+		require.NoError(t, err)
+		assert.Equal(t, []string{effortPointsKey}, relationKeys(simulated.st))
 	})
 }
 

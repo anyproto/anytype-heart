@@ -342,14 +342,17 @@ addresses that always resolve), ordered by stored key and then id, and never
 picks by store order; a full miss
 falls to the unknown-key refusal with did-you-mean (§1.3). The one tie-break
 is the object's type: of several holders, the single one the type lists wins
-(`core/api/v2/service/keys.go:242`). A template is scoped by the type it is
+(`core/api/v2/service/keys.go:243`). A template is scoped by the type it is
 for, because the type `template` lists none of its properties. So a spelling
 the target lists wins on a template even when it is also the display name of
 a template-owned property (`Template's Type` is `targetObjectType`); the
 exact stored key still addresses that one. A template whose target is
 unknown, or has no live row in the space, keeps its own type
-(`core/api/v2/service/refs.go:665`). A view filter or sort key is settled by
-the type the view's query source names instead, as it stands at that op
+(`core/api/v2/service/refs.go:678`). A view filter or sort key is settled by
+the type the view's query source names instead (except a display name two
+properties share in a structured view filter, which the codec refuses
+before that scope applies, `core/api/v2/service/viewops.go:623`), as it
+stands at that op
 (a `setOf` edit earlier in the batch moves it), and after a `set_type` the
 batch's later ops are settled by the new type: for a built-in the batch
 installs, by the list its install writes. The create-missing pre-pass
@@ -622,11 +625,11 @@ PATCH/DELETE /v2/spaces/{space_id}/properties/{key}    # update / archive
   importer already supports (R-note). A template's type is `template` on
   both endpoints: `kind: "template"` beside any other type is refused at
   `/type` before a property name resolves, because the creator would build
-  an object of that other type (`core/api/v2/service/keys.go:1360`).
+  an object of that other type (`core/api/v2/service/keys.go:1370`).
 - **A value on a property the type does not list is stored and warned
   about**, on create and on `set_properties`, once, when the object first
   takes the key. `name`, the system query keys and hidden built-in
-  properties never warn (`core/api/v2/service/refs.go:634`). A template is
+  properties never warn (`core/api/v2/service/refs.go:647`). A template is
   judged against the type it is for, the one whose objects take its values,
   never against the type `template`, and the warning names that target. The
   warning names the type in the request's vocabulary: its display name under
@@ -636,7 +639,7 @@ PATCH/DELETE /v2/spaces/{space_id}/properties/{key}    # update / archive
   must be live. A
   template whose target is unknown, or has no live row in the space, gets no
   such warning, and neither does a property list that cannot be read
-  (`core/api/v2/service/refs.go:652`).
+  (`core/api/v2/service/refs.go:665`).
 - **A template's target is one identity.** It is the `targetObjectType`
   detail, which heart's own template application reads and a retarget
   moves; the second type key counts only when that detail is absent. A
@@ -805,7 +808,7 @@ is §1.6.
   starts from is visible where the templates are. The listing excludes
   uninstalled and hidden rows: offering an id the create path then refuses is
   the same broken loop pointing the other way
-  (`core/api/v2/service/templates.go:279`).
+  (`core/api/v2/service/templates.go:470`).
 - **A type's `default_template` is stored as a one-element list**, which is
   the spelling clients read, and is read back from either spelling.
   `PATCH /types/{type}` with `default_template: ""` clears it — the repair

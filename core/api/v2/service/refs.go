@@ -696,7 +696,9 @@ func offTypePropertyIssue(spelling, typeWord, path string, forTemplate, preview 
 		return v2model.Issue{
 			Path: path,
 			Message: fmt.Sprintf("property %q is not on type %q, the type this template is for. "+
-				"Objects created from the template %s the value, but that type's search and queries refuse the key, and its default columns omit it.",
+				"Objects created from the template %s the value. "+
+				"That type's search and queries refuse the key. "+
+				"Its default columns omit it.",
 				spelling, typeWord, take),
 		}.Hintf("list it on type %q with the add_property op (%s)", typeWord, v2model.RefGetOpSchema("add_property"))
 	}
@@ -712,14 +714,18 @@ func offTypePropertyIssue(spelling, typeWord, path string, forTemplate, preview 
 
 // offTypeTypeWord spells the type an off-type warning names in the request's
 // vocabulary: its display name under ?keys=name, its served slug otherwise.
-// A slug collision serves the stored key, which the caller never sent, so
-// the display name stands in for it then.
+// It never spells the stored key of a type whose slug cannot serve it (none
+// minted, or one a collision takes away): the display name stands in then,
+// and when the live set cannot be read, too.
 func (s *Service) offTypeTypeWord(spaceId string, judged liveType, names bool) string {
+	if names && judged.Name != "" {
+		return judged.Name
+	}
 	fallback := judged.Key
-	if bundle.HasObjectTypeByKey(domain.TypeKey(judged.Key)) {
-		if slug := bundle.TypeApiSlug(judged.Key); slug != "" {
-			fallback = slug
-		}
+	if slug := bundle.TypeApiSlug(judged.Key); bundle.HasObjectTypeByKey(domain.TypeKey(judged.Key)) && slug != "" {
+		fallback = slug
+	} else if mintedKeyShape(judged.Key) && judged.Name != "" {
+		fallback = judged.Name
 	}
 	entries, err := s.liveTypes(spaceId)
 	if err != nil {
@@ -729,21 +735,29 @@ func (s *Service) offTypeTypeWord(spaceId string, judged liveType, names bool) s
 		if entry.Id != judged.Id {
 			continue
 		}
-		if names && entry.Name != "" {
-			return entry.Name
-		}
 		keyTaken, slugHolders := servedTypeKeySets(entries)
 		served := servedTypeKeyOf(entry.Key, entry.Slug, keyTaken, slugHolders)
-		wanted := entry.Slug
-		if bundle.HasObjectTypeByKey(domain.TypeKey(entry.Key)) {
-			wanted = bundle.TypeApiSlug(entry.Key)
-		}
-		if served == entry.Key && wanted != "" && wanted != entry.Key && entry.Name != "" {
+		if served == entry.Key && mintedKeyShape(entry.Key) && entry.Name != "" {
 			return entry.Name
 		}
 		return served
 	}
 	return fallback
+}
+
+// mintedKeyShape reports whether a stored key is one the space minted (a
+// 24-hex id): an internal key no caller sent and no response should quote,
+// unlike a readable key that serves as its own address.
+func mintedKeyShape(key string) bool {
+	if len(key) != 24 {
+		return false
+	}
+	for _, r := range key {
+		if (r < '0' || r > '9') && (r < 'a' || r > 'f') {
+			return false
+		}
+	}
+	return true
 }
 
 // removedTypeRefusal is the issue for a REMOVED space-minted type addressed
