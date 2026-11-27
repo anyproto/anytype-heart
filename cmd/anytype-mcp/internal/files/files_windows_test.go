@@ -101,6 +101,7 @@ func TestJunctions(t *testing.T) {
 		require.NoError(t, err)
 		defer d.Close()
 		t.Logf("pinned as %s", d.Path())
+		assert.True(t, d.Located(), "the path still names the pinned folder")
 		f, _, err := d.OpenUpload("a.txt")
 		require.NoError(t, err)
 		_ = f.Close()

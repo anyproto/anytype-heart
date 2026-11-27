@@ -193,7 +193,8 @@ func (d *Dir) overlaps(other string) bool {
 // Located reports whether the folder's path still names the folder: it
 // may have been moved, and something else put at its path.
 func (d *Dir) Located() bool {
-	fi, err := os.Lstat(d.path)
+	// followed: on Windows a junction in the path stays in it unresolved
+	fi, err := os.Stat(d.path)
 	return err == nil && fi.IsDir() && os.SameFile(fi, d.info)
 }
 
