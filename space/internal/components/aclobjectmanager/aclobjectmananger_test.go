@@ -273,6 +273,20 @@ func TestAclObjectManager(t *testing.T) {
 			},
 		},
 		{
+			name: "removed participant whose request to join again was declined is left to the join flow",
+			acl: func(t *testing.T) (*syncAclStub, crypto.PrivKey) {
+				_, acl := newMemberAcl(t, append(slices.Clone(removedThenJoined), "b.join::invId2", "a.decline::b"), "b")
+				return acl, nil
+			},
+		},
+		{
+			name: "removed participant who canceled its request to join again is left to the join flow",
+			acl: func(t *testing.T) (*syncAclStub, crypto.PrivKey) {
+				_, acl := newMemberAcl(t, append(slices.Clone(removedThenJoined), "b.join::invId2", "b.cancel::b"), "b")
+				return acl, nil
+			},
+		},
+		{
 			name: "account absent from the acl is not marked removed",
 			acl: func(t *testing.T) (*syncAclStub, crypto.PrivKey) {
 				// another member, b, was removed, and an outsider holds none of the keys, so not even
