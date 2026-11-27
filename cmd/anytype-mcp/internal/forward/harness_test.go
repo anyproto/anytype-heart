@@ -337,10 +337,11 @@ func start(t *testing.T, opts ...hopt) *harness {
 	}
 	if h.opts.Files == nil && !h.tempFiles {
 		// never the system's temporary folder by accident
-		h.root = filepath.Join(t.TempDir(), "files")
-		dir, err := files.Open(h.root)
+		dir, err := files.Open(filepath.Join(t.TempDir(), "files"))
 		require.NoError(t, err)
 		h.opts.Files = dir
+		// with the links in the test folder's own path resolved
+		h.root = dir.Path()
 	}
 	h.opts.onServer = func(s *server) { h.srv = s }
 	ctx, cancel := context.WithCancel(context.Background())

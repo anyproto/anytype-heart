@@ -19,13 +19,21 @@ import (
 
 var ctx = context.Background()
 
+// resolved is a path with its links resolved, as Dir.Path reports it.
+func resolved(t *testing.T, path string) string {
+	t.Helper()
+	r, err := filepath.EvalSymlinks(path)
+	require.NoError(t, err)
+	return r
+}
+
 func openDir(t *testing.T) (*Dir, string) {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "files")
 	d, err := Open(path)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = d.Close() })
-	return d, path
+	return d, d.Path()
 }
 
 func entries(t *testing.T, dir string) []string {
@@ -124,7 +132,7 @@ func TestOpenRules(t *testing.T) {
 		d, err := Open(path)
 		require.NoError(t, err)
 		defer d.Close()
-		assert.Equal(t, path, d.Path())
+		assert.Equal(t, resolved(t, path), d.Path())
 		assert.False(t, d.Temporary())
 		fi, err := os.Lstat(path)
 		require.NoError(t, err)
@@ -140,53 +148,64 @@ func TestOpenRules(t *testing.T) {
 		d, err := Open(path + string(filepath.Separator))
 		require.NoError(t, err)
 		defer d.Close()
-		assert.Equal(t, filepath.Clean(path), d.Path())
+		assert.Equal(t, resolved(t, path), d.Path())
 		assert.Equal(t, []string{"kept.txt"}, entries(t, path))
 	})
 
-	t.Run("a link to a folder is refused", func(t *testing.T) {
+	t.Run("a path spelled through a link is resolved once and that folder is pinned", func(t *testing.T) {
 		base := t.TempDir()
 		real := filepath.Join(base, "real")
 		require.NoError(t, os.Mkdir(real, 0o700))
+		require.NoError(t, os.WriteFile(filepath.Join(real, "a.txt"), []byte("chosen"), 0o600))
 		symlink(t, real, filepath.Join(base, "link"))
-		_, err := Open(filepath.Join(base, "link"))
-		require.ErrorContains(t, err, "not a real directory")
+		d, err := Open(filepath.Join(base, "link"))
+		require.NoError(t, err)
+		defer d.Close()
+		assert.Equal(t, resolved(t, real), d.Path(), "the path reported is the resolved one")
+		// the link moves on; the folder pinned at the start stays
+		other := filepath.Join(base, "other")
+		require.NoError(t, os.Mkdir(other, 0o700))
+		require.NoError(t, os.WriteFile(filepath.Join(other, "a.txt"), []byte("not chosen"), 0o600))
+		require.NoError(t, os.Remove(filepath.Join(base, "link")))
+		symlink(t, other, filepath.Join(base, "link"))
+		f, _, err := d.OpenUpload("a.txt")
+		require.NoError(t, err)
+		raw, _ := io.ReadAll(f)
+		_ = f.Close()
+		assert.Equal(t, "chosen", string(raw))
+		assert.True(t, d.Located())
 	})
 
 	t.Run("a file where the folder should be is refused", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "files")
 		require.NoError(t, os.WriteFile(path, []byte("not a directory"), 0o600))
 		_, err := Open(path)
-		require.ErrorContains(t, err, "not a real directory")
+		require.ErrorContains(t, err, "must be a directory")
 		_, err = Open(filepath.Join(path, "below"))
 		require.Error(t, err)
 	})
 
-	t.Run("a folder others can write is refused", func(t *testing.T) {
+	t.Run("any folder of the user's choice is taken, and left as it is", func(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("mode bits")
 		}
-		for _, mode := range []os.FileMode{0o770, 0o707, 0o777, 0o720} {
+		for _, mode := range []os.FileMode{0o775, 0o777, 0o750, 0o700} {
 			path := filepath.Join(t.TempDir(), "files")
 			require.NoError(t, os.Mkdir(path, 0o700))
 			require.NoError(t, os.Chmod(path, mode))
-			_, err := Open(path)
-			require.ErrorContains(t, err, "writable by other users", mode.String())
+			d, err := Open(path)
+			require.NoError(t, err, mode.String())
+			_ = d.Close()
+			fi, err := os.Stat(path)
+			require.NoError(t, err)
+			assert.Equal(t, mode, fi.Mode().Perm(), "the folder's mode is the user's business")
 		}
-		path := filepath.Join(t.TempDir(), "files")
-		require.NoError(t, os.Mkdir(path, 0o700))
-		require.NoError(t, os.Chmod(path, 0o755))
-		d, err := Open(path)
-		require.NoError(t, err, "readable by others is the user's choice")
-		_ = d.Close()
-	})
-
-	t.Run("another user's folder is refused", func(t *testing.T) {
-		if runtime.GOOS == "windows" || os.Geteuid() == 0 {
-			t.Skip("needs a folder of another user")
+		// a folder of another owner too
+		if d, err := Open(os.TempDir()); err == nil {
+			_ = d.Close()
+		} else {
+			t.Errorf("the system's temporary folder: %v", err)
 		}
-		_, err := Open("/")
-		require.ErrorContains(t, err, "belongs to another user")
 	})
 }
 
@@ -202,7 +221,7 @@ func TestTemp(t *testing.T) {
 		})
 		assert.True(t, d.Temporary())
 		assert.True(t, filepath.IsAbs(d.Path()))
-		assert.Equal(t, filepath.Clean(os.TempDir()), filepath.Dir(d.Path()))
+		assert.Equal(t, resolved(t, os.TempDir()), filepath.Dir(d.Path()))
 		fi, err := os.Lstat(d.Path())
 		require.NoError(t, err)
 		if runtime.GOOS != "windows" {
@@ -247,29 +266,16 @@ func TestOpenUpload(t *testing.T) {
 		}
 	})
 
-	t.Run("a file with a second name is refused: it may live anywhere", func(t *testing.T) {
-		base := t.TempDir()
-		root := filepath.Join(base, "files")
-		d, err := Open(root)
-		require.NoError(t, err)
-		defer d.Close()
-		secret := filepath.Join(base, "secret.txt")
-		require.NoError(t, os.WriteFile(secret, []byte("not yours"), 0o600))
-		if err := os.Link(secret, filepath.Join(root, "innocent.txt")); err != nil {
+	t.Run("a hard link in the folder is a file in the folder", func(t *testing.T) {
+		d, root := openDir(t)
+		source := filepath.Join(filepath.Dir(root), "source.txt")
+		require.NoError(t, os.WriteFile(source, []byte("linked in on purpose"), 0o600))
+		if err := os.Link(source, filepath.Join(root, "linked.txt")); err != nil {
 			t.Skipf("no hard links here: %v", err)
 		}
-		_, _, err = d.OpenUpload("innocent.txt")
-		text := refusal(t, err)
-		assert.Contains(t, text, "more than one name")
-		assert.Contains(t, text, root)
-		// a link between two names inside the folder is refused as well
-		require.NoError(t, os.WriteFile(filepath.Join(root, "a.txt"), []byte("x"), 0o600))
-		require.NoError(t, os.Link(filepath.Join(root, "a.txt"), filepath.Join(root, "b.txt")))
-		_, _, err = d.OpenUpload("a.txt")
-		assert.Contains(t, refusal(t, err), "more than one name")
-		require.NoError(t, os.Remove(filepath.Join(root, "b.txt")))
-		_, _, err = read(t, d, "a.txt")
+		content, _, err := read(t, d, "linked.txt")
 		require.NoError(t, err)
+		assert.Equal(t, "linked in on purpose", content)
 	})
 
 	t.Run("a folder on the way may be a link that stays inside", func(t *testing.T) {
@@ -314,10 +320,10 @@ func TestOpenUpload(t *testing.T) {
 			"to a file inside":  func(string, string) string { return "other.txt" },
 		} {
 			base := t.TempDir()
-			root := filepath.Join(base, "files")
-			d, err := Open(root)
+			d, err := Open(filepath.Join(base, "files"))
 			require.NoError(t, err)
 			defer d.Close()
+			root := d.Path()
 			require.NoError(t, os.WriteFile(filepath.Join(base, "secret.txt"), []byte("not yours"), 0o600))
 			require.NoError(t, os.WriteFile(filepath.Join(root, "other.txt"), []byte("another"), 0o600))
 			require.NoError(t, os.WriteFile(filepath.Join(root, "a.txt"), []byte("chosen"), 0o600))

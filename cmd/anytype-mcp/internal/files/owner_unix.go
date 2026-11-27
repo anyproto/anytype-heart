@@ -50,22 +50,3 @@ func checkFolder(h *os.File, fi os.FileInfo, path string) error {
 	}
 	return nil
 }
-
-// links is how many names the open file has.
-func links(_ *os.File, fi os.FileInfo) (uint64, error) {
-	st, ok := fi.Sys().(*syscall.Stat_t)
-	if !ok {
-		return 0, fmt.Errorf("no link count")
-	}
-	return uint64(st.Nlink), nil //nolint:unconvert // the field's type differs by system
-}
-
-// sameDevice reports whether a file lives on the folder's own file
-// system. A mount inside the folder is another tree: nothing in it was put
-// into the folder. (A bind mount of the same file system has the same
-// device and is not told apart.)
-func sameDevice(folder, file os.FileInfo) bool {
-	a, okA := folder.Sys().(*syscall.Stat_t)
-	b, okB := file.Sys().(*syscall.Stat_t)
-	return okA && okB && a.Dev == b.Dev
-}

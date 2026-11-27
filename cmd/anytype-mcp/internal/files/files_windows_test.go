@@ -48,7 +48,9 @@ func TestCreatedFoldersArePrivate(t *testing.T) {
 		d, err := Temp()
 		require.NoError(t, err)
 		defer d.Close()
-		require.Equal(t, filepath.Clean(parent), filepath.Dir(d.Path()))
+		resolvedParent, err := filepath.EvalSymlinks(parent)
+		require.NoError(t, err)
+		require.Equal(t, resolvedParent, filepath.Dir(d.Path()))
 		assert.Equal(t, private(t), sddl(t, d.Path()))
 		saved, _, err := d.Save(ctx, "a.txt", strings.NewReader("x"))
 		require.NoError(t, err)
@@ -63,19 +65,14 @@ func TestCreatedFoldersArePrivate(t *testing.T) {
 		assert.Equal(t, private(t), sddl(t, path))
 	})
 
-	t.Run("an existing folder that grants another account access is refused", func(t *testing.T) {
+	t.Run("an existing folder is taken with the access list it has, and keeps it", func(t *testing.T) {
 		path := filepath.Join(parent, "inherits")
 		require.NoError(t, os.Mkdir(path, 0o700))
-		_, err := Open(path)
-		require.ErrorContains(t, err, "grants access to another account")
-		// an entry only children inherit would reach every download
-		setDACL(t, path, private(t)+"(A;OICIIO;FR;;;BU)")
-		_, err = Open(path)
-		require.ErrorContains(t, err, "grants access to another account")
-		setDACL(t, path, private(t))
+		before := sddl(t, path)
 		d, err := Open(path)
 		require.NoError(t, err)
 		_ = d.Close()
+		assert.Equal(t, before, sddl(t, path))
 	})
 }
 
@@ -95,17 +92,27 @@ func TestJunctions(t *testing.T) {
 	require.NoError(t, os.Mkdir(outside, 0o700))
 	require.NoError(t, os.WriteFile(filepath.Join(outside, "secret.txt"), []byte("not yours"), 0o600))
 
-	t.Run("a junction is not accepted as the folder", func(t *testing.T) {
-		junction(t, outside, filepath.Join(base, "linked"))
-		_, err := Open(filepath.Join(base, "linked"))
-		require.ErrorContains(t, err, "not a real directory")
+	t.Run("a junction as the folder's path is the user's choice: its target is pinned", func(t *testing.T) {
+		target := filepath.Join(base, "target")
+		require.NoError(t, os.Mkdir(target, 0o700))
+		require.NoError(t, os.WriteFile(filepath.Join(target, "a.txt"), []byte("chosen"), 0o600))
+		junction(t, target, filepath.Join(base, "linked"))
+		d, err := Open(filepath.Join(base, "linked"))
+		require.NoError(t, err)
+		defer d.Close()
+		t.Logf("pinned as %s", d.Path())
+		f, _, err := d.OpenUpload("a.txt")
+		require.NoError(t, err)
+		_ = f.Close()
+		_, _, err = d.OpenUpload(`..\outside\secret.txt`)
+		require.Error(t, err)
 	})
 
 	t.Run("a junction inside the folder that leads out is not followed", func(t *testing.T) {
-		root := filepath.Join(base, "files")
-		d, err := Open(root)
+		d, err := Open(filepath.Join(base, "files"))
 		require.NoError(t, err)
 		defer d.Close()
+		root := d.Path()
 		junction(t, outside, filepath.Join(root, "out"))
 		_, _, err = d.OpenUpload("out/secret.txt")
 		assert.Contains(t, refusal(t, err), root)
@@ -114,10 +121,10 @@ func TestJunctions(t *testing.T) {
 	})
 
 	t.Run("Windows spellings of a way out are refused", func(t *testing.T) {
-		root := filepath.Join(base, "files2")
-		d, err := Open(root)
+		d, err := Open(filepath.Join(base, "files2"))
 		require.NoError(t, err)
 		defer d.Close()
+		root := d.Path()
 		for _, path := range []string{`..\outside\secret.txt`, `sub\..\..\outside\secret.txt`, filepath.Join(outside, "secret.txt"),
 			`\\?\` + filepath.Join(outside, "secret.txt"), `\\localhost\c$\Windows\win.ini`, "NUL", "CON", `sub\COM1`, "a.txt:stream", "a.txt::$DATA"} {
 			_, _, err := d.OpenUpload(path)

@@ -117,16 +117,3 @@ func checkFolder(h *os.File, _ os.FileInfo, path string) error {
 	}
 	return nil
 }
-
-// links is how many names the open file has.
-func links(f *os.File, _ os.FileInfo) (uint64, error) {
-	var info windows.ByHandleFileInformation
-	if err := windows.GetFileInformationByHandle(windows.Handle(f.Fd()), &info); err != nil {
-		return 0, err
-	}
-	return uint64(info.NumberOfLinks), nil
-}
-
-// sameDevice: a volume mounted inside the folder is a reparse point, which
-// os.Root does not follow out of the folder.
-func sameDevice(os.FileInfo, os.FileInfo) bool { return true }

@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"unicode"
 )
@@ -50,24 +51,26 @@ type Dir struct {
 	beforePublish func()
 }
 
-// Open opens the folder the user named. It must be an absolute path with
-// no ".." in it (behind a linked ancestor that would name another place
-// than its text says); it is created private when missing; it must be a
-// real directory (not a link or a junction) that belongs to this user and
-// that no other user can write or was granted access to. It must not
+// Open opens the folder the user named: any directory of their choice.
+// It must be an absolute path with no ".." in it; it is created private
+// when missing; an existing one is taken as it is, whoever owns it and
+// whatever its permissions, and is never changed. The path may be spelled
+// through links (macOS /tmp): it is resolved once, here, and the resolved
+// directory is the one pinned for the life of the process. It must not
 // overlap any of the avoid folders (Anytype's own, where the connection
 // keys live): not one of them, not inside one, not around one.
 func Open(path string, avoid ...string) (*Dir, error) {
 	if !filepath.IsAbs(path) {
 		return nil, fmt.Errorf("the files folder must be an absolute path: %s", path)
 	}
-	for _, part := range strings.FieldsFunc(path, func(r rune) bool { return r == '/' || os.IsPathSeparator(uint8(r)) }) { //nolint:gosec // a separator is ASCII
+	// behind a linked ancestor ".." names another place than its text says
+	for _, part := range strings.FieldsFunc(path, func(r rune) bool { return r == '/' || r == filepath.Separator }) {
 		if part == ".." {
 			return nil, fmt.Errorf("the files folder must be an absolute path without \"..\": %s", path)
 		}
 	}
 	path = filepath.Clean(path)
-	if _, err := os.Lstat(path); errors.Is(err, fs.ErrNotExist) {
+	if _, err := os.Stat(path); errors.Is(err, fs.ErrNotExist) {
 		// parents as the system makes them; only the folder itself is
 		// ours to make private, and nothing that exists is changed
 		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
@@ -77,10 +80,20 @@ func Open(path string, avoid ...string) (*Dir, error) {
 			return nil, fmt.Errorf("the files folder can't be created: %w", err)
 		}
 	}
-	d, err := open(path, false)
+	resolved, err := filepath.EvalSymlinks(path)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("the files folder can't be opened: %w", err)
 	}
+	root, err := os.OpenRoot(resolved)
+	if err != nil {
+		return nil, fmt.Errorf("the files folder can't be opened (it must be a directory): %w", err)
+	}
+	info, err := root.Stat(".")
+	if err != nil {
+		_ = root.Close()
+		return nil, fmt.Errorf("the files folder can't be read: %w", err)
+	}
+	d := &Dir{path: resolved, root: root, info: info, link: root.Link}
 	for _, other := range avoid {
 		if d.overlaps(other) {
 			_ = d.Close()
@@ -107,14 +120,19 @@ func Temp() (*Dir, error) {
 		if err != nil {
 			return nil, fmt.Errorf("no temporary files folder: %w", err)
 		}
+		// the system's temporary folder may be spelled through a link
+		if resolved, err := filepath.EvalSymlinks(path); err == nil {
+			path = resolved
+		}
 		return open(path, true)
 	}
 	return nil, errors.New("no temporary files folder: no free name")
 }
 
-// open pins the folder and judges what it pinned: the checks read the
-// open folder, and the root every later access goes through must be that
-// same folder.
+// open pins the temporary folder and judges what it pinned: it must be
+// the private folder just made, not something that took its name. The
+// checks read the open folder, and the root every later access goes
+// through must be that same folder.
 func open(path string, temp bool) (*Dir, error) {
 	h, err := openFolder(path)
 	if err != nil {
@@ -179,7 +197,8 @@ func (d *Dir) Located() bool {
 	return err == nil && fi.IsDir() && os.SameFile(fi, d.info)
 }
 
-// Path is the folder's absolute path, as the user and the model know it.
+// Path is the folder's absolute path with every link in it resolved: the
+// directory that is pinned.
 func (d *Dir) Path() string { return d.path }
 
 // Temporary reports whether the folder was made for this process.
@@ -260,16 +279,9 @@ func (d *Dir) OpenUpload(path string) (f *os.File, name string, err error) {
 		_ = f.Close()
 		return nil, "", refuse("%s in %s changed while it was being opened", path, d.path)
 	}
-	// a second name may be anywhere on the disk: the file was not put
-	// into the folder, something in the folder was made to point at it
-	if n, err := links(f, fi); err != nil || n != 1 {
-		_ = f.Close()
-		return nil, "", refuse("%s in %s has more than one name (a hard link), which is not uploaded. Ask the user to copy the file itself into %s.", path, d.path, d.path)
-	}
-	if !sameDevice(d.info, fi) {
-		_ = f.Close()
-		return nil, "", refuse("%s in %s is on another file system mounted there, which is not uploaded. Ask the user to copy the file itself into %s.", path, d.path, d.path)
-	}
+	// A hard link and a file system mounted inside the folder are taken
+	// as what they are: something put into the folder by whoever could
+	// write there, like a copy.
 	return f, filepath.Base(local), nil
 }
 
@@ -304,8 +316,19 @@ func (d *Dir) Save(ctx context.Context, name string, body io.Reader) (saved stri
 	if err == nil {
 		err = serr
 	}
-	if cerr := f.Close(); err == nil {
-		err = cerr
+	// Unix tells files apart by a number that is free again once the file
+	// is gone: the part file stays open, and so stays itself, until what
+	// was published has been compared with it. Windows identifies a file
+	// for good, and links a closed file more willingly.
+	if runtime.GOOS == "windows" {
+		if cerr := f.Close(); err == nil {
+			err = cerr
+		}
+	} else {
+		if cerr := f.Sync(); err == nil {
+			err = cerr
+		}
+		defer f.Close()
 	}
 	if d.beforePublish != nil {
 		d.beforePublish()

@@ -55,23 +55,12 @@ func TestServeFilesDir(t *testing.T) {
 
 	t.Run("a folder that breaks a rule ends serve before it reads anything, naming the rule", func(t *testing.T) {
 		e := newEnv(t)
-		real := filepath.Join(e.home, "real")
-		require.NoError(t, os.Mkdir(real, 0o700))
-		broken := map[string]string{}
-		if err := os.Symlink(real, filepath.Join(e.home, "link")); err == nil {
-			broken[filepath.Join(e.home, "link")] = "not a real directory"
-		}
 		file := filepath.Join(e.home, "file")
 		require.NoError(t, os.WriteFile(file, nil, 0o600))
-		broken[file] = "not a real directory"
-		if runtime.GOOS != "windows" {
-			shared := filepath.Join(e.home, "shared")
-			require.NoError(t, os.Mkdir(shared, 0o700))
-			require.NoError(t, os.Chmod(shared, 0o777))
-			broken[shared] = "writable by other users"
-			if os.Geteuid() != 0 {
-				broken["/"] = "belongs to another user"
-			}
+		broken := map[string]string{
+			file:                              "must be a directory",
+			filepath.Join(file, "below"):      "",
+			filepath.Join(e.home, ".anytype"): "apart from Anytype's own folder",
 		}
 		for dir, rule := range broken {
 			r := e.run(initLine+"\n", "serve", "--connection", "conn-a", "--files-dir", dir)
@@ -111,6 +100,27 @@ func TestServeFilesDir(t *testing.T) {
 		}
 	})
 
+	t.Run("any folder of the user's choice is taken: shared, or spelled through a link", func(t *testing.T) {
+		e := newEnv(t)
+		shared := filepath.Join(e.home, "shared")
+		require.NoError(t, os.Mkdir(shared, 0o700))
+		require.NoError(t, os.Chmod(shared, 0o777))
+		dirs := []string{shared}
+		if err := os.Symlink(shared, filepath.Join(e.home, "link")); err == nil {
+			dirs = append(dirs, filepath.Join(e.home, "link"))
+		}
+		for _, dir := range dirs {
+			r := e.run(initLine+"\n", "serve", "--connection", "conn-a", "--files-dir", dir)
+			assert.Equal(t, exitOK, r.code, "%s: %s", dir, r.stderr)
+			assert.Contains(t, r.stdout, `"code":-32001`)
+		}
+		if runtime.GOOS != "windows" {
+			fi, err := os.Stat(shared)
+			require.NoError(t, err)
+			assert.Equal(t, os.FileMode(0o777), fi.Mode().Perm(), "its mode is left alone")
+		}
+	})
+
 	t.Run("the full tier's file tools name the folder given", func(t *testing.T) {
 		e := newEnv(t)
 		heart := newHeartStub(t)
@@ -119,10 +129,13 @@ func TestServeFilesDir(t *testing.T) {
 		dir := filepath.Join(e.home, "ai files")
 		c := e.serve("--files-dir", dir)
 		require.Zero(t, errCode(c.call(initLine)))
-		assert.Equal(t, dir, listedFolder(t, c.call(toolsLine)))
+		// the folder is named as pinned: with the links in its path resolved
+		pinned, err := filepath.EvalSymlinks(dir)
+		require.NoError(t, err)
+		assert.Equal(t, pinned, listedFolder(t, c.call(toolsLine)))
 		require.NoError(t, c.stdin.Close())
 		assert.Equal(t, 0, c.wait())
-		assert.Contains(t, c.stderr.String(), "file tools: folder "+dir)
+		assert.Contains(t, c.stderr.String(), "file tools: folder "+pinned)
 		assert.NotContains(t, c.stderr.String(), canary)
 	})
 

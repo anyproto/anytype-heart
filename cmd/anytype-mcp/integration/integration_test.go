@@ -319,7 +319,10 @@ func TestForwarderAgainstHeart(t *testing.T) {
 		t.Run(tier, func(t *testing.T) {
 			// the full tier's file tools get a folder of the test's own
 			var extra []string
-			filesDir := filepath.Join(t.TempDir(), "files")
+			// spelled as the forwarder will report it: with links resolved
+			scratch, err := filepath.EvalSymlinks(t.TempDir())
+			require.NoError(t, err)
+			filesDir := filepath.Join(scratch, "files")
 			if tier == "full" {
 				extra = []string{"--files-dir", filesDir}
 			}
