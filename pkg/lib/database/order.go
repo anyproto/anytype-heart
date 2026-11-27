@@ -31,6 +31,17 @@ type ObjectStore interface {
 	ListRelationOptions(relationKey domain.RelationKey) (options []*model.RelationOption, err error)
 }
 
+// SortKey encodes details the way the store sorts them under order
+// (AnystoreSort). Comparing two keys with bytes.Compare reproduces the
+// store's order, so records merged from several store cuts keep the order
+// each cut was taken in; Order.Compare differs from the store on some sorts
+// (where a day-only date sort puts an empty value, for one). arena backs the
+// decoded value only and is reset on return; the order uses its own.
+func SortKey(order Order, details *domain.Details, arena *anyenc.Arena) []byte {
+	defer arena.Reset()
+	return order.AnystoreSort().AppendKey(nil, details.ToAnyEnc(arena))
+}
+
 type setOrder []Order
 
 func (so setOrder) Compare(a, b *domain.Details) int {
@@ -82,14 +93,12 @@ func NewKeyOrder(store ObjectStore, arena *anyenc.Arena, collatorBuffer *collate
 	if err != nil {
 		format = sort.Format
 	}
-	// The id relation is object-formatted, but an object order sorts by the
-	// linked object's name, through an order map built from every object in
-	// the store. An ascending or descending id sort orders the unique plain
-	// string byte-wise, the order of the store's primary key. A custom id
-	// order (a view's manual order) keeps the object order: the objects it
-	// does not list tie there and fall through to the view's next sort.
-	isId := sort.RelationKey == bundle.RelationKeyId && sort.Type != model.BlockContentDataviewSort_Custom
-	if isId {
+	// The id relation is object-formatted, so an id sort orders objects by
+	// their own names, through an order map built from the store, as the app
+	// shows a view sorted by id. Only the id tie-break (IsIdTieBreak) orders
+	// the raw id byte-wise, the order of the store's primary key.
+	rawId := IsIdTieBreak(sort)
+	if rawId {
 		format = model.RelationFormat_shorttext
 	}
 
@@ -108,7 +117,7 @@ func NewKeyOrder(store ObjectStore, arena *anyenc.Arena, collatorBuffer *collate
 		orderMapBufferB: make([]byte, 0),
 		arena:           arena,
 		collatorBuffer:  collatorBuffer,
-		disableCollator: sort.NoCollate || isId || sort.RelationKey == bundle.RelationKeyOrderId || sort.RelationKey == bundle.RelationKeySpaceOrder,
+		disableCollator: sort.NoCollate || rawId || sort.RelationKey == bundle.RelationKeyOrderId || sort.RelationKey == bundle.RelationKeySpaceOrder,
 	}
 }
 

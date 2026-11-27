@@ -3,6 +3,7 @@ package database
 import (
 	"fmt"
 	"math"
+	"slices"
 	"time"
 
 	"github.com/anyproto/any-store/v2/anyenc"
@@ -173,9 +174,33 @@ func InjectDefaultOrder(qry Query, sorts []SortRequest) []SortRequest {
 	return injectDefaultOrder(qry, sorts)
 }
 
-// WithIdTieBreak returns sorts with the object id appended as the last key,
-// unless they already sort by it ascending or descending. A custom id order
-// does not count: the objects it does not list still tie. Offset paging needs a total order. Rows that
+// IdTieBreak is the sort WithIdTieBreak appends: the raw object id, compared
+// byte-wise. It is an id sort with NoCollate set. An app's own id sort orders
+// objects by their names (NewKeyOrder) and never sets NoCollate, and the flag
+// survives SortsToProto, so a cross-space search sent over RPC keeps it.
+func IdTieBreak(direction model.BlockContentDataviewSortType) SortRequest {
+	return SortRequest{RelationKey: bundle.RelationKeyId, Type: direction, NoCollate: true}
+}
+
+// IsIdTieBreak reports whether sort orders by the raw object id.
+func IsIdTieBreak(sort SortRequest) bool {
+	return sort.RelationKey == bundle.RelationKeyId && sort.NoCollate &&
+		(sort.Type == model.BlockContentDataviewSort_Asc || sort.Type == model.BlockContentDataviewSort_Desc)
+}
+
+// HasIdTieBreak reports whether sorts hold the raw object id, so that the
+// order they give is total within one space.
+func HasIdTieBreak(sorts []SortRequest) bool {
+	for _, sort := range sorts {
+		if IsIdTieBreak(sort) {
+			return true
+		}
+	}
+	return false
+}
+
+// WithIdTieBreak returns sorts with the raw object id appended (IdTieBreak),
+// unless they already hold it. Offset paging needs a total order. Rows that
 // tie on every sort have none, and the store orders them by plan: a reverse
 // index scan yields them by id descending, an in-memory sort by id ascending,
 // and which plan runs depends on offset+limit. One page can then repeat a row
@@ -183,26 +208,42 @@ func InjectDefaultOrder(qry Query, sorts []SortRequest) []SortRequest {
 //
 // The id runs in the direction of the last sort. Every index entry ends with
 // the id ascending, so an index that served the sorts still serves them, and
-// both plans agree.
+// both plans agree. After a relevance sort the id runs ascending, the order
+// GroupFulltextResults gives tied matches.
 //
-// A single date sort implies includeTime only while it is the only sort, so
-// that sort gets includeTime set explicitly.
+// A caller's own id sort orders by name, so the raw id is still appended
+// after it. The precision of a date sort is kept as given. Note that the
+// store implies includeTime for a date sort only while it is the only sort:
+// a caller that cannot tell an omitted precision from false applies
+// ImplyIncludeTime first.
 func WithIdTieBreak(sorts []SortRequest) []SortRequest {
-	for _, sort := range sorts {
-		if sort.RelationKey == bundle.RelationKeyId && sort.Type != model.BlockContentDataviewSort_Custom {
-			return sorts
-		}
+	if HasIdTieBreak(sorts) {
+		return sorts
+	}
+	direction := model.BlockContentDataviewSort_Asc
+	if n := len(sorts); n > 0 && sorts[n-1].Type == model.BlockContentDataviewSort_Desc && !isScoreSort(sorts[n-1]) {
+		direction = model.BlockContentDataviewSort_Desc
 	}
 	out := make([]SortRequest, len(sorts), len(sorts)+1)
 	copy(out, sorts)
-	if isSingleDateSort(out) {
-		out[0].IncludeTime = true
+	return append(out, IdTieBreak(direction))
+}
+
+// ImplyIncludeTime returns sorts with includeTime set on a lone date sort:
+// the precision the store implies for it (isSingleDateSort). A stored view's
+// sorts cannot tell an omitted precision from false; this keeps a view
+// ordered as the app shows it once WithIdTieBreak appends a sort.
+func ImplyIncludeTime(sorts []SortRequest) []SortRequest {
+	if !isSingleDateSort(sorts) || sorts[0].IncludeTime {
+		return sorts
 	}
-	direction := model.BlockContentDataviewSort_Asc
-	if len(out) > 0 && out[len(out)-1].Type == model.BlockContentDataviewSort_Desc {
-		direction = model.BlockContentDataviewSort_Desc
-	}
-	return append(out, SortRequest{RelationKey: bundle.RelationKeyId, Type: direction, NoCollate: true})
+	out := slices.Clone(sorts)
+	out[0].IncludeTime = true
+	return out
+}
+
+func isScoreSort(sort SortRequest) bool {
+	return sort.RelationKey == bundle.RelationKey_score || sort.RelationKey == bundle.RelationKey_final_score
 }
 
 func injectDefaultOrder(qry Query, sorts []SortRequest) []SortRequest {

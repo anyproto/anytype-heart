@@ -1,7 +1,9 @@
 package database
 
 import (
+	"bytes"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-store/v2/anyenc"
 	"github.com/stretchr/testify/assert"
@@ -13,13 +15,11 @@ import (
 )
 
 func TestWithIdTieBreak(t *testing.T) {
-	idSort := func(direction model.BlockContentDataviewSortType) SortRequest {
-		return SortRequest{RelationKey: bundle.RelationKeyId, Type: direction, NoCollate: true}
-	}
+	asc, desc := model.BlockContentDataviewSort_Asc, model.BlockContentDataviewSort_Desc
 
 	t.Run("no sorts get the id ascending", func(t *testing.T) {
 		// given
-		want := []SortRequest{idSort(model.BlockContentDataviewSort_Asc)}
+		want := []SortRequest{IdTieBreak(asc)}
 
 		// when
 		got := WithIdTieBreak(nil)
@@ -31,10 +31,10 @@ func TestWithIdTieBreak(t *testing.T) {
 	t.Run("the id runs in the direction of the last sort", func(t *testing.T) {
 		// given
 		sorts := []SortRequest{
-			{RelationKey: bundle.RelationKeyName, Type: model.BlockContentDataviewSort_Asc},
-			{RelationKey: bundle.RelationKeyLastModifiedDate, Type: model.BlockContentDataviewSort_Desc, IncludeTime: true},
+			{RelationKey: bundle.RelationKeyName, Type: asc},
+			{RelationKey: bundle.RelationKeyLastModifiedDate, Type: desc, IncludeTime: true},
 		}
-		want := append(append([]SortRequest(nil), sorts...), idSort(model.BlockContentDataviewSort_Desc))
+		want := append(append([]SortRequest(nil), sorts...), IdTieBreak(desc))
 
 		// when
 		got := WithIdTieBreak(sorts)
@@ -44,30 +44,10 @@ func TestWithIdTieBreak(t *testing.T) {
 		assert.Len(t, sorts, 2, "the caller's slice is not extended")
 	})
 
-	t.Run("a single date sort keeps the includeTime it implied", func(t *testing.T) {
-		// given
-		sorts := []SortRequest{{RelationKey: bundle.RelationKeyDueDate, Type: model.BlockContentDataviewSort_Asc, Format: model.RelationFormat_date}}
-		want := []SortRequest{
-			{RelationKey: bundle.RelationKeyDueDate, Type: model.BlockContentDataviewSort_Asc, Format: model.RelationFormat_date, IncludeTime: true},
-			idSort(model.BlockContentDataviewSort_Asc),
-		}
-
-		// when
-		got := WithIdTieBreak(sorts)
-
-		// then
-		assert.Equal(t, want, got)
-		assert.False(t, sorts[0].IncludeTime, "the caller's sort is not modified")
-		assert.True(t, extractOrder(&stubSpaceObjectStore{}, &anyenc.Arena{}, &collate.Buffer{}, got)[0].(*keyOrder).includeTime)
-	})
-
-	t.Run("a custom id order still gets the id last", func(t *testing.T) {
-		// given: a manual order leaves the objects it does not list tied
-		sorts := []SortRequest{{
-			RelationKey: bundle.RelationKeyId, Type: model.BlockContentDataviewSort_Custom,
-			CustomOrder: []domain.Value{domain.String("listed")},
-		}}
-		want := append(append([]SortRequest(nil), sorts...), idSort(model.BlockContentDataviewSort_Asc))
+	t.Run("after a relevance sort the id runs ascending", func(t *testing.T) {
+		// given: tied matches are grouped by id ascending
+		sorts := []SortRequest{{RelationKey: bundle.RelationKey_final_score, Type: desc}}
+		want := []SortRequest{sorts[0], IdTieBreak(asc)}
 
 		// when
 		got := WithIdTieBreak(sorts)
@@ -76,12 +56,22 @@ func TestWithIdTieBreak(t *testing.T) {
 		assert.Equal(t, want, got)
 	})
 
-	t.Run("sorts that already sort by id are kept", func(t *testing.T) {
+	t.Run("an explicit day precision is kept", func(t *testing.T) {
 		// given
-		sorts := []SortRequest{
-			idSort(model.BlockContentDataviewSort_Desc),
-			{RelationKey: bundle.RelationKeyName, Type: model.BlockContentDataviewSort_Asc},
-		}
+		sorts := []SortRequest{{RelationKey: bundle.RelationKeyDueDate, Type: asc, Format: model.RelationFormat_date}}
+		want := []SortRequest{sorts[0], IdTieBreak(asc)}
+
+		// when
+		got := WithIdTieBreak(sorts)
+
+		// then
+		assert.Equal(t, want, got)
+		assert.False(t, extractOrder(&stubSpaceObjectStore{}, &anyenc.Arena{}, &collate.Buffer{}, got)[0].(*keyOrder).includeTime)
+	})
+
+	t.Run("a raw id already in the sorts is kept", func(t *testing.T) {
+		// given
+		sorts := []SortRequest{IdTieBreak(desc), {RelationKey: bundle.RelationKeyName, Type: asc}}
 
 		// when
 		got := WithIdTieBreak(sorts)
@@ -89,45 +79,167 @@ func TestWithIdTieBreak(t *testing.T) {
 		// then
 		assert.Equal(t, sorts, got)
 	})
+
+	t.Run("a caller's id sort still gets the raw id", func(t *testing.T) {
+		// given: an app's id sort orders by name, so names can tie
+		sorts := []SortRequest{{RelationKey: bundle.RelationKeyId, Type: asc}}
+		want := []SortRequest{sorts[0], IdTieBreak(asc)}
+
+		// when
+		got := WithIdTieBreak(sorts)
+
+		// then
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("a manual order still gets the raw id", func(t *testing.T) {
+		// given: the objects a manual order does not list can tie
+		sorts := []SortRequest{{
+			RelationKey: bundle.RelationKeyId, Type: model.BlockContentDataviewSort_Custom,
+			CustomOrder: []domain.Value{domain.String("listed")},
+		}}
+		want := []SortRequest{sorts[0], IdTieBreak(asc)}
+
+		// when
+		got := WithIdTieBreak(sorts)
+
+		// then
+		assert.Equal(t, want, got)
+	})
 }
 
-func TestIdOrder(t *testing.T) {
-	t.Run("orders ids byte-wise without an order map", func(t *testing.T) {
-		// given: the id relation is object-formatted; an object order would
-		// iterate the store to build a name map
+func TestImplyIncludeTime(t *testing.T) {
+	t.Run("a lone date sort gets the seconds the store implies", func(t *testing.T) {
+		// given
+		sorts := []SortRequest{{RelationKey: bundle.RelationKeyDueDate, Format: model.RelationFormat_date}}
+		want := []SortRequest{{RelationKey: bundle.RelationKeyDueDate, Format: model.RelationFormat_date, IncludeTime: true}}
+
+		// when
+		got := ImplyIncludeTime(sorts)
+
+		// then
+		assert.Equal(t, want, got)
+		assert.False(t, sorts[0].IncludeTime, "the caller's sort is not modified")
+	})
+
+	t.Run("a date sort among others is kept", func(t *testing.T) {
+		// given
+		sorts := []SortRequest{
+			{RelationKey: bundle.RelationKeyDueDate, Format: model.RelationFormat_date},
+			{RelationKey: bundle.RelationKeyName},
+		}
+
+		// when
+		got := ImplyIncludeTime(sorts)
+
+		// then
+		assert.Equal(t, sorts, got)
+	})
+}
+
+func TestIdSortOrders(t *testing.T) {
+	zulu := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyId: domain.String("a"), bundle.RelationKeyName: domain.String("Zulu"),
+	})
+	alpha := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyId: domain.String("b"), bundle.RelationKeyName: domain.String("Alpha"),
+	})
+
+	t.Run("the tie-break orders ids byte-wise without reading the store", func(t *testing.T) {
+		// given
 		store := &stubSpaceObjectStore{iterate: func(Query, func(*domain.Details)) error {
-			t.Fatal("an id sort must not read the store")
+			t.Fatal("the id tie-break must not read the store")
 			return nil
 		}}
 		upper := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyId: domain.String("B")})
 		lower := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyId: domain.String("a")})
 
 		// when
-		asc := NewKeyOrder(store, &anyenc.Arena{}, &collate.Buffer{}, SortRequest{RelationKey: bundle.RelationKeyId, Type: model.BlockContentDataviewSort_Asc})
-		desc := NewKeyOrder(store, &anyenc.Arena{}, &collate.Buffer{}, SortRequest{RelationKey: bundle.RelationKeyId, Type: model.BlockContentDataviewSort_Desc})
+		asc := NewKeyOrder(store, &anyenc.Arena{}, &collate.Buffer{}, IdTieBreak(model.BlockContentDataviewSort_Asc))
+		desc := NewKeyOrder(store, &anyenc.Arena{}, &collate.Buffer{}, IdTieBreak(model.BlockContentDataviewSort_Desc))
 
 		// then: "B" < "a" in bytes; a case-folding collator would say the opposite
 		assertCompare(t, asc, upper, lower, -1)
 		assertCompare(t, desc, upper, lower, 1)
 	})
+
+	t.Run("an app's id sort orders by the objects' names", func(t *testing.T) {
+		// given: a view sorted by id ascending
+		store := &stubSpaceObjectStore{queryRawResult: []Record{{Details: zulu}, {Details: alpha}}}
+		order := NewKeyOrder(store, &anyenc.Arena{}, &collate.Buffer{}, SortRequest{
+			RelationKey: bundle.RelationKeyId, Type: model.BlockContentDataviewSort_Asc,
+		})
+
+		// when, then: Alpha (id b) before Zulu (id a)
+		assert.Equal(t, 1, order.Compare(zulu, alpha))
+	})
+
+	t.Run("a manual order compares unlisted objects by name, then the next sort", func(t *testing.T) {
+		// given: the desktop's manual order, then the view's own due date
+		// sort, which ranks Zulu first
+		monday := time.Date(2026, 11, 23, 9, 0, 0, 0, time.UTC).Unix()
+		tuesday := time.Date(2026, 11, 24, 9, 0, 0, 0, time.UTC).Unix()
+		zuluMonday := zulu.Copy()
+		zuluMonday.SetInt64(bundle.RelationKeyDueDate, monday)
+		alphaTuesday := alpha.Copy()
+		alphaTuesday.SetInt64(bundle.RelationKeyDueDate, tuesday)
+		sorts := []SortRequest{
+			{RelationKey: bundle.RelationKeyId, Type: model.BlockContentDataviewSort_Custom, CustomOrder: []domain.Value{domain.String("listed")}},
+			{RelationKey: bundle.RelationKeyDueDate, Type: model.BlockContentDataviewSort_Asc, IncludeTime: true},
+		}
+		store := &stubSpaceObjectStore{queryRawResult: []Record{{Details: zuluMonday}, {Details: alphaTuesday}}}
+
+		// when
+		got := extractOrder(store, &anyenc.Arena{}, &collate.Buffer{}, sorts).Compare(zuluMonday, alphaTuesday)
+
+		// then: the names decide before the due date
+		assert.Equal(t, 1, got)
+	})
+
+	t.Run("a manual order falls through to the next sort on equal names", func(t *testing.T) {
+		// given
+		monday := time.Date(2026, 11, 23, 9, 0, 0, 0, time.UTC).Unix()
+		tuesday := time.Date(2026, 11, 24, 9, 0, 0, 0, time.UTC).Unix()
+		early := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId: domain.String("z"), bundle.RelationKeyName: domain.String("Same"), bundle.RelationKeyDueDate: domain.Int64(monday),
+		})
+		late := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId: domain.String("a"), bundle.RelationKeyName: domain.String("Same"), bundle.RelationKeyDueDate: domain.Int64(tuesday),
+		})
+		sorts := []SortRequest{
+			{RelationKey: bundle.RelationKeyId, Type: model.BlockContentDataviewSort_Custom, CustomOrder: []domain.Value{domain.String("listed")}},
+			{RelationKey: bundle.RelationKeyDueDate, Type: model.BlockContentDataviewSort_Asc, IncludeTime: true},
+		}
+		store := &stubSpaceObjectStore{queryRawResult: []Record{{Details: early}, {Details: late}}}
+
+		// when
+		got := extractOrder(store, &anyenc.Arena{}, &collate.Buffer{}, sorts).Compare(early, late)
+
+		// then
+		assert.Equal(t, -1, got)
+	})
 }
 
-func TestCustomIdOrderKeepsNextSort(t *testing.T) {
-	t.Run("objects a manual order does not list fall through to the next sort", func(t *testing.T) {
-		// given: the desktop's manual order, an id sort of type custom,
-		// followed by the view's own sort
-		order := extractOrder(&stubSpaceObjectStore{}, &anyenc.Arena{}, &collate.Buffer{}, []SortRequest{
-			{RelationKey: bundle.RelationKeyId, Type: model.BlockContentDataviewSort_Custom, CustomOrder: []domain.Value{domain.String("listed")}},
-			{RelationKey: bundle.RelationKeyName, Type: model.BlockContentDataviewSort_Asc},
+func TestSortKey(t *testing.T) {
+	t.Run("keys follow the store where Compare does not", func(t *testing.T) {
+		// given: a day-only date sort; the store puts an undated row last,
+		// Compare puts it first
+		day := time.Date(2026, 11, 23, 9, 0, 0, 0, time.UTC).Unix()
+		dated := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId: domain.String("dated"), bundle.RelationKeyDueDate: domain.Int64(day),
 		})
-		first := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyId: domain.String("b"), bundle.RelationKeyName: domain.String("y"),
+		undated := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyId: domain.String("undated")})
+		order := NewSetOrder(&stubSpaceObjectStore{}, &anyenc.Arena{}, &collate.Buffer{}, []SortRequest{
+			{RelationKey: bundle.RelationKeyDueDate, Type: model.BlockContentDataviewSort_Asc},
+			IdTieBreak(model.BlockContentDataviewSort_Asc),
 		})
-		second := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyId: domain.String("a"), bundle.RelationKeyName: domain.String("z"),
-		})
+		arena := &anyenc.Arena{}
 
-		// when, then: by name, not by id
-		assertCompare(t, order, first, second, -1)
+		// when
+		got := bytes.Compare(SortKey(order, dated, arena), SortKey(order, undated, arena))
+
+		// then
+		assert.Equal(t, -1, got)
+		assert.Equal(t, 1, order.Compare(dated, undated), "the in-memory order disagrees with the store")
 	})
 }
