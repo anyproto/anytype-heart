@@ -72,6 +72,21 @@ type keyEnv struct {
 	mu         sync.Mutex
 	expired    bool
 	committing bool
+	// release gives up the connection's lock, once: when the verb ends,
+	// or at its deadline, whichever comes first
+	release func()
+}
+
+// releaseLock gives up the lock a verb that ran out of time still holds,
+// so the lock file is free the moment the verb has answered, not only
+// when the process is gone.
+func (e *keyEnv) releaseLock() {
+	e.mu.Lock()
+	release := e.release
+	e.mu.Unlock()
+	if release != nil {
+		release()
+	}
 }
 
 // emit writes the one JSON line and the stderr note. The caller holds mu.
@@ -114,8 +129,9 @@ func (e *keyEnv) mayCommit() bool {
 // the verb reached its commit point, nothing was and nothing will be
 // written: exit 7. When it passes while the item is being replaced, the
 // verb gets a short grace to finish; after that the outcome is reported
-// as unconfirmed, never as "nothing changed". The caller's os.Exit ends
-// whatever is still stuck, and the lock dies with the process.
+// as unconfirmed, never as "nothing changed". Either way the lock is
+// released at once (a stuck verb past its deadline changes nothing more),
+// and the caller's os.Exit ends whatever is still stuck.
 func (e *keyEnv) bounded(verb func() int) int {
 	done := make(chan int, 1)
 	go func() { done <- verb() }()
@@ -132,6 +148,7 @@ func (e *keyEnv) bounded(verb func() int) int {
 		const reason = "timed out: nothing was changed, try again"
 		e.emit(keyResult{Reason: reason, Store: store.ReasonUnreachable}, reason)
 		e.mu.Unlock()
+		e.releaseLock()
 		return exitTemporary
 	}
 	e.mu.Unlock()
@@ -143,10 +160,11 @@ func (e *keyEnv) bounded(verb func() int) int {
 	case <-grace.C:
 	}
 	e.mu.Lock()
-	defer e.mu.Unlock()
 	e.expired = true
 	const reason = "timed out while the item was being changed: check before retrying"
 	e.emit(keyResult{Unconfirmed: true, Reason: reason}, reason)
+	e.mu.Unlock()
+	e.releaseLock()
 	return exitInternal
 }
 
@@ -220,7 +238,11 @@ func (e *keyEnv) withLock(ctx context.Context, id string, fn func() int) int {
 	if err != nil {
 		return e.storeFail(err)
 	}
-	defer unlock()
+	release := sync.OnceFunc(unlock)
+	e.mu.Lock()
+	e.release = release
+	e.mu.Unlock()
+	defer release()
 	return fn()
 }
 
