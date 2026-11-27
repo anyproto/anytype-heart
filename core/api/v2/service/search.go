@@ -21,6 +21,8 @@ package v2service
 //  6. `type` is a filterable pseudo-key; the top-level `type` composes by AND
 
 import (
+	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -32,7 +34,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/anyproto/any-store/v2/anyenc"
 	"github.com/gogo/protobuf/types"
+	"golang.org/x/text/collate"
 
 	"github.com/anyproto/anytype-heart/core/api/util"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
@@ -1127,12 +1131,37 @@ func (s *Service) loadingSpaceIds() map[string]bool {
 	return loading
 }
 
-// globalRecord is one merged result with its origin space.
+// globalRecord is one merged result with its origin space, the query group
+// that found it, and its sort key under that group's sorts.
 type globalRecord struct {
 	spaceId string
 	record  database.Record
-	sorts   []database.SortRequest
+	group   *globalQueryGroup
+	key     []byte
 }
+
+// globalQueryGroup is the spaces that share one resolved query: one
+// cross-space search serves them all.
+type globalQueryGroup struct {
+	spaceIds []string
+	filters  []database.FilterRequest
+	// sorts are the plan's sorts with the id tie-break
+	sorts []database.SortRequest
+}
+
+// globalFulltextHead is how many of the best full-text matches a global
+// search orders by the requested sorts and the relevance boosts; the rest
+// follow in relevance order. Like the store's re-rank pool
+// (spaceindex.ftRerankPoolSize), it must not depend on the requested page.
+const globalFulltextHead = 100
+
+// relevanceSorts ask the store for plain relevance order, ties by id: the
+// order in which every space's matches are cut, and which a merge of
+// several groups can reproduce.
+var relevanceSorts = database.WithIdTieBreak([]database.SortRequest{{
+	RelationKey: bundle.RelationKey_score,
+	Type:        model.BlockContentDataviewSort_Desc,
+}})
 
 // GlobalSearchObjects resolves names per space, then uses one-shot cross-space
 // search. Spaces with the same resolved filters and sorts share a query, so full-text
@@ -1161,12 +1190,7 @@ func (s *Service) GlobalSearchObjects(ctx context.Context, req v2model.SearchReq
 		firstErr error
 		resolved int
 	)
-	type queryGroup struct {
-		spaceIds []string
-		filters  []database.FilterRequest
-		sorts    []database.SortRequest
-	}
-	var groups []*queryGroup
+	var groups []*globalQueryGroup
 	need := offset + limit
 	opened := s.store.OpenedSpaceIds()
 	loading := s.loadingSpaceIds()
@@ -1205,7 +1229,7 @@ func (s *Service) GlobalSearchObjects(ctx context.Context, req v2model.SearchReq
 		resolved++
 		// every space's candidates and the merge below share one total order
 		sorts := database.WithIdTieBreak(plan.sorts)
-		var group *queryGroup
+		var group *globalQueryGroup
 		for _, existing := range groups {
 			if reflect.DeepEqual(existing.sorts, sorts) && reflect.DeepEqual(existing.filters, plan.filters) {
 				group = existing
@@ -1213,7 +1237,7 @@ func (s *Service) GlobalSearchObjects(ctx context.Context, req v2model.SearchReq
 			}
 		}
 		if group == nil {
-			group = &queryGroup{sorts: sorts, filters: plan.filters}
+			group = &globalQueryGroup{sorts: sorts, filters: plan.filters}
 			groups = append(groups, group)
 		}
 		group.spaceIds = append(group.spaceIds, space.id)
@@ -1224,13 +1248,20 @@ func (s *Service) GlobalSearchObjects(ctx context.Context, req v2model.SearchReq
 		// not an empty result
 		return nil, 0, false, nil, firstErr
 	}
+	fulltext := req.Query != ""
 	for _, group := range groups {
+		// a full-text group is cut in relevance order, deep enough for the
+		// head the merge orders by the requested sorts
+		sorts, groupLimit := group.sorts, need+1
+		if fulltext {
+			sorts, groupLimit = relevanceSorts, max(need, globalFulltextHead)+1
+		}
 		resp := s.mw.ObjectCrossSpaceSearch(ctx, &pb.RpcObjectCrossSpaceSearchRequest{
 			SpaceIds: group.spaceIds,
 			FullText: req.Query,
 			Filters:  database.FiltersToProto(group.filters),
-			Sorts:    database.SortsToProto(group.sorts),
-			Limit:    int32(need + 1), // nolint: gosec
+			Sorts:    database.SortsToProto(sorts),
+			Limit:    int32(groupLimit), // nolint: gosec
 		})
 		if resp.Error != nil && resp.Error.Code != pb.RpcObjectCrossSpaceSearchResponseError_NULL {
 			return nil, 0, false, nil, fmt.Errorf("cross-space search: %s", resp.Error.Description)
@@ -1241,12 +1272,15 @@ func (s *Service) GlobalSearchObjects(ctx context.Context, req v2model.SearchReq
 		total += len(resp.Records)
 		for _, record := range resp.Records {
 			details := domain.NewDetailsFromProto(record)
-			merged = append(merged, globalRecord{spaceId: details.GetString(bundle.RelationKeySpaceId), record: database.Record{Details: details}, sorts: group.sorts})
+			merged = append(merged, globalRecord{spaceId: details.GetString(bundle.RelationKeySpaceId), record: database.Record{Details: details}, group: group})
 		}
 	}
 	warnings = dedupeIssues(warnings)
-	if len(groups) > 1 {
-		sortGlobalRecords(merged)
+	switch {
+	case fulltext:
+		s.orderGlobalFulltext(merged)
+	case len(groups) > 1:
+		s.sortGlobalRecords(merged, func(record globalRecord) []database.SortRequest { return record.group.sorts })
 	}
 	page := merged[minInt(offset, len(merged)):minInt(need, len(merged))]
 
@@ -1305,28 +1339,49 @@ func dedupeIssues(issues []v2model.Issue) []v2model.Issue {
 	return out
 }
 
-// sortGlobalRecords merges per-space results by the effective sort list.
-// The comparator approximates the store's ordering (no locale collation);
-// ties break by space id then object id for determinism.
-func sortGlobalRecords(records []globalRecord) {
-	sort.SliceStable(records, func(i, j int) bool {
-		a, b := records[i], records[j]
-		for pos, srt := range a.sorts {
-			av := a.record.Details.Get(srt.RelationKey)
-			bv := b.record.Details.Get(b.sorts[pos].RelationKey)
-			comp := av.Compare(bv)
-			if comp == 0 {
-				continue
-			}
-			if srt.Type == model.BlockContentDataviewSort_Desc {
-				return comp > 0
-			}
-			return comp < 0
+// orderGlobalFulltext orders a full-text global search. Every group was cut
+// in relevance order, so the merge first restores one relevance order over
+// all of them; then the best globalFulltextHead matches are ordered by their
+// group's sorts (the requested sorts, then the relevance boosts), and the
+// rest stay in relevance order. Both steps depend only on matches every
+// page's cut holds, so offset paging serves each match once.
+func (s *Service) orderGlobalFulltext(records []globalRecord) {
+	s.sortGlobalRecords(records, func(globalRecord) []database.SortRequest { return relevanceSorts })
+	head := records[:minInt(globalFulltextHead, len(records))]
+	s.sortGlobalRecords(head, func(record globalRecord) []database.SortRequest { return record.group.sorts })
+}
+
+// sortGlobalRecords merges records of several store cuts. Each record is
+// encoded under its sorts the way its space's store sorts it
+// (database.SortKey), with the store's collation, custom orders, date
+// precision and empty placement, so the merge keeps the order every cut was
+// taken in. The sorts end on the id, so only one id in two spaces ties: the
+// space id decides.
+func (s *Service) sortGlobalRecords(records []globalRecord, sortsOf func(globalRecord) []database.SortRequest) {
+	// one order per sort list and space: formats and order maps are per space
+	orders := map[*database.SortRequest]map[string]database.Order{}
+	valueArena := &anyenc.Arena{}
+	for i := range records {
+		sorts := sortsOf(records[i])
+		if len(sorts) == 0 {
+			records[i].key = nil
+			continue
 		}
-		if a.spaceId != b.spaceId {
-			return a.spaceId < b.spaceId
+		bySpace, ok := orders[&sorts[0]]
+		if !ok {
+			bySpace = map[string]database.Order{}
+			orders[&sorts[0]] = bySpace
 		}
-		return a.record.Details.GetString(bundle.RelationKeyId) < b.record.Details.GetString(bundle.RelationKeyId)
+		order, ok := bySpace[records[i].spaceId]
+		if !ok {
+			order = database.NewSetOrder(s.store.SpaceIndex(records[i].spaceId), &anyenc.Arena{}, &collate.Buffer{}, sorts)
+			bySpace[records[i].spaceId] = order
+		}
+		records[i].key = database.SortKey(order, records[i].record.Details, valueArena)
+	}
+	slices.SortStableFunc(records, func(a, b globalRecord) int {
+		return cmp.Or(bytes.Compare(a.key, b.key), strings.Compare(a.spaceId, b.spaceId),
+			strings.Compare(a.record.Details.GetString(bundle.RelationKeyId), b.record.Details.GetString(bundle.RelationKeyId)))
 	})
 }
 

@@ -279,7 +279,10 @@ func (s *Service) ListTypes(ctx context.Context, spaceId string, offset, limit i
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, 0, false, err
 	}
-	records, total, err := s.store.SpaceIndex(spaceId).QueryAndCount(database.Query{
+	// the whole list is read and paged here: a record without a valid
+	// unique key serves no row, so it must not count toward total or
+	// has_more (a space holds few types)
+	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
 		// live filters: a UI-deleted (uninstalled) type must not list — the
 		// §7.5-requirement-2 corpse policy (keys.go)
 		Filters: append(liveTypeFilters(),
@@ -292,17 +295,11 @@ func (s *Service) ListTypes(ctx context.Context, spaceId string, offset, limit i
 			RelationKey: bundle.RelationKeyName,
 			Type:        model.BlockContentDataviewSort_Asc,
 		}}),
-		Offset: offset,
-		Limit:  limit + 1,
 	})
 	if err != nil {
 		return nil, 0, false, fmt.Errorf("query types in space %s: %w", spaceId, err)
 	}
 
-	hasMore := len(records) > limit
-	if hasMore {
-		records = records[:limit]
-	}
 	liveEntries, err := s.liveTypes(spaceId)
 	if err != nil {
 		return nil, 0, false, err
@@ -319,7 +316,8 @@ func (s *Service) ListTypes(ctx context.Context, spaceId string, offset, limit i
 			Name: record.Details.GetString(bundle.RelationKeyName),
 		})
 	}
-	return rows, total, hasMore, nil
+	page, hasMore := pagination.Paginate(rows, offset, limit)
+	return page, len(rows), hasMore, nil
 }
 
 // GetType returns the kind:"object_type" AnyBlock document for one type key,
@@ -343,7 +341,10 @@ func (s *Service) ListProperties(ctx context.Context, spaceId string, offset, li
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, 0, false, err
 	}
-	records, total, err := s.store.SpaceIndex(spaceId).QueryAndCount(database.Query{
+	// the whole list is read and paged here: a record without a relation
+	// key serves no row, so it must not count toward total or has_more (a
+	// space holds few properties)
+	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
 		// live filters: a UI-deleted (uninstalled) property still carried the
 		// relation layout and passed every filter here — the §2.3-6 defect;
 		// the corpse policy excludes it (keys.go)
@@ -357,17 +358,11 @@ func (s *Service) ListProperties(ctx context.Context, spaceId string, offset, li
 			RelationKey: bundle.RelationKeyName,
 			Type:        model.BlockContentDataviewSort_Asc,
 		}}),
-		Offset: offset,
-		Limit:  limit + 1,
 	})
 	if err != nil {
 		return nil, 0, false, fmt.Errorf("query properties in space %s: %w", spaceId, err)
 	}
 
-	hasMore := len(records) > limit
-	if hasMore {
-		records = records[:limit]
-	}
 	// the served spelling (§7.5a): a BSON-keyed property answers to its
 	// slug, so the slug is what the row advertises — iff it round-trips
 	// (servedKey); the count maps come from the full live set, not the page
@@ -388,7 +383,8 @@ func (s *Service) ListProperties(ctx context.Context, spaceId string, offset, li
 			Format: anyblockjson.FormatName(model.RelationFormat(record.Details.GetInt64(bundle.RelationKeyRelationFormat))),
 		})
 	}
-	return rows, total, hasMore, nil
+	page, hasMore := pagination.Paginate(rows, offset, limit)
+	return page, len(rows), hasMore, nil
 }
 
 // ListPropertyOptions returns the option names (+color) of one
