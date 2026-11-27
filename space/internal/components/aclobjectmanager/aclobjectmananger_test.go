@@ -3,6 +3,7 @@ package aclobjectmanager
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -12,12 +13,14 @@ import (
 	"github.com/anyproto/any-sync/commonspace/mock_commonspace"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+	"github.com/anyproto/any-sync/commonspace/object/acl/recordverifier"
 	"github.com/anyproto/any-sync/commonspace/object/acl/syncacl"
 	"github.com/anyproto/any-sync/commonspace/object/acl/syncacl/headupdater"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/commonspace/sync/syncdeps"
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/anyproto/any-sync/net/peer"
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -170,6 +173,162 @@ func TestAclObjectManager(t *testing.T) {
 		require.Equal(t, acl.Head().Id, fx.aclObjectManager.lastIndexed)
 		require.Equal(t, fx.aclObjectManager, acl.updater)
 	})
+	// b is removed while offline, which rotates the read key, and only then does c ask to join. c's
+	// metadata is keyed to the new read key, which b never got
+	removedThenJoined := []string{
+		"a.init::a",
+		"a.invite::invId",
+		"b.join::invId",
+		"a.approve::b,r",
+		"a.remove::b",
+		"a.invite::invId2",
+		"c.join::invId2",
+	}
+	newMemberAcl := func(t *testing.T, cmds []string, member string) (*list.AclTestExecutor, *syncAclStub) {
+		a := list.NewAclExecutor("spaceId")
+		for _, cmd := range cmds {
+			require.NoError(t, a.Execute(cmd))
+		}
+		return a, &syncAclStub{AclList: a.ActualAccounts()[member].Acl}
+	}
+	for _, tc := range []struct {
+		name string
+		cmds []string
+		// whether the space view knows the acl head this device has, instead of no head at all
+		latestAclHeadIsHead bool
+	}{
+		{
+			name: "participant removed while offline, then a newcomer asked to join",
+			cmds: removedThenJoined,
+		},
+		{
+			name:                "participant removed while offline, then a newcomer was accepted",
+			cmds:                append(slices.Clone(removedThenJoined), "a.approve::c,r"),
+			latestAclHeadIsHead: true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			a, acl := newMemberAcl(t, tc.cmds, "b")
+			_, err := acl.AclState().GetMetadata(a.ActualAccounts()["c"].Keys.SignKey.GetPublic(), true)
+			require.ErrorIs(t, err, list.ErrFailedToDecrypt, "the removed member must not be able to read the newcomer's metadata")
+			fx := newFixture(t)
+			defer fx.finish(t)
+			fx.mockLoader.EXPECT().WaitLoad(mock.Anything).Return(fx.mockSpace, nil)
+			fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
+			fx.mockSpace.EXPECT().Id().Return("spaceId")
+			fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
+			fx.mockCommonSpace.EXPECT().Id().AnyTimes().Return("spaceId")
+			latestAclHeadId := ""
+			if tc.latestAclHeadIsHead {
+				latestAclHeadId = acl.Head().Id
+			}
+			fx.mockStatus.EXPECT().GetLatestAclHeadId().Return(latestAclHeadId).Once()
+			fx.mockParticipantWatcher.EXPECT().GetProcessedAclHeadId(mock.Anything, fx.mockSpace).Return("").Once()
+			fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
+
+			// then: the space is dropped although the other members cannot be processed; the strict
+			// mocks verify that nobody else's participant is touched
+			fx.mockStatus.EXPECT().SetMyParticipantStatus(model.ParticipantStatus_Removed).Return(nil).Once()
+			fx.mockStatus.EXPECT().SetPersistentStatus(spaceinfo.AccountStatusDeleted).Return(nil).Once()
+			fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsNone, "spaceId", spaceinfo.AccountStatusDeleted, spaceinfo.LocalStatusOk).Once()
+
+			// when
+			fx.run(t)
+			<-fx.aclObjectManager.wait
+		})
+	}
+	// in each case below some member's metadata cannot be decrypted, and our own account must not be
+	// taken for removed: the space is kept and the decryption error is returned. The strict mocks
+	// verify that neither participant status nor account status is written, and no AddRecords call
+	// either, as processing fails
+	for _, tc := range []struct {
+		name            string
+		acl             func(t *testing.T) (*syncAclStub, crypto.PrivKey)
+		latestAclHeadId string
+	}{
+		{
+			name: "removed participant keeps the space until its acl reaches the latest known head",
+			acl: func(t *testing.T) (*syncAclStub, crypto.PrivKey) {
+				_, acl := newMemberAcl(t, removedThenJoined, "b")
+				return acl, nil
+			},
+			// the space view knows an acl head this device has not received yet
+			latestAclHeadId: "notReceivedHeadId",
+		},
+		{
+			name: "guest is not marked removed",
+			acl: func(t *testing.T) (*syncAclStub, crypto.PrivKey) {
+				// processStates never matches a guest's own account, so neither may the fallback
+				a, acl := newMemberAcl(t, removedThenJoined, "b")
+				return acl, a.ActualAccounts()["b"].Keys.SignKey
+			},
+		},
+		{
+			name: "removed participant who asked to join again is left to the join flow",
+			acl: func(t *testing.T) (*syncAclStub, crypto.PrivKey) {
+				// b's own request is keyed to the new read key: b is joining, with no permissions
+				_, acl := newMemberAcl(t, append(slices.Clone(removedThenJoined), "b.join::invId2"), "b")
+				return acl, nil
+			},
+		},
+		{
+			name: "removed participant whose request to join again was declined is left to the join flow",
+			acl: func(t *testing.T) (*syncAclStub, crypto.PrivKey) {
+				_, acl := newMemberAcl(t, append(slices.Clone(removedThenJoined), "b.join::invId2", "a.decline::b"), "b")
+				return acl, nil
+			},
+		},
+		{
+			name: "removed participant who canceled its request to join again is left to the join flow",
+			acl: func(t *testing.T) (*syncAclStub, crypto.PrivKey) {
+				_, acl := newMemberAcl(t, append(slices.Clone(removedThenJoined), "b.join::invId2", "b.cancel::b"), "b")
+				return acl, nil
+			},
+		},
+		{
+			name: "account absent from the acl is not marked removed",
+			acl: func(t *testing.T) (*syncAclStub, crypto.PrivKey) {
+				// another member, b, was removed, and an outsider holds none of the keys, so not even
+				// the owner's metadata decrypts
+				a, _ := newMemberAcl(t, removedThenJoined, "a")
+				ownerAcl := a.ActualAccounts()["a"].Acl
+				records, err := ownerAcl.RecordsAfter(ctx, "")
+				require.NoError(t, err)
+				storage, err := list.NewInMemoryStorage(ownerAcl.Id(), records)
+				require.NoError(t, err)
+				outsiderKeys, err := accountdata.NewRandom()
+				require.NoError(t, err)
+				outsiderAcl, err := list.BuildAclListWithIdentity(outsiderKeys, storage, recordverifier.NewValidateFull())
+				require.NoError(t, err)
+				return &syncAclStub{AclList: outsiderAcl}, nil
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			acl, guestKey := tc.acl(t)
+			fx := newFixture(t)
+			defer fx.finish(t)
+			fx.aclObjectManager.guestKey = guestKey
+			fx.mockLoader.EXPECT().WaitLoad(mock.Anything).Return(fx.mockSpace, nil)
+			fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
+			fx.mockSpace.EXPECT().Id().Return("spaceId")
+			fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
+			fx.mockCommonSpace.EXPECT().Id().AnyTimes().Return("spaceId")
+			// once at startup, once more when the test re-runs processing to see its error
+			fx.mockStatus.EXPECT().GetLatestAclHeadId().Return(tc.latestAclHeadId).Times(2)
+			fx.mockParticipantWatcher.EXPECT().GetProcessedAclHeadId(mock.Anything, fx.mockSpace).Return("").Times(2)
+			fx.run(t)
+			<-fx.aclObjectManager.wait
+
+			// when
+			err := fx.reprocessAcl(acl)
+
+			// then
+			require.ErrorIs(t, err, list.ErrFailedToDecrypt)
+		})
+	}
 	t.Run("skip member processing when persisted acl head matches", func(t *testing.T) {
 		a := list.NewAclExecutor("spaceId")
 		cmds := []string{
@@ -350,6 +509,14 @@ func (fx *fixture) finish(t *testing.T) {
 	fx.ctrl.Finish()
 }
 
+// reprocessAcl runs ACL processing again the way process() does at startup, and returns the error
+// that process() only logs
+func (fx *fixture) reprocessAcl(acl *syncAclStub) error {
+	acl.RLock()
+	defer acl.RUnlock()
+	return fx.aclObjectManager.processAcl()
+}
+
 type syncAclStub struct {
 	list.AclList
 	updater headupdater.AclUpdater
@@ -506,6 +673,66 @@ func TestAclObjectManagerUpdateAclUnderAclWriteLock(t *testing.T) {
 	fx.aclObjectManager.mx.Lock()
 	defer fx.aclObjectManager.mx.Unlock()
 	assert.Equal(t, newHead, fx.aclObjectManager.lastIndexed)
+}
+
+// TestAclObjectManagerProcessesRemovalUnderAclWriteLock covers the removal fallback on the path
+// any-sync drives: a sync response delivers our removal together with a newcomer's join request, and
+// UpdateAcl runs with the ACL write lock held. The fallback must not take the ACL read lock either
+// (GO-7525), and still has to mark the space deleted.
+func TestAclObjectManagerProcessesRemovalUnderAclWriteLock(t *testing.T) {
+	// given: b is an active reader at startup
+	a := list.NewAclExecutor("spaceId")
+	for _, cmd := range []string{"a.init::a", "a.invite::invId", "b.join::invId", "a.approve::b,r"} {
+		require.NoError(t, a.Execute(cmd))
+	}
+	acl := &syncAclStub{AclList: a.ActualAccounts()["b"].Acl}
+
+	fx := newFixture(t)
+	defer fx.finish(t)
+	fx.mockLoader.EXPECT().WaitLoad(mock.Anything).Return(fx.mockSpace, nil)
+	fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
+	fx.mockSpace.EXPECT().Id().Return("spaceId")
+	fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
+	fx.mockCommonSpace.EXPECT().Id().AnyTimes().Return("spaceId")
+	fx.mockStatus.EXPECT().GetLatestAclHeadId().Return("").Times(2)
+	fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
+	fx.mockStatus.EXPECT().SetOwner(a.ActualAccounts()["a"].Acl.AclState().Identity().Account(), mock.Anything).Return(nil).Once()
+	fx.mockStatus.EXPECT().SetAclInfo(false, mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+	fx.mockStatus.EXPECT().SetMyParticipantStatus(model.ParticipantStatus_Active).Return(nil).Once()
+	fx.mockParticipantWatcher.EXPECT().GetProcessedAclHeadId(mock.Anything, fx.mockSpace).Return("").Once()
+	fx.mockParticipantWatcher.EXPECT().SetProcessedAclHeadId(mock.Anything, fx.mockSpace, acl.Head().Id).Return(nil).Once()
+	// a and b at startup only: the removal must not process anyone's participant
+	fx.mockParticipantWatcher.EXPECT().UpdateParticipantFromAclState(mock.Anything, fx.mockSpace, mock.Anything).Return(nil).Times(2)
+	fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything, mock.Anything).Return(nil).Times(2)
+	fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsReader, "spaceId", spaceinfo.AccountStatusActive, spaceinfo.LocalStatusOk).Once()
+	fx.run(t)
+	<-fx.aclObjectManager.wait
+
+	// the removal and c's join request, keyed to the read key the removal rotates in, arrive together
+	for _, cmd := range []string{"a.remove::b", "a.invite::invId2", "c.join::invId2"} {
+		require.NoError(t, a.Execute(cmd))
+	}
+	fx.mockSpace.EXPECT().OnAclUpdated().Once()
+
+	// then
+	fx.mockStatus.EXPECT().SetMyParticipantStatus(model.ParticipantStatus_Removed).Return(nil).Once()
+	fx.mockStatus.EXPECT().SetPersistentStatus(spaceinfo.AccountStatusDeleted).Return(nil).Once()
+	fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsNone, "spaceId", spaceinfo.AccountStatusDeleted, spaceinfo.LocalStatusOk).Once()
+
+	// when
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		// exactly how any-sync enters the callback
+		acl.Lock()
+		defer acl.Unlock()
+		fx.aclObjectManager.UpdateAcl(acl)
+	}()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("UpdateAcl deadlocked: the removal path took the acl read lock while the write lock was held")
+	}
 }
 
 // TestAclObjectManagerForwardsOneToOne pins the other half of the GO-7525 handoff: the flag the

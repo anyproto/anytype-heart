@@ -245,6 +245,14 @@ func (a *aclObjectManager) processAcl() (err error) {
 
 		states, err = decryptAll(states, decrypt)
 		if err != nil {
+			// a member removed while offline cannot decrypt the metadata of anyone who asked to
+			// join after the removal: it is keyed to a read key the removed member never got. Our
+			// own removal must still be processed, or the space stays loaded and keeps syncing
+			// changes we can no longer read
+			upToDate = a.isUpToDate(acl)
+			if removed, rerr := a.processOwnRemoval(aclState, upToDate); removed {
+				return rerr
+			}
 			return
 		}
 	}
@@ -397,6 +405,35 @@ func (a *aclObjectManager) processStates(states []list.AccountState, upToDate bo
 		}
 	}
 	return nil
+}
+
+// processOwnRemoval does for our own account what processStates does when we were removed from the
+// space, for when the other members' metadata cannot be decrypted. It reports whether we were removed;
+// a guest is never marked removed here, as processStates never finds a guest's own account either.
+// Only a removal counts: an account that asked to join again (joining, then declined or canceled) has
+// no permissions either, but its space view status belongs to the join flow, and it syncs to the
+// account's other devices
+func (a *aclObjectManager) processOwnRemoval(aclState *list.AclState, upToDate bool) (removed bool, err error) {
+	if a.guestKey != nil || !upToDate {
+		return false, nil
+	}
+	myIdentity := aclState.Identity()
+	for _, state := range aclState.CurrentAccounts() {
+		if !state.PubKey.Equals(myIdentity) {
+			continue
+		}
+		if state.Status != list.StatusRemoved || !state.Permissions.NoPermissions() {
+			return false, nil
+		}
+		if err = a.status.SetMyParticipantStatus(domain.ConvertAclStatus(state.Status)); err != nil {
+			log.Warn("failed to set my participant status", zap.Error(err))
+		}
+		if err = a.status.SetPersistentStatus(spaceinfo.AccountStatusDeleted); err != nil {
+			return true, fmt.Errorf("mark space of removed account deleted: %w", err)
+		}
+		return true, nil
+	}
+	return false, nil
 }
 
 func decryptAll(states []list.AccountState, decrypt func(key crypto.PubKey) ([]byte, error)) (decrypted []list.AccountState, err error) {
