@@ -136,15 +136,18 @@ func (s *Service) SearchObjects(ctx context.Context, spaceId string, req v2model
 // record distinguishes an exhausted result from a clipped one, so the
 // returned total is exact when the store had fewer matches and a lower
 // bound (offset+limit+1 → has_more true) when it clipped — honest steering
-// either way, within the engine's documented candidate budget.
+// either way, within the engine's documented candidate budget. Both paths
+// end the plan's sorts with the id, so rows that tie on them keep one order
+// across pages.
 func (s *Service) runSearchQuery(spaceId string, plan *searchPlan, offset, limit int) ([]database.Record, int, error) {
 	index := s.store.SpaceIndex(spaceId)
+	sorts := database.WithIdTieBreak(plan.sorts)
 	if plan.textQuery != "" {
 		all, err := index.Query(database.Query{
 			SpaceId:   spaceId,
 			TextQuery: plan.textQuery,
 			Filters:   plan.filters,
-			Sorts:     plan.sorts,
+			Sorts:     sorts,
 			Limit:     offset + limit + 1,
 		})
 		if err != nil {
@@ -154,7 +157,7 @@ func (s *Service) runSearchQuery(spaceId string, plan *searchPlan, offset, limit
 	}
 	records, total, err := index.QueryAndCount(database.Query{
 		Filters: plan.filters,
-		Sorts:   plan.sorts,
+		Sorts:   sorts,
 		Offset:  offset,
 		Limit:   limit,
 	})
@@ -1200,15 +1203,17 @@ func (s *Service) GlobalSearchObjects(ctx context.Context, req v2model.SearchReq
 			return nil, 0, false, nil, err
 		}
 		resolved++
+		// every space's candidates and the merge below share one total order
+		sorts := database.WithIdTieBreak(plan.sorts)
 		var group *queryGroup
 		for _, existing := range groups {
-			if reflect.DeepEqual(existing.sorts, plan.sorts) && reflect.DeepEqual(existing.filters, plan.filters) {
+			if reflect.DeepEqual(existing.sorts, sorts) && reflect.DeepEqual(existing.filters, plan.filters) {
 				group = existing
 				break
 			}
 		}
 		if group == nil {
-			group = &queryGroup{sorts: plan.sorts, filters: plan.filters}
+			group = &queryGroup{sorts: sorts, filters: plan.filters}
 			groups = append(groups, group)
 		}
 		group.spaceIds = append(group.spaceIds, space.id)

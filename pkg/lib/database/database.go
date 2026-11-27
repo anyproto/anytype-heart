@@ -173,6 +173,38 @@ func InjectDefaultOrder(qry Query, sorts []SortRequest) []SortRequest {
 	return injectDefaultOrder(qry, sorts)
 }
 
+// WithIdTieBreak returns sorts with the object id appended as the last key,
+// unless they already sort by it ascending or descending. A custom id order
+// does not count: the objects it does not list still tie. Offset paging needs a total order. Rows that
+// tie on every sort have none, and the store orders them by plan: a reverse
+// index scan yields them by id descending, an in-memory sort by id ascending,
+// and which plan runs depends on offset+limit. One page can then repeat a row
+// that another page never serves.
+//
+// The id runs in the direction of the last sort. Every index entry ends with
+// the id ascending, so an index that served the sorts still serves them, and
+// both plans agree.
+//
+// A single date sort implies includeTime only while it is the only sort, so
+// that sort gets includeTime set explicitly.
+func WithIdTieBreak(sorts []SortRequest) []SortRequest {
+	for _, sort := range sorts {
+		if sort.RelationKey == bundle.RelationKeyId && sort.Type != model.BlockContentDataviewSort_Custom {
+			return sorts
+		}
+	}
+	out := make([]SortRequest, len(sorts), len(sorts)+1)
+	copy(out, sorts)
+	if isSingleDateSort(out) {
+		out[0].IncludeTime = true
+	}
+	direction := model.BlockContentDataviewSort_Asc
+	if len(out) > 0 && out[len(out)-1].Type == model.BlockContentDataviewSort_Desc {
+		direction = model.BlockContentDataviewSort_Desc
+	}
+	return append(out, SortRequest{RelationKey: bundle.RelationKeyId, Type: direction, NoCollate: true})
+}
+
 func injectDefaultOrder(qry Query, sorts []SortRequest) []SortRequest {
 	var (
 		hasScoreSort bool

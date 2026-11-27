@@ -6,8 +6,10 @@ package v2service
 // the format's vocabulary (C2: keys and names, no id/key duality).
 
 import (
+	"cmp"
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -197,10 +199,10 @@ func (s *Service) ListMembers(ctx context.Context, spaceId string, offset, limit
 				Value:       domain.Int64(int64(model.ParticipantStatus_Active)),
 			},
 		},
-		Sorts: []database.SortRequest{{
+		Sorts: database.WithIdTieBreak([]database.SortRequest{{
 			RelationKey: bundle.RelationKeyName,
 			Type:        model.BlockContentDataviewSort_Asc,
-		}},
+		}}),
 		Offset: offset,
 		Limit:  limit + 1,
 	})
@@ -286,10 +288,10 @@ func (s *Service) ListTypes(ctx context.Context, spaceId string, offset, limit i
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
 				Value:       domain.Bool(true),
 			}),
-		Sorts: []database.SortRequest{{
+		Sorts: database.WithIdTieBreak([]database.SortRequest{{
 			RelationKey: bundle.RelationKeyName,
 			Type:        model.BlockContentDataviewSort_Asc,
-		}},
+		}}),
 		Offset: offset,
 		Limit:  limit + 1,
 	})
@@ -351,10 +353,10 @@ func (s *Service) ListProperties(ctx context.Context, spaceId string, offset, li
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
 				Value:       domain.Bool(true),
 			}),
-		Sorts: []database.SortRequest{{
+		Sorts: database.WithIdTieBreak([]database.SortRequest{{
 			RelationKey: bundle.RelationKeyName,
 			Type:        model.BlockContentDataviewSort_Asc,
-		}},
+		}}),
 		Offset: offset,
 		Limit:  limit + 1,
 	})
@@ -407,17 +409,18 @@ func (s *Service) ListPropertyOptions(ctx context.Context, spaceId, propertyKey,
 		return nil, 0, false, fmt.Errorf("list options of property %s: %w", propertyKey, err)
 	}
 
+	options = slices.DeleteFunc(options, func(option *model.RelationOption) bool {
+		return option == nil || (prefix != "" && !strings.HasPrefix(strings.ToLower(option.Text), strings.ToLower(prefix)))
+	})
+	// by name, ties by id: the store returns options in no defined order, and
+	// a page is a slice of this order
+	slices.SortFunc(options, func(a, b *model.RelationOption) int {
+		return cmp.Or(strings.Compare(a.Text, b.Text), strings.Compare(a.Id, b.Id))
+	})
 	rows := make([]v2model.OptionRow, 0, len(options))
 	for _, option := range options {
-		if option == nil {
-			continue
-		}
-		if prefix != "" && !strings.HasPrefix(strings.ToLower(option.Text), strings.ToLower(prefix)) {
-			continue
-		}
 		rows = append(rows, v2model.OptionRow{Name: option.Text, Color: option.Color})
 	}
-	sort.Slice(rows, func(i, j int) bool { return rows[i].Name < rows[j].Name })
 
 	total := len(rows)
 	page, hasMore := pagination.Paginate(rows, offset, limit)

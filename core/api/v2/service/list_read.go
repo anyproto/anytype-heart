@@ -311,7 +311,7 @@ func (s *Service) listObjects(ctx context.Context, spaceId, listId string, want 
 		}
 		records, total, err = index.QueryAndCount(database.Query{
 			Filters: filters,
-			Sorts:   sorts,
+			Sorts:   database.WithIdTieBreak(sorts),
 			Offset:  offset,
 			Limit:   limit,
 		})

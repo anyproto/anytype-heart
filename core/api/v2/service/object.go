@@ -731,7 +731,7 @@ func addressableBlocksHint(spaceId, objectId string) v2model.Hint {
 //
 
 // ListObjects returns minimal rows (id, name, type + requested fields) for
-// the space's objects, newest-modified first.
+// the space's objects, newest-modified first, ties by id.
 func (s *Service) ListObjects(ctx context.Context, spaceId string, fields []string, offset, limit int) ([]v2model.ObjectRow, int, bool, error) {
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, 0, false, err
@@ -758,11 +758,11 @@ func (s *Service) ListObjects(ctx context.Context, spaceId string, fields []stri
 				Value:       domain.Bool(true),
 			},
 		},
-		Sorts: []database.SortRequest{{
+		Sorts: database.WithIdTieBreak([]database.SortRequest{{
 			RelationKey: bundle.RelationKeyLastModifiedDate,
 			Type:        model.BlockContentDataviewSort_Desc,
 			IncludeTime: true,
-		}},
+		}}),
 		Offset: offset,
 		Limit:  limit + 1, // one extra record detects has_more without a second scan
 	})

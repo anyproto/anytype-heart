@@ -82,6 +82,16 @@ func NewKeyOrder(store ObjectStore, arena *anyenc.Arena, collatorBuffer *collate
 	if err != nil {
 		format = sort.Format
 	}
+	// The id relation is object-formatted, but an object order sorts by the
+	// linked object's name, through an order map built from every object in
+	// the store. An ascending or descending id sort orders the unique plain
+	// string byte-wise, the order of the store's primary key. A custom id
+	// order (a view's manual order) keeps the object order: the objects it
+	// does not list tie there and fall through to the view's next sort.
+	isId := sort.RelationKey == bundle.RelationKeyId && sort.Type != model.BlockContentDataviewSort_Custom
+	if isId {
+		format = model.RelationFormat_shorttext
+	}
 
 	var orderMap *OrderMap
 	if isObjectFormat(format) {
@@ -98,7 +108,7 @@ func NewKeyOrder(store ObjectStore, arena *anyenc.Arena, collatorBuffer *collate
 		orderMapBufferB: make([]byte, 0),
 		arena:           arena,
 		collatorBuffer:  collatorBuffer,
-		disableCollator: sort.NoCollate || sort.RelationKey == bundle.RelationKeyOrderId || sort.RelationKey == bundle.RelationKeySpaceOrder,
+		disableCollator: sort.NoCollate || isId || sort.RelationKey == bundle.RelationKeyOrderId || sort.RelationKey == bundle.RelationKeySpaceOrder,
 	}
 }
 
