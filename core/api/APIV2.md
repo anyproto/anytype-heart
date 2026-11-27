@@ -1004,7 +1004,9 @@ with no positional/index/offset addressing anywhere (§3.1–3.2). It is:
   refuses the way the caller sent it**, the slug or (under `?keys=name`) the
   display name, in its message as in its issue path, not by its stored key,
   which for a space-minted property is a 24-hex id the caller was never
-  served (`core/api/v2/service/stateops.go:1100`).
+  served. The spelling is the one written in that field: an op may spell one
+  property two ways in two fields, and each refusal addresses its own
+  (`core/api/v2/service/stateops.go:1102`).
 - **`set_properties` `add`/`remove`**: per-key list edits for list-shaped
   formats only (select, multi_select, objects, files — SPEC §3).
   `{"op":"set_properties","add":{"tags":["urgent"]},"remove":{"assignee":["bafy…"]}}`
