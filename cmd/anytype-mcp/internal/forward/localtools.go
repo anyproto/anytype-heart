@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"mime"
 	"net/http"
 	"net/url"
@@ -61,7 +62,12 @@ var usualExtensions = map[string]string{
 }
 
 // toolFailure is a failure whose text the model reads.
-type toolFailure struct{ text string }
+type toolFailure struct {
+	text string
+	// whole: the text is already bounded and free of the key, and must
+	// arrive whole (heart's error as JSON)
+	whole bool
+}
 
 func (f *toolFailure) Error() string { return f.text }
 
@@ -79,6 +85,10 @@ type localTools struct {
 	dir     *files.Dir
 	timeout time.Duration
 	defs    []toolDefinition
+
+	// running counts the transfers under way: shutdown leaves them time
+	// to remove their part files
+	running atomic.Int32
 
 	mu sync.Mutex
 	// served are the names heart listed, over the pages of one listing;
@@ -190,6 +200,8 @@ func (l *localTools) extend(params, result json.RawMessage) json.RawMessage {
 		}
 		if json.Unmarshal(raw, &tool) == nil {
 			l.served[tool.Name] = true
+			// heart's from this moment, not only from the last page on
+			delete(l.active, tool.Name)
 		}
 	}
 	if next != "" {
@@ -242,6 +254,8 @@ func (l *localTools) minutes() int {
 // snapshot it started with and ends within the transfer deadline. Failures
 // the model can act on are tool results.
 func (l *localTools) call(c *call, name string, rawArgs json.RawMessage) *reply {
+	l.running.Add(1)
+	defer l.running.Add(-1)
 	id := c.msg.id
 	snap, err := l.s.conn.current(c.ctx)
 	if err != nil {
@@ -288,6 +302,9 @@ func (l *localTools) call(c *call, name string, rawArgs json.RawMessage) *reply 
 	case errors.Is(err, errNotConnected):
 		return l.s.notConnected(id)
 	case errors.As(err, &failure):
+		if failure.whole {
+			return toolErrorReply(id, failure.text)
+		}
 		return toolErrorReply(id, redact(failure.text, snap.key))
 	case ctx.Err() != nil:
 		return toolErrorReply(id, fmt.Sprintf("the transfer did not finish within %d minutes", l.minutes()))
@@ -326,8 +343,6 @@ func segment(args map[string]json.RawMessage, key string) (raw, escaped string, 
 	}
 	return value, url.PathEscape(value), nil
 }
-
-var widthRe = regexp.MustCompile(`^[0-9]{1,6}$`)
 
 // errRefused: the connection could not be made; nothing was sent.
 var errRefused = errors.New("connection refused")
@@ -370,12 +385,14 @@ func (l *localTools) refusedStatus(ctx context.Context, snap snapshot, resp *htt
 		}
 		return failf("%s", msgRejected)
 	}
-	return failf("%s", restFailure(l.readBounded(ctx, resp.Body, contract.MaxErrorBodyBytes), resp.StatusCode, snap.key))
+	return &toolFailure{whole: true,
+		text: restFailure(l.readBounded(ctx, resp.Body, contract.MaxErrorBodyBytes, l.s.o.ErrorBodyWait), resp.StatusCode, snap.key)}
 }
 
-// readBounded reads at most limit bytes of a short body and never waits
-// long for it. A body that is longer, breaks off or stalls reads as nil.
-func (l *localTools) readBounded(ctx context.Context, body io.Reader, limit int64) []byte {
+// readBounded reads at most limit bytes of a short body, for at most wait
+// (zero: as long as ctx lasts). A body that is longer, breaks off or
+// stalls reads as nil.
+func (l *localTools) readBounded(ctx context.Context, body io.Reader, limit int64, wait time.Duration) []byte {
 	type read struct {
 		data []byte
 		err  error
@@ -385,15 +402,19 @@ func (l *localTools) readBounded(ctx context.Context, body io.Reader, limit int6
 		data, err := io.ReadAll(io.LimitReader(body, limit+1))
 		done <- read{data, err}
 	}()
-	timer := time.NewTimer(l.s.o.ErrorBodyWait)
-	defer timer.Stop()
+	var expired <-chan time.Time
+	if wait > 0 {
+		timer := time.NewTimer(wait)
+		defer timer.Stop()
+		expired = timer.C
+	}
 	select {
 	case r := <-done:
 		if r.err != nil || int64(len(r.data)) > limit {
 			return nil
 		}
 		return r.data
-	case <-timer.C:
+	case <-expired:
 	case <-ctx.Done():
 	}
 	return nil
@@ -435,9 +456,9 @@ func restFailure(body []byte, status int, key string) string {
 		if is.Message == nil || len(out.Issues) == 20 {
 			continue
 		}
-		one := issue{Message: redact(*is.Message, key)}
+		one := issue{Message: clip(redact(*is.Message, key), 200)}
 		if is.Path != nil {
-			one.Path = redact(*is.Path, key)
+			one.Path = clip(redact(*is.Path, key), 100)
 		}
 		out.Issues = append(out.Issues, one)
 	}
@@ -448,6 +469,88 @@ func restFailure(body []byte, status int, key string) string {
 		return plain
 	}
 	return strings.TrimSpace(buf.String())
+}
+
+func clip(text string, most int) string {
+	if r := []rune(text); len(r) > most {
+		return string(r[:most]) + "…"
+	}
+	return text
+}
+
+// wholeNumber reads a JSON number that is a whole number from 0 to the
+// largest 32-bit one, however it is spelled (320, 320.0, 3.2e2).
+func wholeNumber(raw json.RawMessage) (int64, bool) {
+	var n json.Number
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.UseNumber()
+	var v any
+	if dec.Decode(&v) != nil {
+		return 0, false
+	}
+	n, ok := v.(json.Number)
+	if !ok {
+		return 0, false
+	}
+	f, err := n.Float64()
+	if err != nil || f < 0 || f > math.MaxInt32 || f != math.Trunc(f) {
+		return 0, false
+	}
+	return int64(f), true
+}
+
+// errCarriesKey: the download's bytes contain the connection's key.
+var errCarriesKey = errors.New("the download contains the connection's key")
+
+// keyGuard passes a download through and stops it when the key shows up
+// in it: raw, or spelled as a JSON string would spell it. The key never
+// rests in a file the forwarder wrote. A match across two reads is found
+// in the tail kept from the read before.
+type keyGuard struct {
+	src      io.Reader
+	patterns [][]byte
+	tail     []byte
+	longest  int
+}
+
+func newKeyGuard(src io.Reader, key string) io.Reader {
+	if key == "" {
+		return src
+	}
+	g := &keyGuard{src: src}
+	add := func(p []byte) {
+		for _, have := range g.patterns {
+			if bytes.Equal(have, p) {
+				return
+			}
+		}
+		g.patterns = append(g.patterns, p)
+		g.longest = max(g.longest, len(p))
+	}
+	add([]byte(key))
+	if quoted, err := json.Marshal(key); err == nil {
+		add(quoted[1 : len(quoted)-1]) // HTML characters escaped
+	}
+	if quoted, err := marshalPlain(key); err == nil {
+		add(quoted[1 : len(quoted)-1])
+		add(bytes.ReplaceAll(quoted[1:len(quoted)-1], []byte("/"), []byte(`\/`)))
+	}
+	return g
+}
+
+func (g *keyGuard) Read(p []byte) (int, error) {
+	n, err := g.src.Read(p)
+	if n > 0 {
+		window := append(g.tail, p[:n]...) //nolint:gocritic // a new window per read, by design
+		for _, pattern := range g.patterns {
+			if bytes.Contains(window, pattern) {
+				return 0, errCarriesKey
+			}
+		}
+		keep := min(len(window), g.longest-1)
+		g.tail = append(g.tail[:0:0], window[len(window)-keep:]...)
+	}
+	return n, err
 }
 
 func (l *localTools) download(ctx context.Context, snap snapshot, args map[string]json.RawMessage) (string, json.RawMessage, error) {
@@ -463,15 +566,19 @@ func (l *localTools) download(ctx context.Context, snap snapshot, args map[strin
 		return "", nil, err
 	}
 	query := ""
-	if raw, ok := args["width"]; ok && !isNull(raw) {
-		if !widthRe.Match(bytes.TrimSpace(raw)) {
+	if raw, ok := args["width"]; ok {
+		width, ok := wholeNumber(raw)
+		if !ok {
 			return "", nil, failf("width must be a whole number of pixels, or 0 for the original image")
 		}
-		query = "?width=" + string(bytes.TrimSpace(raw))
+		query = fmt.Sprintf("?width=%d", width)
 	}
 	// the name is looked up first, so no unread download is held open
 	// meanwhile
-	stem, ext := l.objectName(ctx, snap, space, file)
+	stem, ext, err := l.objectName(ctx, snap, space, file)
+	if err != nil {
+		return "", nil, err
+	}
 	if ctx.Err() != nil {
 		return "", nil, ctx.Err()
 	}
@@ -496,9 +603,19 @@ func (l *localTools) download(ctx context.Context, snap snapshot, args map[strin
 	name := fileName(dispositionName(resp.Header.Get("Content-Disposition")), stem, ext, mediaType, fileID)
 	// the name ends up in the reply
 	name = strings.ReplaceAll(name, snap.key, "redacted")
-	saved, size, err := l.dir.Save(name, resp.Body)
+	saved, size, err := l.dir.Save(ctx, name, newKeyGuard(resp.Body, snap.key))
+	if errors.Is(err, errCarriesKey) {
+		l.s.log.printf("%s: the file contained the connection's key and was not saved", toolDownload)
+		return "", nil, failf("The file contains this connection's key and was not saved.")
+	}
 	if err != nil {
 		return "", nil, err
+	}
+	if !l.dir.Located() {
+		// the bytes are in the folder this server opened at its start; its
+		// path now names something else, so no path is given
+		return "", nil, failf("the file was saved as %s, but the folder %s was moved or replaced since this server started, "+
+			"so its path is not known. Ask the user where the folder is now, and to restart this app.", saved, l.dir.Path())
 	}
 	receipt, err := marshalPlain(struct {
 		Path      string `json:"path"`
@@ -526,21 +643,29 @@ var fileExtRe = regexp.MustCompile(`^[A-Za-z0-9]{1,16}$`)
 
 // objectName is the file object's name and extension: properties.name (a
 // stem) and properties.file_ext of its document. A name is a convenience:
-// any failure leaves it empty and the id will do.
-func (l *localTools) objectName(ctx context.Context, snap snapshot, space, file string) (stem, ext string) {
+// an ordinary failure leaves it empty and the id will do. A rejected key
+// or a refused connection ends the transfer here: the content request
+// would only send the bearer the same way again.
+func (l *localTools) objectName(ctx context.Context, snap snapshot, space, file string) (stem, ext string, err error) {
 	resp, err := l.request(ctx, http.MethodGet, snap, "/v2/spaces/"+space+"/objects/"+file, nil, nil)
+	if errors.Is(err, errRefused) {
+		return "", "", failf("%s", msgStart)
+	}
 	if err != nil {
-		return "", ""
+		return "", "", nil //nolint:nilerr // the name is optional
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return "", "", l.refusedStatus(ctx, snap, resp)
+	}
 	if resp.StatusCode != http.StatusOK {
-		return "", ""
+		return "", "", nil
 	}
 	var object struct {
 		Properties map[string]json.RawMessage `json:"properties"`
 	}
-	if json.Unmarshal(l.readBounded(ctx, resp.Body, maxObjectBytes), &object) != nil {
-		return "", ""
+	if json.Unmarshal(l.readBounded(ctx, resp.Body, maxObjectBytes, l.s.o.ErrorBodyWait), &object) != nil {
+		return "", "", nil
 	}
 	var name, fileExt string
 	if json.Unmarshal(object.Properties["name"], &name) == nil && strings.TrimSpace(name) != "" {
@@ -549,7 +674,7 @@ func (l *localTools) objectName(ctx context.Context, snap snapshot, space, file 
 	if json.Unmarshal(object.Properties["file_ext"], &fileExt) == nil && fileExtRe.MatchString(fileExt) {
 		ext = "." + fileExt
 	}
-	return stem, ext
+	return stem, ext, nil
 }
 
 // dispositionName is the file name of a Content-Disposition header, the
@@ -639,9 +764,17 @@ func (l *localTools) upload(ctx context.Context, snap snapshot, args map[string]
 	if err != nil {
 		return "", nil, err
 	}
+	// absent, or one of the two literals: a null must not turn a rehearsal
+	// into an upload
 	dryRun := false
-	if raw, ok := args["dry_run"]; ok && json.Unmarshal(raw, &dryRun) != nil {
-		return "", nil, failf("dry_run must be true or false")
+	if raw, ok := args["dry_run"]; ok {
+		switch string(bytes.TrimSpace(raw)) {
+		case "true":
+			dryRun = true
+		case "false":
+		default:
+			return "", nil, failf("dry_run must be true or false")
+		}
 	}
 	var path string
 	if json.Unmarshal(args["path"], &path) != nil {
@@ -692,15 +825,15 @@ func (l *localTools) upload(ctx context.Context, snap snapshot, args map[string]
 	// dry_run: true for a dry run. Anything else (a login page from a
 	// gateway, a receipt that breaks off) is no proof either way: the file
 	// may have been stored, so it is unconfirmed, not a failed transfer.
-	body := l.readBounded(ctx, resp.Body, maxReceiptBytes)
-	var receipt struct {
-		ID     string `json:"id"`
-		DryRun bool   `json:"dry_run"`
-	}
-	isObject := json.Unmarshal(body, &receipt) == nil && bytes.HasPrefix(bytes.TrimSpace(body), []byte("{"))
-	confirmed := isObject && resp.StatusCode == http.StatusCreated && receipt.ID != ""
+	// The receipt has the rest of the transfer's time to arrive. Its
+	// members are matched by their exact names.
+	body := l.readBounded(ctx, resp.Body, maxReceiptBytes, 0)
+	var receipt map[string]json.RawMessage
+	isObject := json.Unmarshal(body, &receipt) == nil && receipt != nil
+	var id string
+	confirmed := isObject && resp.StatusCode == http.StatusCreated && json.Unmarshal(receipt["id"], &id) == nil && id != ""
 	if dryRun {
-		confirmed = isObject && resp.StatusCode == http.StatusOK && receipt.DryRun
+		confirmed = isObject && resp.StatusCode == http.StatusOK && string(bytes.TrimSpace(receipt["dry_run"])) == "true"
 	}
 	if !confirmed {
 		return "", nil, failf("the upload outcome is unconfirmed: Anytype answered HTTP %d without its upload receipt. %s", resp.StatusCode, msgCheckSpace)

@@ -198,6 +198,11 @@ func TestLocalToolsListing(t *testing.T) {
 		})
 		names, _ := listedNames(t, h.call(listLine))
 		assert.Equal(t, []string{"upload_local_file"}, names)
+		// between the pages: the name heart has just listed is heart's
+		h.put("a.txt", []byte("x"))
+		g := h.tool("upload_local_file", map[string]any{"space_id": "s", "path": "a.txt"})
+		assert.Equal(t, "done", g.text(), "heart's own answer")
+		assert.Empty(t, h.rest())
 		names, _ = listedNames(t, h.call(`{"jsonrpc":"2.0","id":"l2","method":"tools/list","params":{"cursor":"p2"}}`))
 		assert.Equal(t, []string{"list_spaces", "download_file"}, names, "a name heart listed on an earlier page is heart's")
 	})
@@ -237,10 +242,13 @@ func TestLocalToolsListing(t *testing.T) {
 func TestTemporaryFilesFolder(t *testing.T) {
 	folder := func(h *harness) string {
 		_, raw := listedNames(t, h.call(listLine))
-		m := regexp.MustCompile(`Download a file's bytes into (\S+) on the computer`).FindStringSubmatch(string(raw[0]))
-		require.Len(t, m, 2, string(raw[0]))
-		var path string
-		require.NoError(t, json.Unmarshal([]byte(`"`+m[1]+`"`), &path))
+		var def struct {
+			Description string `json:"description"`
+		}
+		require.NoError(t, json.Unmarshal(raw[0], &def))
+		m := regexp.MustCompile(`Download a file's bytes into (.+) on the computer running`).FindStringSubmatch(def.Description)
+		require.Len(t, m, 2, def.Description)
+		path := m[1]
 		t.Cleanup(func() { _ = os.RemoveAll(path) })
 		return path
 	}
@@ -387,11 +395,17 @@ func TestDownloadFile(t *testing.T) {
 		g := h.tool("download_file", map[string]any{"space_id": "s", "file_id": "file-1", "width": 320})
 		require.False(t, g.isError(), g.text())
 		assert.Equal(t, "width=320", h.content().Query)
+		// the schema says integer: every spelling of one is taken
+		for spelled, sent := range map[string]string{"320.0": "width=320", "3.2e2": "width=320", "1000000": "width=1000000", "0": "width=0"} {
+			g := h.call(`{"jsonrpc":"2.0","id":"w","method":"tools/call","params":{"name":"download_file","arguments":{"space_id":"s","file_id":"file-1","width":` + spelled + `}}}`)
+			require.False(t, g.isError(), "%s: %s", spelled, g.text())
+			assert.Equal(t, sent, h.rest()[len(h.rest())-1].Query, spelled)
+		}
 		before := len(h.rest())
-		for _, width := range []any{-1, 1.5, "320", true} {
-			g := h.tool("download_file", map[string]any{"space_id": "s", "file_id": "file-1", "width": width})
-			assert.True(t, g.isError())
-			assert.Contains(t, g.text(), "width must be")
+		for _, width := range []string{"-1", "1.5", `"320"`, "true", "null", "1e99", "4294967296", "[1]"} {
+			g := h.call(`{"jsonrpc":"2.0","id":"w","method":"tools/call","params":{"name":"download_file","arguments":{"space_id":"s","file_id":"file-1","width":` + width + `}}}`)
+			assert.True(t, g.isError(), width)
+			assert.Contains(t, g.text(), "width must be", width)
 		}
 		assert.Len(t, h.rest(), before)
 	})
@@ -635,6 +649,8 @@ func TestDownloadFile(t *testing.T) {
 		assert.True(t, g.isError())
 		assert.Equal(t, msgRejected, g.text())
 		assert.Empty(t, h.entries())
+		require.Len(t, h.rest(), 1, "the rejected name lookup ends the transfer: no content request follows")
+		assert.Equal(t, "/v2/spaces/s/objects/file-1", h.rest()[0].Path)
 		g = h.tool("download_file", map[string]any{"space_id": "s", "file_id": "file-1"})
 		require.False(t, g.isError(), g.text())
 		assert.Equal(t, "Bearer "+next, h.rest()[len(h.rest())-1].Auth)
@@ -647,6 +663,116 @@ func TestDownloadFile(t *testing.T) {
 		assert.True(t, g.isError())
 		assert.Equal(t, msgStart, g.text())
 	})
+
+	t.Run("a file that contains the key is not saved", func(t *testing.T) {
+		h := fileTools(t)
+		h.heart.setHook(func(w http.ResponseWriter, r *http.Request, _ recorded) bool {
+			if !strings.HasSuffix(r.URL.Path, "/content") {
+				return false
+			}
+			// a gateway's diagnostic page that reflects the request, the
+			// key split over two writes
+			w.Header().Set("Content-Type", "text/plain")
+			_, _ = io.WriteString(w, strings.Repeat("x", 70<<10)+"Authorization: Bearer "+canaryKey[:9])
+			w.(http.Flusher).Flush()
+			time.Sleep(30 * time.Millisecond)
+			_, _ = io.WriteString(w, canaryKey[9:]+"\n")
+			return true
+		})
+		g := h.tool("download_file", map[string]any{"space_id": "s", "file_id": "f"})
+		assert.True(t, g.isError())
+		assert.Equal(t, "The file contains this connection's key and was not saved.", g.text())
+		assert.Empty(t, h.entries())
+		h.noSecret()
+	})
+
+	t.Run("a long error from Anytype still arrives as JSON", func(t *testing.T) {
+		h := fileTools(t)
+		h.heart.setHook(func(w http.ResponseWriter, r *http.Request, _ recorded) bool {
+			if !strings.HasSuffix(r.URL.Path, "/content") {
+				return false
+			}
+			issues := make([]map[string]any, 30)
+			for i := range issues {
+				issues[i] = map[string]any{"path": strings.Repeat("p", 500), "message": strings.Repeat("m", 500)}
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(map[string]any{"status": 400, "code": "validation", "message": strings.Repeat("long ", 300), "issues": issues})
+			return true
+		})
+		g := h.tool("download_file", map[string]any{"space_id": "s", "file_id": "f"})
+		assert.True(t, g.isError())
+		var e struct {
+			Code   string `json:"code"`
+			Issues []struct {
+				Path string `json:"path"`
+			} `json:"issues"`
+		}
+		require.NoError(t, json.Unmarshal([]byte(g.text()), &e), g.text())
+		assert.Equal(t, "validation", e.Code)
+		assert.Len(t, e.Issues, 20)
+		assert.Less(t, len(g.text()), 16<<10)
+	})
+
+	t.Run("stdin ending during a stalled download still removes the part file", func(t *testing.T) {
+		h := fileTools(t, withFiles(pdf))
+		started := make(chan struct{})
+		h.heart.setHook(func(w http.ResponseWriter, r *http.Request, _ recorded) bool {
+			if !strings.HasSuffix(r.URL.Path, "/content") {
+				return false
+			}
+			_, _ = io.WriteString(w, "%PDF")
+			w.(http.Flusher).Flush()
+			close(started)
+			<-r.Context().Done()
+			return true
+		})
+		h.send(namedCall(1, "download_file", map[string]any{"space_id": "s", "file_id": "file-1"}))
+		<-started
+		require.Eventually(t, func() bool { return len(h.entries()) == 1 }, 3*time.Second, 5*time.Millisecond)
+		require.NoError(t, h.in.Close())
+		assert.Equal(t, 1, h.waitExit(), "its reply was lost")
+		assert.Empty(t, h.entries())
+	})
+
+	t.Run("a folder that was moved gets no path in the receipt", func(t *testing.T) {
+		h := fileTools(t, withFiles(pdf))
+		moved := h.root + "-moved"
+		if err := os.Rename(h.root, moved); err != nil {
+			t.Skipf("an open folder can't be renamed here: %v", err)
+		}
+		require.NoError(t, os.Mkdir(h.root, 0o700))
+		g := h.tool("download_file", map[string]any{"space_id": "s", "file_id": "file-1"})
+		assert.True(t, g.isError())
+		assert.Contains(t, g.text(), "the file was saved as report.pdf, but the folder")
+		assert.Contains(t, g.text(), "was moved or replaced")
+		assert.Empty(t, h.entries(), "nothing went to the folder now at the path")
+		_, err := os.Stat(filepath.Join(moved, "report.pdf"))
+		require.NoError(t, err)
+	})
+}
+
+func TestKeyGuard(t *testing.T) {
+	const key = `k"ey/with<odd>&chars\1234567890`
+	plain, _ := json.Marshal(map[string]string{"a": key})
+	var loose bytes.Buffer
+	enc := json.NewEncoder(&loose)
+	enc.SetEscapeHTML(false)
+	_ = enc.Encode(map[string]string{"a": key})
+	slashed := bytes.ReplaceAll(loose.Bytes(), []byte("/"), []byte(`\/`))
+	for name, body := range map[string][]byte{"raw": []byte("xx" + key + "yy"), "JSON": plain, "JSON without HTML escapes": loose.Bytes(), "JSON with escaped slashes": slashed} {
+		// every way of cutting the body in two reads
+		for cut := 0; cut <= len(body); cut++ {
+			guard := newKeyGuard(io.MultiReader(bytes.NewReader(body[:cut]), bytes.NewReader(body[cut:])), key)
+			_, err := io.ReadAll(guard)
+			require.ErrorIs(t, err, errCarriesKey, "%s cut at %d", name, cut)
+		}
+	}
+	clean := bytes.Repeat([]byte(key[:len(key)-1]), 1000)
+	got, err := io.ReadAll(newKeyGuard(bytes.NewReader(clean), key))
+	require.NoError(t, err)
+	assert.Equal(t, clean, got, "what carries no key passes through unchanged")
 }
 
 var uuidRe = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
@@ -703,8 +829,14 @@ func TestUploadLocalFile(t *testing.T) {
 		assert.Equal(t, map[string]any{"dry_run": true}, g.structured(t))
 		assert.Equal(t, "/v2/spaces/space-1/files", h.rest()[0].Path)
 		assert.Equal(t, "dry_run=true", h.rest()[0].Query)
-		g = h.tool("upload_local_file", map[string]any{"space_id": "space-1", "path": "a.txt", "dry_run": "yes"})
-		assert.Contains(t, g.text(), "dry_run must be true or false")
+		// anything but the two literals is an error, never an upload: a
+		// client may spell an unset option as null
+		for _, value := range []string{`"yes"`, "null", "1", `"true"`, "[]"} {
+			g = h.call(`{"jsonrpc":"2.0","id":"d","method":"tools/call","params":{"name":"upload_local_file","arguments":{"space_id":"space-1","path":"a.txt","dry_run":` + value + `}}}`)
+			assert.True(t, g.isError(), value)
+			assert.Contains(t, g.text(), "dry_run must be true or false", value)
+		}
+		require.Len(t, h.rest(), 1, "none of them reached Anytype")
 		g = h.tool("upload_local_file", map[string]any{"space_id": "space-1", "path": "a.txt", "dry_run": false})
 		assert.Equal(t, "", h.rest()[1].Query)
 		assert.False(t, g.isError())
@@ -725,6 +857,7 @@ func TestUploadLocalFile(t *testing.T) {
 			"c:x.txt":                  "must be relative to",
 			"../outside.txt":           "is outside",
 			"sub/../../outside.txt":    "is outside",
+			"sub/missing/../x.txt":     "is outside",
 			"..":                       "is outside",
 			"nope.txt":                 "there is no file nope.txt in",
 			`..\outside.txt`:           "",
@@ -797,6 +930,10 @@ func TestUploadLocalFile(t *testing.T) {
 			"a 201 for a dry run":          {201, "application/json", `{"object":"file","id":"x"}`, true},
 			"a dry run without dry_run":    {200, "application/json", `{"ok":true}`, true},
 			"a 204":                        {204, "application/json", ``, false},
+			"an id under another name":     {201, "application/json", `{"ID":"x"}`, false},
+			"an id that is not a string":   {201, "application/json", `{"id":7}`, false},
+			"a dry run under another name": {200, "application/json", `{"DRY_RUN":true}`, true},
+			"a dry run that says false":    {200, "application/json", `{"dry_run":false}`, true},
 		} {
 			h := fileTools(t)
 			h.put("a.txt", []byte("x"))
@@ -841,6 +978,39 @@ func TestUploadLocalFile(t *testing.T) {
 		g := h.tool("upload_local_file", map[string]any{"space_id": "s", "path": "a.txt"})
 		assert.True(t, g.isError())
 		assert.Contains(t, g.text(), "upload outcome is unconfirmed: Anytype answered HTTP 201")
+	})
+
+	t.Run("a receipt that arrives slowly, within the transfer's time, is a success", func(t *testing.T) {
+		h := fileTools(t, withOptions(func(o *Options) { o.ErrorBodyWait = 50 * time.Millisecond }))
+		h.put("a.txt", []byte("x"))
+		h.heart.setHook(func(w http.ResponseWriter, r *http.Request, _ recorded) bool {
+			if !strings.HasPrefix(r.URL.Path, "/v2/") {
+				return false
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusCreated)
+			_, _ = io.WriteString(w, `{"object":"file",`)
+			w.(http.Flusher).Flush()
+			time.Sleep(400 * time.Millisecond)
+			_, _ = io.WriteString(w, `"id":"late"}`)
+			return true
+		})
+		g := h.tool("upload_local_file", map[string]any{"space_id": "s", "path": "a.txt"})
+		require.False(t, g.isError(), g.text())
+		assert.Equal(t, "late", g.structured(t)["id"])
+	})
+
+	t.Run("a file that also has a name elsewhere is not uploaded", func(t *testing.T) {
+		h := fileTools(t)
+		secret := filepath.Join(filepath.Dir(h.root), "secret.txt")
+		require.NoError(t, os.WriteFile(secret, []byte("not yours"), 0o600))
+		if err := os.Link(secret, filepath.Join(h.root, "innocent.txt")); err != nil {
+			t.Skipf("no hard links here: %v", err)
+		}
+		g := h.tool("upload_local_file", map[string]any{"space_id": "s", "path": "innocent.txt"})
+		assert.True(t, g.isError())
+		assert.Contains(t, g.text(), "more than one name")
+		assert.Empty(t, h.rest())
 	})
 
 	t.Run("a connection lost after the body was sent is unconfirmed, and the upload is not sent again", func(t *testing.T) {

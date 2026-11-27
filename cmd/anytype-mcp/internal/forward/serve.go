@@ -237,25 +237,7 @@ func Serve(ctx context.Context, o Options) int {
 	case <-readerDone:
 		// stdin ended: finish what was accepted, within the deadline
 		deadline, cancel = context.WithTimeout(context.Background(), o.ShutdownDeadline)
-		drained := make(chan struct{})
-		go func() {
-			s.accepted.Wait()
-			close(drained)
-		}()
-		select {
-		case <-drained:
-			if !s.flush(deadline) {
-				// replies were lost: this is not a clean exit
-				code = 1
-			}
-		case <-deadline.Done():
-			// their replies are lost: this is not a clean exit
-			log.printf("shutdown: requests still running at the deadline")
-			code = 1
-		case <-ctx.Done():
-		case <-s.broken:
-			code = 1
-		}
+		code = s.drain(ctx, deadline)
 	case <-ctx.Done():
 		deadline, cancel = context.WithTimeout(context.Background(), o.ShutdownDeadline)
 		log.printf("shutdown: signal")
@@ -298,6 +280,50 @@ func Serve(ctx context.Context, o Options) int {
 	case <-deadline.Done():
 	}
 	log.close(deadline)
+	return code
+}
+
+// drain finishes what was accepted before stdin ended, within the
+// deadline, and returns the exit code: 1 when replies were lost.
+func (s *server) drain(ctx, deadline context.Context) int {
+	o, log, code := s.o, s.log, 0
+	drained := make(chan struct{})
+	go func() {
+		s.accepted.Wait()
+		close(drained)
+	}()
+	// a file transfer still running near the deadline is stopped a
+	// little before it, so that it can remove its part file in time
+	reserve := time.NewTimer(o.ShutdownDeadline - o.ShutdownDeadline/5)
+	defer reserve.Stop()
+	early := make(chan struct{})
+	go func() {
+		select {
+		case <-reserve.C:
+			if s.local != nil && s.local.running.Load() > 0 {
+				close(early)
+			}
+		case <-drained:
+		case <-deadline.Done():
+		}
+	}()
+	select {
+	case <-early:
+		log.printf("shutdown: a file transfer is still running near the deadline")
+		code = 1
+	case <-drained:
+		if !s.flush(deadline) {
+			// replies were lost: this is not a clean exit
+			code = 1
+		}
+	case <-deadline.Done():
+		// their replies are lost: this is not a clean exit
+		log.printf("shutdown: requests still running at the deadline")
+		code = 1
+	case <-ctx.Done():
+	case <-s.broken:
+		code = 1
+	}
 	return code
 }
 

@@ -82,6 +82,21 @@ func TestServeFilesDir(t *testing.T) {
 		}
 	})
 
+	t.Run("the folder is never where the connection keys live, nor around it", func(t *testing.T) {
+		e := newEnv(t)
+		require.Equal(t, exitOK, e.set("absent", canary, "A", 1, "full").code)
+		for _, dir := range []string{e.home, filepath.Join(e.home, ".anytype"), e.items(), filepath.Join(e.home, ".anytype", "files"),
+			e.home + string(filepath.Separator) + "x" + string(filepath.Separator) + ".." + string(filepath.Separator) + "y"} {
+			r := e.run(initLine+"\n", "serve", "--connection", "conn-a", "--files-dir", dir)
+			assert.Equal(t, exitInvalidInput, r.code, dir)
+			assert.Regexp(t, `apart from Anytype's own folder|without ".."`, r.stderr, dir)
+			assert.Empty(t, r.stdout)
+		}
+		_, err := os.Stat(filepath.Join(e.home, ".anytype", "files"))
+		assert.True(t, os.IsNotExist(err) || err == nil)
+		assert.Len(t, e.holders(), 1, "the key is in its item and nowhere else")
+	})
+
 	t.Run("a missing folder is created private, with or without a connection", func(t *testing.T) {
 		e := newEnv(t)
 		dir := filepath.Join(e.home, "ai", "files")

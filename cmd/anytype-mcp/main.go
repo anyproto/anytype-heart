@@ -112,8 +112,14 @@ func serveCmd(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		if !filepath.IsAbs(*filesDir) {
 			return usageError(stderr, "--files-dir must be an absolute path")
 		}
+		// never Anytype's own folder, where the connection keys live, nor
+		// a folder around it (the home folder)
+		var avoid []string
+		if home, err := os.UserHomeDir(); err == nil && filepath.IsAbs(home) {
+			avoid = append(avoid, filepath.Join(home, ".anytype"))
+		}
 		var err error
-		if dir, err = files.Open(*filesDir); err != nil {
+		if dir, err = files.Open(*filesDir, avoid...); err != nil {
 			fmt.Fprintf(stderr, "anytype-mcp: --files-dir: %v\n", err)
 			return exitInvalidInput
 		}
