@@ -249,7 +249,7 @@ func (s *Service) createFromShortcut(ctx context.Context, spaceId string, fields
 		if !shortcutKeys[key] {
 			return nil, v2model.ValidationFailed("unknown field in create shortcut",
 				v2model.Issue{
-					Path:    "/" + key,
+					Path:    v2model.MemberPointer(key),
 					Message: fmt.Sprintf("unknown key %q — the shortcut accepts type, name, properties, markdown", key),
 				}.Hintf("for blocks, an icon or a cover, send the full document form; %s shows it", v2model.RefGetSchema("object")))
 		}

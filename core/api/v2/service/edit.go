@@ -576,7 +576,7 @@ func parseOpsEnvelope(body []byte, opNames []string, unknownKeyHint func(key str
 	for key := range fields {
 		if key != "ops" {
 			return nil, v2model.ValidationFailed("unknown field in PATCH body",
-				v2model.Issue{Path: "/" + key, Message: fmt.Sprintf("unknown key %q — the PATCH body carries only ops", key)}.WithHint(unknownKeyHint(key)))
+				v2model.Issue{Path: v2model.MemberPointer(key), Message: fmt.Sprintf("unknown key %q — the PATCH body carries only ops", key)}.WithHint(unknownKeyHint(key)))
 		}
 	}
 	var req v2PatchRequest

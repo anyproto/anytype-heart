@@ -536,7 +536,7 @@ func (s *Service) validateTypePropertyFormats(spaceId string, props []anyblockjs
 		if anyblockjson.FormatName(entry.Format) != tp.Format {
 			return v2model.ValidationFailed("property format conflict",
 				v2model.Issue{
-					Path: fmt.Sprintf("/type_properties/%d/format", i),
+					Path: fmt.Sprintf("/type_settings/property_definitions/%d/format", i),
 					Message: fmt.Sprintf("%q declares format %q but the existing property %q has format %q",
 						term, tp.Format, entry.Name, anyblockjson.FormatName(entry.Format)),
 					Hint: "omit format to use the existing property as it is, or create a new property under a different key",

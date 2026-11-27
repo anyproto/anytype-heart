@@ -263,10 +263,16 @@ func (s *Service) GetObject(ctx context.Context, spaceId, objectId string, q Obj
 	// C11 (M3): a read never fails on content the format can't represent —
 	// unmapped/over-deep blocks degrade to warnings that ride the envelope.
 	var warnings []v2model.Issue
+	spell := func(stored string) string { return stored }
+	if opts.Keys != nil {
+		spell = opts.Keys.PropertySlug
+	}
+	propertyKeys := sortedKeys(read.Snapshot.GetDetails().GetFields())
 	opts.OnWarning = func(iss anyblockjson.Issue) {
 		if readWarningIsNoise(iss) {
 			return
 		}
+		iss.Path = readWarningPath(iss.Path, propertyKeys, spell)
 		warnings = append(warnings, readWarningIssue(iss))
 	}
 

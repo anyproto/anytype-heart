@@ -391,7 +391,7 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 
 		apiErr := v2ErrWithIssue(t, err)
 		require.NotEmpty(t, apiErr.Issues)
-		assert.Equal(t, "/type_properties/0/format", apiErr.Issues[0].Path)
+		assert.Equal(t, "/type_settings/property_definitions/0/format", apiErr.Issues[0].Path)
 		assert.Contains(t, apiErr.Issues[0].Message, `"select"`)
 	})
 
@@ -403,7 +403,7 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 
 		apiErr := v2ErrWithIssue(t, err)
 		require.NotEmpty(t, apiErr.Issues)
-		assert.Equal(t, "/type_properties/0/format", apiErr.Issues[0].Path)
+		assert.Equal(t, "/type_settings/property_definitions/0/format", apiErr.Issues[0].Path)
 		assert.Contains(t, apiErr.Issues[0].Message, `"date"`)
 	})
 
@@ -437,7 +437,7 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 
 		apiErr := v2ErrWithIssue(t, err)
 		require.NotEmpty(t, apiErr.Issues)
-		assert.Equal(t, "/type_properties/0/format", apiErr.Issues[0].Path)
+		assert.Equal(t, "/type_settings/property_definitions/0/format", apiErr.Issues[0].Path)
 	})
 
 	t.Run("a name-only entry declaring a format the stored property lacks is refused on PATCH", func(t *testing.T) {
@@ -462,7 +462,7 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 		apiErr := v2ErrWithIssue(t, err)
 		assert.Equal(t, "property format conflict", apiErr.Message)
 		require.NotEmpty(t, apiErr.Issues)
-		assert.Equal(t, "/type_properties/0/format", apiErr.Issues[0].Path)
+		assert.Equal(t, "/type_settings/property_definitions/0/format", apiErr.Issues[0].Path)
 		assert.Contains(t, apiErr.Issues[0].Message, `"Severity" declares format "text"`)
 		assert.Contains(t, apiErr.Issues[0].Message, `has format "select"`)
 	})

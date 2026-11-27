@@ -53,7 +53,7 @@ func decodeSearchRequest(c *gin.Context) (v2model.SearchRequest, bool) {
 	if err := dec.Decode(&req); err != nil {
 		issue := v2model.Issue{Message: err.Error(), Hint: "the search body takes query, type, filter, filters, sorts, fields"}
 		if field, ok := unknownFieldName(err); ok {
-			issue.Path = "/" + field
+			issue.Path = v2model.MemberPointer(field)
 			if field == "limit" || field == "offset" {
 				issue = issue.Hintf("pagination is a query parameter, not a body field — resend with %s", v2model.Resend(field, "25"))
 			}

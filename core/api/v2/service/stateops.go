@@ -1211,7 +1211,9 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 		// unset is a list, so its spellings are kept per entry: two entries
 		// may spell one property two ways
 		spelling := spellings.unset[i]
-		path := opPath + ".unset." + spelling
+		// unset is an array: its entries are addressed by index, and the
+		// message carries the spelling
+		path := fmt.Sprintf("%s.unset[%d]", opPath, i)
 		if v2OutputOnlyPropertyKeys(key) {
 			issues = append(issues, v2model.Issue{Path: path,
 				Message: fmt.Sprintf("%q is output-only and cannot be unset", spelling)})
@@ -1548,7 +1550,7 @@ func (a *v2StateApplier) canonicalizeSetPropertyKeys(op *opSetProperties, opPath
 	}
 	spellings.unset = make([]string, len(op.Unset))
 	for i, key := range op.Unset {
-		canonical, err := canon(key, opPath+".unset."+key)
+		canonical, err := canon(key, fmt.Sprintf("%s.unset[%d]", opPath, i))
 		if err != nil {
 			return spellings, err
 		}

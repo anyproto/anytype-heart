@@ -875,18 +875,11 @@ func (s *Service) requireLiveType(spaceId, input, path string, v errKeys) (typeE
 	return entry, nil
 }
 
-// jsonPointerToken escapes one member name for a JSON Pointer (RFC 6901): a
-// display name such as "wins/losses" is ONE member, and appended raw it would
-// address two nested ones.
-func jsonPointerToken(name string) string {
-	return strings.NewReplacer("~", "~0", "/", "~1").Replace(name)
-}
-
 // propertiesPointer is the pointer to one member of a body's `properties`
 // map, by the spelling the caller wrote it under. Every refusal addressed at
 // such a member builds its path here, so no site appends a name raw.
 func propertiesPointer(name string) string {
-	return "/properties/" + jsonPointerToken(name)
+	return "/properties/" + v2model.PointerToken(name)
 }
 
 // slugHolder names the existing holder of a proposed api key — the material

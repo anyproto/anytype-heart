@@ -192,7 +192,7 @@ func (s *Service) updateTypeOps(ctx context.Context, spaceId string, typeObject 
 		return nil, err
 	}
 	if err := s.guardDeclaredOptionsAt(spaceId, optionDefs,
-		func(i int) string { return optionPaths[i] + ".options" },
+		func(i int) string { return optionPaths[i] + "/options" },
 		func(i int) string { return optionSpellings[i] }, createMissingOptions); err != nil {
 		return nil, err
 	}
@@ -208,7 +208,7 @@ func (s *Service) updateTypeOps(ctx context.Context, spaceId string, typeObject 
 		return nil, err
 	}
 	if err := s.applyDeclaredOptionsAt(optionDefs, resolvers,
-		func(i int) string { return optionPaths[i] + ".options" }); err != nil {
+		func(i int) string { return optionPaths[i] + "/options" }); err != nil {
 		return nil, err
 	}
 
@@ -339,11 +339,11 @@ func (s *Service) planTypeOps(spaceId, typeId string, ops []json.RawMessage, ent
 			plan.viewPaths = append(plan.viewPaths, opPath)
 		case "":
 			err = v2model.ValidationFailed("an op must name itself",
-				v2model.Issue{Path: opPath + ".op", Message: "missing op",
+				v2model.Issue{Path: opPath + "/op", Message: "missing op",
 					Hint: "allowed ops: " + strings.Join(v2TypeOpNames, ", ")})
 		default:
 			err = v2model.ValidationFailed(fmt.Sprintf("unknown op %q on a type", probe.Op),
-				v2model.Issue{Path: opPath + ".op",
+				v2model.Issue{Path: opPath + "/op",
 					Message: fmt.Sprintf("a type takes %s", strings.Join(v2TypeOpNames, ", ")),
 				}.Hintf("blocks, views and property values are edited on the object surface through %s", v2model.NewRef(v2model.OpPatchObject, "space_id", spaceId)))
 		}
@@ -386,7 +386,7 @@ func (s *Service) planAddProperty(plan *typeOpsPlan, raw json.RawMessage, opPath
 	}
 	if op.Property == "" {
 		return v2model.ValidationFailed("add_property needs a property",
-			v2model.Issue{Path: opPath + ".property",
+			v2model.Issue{Path: opPath + "/property",
 				Message: "name the property by its api key, or by its display name to create it"})
 	}
 	place := typePlacement{after: op.After, before: op.Before, position: op.Position}
@@ -400,11 +400,11 @@ func (s *Service) planAddProperty(plan *typeOpsPlan, raw json.RawMessage, opPath
 
 	entry, resolved, ambiguous := s.resolvePropertyInputIn(op.Property, entries, plan.scope())
 	if len(ambiguous) > 0 {
-		return ambiguousKeyError(v.propertyWord(), op.Property, opPath+".property", ambiguous)
+		return ambiguousKeyError(v.propertyWord(), op.Property, opPath+"/property", ambiguous)
 	}
 	if resolved && hiddenInternalProperty(entry.Key) && (entry.Id == "" || plan.findById(entry.Id) == nil) {
 		return v2model.ValidationFailed("internal property",
-			v2model.Issue{Path: opPath + ".property",
+			v2model.Issue{Path: opPath + "/property",
 				Message: fmt.Sprintf("%s is an internal property the app maintains on its own; a type does not list it",
 					internalPropertyTerm(op.Property, entry.Key)),
 				Hint: "to add a property of your own, give it a name no internal property uses"})
@@ -412,7 +412,7 @@ func (s *Service) planAddProperty(plan *typeOpsPlan, raw json.RawMessage, opPath
 	declared, formatKnown := anyblockjson.FormatByName(op.Format)
 	if op.Format != "" && !formatKnown {
 		return v2model.ValidationFailed("unknown property format",
-			v2model.Issue{Path: opPath + ".format",
+			v2model.Issue{Path: opPath + "/format",
 				Message: fmt.Sprintf("%q is not a property format", op.Format),
 			}.Hintf("formats are listed on %s", v2model.RefGetSchema("property")))
 	}
@@ -436,7 +436,7 @@ func (s *Service) planAddProperty(plan *typeOpsPlan, raw json.RawMessage, opPath
 	// refuses the same request one door over (validateTypePropertyFormats).
 	if resolved && op.Format != "" && entry.Format != declared {
 		return v2model.ValidationFailed("property format conflict",
-			v2model.Issue{Path: opPath + ".format",
+			v2model.Issue{Path: opPath + "/format",
 				Message: fmt.Sprintf("%q already exists with format %q, and this op declares %q",
 					op.Property, anyblockjson.FormatName(entry.Format), op.Format),
 				Hint: "omit format to use the property as it is"})
@@ -458,7 +458,7 @@ func (s *Service) planAddProperty(plan *typeOpsPlan, raw json.RawMessage, opPath
 		// caller's own sequence.
 		if pending == nil && op.Format == "" {
 			return v2model.ValidationFailed("format is required to create a property",
-				v2model.Issue{Path: opPath + ".format",
+				v2model.Issue{Path: opPath + "/format",
 					Message: fmt.Sprintf("no property in this space answers to %q, so this op would create one", op.Property),
 				}.Hintf("give format, or address an existing property by the key %s lists", v2model.RefListProperties(plan.spaceId)))
 		}
@@ -474,7 +474,7 @@ func (s *Service) planAddProperty(plan *typeOpsPlan, raw json.RawMessage, opPath
 		minted := plan.mintFormatOf(pending)
 		if op.Format != "" && minted != "" && op.Format != minted {
 			return v2model.ValidationFailed("property format conflict",
-				v2model.Issue{Path: opPath + ".format",
+				v2model.Issue{Path: opPath + "/format",
 					Message: fmt.Sprintf("this batch is creating %q as %q, and this op declares %q",
 						op.Property, minted, op.Format),
 					Hint: "state one format for a property the batch creates, or omit it here"})
@@ -505,7 +505,7 @@ func (s *Service) planAddProperty(plan *typeOpsPlan, raw json.RawMessage, opPath
 			// request make a change this API cannot undo.
 			if (target.section == "file" || plan.fileSectioned[op.Property] || plan.fileSectioned[identity]) && section != "file" {
 				return v2model.ValidationFailed("this property is a file field",
-					v2model.Issue{Path: opPath + ".section",
+					v2model.Issue{Path: opPath + "/section",
 						Message: fmt.Sprintf("%q sits in the file section, which this channel cannot write", op.Property),
 						Hint:    "omit section to leave it there"})
 			}
@@ -531,7 +531,7 @@ func (s *Service) planAddProperty(plan *typeOpsPlan, raw json.RawMessage, opPath
 	// key the same response reports under `created`.
 	if sectionStated && section != "file" && (plan.fileSectioned[op.Property] || plan.fileSectioned[identity]) {
 		return v2model.ValidationFailed("this property is a file field",
-			v2model.Issue{Path: opPath + ".section",
+			v2model.Issue{Path: opPath + "/section",
 				Message: fmt.Sprintf("%q sits in the file section, which this channel cannot write", op.Property),
 				Hint:    "omit section to leave it there"})
 	}
@@ -573,7 +573,7 @@ func (s *Service) planRemoveProperty(plan *typeOpsPlan, raw json.RawMessage, opP
 	if err := decodeStrictOp(raw, "remove_property", opPath, &op); err != nil {
 		return err
 	}
-	target, err := s.targetListEntry(plan, op.Property, opPath, entries, v)
+	target, err := s.targetListEntry(plan, op.Property, opPath+"/property", entries, v)
 	if err != nil {
 		return err
 	}
@@ -592,7 +592,7 @@ func (s *Service) planMoveProperty(plan *typeOpsPlan, raw json.RawMessage, opPat
 	if err := place.validate(opPath, true); err != nil {
 		return err
 	}
-	target, err := s.targetListEntry(plan, op.Property, opPath, entries, v)
+	target, err := s.targetListEntry(plan, op.Property, opPath+"/property", entries, v)
 	if err != nil {
 		return err
 	}
@@ -603,14 +603,14 @@ func (s *Service) planMoveProperty(plan *typeOpsPlan, raw json.RawMessage, opPat
 // A term that names no property at all and a term that names one this type
 // does not list are different mistakes, and each gets its own refusal:
 // a caller told "not listed" about a typo would go looking at the type.
-func (s *Service) targetListEntry(plan *typeOpsPlan, term, opPath string, entries []propertyEntry, v errKeys) (*typeListEntry, error) {
+func (s *Service) targetListEntry(plan *typeOpsPlan, term, termPath string, entries []propertyEntry, v errKeys) (*typeListEntry, error) {
 	if term == "" {
 		return nil, v2model.ValidationFailed("this op needs a property",
-			v2model.Issue{Path: opPath + ".property", Message: "name the property this op applies to"})
+			v2model.Issue{Path: termPath, Message: "name the property this op applies to"})
 	}
 	entry, resolved, ambiguous := s.resolvePropertyInputIn(term, entries, plan.scope())
 	if len(ambiguous) > 0 {
-		return nil, ambiguousKeyError(v.propertyWord(), term, opPath+".property", ambiguous)
+		return nil, ambiguousKeyError(v.propertyWord(), term, termPath, ambiguous)
 	}
 	if resolved && entry.Id != "" {
 		if target := plan.findById(entry.Id); target != nil {
@@ -626,13 +626,13 @@ func (s *Service) targetListEntry(plan *typeOpsPlan, term, opPath string, entrie
 	listed := plan.spellings()
 	if !resolved || entry.Id == "" {
 		return nil, v2model.ValidationFailed(fmt.Sprintf("unknown %s %q", v.propertyWord(), term),
-			v2model.Issue{Path: opPath + ".property",
+			v2model.Issue{Path: termPath,
 				Message: fmt.Sprintf("no property in this space answers to %q", term),
 			}.Hintf("%s lists them", v2model.RefListProperties(plan.spaceId)))
 	}
 	return nil, v2model.ValidationFailed(
 		fmt.Sprintf("this type does not list %q", term),
-		v2model.Issue{Path: opPath + ".property",
+		v2model.Issue{Path: termPath,
 			Message: fmt.Sprintf("the property exists in the space, and this type's fields are: %s", listKeys(listed)),
 			Hint:    "add_property puts it on the type"})
 }
@@ -666,7 +666,7 @@ func (p typePlacement) validate(opPath string, required bool) error {
 	}
 	if p.position != "" && p.position != "first" && p.position != "last" {
 		return v2model.ValidationFailed("unknown position",
-			v2model.Issue{Path: opPath + ".position",
+			v2model.Issue{Path: opPath + "/position",
 				Message: fmt.Sprintf("%q is not a position", p.position),
 				Hint:    `position is "first" or "last"`})
 	}
@@ -687,7 +687,7 @@ func typeOpSection(raw json.RawMessage, opPath string) (section string, stated b
 	var name string
 	if jsonErr := json.Unmarshal(raw, &name); jsonErr != nil {
 		return "", false, v2model.ValidationFailed("section is a string or null",
-			v2model.Issue{Path: opPath + ".section", Message: jsonErr.Error()})
+			v2model.Issue{Path: opPath + "/section", Message: jsonErr.Error()})
 	}
 	for _, allowed := range v2TypeAuthorableSections {
 		if name == allowed {
@@ -695,7 +695,7 @@ func typeOpSection(raw json.RawMessage, opPath string) (section string, stated b
 		}
 	}
 	return "", false, v2model.ValidationFailed("unknown section",
-		v2model.Issue{Path: opPath + ".section",
+		v2model.Issue{Path: opPath + "/section",
 			Message: fmt.Sprintf("%q is not a section this channel writes", name),
 			Hint:    "use " + strings.Join(v2TypeAuthorableSections, " or ") + ", or null for the plain field list"})
 }
@@ -927,11 +927,13 @@ func (p *typeOpsPlan) place(target *typeListEntry, place typePlacement, opPath s
 	}
 
 	ref := place.after
-	field := ".after"
+	field := "/after"
 	if ref == "" {
-		ref, field = place.before, ".before"
+		ref, field = place.before, "/before"
 	}
-	anchor, err := s.targetListEntry(p, ref, opPath, entries, v)
+	// an anchor that resolves to nothing is the anchor field's fault, not
+	// the property the op moves
+	anchor, err := s.targetListEntry(p, ref, opPath+field, entries, v)
 	if err != nil {
 		return err
 	}
@@ -1085,7 +1087,7 @@ func (p *typeOpsPlan) mint(resolvers *creatingResolvers) error {
 		id, ok := resolvers.PropertyId(p.mintDefs[i])
 		if err := resolvers.err(); err != nil {
 			return v2model.ValidationFailed(err.Error(),
-				v2model.Issue{Path: p.mintPath[i] + ".property", Message: err.Error()})
+				v2model.Issue{Path: p.mintPath[i] + "/property", Message: err.Error()})
 		}
 		if ok {
 			member.id, member.minting = id, false
@@ -1114,7 +1116,7 @@ func typeOpsOptionBudget(defs []anyblockjson.TypeProperty, paths []string) error
 		if len(def.Options) > maxV2PropertyOptions {
 			return v2model.ValidationFailed("too many options",
 				v2model.Issue{
-					Path:    paths[i] + ".options",
+					Path:    paths[i] + "/options",
 					Message: fmt.Sprintf("%d options — the cap is %d (the advertised maxItems)", len(def.Options), maxV2PropertyOptions),
 				})
 		}

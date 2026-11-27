@@ -113,7 +113,7 @@ func TestV2TypeOpsOptionRefusalsNameTheOpsProperty(t *testing.T) {
 		options := v2model.RefListPropertyOptions(testSpaceId, "harvest_stage")
 		resend := v2model.Resend("create_missing_options", "true")
 		want := v2model.Issue{
-			Path:    "/ops/0.options",
+			Path:    "/ops/0/options",
 			Message: `property "harvest_stage" has no option named "Late", and this request did not ask to create one`,
 			Hint:    "check the spelling against " + options.String() + ", or resend with " + resend.String() + " to create it",
 			SeeAlso: []v2model.Ref{options, resend},
@@ -134,7 +134,7 @@ func TestV2TypeOpsOptionRefusalsNameTheOpsProperty(t *testing.T) {
 		// given: water_needs is long text, stored under a bson id
 		fx := newTypeOpsFixture(t)
 		want := v2model.Issue{
-			Path: "/ops/0.options",
+			Path: "/ops/0/options",
 			Message: `options apply to select and multi_select properties, and "water_needs" is ` +
 				anyblockjson.FormatName(model.RelationFormat_longtext),
 		}

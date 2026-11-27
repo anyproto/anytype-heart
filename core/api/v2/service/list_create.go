@@ -197,6 +197,15 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 	if err != nil {
 		return nil, err
 	}
+	if fromCompact {
+		// the caller wrote one string; /filters/<i>/... is the server's own
+		// parse of it, not a member the request has
+		for i := range referenced {
+			if referenced[i].path == "/filters" || strings.HasPrefix(referenced[i].path, "/filters/") {
+				referenced[i].path = "/filter"
+			}
+		}
+	}
 	if err := s.validateViewKeys(ctx, spaceId, typeId, callerType, referenced); err != nil {
 		return nil, err
 	}
@@ -441,7 +450,7 @@ func collectViewPropertyKeys(req v2model.CreateQueryRequest, canon func(string) 
 		for i, view := range views {
 			prefix := fmt.Sprintf("/views/%d", i)
 			if view.GroupBy != "" {
-				refs = append(refs, viewKeyRef{key: canon(view.GroupBy), spelled: view.GroupBy, path: prefix + "/groupBy"})
+				refs = append(refs, viewKeyRef{key: canon(view.GroupBy), spelled: view.GroupBy, path: prefix + "/group_by"})
 			}
 			for j, sort := range view.Sorts {
 				if sort.Property != "" {

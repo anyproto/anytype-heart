@@ -143,7 +143,7 @@ func TestSetPropertiesRefusalsSpellTheServedKey(t *testing.T) {
 			name:   "unset of an output-only built-in, by slug",
 			op:     `{"op":"set_properties","unset":["created_date"]}`,
 			stored: "createdDate",
-			want: v2model.Issue{Path: "ops[0].unset.created_date",
+			want: v2model.Issue{Path: "ops[0].unset[0]",
 				Message: `"created_date" is output-only and cannot be unset`},
 		},
 		{
@@ -151,7 +151,7 @@ func TestSetPropertiesRefusalsSpellTheServedKey(t *testing.T) {
 			names:  true,
 			op:     `{"op":"set_properties","unset":["Creation date"]}`,
 			stored: "createdDate",
-			want: v2model.Issue{Path: "ops[0].unset.Creation date",
+			want: v2model.Issue{Path: "ops[0].unset[0]",
 				Message: `"Creation date" is output-only and cannot be unset`},
 		},
 	} {
@@ -205,7 +205,7 @@ func TestSetPropertiesRefusalsKeepEachFieldsSpelling(t *testing.T) {
 			op:   `{"op":"set_properties","set":{"created_date":1},"unset":["Creation date"]}`,
 			want: []v2model.Issue{
 				{Path: "ops[0].set.created_date", Message: `"created_date" is output-only — export writes it, writes must not`},
-				{Path: "ops[0].unset.Creation date", Message: `"Creation date" is output-only and cannot be unset`},
+				{Path: "ops[0].unset[0]", Message: `"Creation date" is output-only and cannot be unset`},
 			},
 		},
 		{
@@ -236,7 +236,7 @@ func TestSetPropertiesRefusalsKeepEachFieldsSpelling(t *testing.T) {
 			name: "the envelope type by its display name, unset",
 			op:   `{"op":"set_properties","unset":["Object type"]}`,
 			want: []v2model.Issue{
-				{Path: "ops[0].unset.Object type", Message: `"Object type" is not a property and cannot be unset — an object always has one`},
+				{Path: "ops[0].unset[0]", Message: `"Object type" is not a property and cannot be unset — an object always has one`},
 			},
 		},
 	} {
