@@ -1,4 +1,4 @@
-//go:build integration
+//go:build integration && !windows
 
 package integration
 
@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -18,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -59,9 +61,34 @@ type client struct {
 	nextID int
 }
 
-func startForwarder(t *testing.T, bin, dir, connection string) *client {
-	cmd := exec.Command(bin, "serve", "--connection", connection, "--store-dir", dir, "--lock-dir", dir)
-	cmd.Env = []string{"HOME=" + t.TempDir()}
+// childEnv is a child's whole environment: a scratch home and nothing
+// from this process.
+func childEnv(home string) []string { return []string{"HOME=" + home, "USERPROFILE=" + home} }
+
+// TestMain is the scratch guard: HOME points at a fresh temp folder before
+// any test runs, so nothing here can reach the developer's item store.
+// The go tool's own folders are pinned first; they default to the home.
+func TestMain(m *testing.M) {
+	for _, name := range []string{"GOCACHE", "GOMODCACHE", "GOPATH", "GOFLAGS", "GOPROXY", "GOPRIVATE", "GOTOOLCHAIN"} {
+		if out, err := exec.Command("go", "env", name).Output(); err == nil {
+			_ = os.Setenv(name, strings.TrimSpace(string(out)))
+		}
+	}
+	scratch, err := os.MkdirTemp("", "anytype-mcp-home-")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "scratch home:", err)
+		os.Exit(1)
+	}
+	_ = os.Setenv("HOME", scratch)
+	_ = os.Setenv("USERPROFILE", scratch)
+	code := m.Run()
+	_ = os.RemoveAll(scratch)
+	os.Exit(code)
+}
+
+func startForwarder(t *testing.T, bin, home, connection string) *client {
+	cmd := exec.Command(bin, "serve", "--connection", connection)
+	cmd.Env = childEnv(home)
 	stdin, err := cmd.StdinPipe()
 	require.NoError(t, err)
 	out, err := cmd.StdoutPipe()
@@ -100,20 +127,29 @@ func (c *client) notify(method string) {
 func (c *client) request(method string, params any) rpcReply {
 	c.t.Helper()
 	c.nextID++
-	msg := map[string]any{"jsonrpc": "2.0", "id": c.nextID, "method": method}
+	return c.requestAs(strconv.Itoa(c.nextID), method, params)
+}
+
+// requestAs sends a request under a raw JSON id and requires the reply to
+// carry exactly those bytes.
+func (c *client) requestAs(id, method string, params any) rpcReply {
+	c.t.Helper()
+	msg := map[string]any{"jsonrpc": "2.0", "id": json.RawMessage(id), "method": method}
 	if params != nil {
 		msg["params"] = params
 	}
-	line, err := json.Marshal(msg)
-	require.NoError(c.t, err)
-	_, err = c.stdin.Write(append(line, '\n'))
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	require.NoError(c.t, enc.Encode(msg))
+	_, err := c.stdin.Write(buf.Bytes())
 	require.NoError(c.t, err)
 	select {
 	case got, ok := <-c.lines:
 		require.True(c.t, ok, "the forwarder closed stdout; stderr:\n%s", c.stderr.String())
 		var r rpcReply
 		require.NoError(c.t, json.Unmarshal([]byte(got), &r), "stdout line: %s", got)
-		require.Equal(c.t, strconv.Itoa(c.nextID), string(r.ID), "one reply, with this request's id")
+		require.Equal(c.t, id, string(r.ID), "one reply, with this request's id byte for byte")
 		return r
 	case <-time.After(90 * time.Second):
 		c.t.Fatalf("no reply to %s; stderr:\n%s", method, c.stderr.String())
@@ -218,14 +254,14 @@ var initParams = map[string]any{
 
 func buildForwarder(t *testing.T) string {
 	bin := filepath.Join(t.TempDir(), "anytype-mcp-test")
-	out, err := exec.Command("go", "build", "-tags", "teststore", "-o", bin, "..").CombinedOutput()
+	out, err := exec.Command("go", "build", "-o", bin, "..").CombinedOutput()
 	require.NoError(t, err, string(out))
 	return bin
 }
 
-func runVerb(t *testing.T, bin, stdin string, args ...string) (map[string]any, int) {
+func runVerb(t *testing.T, bin, home, stdin string, args ...string) (map[string]any, int) {
 	cmd := exec.Command(bin, args...)
-	cmd.Env = []string{"HOME=" + t.TempDir()}
+	cmd.Env = childEnv(home)
 	cmd.Stdin = strings.NewReader(stdin)
 	out, err := cmd.Output()
 	code := 0
@@ -262,13 +298,17 @@ func TestForwarderAgainstHeart(t *testing.T) {
 	require.NotEqual(t, 31009, port)
 
 	bin := buildForwarder(t)
+	// the item store lives in a scratch home; the children get no other
+	// environment and no flags
 	store := t.TempDir()
-	stamps := map[string]string{}
-	for _, tier := range []string{"small", "large", "full"} {
+	set := func(connection, tier string, port int) string {
 		payload, _ := json.Marshal(map[string]any{"key": heart.APIKey, "account": heart.AccountId, "port": port, "tier": tier})
-		m, code := runVerb(t, bin, string(payload)+"\n", "key", "set", "--connection", "it-"+tier, "--expect", "absent", "--store-dir", store, "--lock-dir", store)
+		m, code := runVerb(t, bin, store, string(payload)+"\n", "key", "set", "--connection", connection, "--expect", "absent")
 		require.Equal(t, 0, code, "key set: %v", m)
-		stamps[tier] = fmt.Sprintf("%s@%d", m["fingerprint"], int64(m["rev"].(float64)))
+		return fmt.Sprintf("%s@%d", m["fingerprint"], int64(m["rev"].(float64)))
+	}
+	for _, tier := range []string{"small", "large", "full"} {
+		set("it-"+tier, tier, port)
 	}
 
 	var outputs []*client
@@ -323,15 +363,40 @@ func TestForwarderAgainstHeart(t *testing.T) {
 		})
 	}
 
-	t.Run("heart still accepts a retargeted key, and the running forwarder keeps working", func(t *testing.T) {
+	t.Run("an id with HTML characters comes back as this request's result", func(t *testing.T) {
+		// heart echoes the id with & < > escaped; it is still this reply
 		c := startForwarder(t, bin, store, "it-full")
 		outputs = append(outputs, c)
 		require.Nil(t, c.request("initialize", initParams).Error)
-		m, code := runVerb(t, bin, "", "key", "retarget", "--connection", "it-full", "--expect", stamps["full"], "--account", heart.AccountId,
-			"--port", strconv.Itoa(port), "--tier", "full", "--store-dir", store, "--lock-dir", store)
-		require.Equal(t, 0, code, "%v", m)
-		stamps["full"] = fmt.Sprintf("%s@%d", m["fingerprint"], int64(m["rev"].(float64)))
+		r := c.requestAs(`"a&b<c>"`, "tools/call", map[string]any{"name": "list_spaces", "arguments": map[string]any{}})
+		require.Nil(t, r.Error, "%+v", r.Error)
+		var res toolResult
+		require.NoError(t, json.Unmarshal(r.Result, &res))
+		assert.False(t, res.IsError, res.text())
+		assert.Contains(t, res.text(), `"data"`)
+		assert.Equal(t, 0, c.close())
+	})
+
+	t.Run("a running forwarder follows a retarget: the old port dies, the next request succeeds", func(t *testing.T) {
+		// the item first names a loopback relay to heart, so the port the
+		// child starts on can be taken away
+		relay := newRelay(t, port)
+		stamp := set("it-relay", "full", relay.port)
+		c := startForwarder(t, bin, store, "it-relay")
+		outputs = append(outputs, c)
+		require.Nil(t, c.request("initialize", initParams).Error)
 		require.Nil(t, c.request("tools/list", nil).Error)
+		require.NotZero(t, relay.accepted.Load(), "the child really went through the relay")
+
+		m, code := runVerb(t, bin, store, "", "key", "retarget", "--connection", "it-relay", "--expect", stamp,
+			"--account", heart.AccountId, "--port", strconv.Itoa(port), "--tier", "full")
+		require.Equal(t, 0, code, "%v", m)
+		relay.close()
+		time.Sleep(300 * time.Millisecond) // the child's idle connection notices the close
+
+		// the same child: refused on the old port, re-reads the item, retries on heart's
+		r := c.request("tools/list", nil)
+		require.Nil(t, r.Error, "%+v", r.Error)
 		assert.Equal(t, 0, c.close())
 	})
 
@@ -409,4 +474,49 @@ func readAndWrite(t *testing.T, c *client, tier string, names map[string]bool) {
 		found := c.tool(list, listArgs)
 		return !found.IsError && strings.Contains(found.text(), name)
 	}, 30*time.Second, 500*time.Millisecond, "the write is readable")
+}
+
+// relay is a loopback TCP relay to heart: a port a test can close.
+type relay struct {
+	ln       net.Listener
+	port     int
+	accepted atomic.Int32
+	mu       sync.Mutex
+	conns    []net.Conn
+}
+
+func newRelay(t *testing.T, target int) *relay {
+	ln, err := net.Listen("tcp4", "127.0.0.1:0")
+	require.NoError(t, err)
+	r := &relay{ln: ln, port: ln.Addr().(*net.TCPAddr).Port}
+	t.Cleanup(r.close)
+	go func() {
+		for {
+			in, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			out, err := net.Dial("tcp4", net.JoinHostPort("127.0.0.1", strconv.Itoa(target)))
+			if err != nil {
+				_ = in.Close()
+				continue
+			}
+			r.accepted.Add(1)
+			r.mu.Lock()
+			r.conns = append(r.conns, in, out)
+			r.mu.Unlock()
+			go func() { _, _ = io.Copy(out, in); _ = out.Close() }()
+			go func() { _, _ = io.Copy(in, out); _ = in.Close() }()
+		}
+	}()
+	return r
+}
+
+func (r *relay) close() {
+	_ = r.ln.Close()
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, c := range r.conns {
+		_ = c.Close()
+	}
 }
