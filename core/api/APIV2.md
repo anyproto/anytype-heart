@@ -1000,7 +1000,11 @@ with no positional/index/offset addressing anywhere (§3.1–3.2). It is:
   carry is REFUSED** at its own `set`/`add`/`remove` entry rather than
   silently rounded, dropped or written as null. The favorite flag stays
   authorable and takes only `true` or `false`
-  (`core/api/v2/service/stateops.go:1236`).
+  (`core/api/v2/service/stateops.go:1236`). **A refusal names the property it
+  refuses the way the caller sent it**, the slug or (under `?keys=name`) the
+  display name, in its message as in its issue path, not by its stored key,
+  which for a space-minted property is a 24-hex id the caller was never
+  served (`core/api/v2/service/stateops.go:1100`).
 - **`set_properties` `add`/`remove`**: per-key list edits for list-shaped
   formats only (select, multi_select, objects, files — SPEC §3).
   `{"op":"set_properties","add":{"tags":["urgent"]},"remove":{"assignee":["bafy…"]}}`

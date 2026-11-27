@@ -1093,6 +1093,10 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	if err != nil {
 		return err
 	}
+	// spelledAs is the ONE spelling every refusal below names a property by,
+	// in its path and its message alike: the slug or display name the caller
+	// sent, never the stored key the rewrite produced (a bson id the caller
+	// was never served, for a space-minted property)
 	spelledAs := func(key string) string {
 		if original, ok := spellings[key]; ok {
 			return original
@@ -1125,7 +1129,7 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 			return false
 		case v2OutputOnlyPropertyKeys(key):
 			issues = append(issues, v2model.Issue{Path: path,
-				Message: fmt.Sprintf("%q is output-only — export writes it, writes must not", key)})
+				Message: fmt.Sprintf("%q is output-only — export writes it, writes must not", spelledAs(key))})
 			return false
 		default:
 			entries, err := a.propEntries() // primed once per PATCH (§7.5a-2)
@@ -1186,8 +1190,9 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 
 	setKeys := sortedKeys(op.Set)
 	for _, key := range setKeys {
-		// issue paths spell the key as the CALLER sent it — canonicalization
-		// already ran, and a path naming the rewrite is unactionable (§8.41-10)
+		// issue paths and messages spell the key as the CALLER sent it —
+		// canonicalization already ran, and naming the rewrite is
+		// unactionable (§8.41-10)
 		path := opPath + ".set." + spelledAs(key)
 		claim(key, "set", path) // set goes first — it can never collide
 		checkKey(key, path)
@@ -1197,7 +1202,7 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 		path := opPath + ".unset." + spelledAs(key)
 		if v2OutputOnlyPropertyKeys(key) {
 			issues = append(issues, v2model.Issue{Path: path,
-				Message: fmt.Sprintf("%q is output-only and cannot be unset", key)})
+				Message: fmt.Sprintf("%q is output-only and cannot be unset", spelledAs(key))})
 			continue
 		}
 		if key == "type" || key == "id" {
@@ -1227,7 +1232,7 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 			}
 			if format := a.propertyFormat(key); !v2ListShapedFormats[format] {
 				issues = append(issues, v2model.Issue{Path: path,
-					Message: fmt.Sprintf("%q has format %q — %s only applies to list-shaped formats (%s); use set", key, anyblockjson.FormatName(format), field, v2ListShapedFormatNames)})
+					Message: fmt.Sprintf("%q has format %q — %s only applies to list-shaped formats (%s); use set", spelledAs(key), anyblockjson.FormatName(format), field, v2ListShapedFormatNames)})
 				continue
 			}
 			var entries []any
@@ -1306,7 +1311,7 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 			return v2model.ValidationFailed("add on a select property that already has a value",
 				v2model.Issue{
 					Path:    opPath + ".add." + spelledAs(key),
-					Message: fmt.Sprintf("%q has format \"select\" and holds a single value", key),
+					Message: fmt.Sprintf("%q has format \"select\" and holds a single value", spelledAs(key)),
 					Hint:    "use set to replace it, or unset to clear it first",
 				})
 		}
@@ -1476,17 +1481,21 @@ func (a *v2StateApplier) canonicalizeSetPropertyKeys(op *opSetProperties, opPath
 			return m, nil
 		}
 		out := make(map[string]json.RawMessage, len(m))
+		// the refusal names both spellings the caller sent; the canonical
+		// one is the stored key, a bson id for a space-minted property
+		spelledBy := make(map[string]string, len(m))
 		for _, key := range sortedKeys(m) {
 			path := opPath + "." + field + "." + key
 			canonical, err := canon(key, path)
 			if err != nil {
 				return nil, err
 			}
-			if _, dup := out[canonical]; dup {
+			if first, dup := spelledBy[canonical]; dup {
 				return nil, v2model.ValidationFailed("duplicate property key",
 					v2model.Issue{Path: path,
-						Message: fmt.Sprintf("%q and another spelling both address property %q — keep one", key, canonical)})
+						Message: fmt.Sprintf("%q and %q both address one property — keep one", first, key)})
 			}
+			spelledBy[canonical] = key
 			out[canonical] = m[key]
 		}
 		return out, nil
