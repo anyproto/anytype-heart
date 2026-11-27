@@ -446,7 +446,7 @@ func typeDetailsFromSnapshot(snapshot *model.SmartBlockSnapshotBase, slug string
 		for _, forbidden := range typeDetailsForbiddenKeys {
 			if _, ok := snapshot.Details.Fields[forbidden]; ok {
 				return nil, v2model.ValidationFailed("property is not writable on a type",
-					v2model.Issue{Path: "/properties/" + forbidden,
+					v2model.Issue{Path: propertiesPointer(forbidden),
 						Message: fmt.Sprintf("%q is system-managed and cannot be supplied", forbidden),
 						Hint:    "identity comes from the document's key (and name); remove this property"})
 			}
@@ -845,20 +845,20 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 		key := storedDetailKey(raw)
 		if first, dup := spelledBy[key]; dup {
 			return nil, v2model.ValidationFailed("duplicate property key",
-				v2model.Issue{Path: "/properties/" + raw,
+				v2model.Issue{Path: propertiesPointer(raw),
 					Message: fmt.Sprintf("%q and %q both address %q — keep one", first, raw, key)})
 		}
 		spelledBy[key] = raw
 		if !updatableTypeDetailKeys[key] {
 			return nil, v2model.ValidationFailed("property not updatable on a type",
-				v2model.Issue{Path: "/properties/" + raw, Message: fmt.Sprintf("cannot update %q", raw),
+				v2model.Issue{Path: propertiesPointer(raw), Message: fmt.Sprintf("cannot update %q", raw),
 					Hint: "properties takes name and description; the layout is type_settings.layout and the icon is the typed envelope icon"})
 		}
 		// the map is keyed by the WIRE spelling — reading it back with the
 		// STORED one handed typeDetailValue a nil body for every key the two
 		// vocabularies spell differently, so icon_emoji and recommended_layout
 		// (the only two of the four that differ) 400'd on a value they carried
-		value, err := typeDetailValue(key, "/properties/"+raw, patch.Properties[raw])
+		value, err := typeDetailValue(key, propertiesPointer(raw), patch.Properties[raw])
 		if err != nil {
 			return nil, err
 		}

@@ -792,6 +792,13 @@ func jsonPointerToken(name string) string {
 	return strings.NewReplacer("~", "~0", "/", "~1").Replace(name)
 }
 
+// propertiesPointer is the pointer to one member of a body's `properties`
+// map, by the spelling the caller wrote it under. Every refusal addressed at
+// such a member builds its path here, so no site appends a name raw.
+func propertiesPointer(name string) string {
+	return "/properties/" + jsonPointerToken(name)
+}
+
 // slugHolder names the existing holder of a proposed api key — the material
 // for the loud refusal the union collision check owes the caller.
 type slugHolder struct {
@@ -1363,7 +1370,7 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 				}
 				entry, ok, ambiguous := s.resolvePropertyInputIn(key, propEntries, scope)
 				if len(ambiguous) > 0 {
-					return nil, nil, ambiguousKeyError("property key", key, "/properties/"+key, ambiguous)
+					return nil, nil, ambiguousKeyError("property key", key, propertiesPointer(key), ambiguous)
 				}
 				if ok && entry.Key != key {
 					renames[key] = entry.Key
@@ -1385,7 +1392,7 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 					}
 					if first, dup := spelledBy[canonical]; dup {
 						return nil, nil, v2model.ValidationFailed("duplicate property key",
-							v2model.Issue{Path: "/properties/" + jsonPointerToken(key),
+							v2model.Issue{Path: propertiesPointer(key),
 								Message: fmt.Sprintf("%q and %q both address one property — keep one", first, key)})
 					}
 					spelledBy[canonical] = key

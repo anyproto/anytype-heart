@@ -407,7 +407,7 @@ func optionAmbiguityError(servedKey, name string, matches []*model.RelationOptio
 	return v2model.AmbiguousInput(
 		fmt.Sprintf("option name %q is ambiguous for property %q", name, servedKey),
 		v2model.Issue{
-			Path:    "/properties/" + servedKey,
+			Path:    propertiesPointer(servedKey),
 			Message: fmt.Sprintf("the name matches %d options: %s", len(matches), strings.Join(descriptions, ", ")),
 			Hint:    "rename or remove one duplicate option before addressing it by name; v2 has no unambiguous bare-name choice",
 		})
@@ -422,7 +422,7 @@ func optionAmbiguityError(servedKey, name string, matches []*model.RelationOptio
 // fetch. An error reporting the stored id makes the caller map it back to the
 // field they wrote by hand.
 func optionConsentError(spaceId, servedKey, name string) error {
-	return optionConsentErrorAt(spaceId, servedKey, name, "/properties/"+servedKey)
+	return optionConsentErrorAt(spaceId, servedKey, name, propertiesPointer(servedKey))
 }
 
 // optionConsentErrorAt is the same refusal addressed at the member the caller
@@ -482,7 +482,7 @@ func (s *Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creatin
 			// the live proto at commit and imported with a no-create resolver
 			// (viewops.go commitDataviewBlock), so this prewarm is exhaustive:
 			// a name it cannot see is a name the commit will not mint.
-			s.prewarmViewOptionValues(probe.Set, resolvers)
+			s.prewarmViewOptionValues(probe.Set, fmt.Sprintf("ops[%d].set", i), resolvers)
 			continue
 		}
 		if probe.Op != "set_properties" {
@@ -555,8 +555,13 @@ type viewFilterProbe struct {
 // properties, both of which the dataview import resolves with create-missing
 // (SPEC §6.2/§3) — so the creates run before the object lock and the M5
 // bound sees them. Same leniency contract as the set_properties pass.
-func (s *Service) prewarmViewOptionValues(set map[string]json.RawMessage, resolvers *creatingResolvers) {
-	resolveSelect := func(rawKey string, value json.RawMessage) {
+//
+// setPath is the op's set channel ("ops[2].set"): a consent refusal is
+// addressed to the leaf or sort the caller wrote, in the property spelling
+// written there — the default /properties/<served key> names a member a
+// view op does not have.
+func (s *Service) prewarmViewOptionValues(set map[string]json.RawMessage, setPath string, resolvers *creatingResolvers) {
+	resolveSelect := func(rawKey string, value json.RawMessage, path string) {
 		key := resolvers.canonicalPropertyKey(rawKey)
 		format, err := bundle.GetRelationFormat(domain.RelationKey(key))
 		if err != nil {
@@ -572,13 +577,26 @@ func (s *Service) prewarmViewOptionValues(set map[string]json.RawMessage, resolv
 		if err := json.Unmarshal(value, &decoded); err != nil || decoded == nil {
 			return
 		}
+		resolvers.optionSite = &optionErrorSite{path: path, spelling: rawKey}
 		anyblockjson.UnmarshalPropertyValue(key, decoded, resolvers.Options())
+		resolvers.optionSite = nil
 	}
-	var walkFilters func(nodes []viewFilterProbe)
-	walkFilters = func(nodes []viewFilterProbe) {
-		for _, node := range nodes {
+	// base is the array the nodes sit in; a compact filter string has no
+	// array the caller wrote, so every leaf it parses to is addressed at the
+	// string itself
+	var walkFilters func(nodes []viewFilterProbe, base string, compact bool)
+	walkFilters = func(nodes []viewFilterProbe, base string, compact bool) {
+		for j, node := range nodes {
+			at := fmt.Sprintf("%s[%d]", base, j)
+			if compact {
+				at = base
+			}
 			if len(node.Filters) > 0 {
-				walkFilters(node.Filters)
+				nested := at + ".filters"
+				if compact {
+					nested = base
+				}
+				walkFilters(node.Filters, nested, compact)
 				continue
 			}
 			// empty/notEmpty/exists leaves carry no meaningful value (§11) —
@@ -588,14 +606,18 @@ func (s *Service) prewarmViewOptionValues(set map[string]json.RawMessage, resolv
 				continue
 			}
 			if node.Property != "" && len(node.Value) > 0 {
-				resolveSelect(node.Property, node.Value)
+				leaf := at + ".value"
+				if compact {
+					leaf = base
+				}
+				resolveSelect(node.Property, node.Value, leaf)
 			}
 		}
 	}
 	if raw, ok := set["filters"]; ok {
 		var nodes []viewFilterProbe
 		if err := json.Unmarshal(raw, &nodes); err == nil {
-			walkFilters(nodes)
+			walkFilters(nodes, setPath+".filters", false)
 		}
 	}
 	if raw, ok := set["filter"]; ok {
@@ -609,7 +631,7 @@ func (s *Service) prewarmViewOptionValues(set map[string]json.RawMessage, resolv
 			if err == nil {
 				var nodes []viewFilterProbe
 				if err := json.Unmarshal(parsed, &nodes); err == nil {
-					walkFilters(nodes)
+					walkFilters(nodes, setPath+".filter", true)
 				}
 			}
 		}
@@ -620,9 +642,9 @@ func (s *Service) prewarmViewOptionValues(set map[string]json.RawMessage, resolv
 			CustomOrder json.RawMessage `json:"custom_order"`
 		}
 		if err := json.Unmarshal(raw, &sorts); err == nil {
-			for _, sort := range sorts {
+			for j, sort := range sorts {
 				if sort.Property != "" && len(sort.CustomOrder) > 0 {
-					resolveSelect(sort.Property, sort.CustomOrder)
+					resolveSelect(sort.Property, sort.CustomOrder, fmt.Sprintf("%s.sorts[%d].custom_order", setPath, j))
 				}
 			}
 		}

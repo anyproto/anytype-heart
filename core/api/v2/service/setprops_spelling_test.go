@@ -325,3 +325,78 @@ func TestSetPropertiesOptionConsentNamesTheEntry(t *testing.T) {
 		})
 	}
 }
+
+// The update_view prewarm walks the set channel's filter leaves and custom
+// sort orders before the lock, through the same consent gate. Its refusal
+// used the create channel's /properties/<served key>, a member a view op does
+// not have, in a spelling a ?keys=name caller did not use.
+func TestViewOpOptionConsentNamesTheEntry(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		names    bool
+		op       string
+		path     string
+		spelling string
+	}{
+		{
+			name:     "a structured filter leaf, by slug",
+			op:       `{"op":"update_view","set":{"filters":[{"property":"stage","condition":"equal","value":"Typo"}]}}`,
+			path:     "ops[0].set.filters[0].value",
+			spelling: "stage",
+		},
+		{
+			name:     "a structured filter leaf, by display name under keys=name",
+			names:    true,
+			op:       `{"op":"update_view","set":{"filters":[{"property":"Stage","condition":"equal","value":"Typo"}]}}`,
+			path:     "ops[0].set.filters[0].value",
+			spelling: "Stage",
+		},
+		{
+			name: "a leaf inside a filter group",
+			op: `{"op":"update_view","set":{"filters":[{"property":"name","condition":"not_empty"},` +
+				`{"operator":"or","filters":[{"property":"stage","condition":"equal","value":"Typo"}]}]}}`,
+			path:     "ops[0].set.filters[1].filters[0].value",
+			spelling: "stage",
+		},
+		{
+			name:     "a compact filter string",
+			op:       `{"op":"update_view","set":{"filter":"stage = \"Typo\""}}`,
+			path:     "ops[0].set.filter",
+			spelling: "stage",
+		},
+		{
+			name:     "a custom sort order",
+			op:       `{"op":"update_view","set":{"sorts":[{"property":"stage","direction":"custom","custom_order":["Typo"]}]}}`,
+			path:     "ops[0].set.sorts[0].custom_order",
+			spelling: "stage",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given: the read alone — a pre-lock refusal never reaches the mutator
+			fx, read := spellingFixture(t)
+			fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(read, nil).Maybe()
+			ctx := context.Background()
+			if tc.names {
+				ctx = CtxWithNameKeys(ctx)
+			}
+			options := v2model.RefListPropertyOptions(testSpaceId, "stage")
+			resend := v2model.Resend("create_missing_options", "true")
+			want := v2model.Issue{
+				Path:    tc.path,
+				Message: `property "` + tc.spelling + `" has no option named "Typo", and this request did not ask to create one`,
+				Hint:    "check the spelling against " + options.String() + ", or resend with " + resend.String() + " to create it",
+				SeeAlso: []v2model.Ref{options, resend},
+			}
+
+			// when: no create consent
+			_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(tc.op), "", false, false)
+
+			// then
+			apiErr := v2Err(t, err)
+			assert.Equal(t, "option does not exist", apiErr.Message)
+			require.Len(t, apiErr.Issues, 1)
+			assert.Equal(t, want, apiErr.Issues[0])
+			assert.NotRegexp(t, `[0-9a-f]{24}`, apiErr.Issues[0].Message)
+		})
+	}
+}

@@ -842,7 +842,7 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 			if original, ok := spellings[key]; ok {
 				spelling = original
 			}
-			result.Warnings = append(result.Warnings, offTypePropertyIssue(spelling, result.Type, "/properties/"+spelling))
+			result.Warnings = append(result.Warnings, offTypePropertyIssue(spelling, result.Type, propertiesPointer(spelling)))
 		}
 	}
 	if opts.dryRun {
@@ -1247,7 +1247,7 @@ func (s *Service) validatePropertyKeys(ctx context.Context, spaceId string, prop
 					return err
 				}
 				if isRemoved {
-					issues = append(issues, removedPropertyIssue(spaceId, key, spelledAs(key), "/properties/"+spelledAs(key), v))
+					issues = append(issues, removedPropertyIssue(spaceId, key, spelledAs(key), propertiesPointer(spelledAs(key)), v))
 					removedCount++
 				}
 			}
@@ -1265,14 +1265,14 @@ func (s *Service) validatePropertyKeys(ctx context.Context, spaceId string, prop
 		// row, by its slug): refused as removed, which is what happened to
 		// it, rather than as unknown
 		if entry, removed := s.removedCustomProperty(spaceId, key); removed {
-			issues = append(issues, removedCustomPropertyIssue(spaceId, entry, spelledAs(key), "/properties/"+spelledAs(key), v))
+			issues = append(issues, removedCustomPropertyIssue(spaceId, entry, spelledAs(key), propertiesPointer(spelledAs(key)), v))
 			removedCount++
 			continue
 		}
 		if known == nil {
 			known = knownPropertyKeysIn(entries, v)
 		}
-		issues = append(issues, unknownPropertyIssue(key, "/properties/"+spelledAs(key), known, propertyListHint(spaceId), v))
+		issues = append(issues, unknownPropertyIssue(key, propertiesPointer(spelledAs(key)), known, propertyListHint(spaceId), v))
 	}
 	if len(issues) > 0 {
 		// the envelope names what actually happened: "unknown" on a key the

@@ -221,6 +221,99 @@ func TestV2SlugAddressedDocuments(t *testing.T) {
 	})
 }
 
+func TestPropertiesPointerEscapesTheMemberName(t *testing.T) {
+	assert.Equal(t, "/properties/a~0b~1c", propertiesPointer("a~b/c"))
+	assert.Equal(t, "/properties/plain_key", propertiesPointer("plain_key"))
+}
+
+// Every refusal or warning addressed at a member of a body's properties map
+// names it as ONE JSON Pointer token: a display name holding a "/" appended
+// raw addressed two nested members the caller never wrote.
+func TestV2PropertyPathsEscapeTheMemberName(t *testing.T) {
+	const slashed = "wins/losses"
+	const wantPath = "/properties/wins~1losses"
+	addSlashed := func(t *testing.T, fx *v2Fixture, id, key, slug string) {
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String(id),
+			bundle.RelationKeyRelationKey:    domain.String(key),
+			bundle.RelationKeyApiObjectKey:   domain.String(slug),
+			bundle.RelationKeyName:           domain.String(slashed),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_number)),
+		})
+	}
+
+	t.Run("an unknown key on create", func(t *testing.T) {
+		// given: nothing answers to the name
+		fx := slugSpaceFixture(t)
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"formatVersion":"2.0","type":"meeting_note","properties":{"wins/losses":1}}`), false, true)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, wantPath, apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, `unknown property key "wins/losses"`)
+	})
+
+	t.Run("an ambiguous name on create", func(t *testing.T) {
+		// given: two space-minted properties share the name
+		fx := slugSpaceFixture(t)
+		addSlashed(t, fx, "rel-ratio-a", "6a7663db61fab21cd4b9e105", "ratio_a")
+		addSlashed(t, fx, "rel-ratio-b", "6a7663db61fab21cd4b9e106", "ratio_b")
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"formatVersion":"2.0","type":"meeting_note","properties":{"wins/losses":1}}`), false, true)
+
+		// then
+		apiErr := v2Err(t, err)
+		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, wantPath, apiErr.Issues[0].Path)
+	})
+
+	t.Run("the off-type warning on create", func(t *testing.T) {
+		// given: a type that lists another property, so this one is off-type
+		fx := slugSpaceFixture(t)
+		addSlashed(t, fx, "rel-ratio", "6a7663db61fab21cd4b9e104", "ratio")
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:                   domain.String("type-errand"),
+			bundle.RelationKeyUniqueKey:            domain.String("ot-errand"),
+			bundle.RelationKeyName:                 domain.String("Errand"),
+			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-manual"}),
+		})
+		fx.expectCreate("obj-new")
+		fx.expectEtagRead("obj-new")
+
+		// when
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"formatVersion":"2.0","type":"errand","properties":{"wins/losses":2}}`), false, true)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, result.Warnings, 1)
+		assert.Equal(t, wantPath, result.Warnings[0].Path)
+		assert.Contains(t, result.Warnings[0].Message, `property "wins/losses" is not on type`)
+	})
+
+	t.Run("a key the type patch cannot update", func(t *testing.T) {
+		// given
+		fx := newTypeOpsFixture(t)
+
+		// when
+		_, err := fx.UpdateType(context.Background(), testSpaceId, "plant", "",
+			[]byte(`{"properties":{"wins/losses":"x"}}`), false, true)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, wantPath, apiErr.Issues[0].Path)
+		assert.Equal(t, `cannot update "wins/losses"`, apiErr.Issues[0].Message)
+	})
+}
+
 func TestV2SlugAddressedOps(t *testing.T) {
 	ctx := context.Background()
 
