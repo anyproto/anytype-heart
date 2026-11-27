@@ -124,9 +124,52 @@ jobs:
         run: |
           CGO_CFLAGS="-Wno-deprecated-non-prototype -Wno-unknown-warning-option -Wno-deprecated-declarations -Wno-xor-used-as-pow -Wno-single-bit-bitfield-constant-conversion" go test ./cmd/grpcserver
 
+      # The built anytype-mcp child over real pipes against a throwaway heart (cmd/grpcserver on a
+      # scratch account and a free port)
+      - name: Go test anytype-mcp against heart
+        run: |
+          CGO_CFLAGS="-Wno-deprecated-non-prototype -Wno-unknown-warning-option -Wno-deprecated-declarations -Wno-xor-used-as-pow -Wno-single-bit-bitfield-constant-conversion" go test -tags integration -timeout 30m ./cmd/anytype-mcp/integration
+
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v6
         with:
           report_paths: '~/gotestsum-report/gotestsum-report.xml'
           github_token: ${{ secrets.GITHUB_TOKEN }}
       - uses: seriousben/go-patch-cover-action@v1
+
+  # cmd/anytype-mcp on the other two systems it ships for, each with its real key store: the Windows
+  # Credential Manager, and gnome-keyring over a private session bus (unlocked, locked, not started,
+  # no Secret Service, no bus). macOS is covered by the unit-test job above.
+  anytype-mcp:
+    name: anytype-mcp ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-24.04]
+    env:
+      GOPRIVATE: github.com/anyproto
+      GOTOOLCHAIN: local
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: '1.26'
+          check-latest: true
+      - name: git config
+        run: git config --global url.https://${{ secrets.ANYTYPE_PAT }}@github.com/.insteadOf https://github.com/
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Go test anytype-mcp
+        env:
+          ANYTYPE_MCP_REAL_STORE: ${{ runner.os == 'Windows' && '1' || '' }}
+        run: go test ./cmd/anytype-mcp/...
+      - name: Go test anytype-mcp with the race detector
+        if: runner.os == 'Linux'
+        run: go test -race ./cmd/anytype-mcp/...
+      - name: Go test anytype-mcp against gnome-keyring
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq dbus gnome-keyring
+          bash cmd/anytype-mcp/testdata/linux-keyring.sh
