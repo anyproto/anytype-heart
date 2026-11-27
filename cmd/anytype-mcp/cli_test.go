@@ -145,6 +145,22 @@ func childEnv(home string) []string {
 	return []string{"HOME=" + home, "USERPROFILE=" + home}
 }
 
+// holders lists every file under the home whose bytes contain the canary.
+func (e *env) holders() []string {
+	var holders []string
+	require.NoError(e.t, filepath.WalkDir(e.home, func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		raw, err := os.ReadFile(path)
+		if err == nil && bytes.Contains(raw, []byte(canary)) {
+			holders = append(holders, path)
+		}
+		return nil
+	}))
+	return holders
+}
+
 func (e *env) items() string { return filepath.Join(e.home, ".anytype", "ai-connect", "items-dev") }
 
 func (e *env) run(stdin string, args ...string) result {
@@ -359,18 +375,71 @@ func TestKeyVerbs(t *testing.T) {
 
 	t.Run("an invalid stored value counts as absent and is replaced by key set", func(t *testing.T) {
 		e := newEnv(t)
-		require.Equal(t, exitOK, e.run(payload("k", "A", 1, "small"), "key", "set", "--connection", "other", "--expect", "absent").code)
 		good := strings.TrimSuffix(payload(canary, "A", 1, "small"), "\n")
+		item := filepath.Join(e.items(), "conn-a.item")
 		for _, bad := range []string{"garbage", `{"v":1,"rev":1,"key":"k","account":"A","port":1,"tier":"small"}x`, good, strings.Repeat("x", 5000)} {
-			require.NoError(t, os.WriteFile(filepath.Join(e.items(), "conn-a.item"), []byte(bad), 0o600))
+			// the file key set made is rewritten in place, so it keeps the
+			// owner, mode and (on Windows) descriptor the reader insists on
+			require.Equal(t, exitOK, e.set("absent", canary, "A", 1, "small").code)
+			fh, err := os.OpenFile(item, os.O_WRONLY|os.O_TRUNC, 0)
+			require.NoError(t, err)
+			_, err = fh.WriteString(bad)
+			require.NoError(t, err)
+			require.NoError(t, fh.Close())
+
 			r := e.check()
-			assert.Equal(t, exitNoItem, r.code)
+			assert.Equal(t, exitNoItem, r.code, r.stderr)
 			assert.Equal(t, true, r.json(t)["invalid"])
 			assert.Equal(t, false, r.json(t)["present"])
 			r = e.set("absent", canary, "A", 1, "small")
 			require.Equal(t, exitOK, r.code, r.stderr)
 			assert.EqualValues(t, 1, r.json(t)["rev"])
+			require.Equal(t, exitOK, e.del(stamp(r.json(t)), "A").code)
 		}
+	})
+
+	t.Run("an item that was not made by the forwarder's own write is denied, not read", func(t *testing.T) {
+		e := newEnv(t)
+		require.Equal(t, exitOK, e.run(payload("k", "A", 1, "small"), "key", "set", "--connection", "other", "--expect", "absent").code)
+		// a plain file: on Windows it inherits the folder's access list, on
+		// Unix it is given a mode others can read
+		item := filepath.Join(e.items(), "conn-a.item")
+		require.NoError(t, os.WriteFile(item, []byte(strings.TrimSpace(payload(canary, "A", 1, "small"))), 0o644))
+		require.NoError(t, os.Chmod(item, 0o644))
+		r := e.check()
+		assert.Equal(t, exitTemporary, r.code)
+		assert.Equal(t, "denied", r.json(t)["store"])
+		assert.Contains(t, r.stderr, "conn-a.item", "the message names the path")
+	})
+
+	t.Run("a rotation to the largest key of characters JSON escapes", func(t *testing.T) {
+		e := newEnv(t)
+		r := e.set("absent", canary, "A", 1, "small")
+		require.Equal(t, exitOK, r.code)
+		for _, ch := range []string{"&", `"`, "<"} {
+			key := strings.Repeat(ch, store.MaxKeyBytes)
+			r = e.set(stamp(r.json(t)), key, "A", 1, "small")
+			require.Equal(t, exitOK, r.code, "%s: %s", ch, r.stderr)
+			c := e.check()
+			require.Equal(t, exitOK, c.code, ch)
+			assert.Equal(t, true, c.json(t)["present"])
+			assert.Equal(t, store.Fingerprint(key), c.json(t)["fingerprint"])
+		}
+		r = e.set(stamp(r.json(t)), strings.Repeat("k", store.MaxKeyBytes+1), "A", 1, "small")
+		assert.Equal(t, exitInvalidInput, r.code, "refused before anything is replaced")
+		assert.Equal(t, exitOK, e.check().code)
+	})
+
+	t.Run("after a delete no file holds the key, a crashed rotation's temp file included", func(t *testing.T) {
+		e := newEnv(t)
+		r := e.set("absent", canary, "A", 1, "small")
+		require.Equal(t, exitOK, r.code)
+		leftover := filepath.Join(e.items(), "conn-a.00112233aabbccdd.tmp")
+		require.NoError(t, os.WriteFile(leftover, []byte(`{"key":"`+canary+`-candidate"}`), 0o600))
+		require.Equal(t, exitOK, e.del(stamp(r.json(t)), "A").code)
+		assert.Empty(t, e.holders(), "no file under the home holds the key")
+		_, err := os.Lstat(leftover)
+		assert.ErrorIs(t, err, os.ErrNotExist)
 	})
 
 	t.Run("the key is in no output and in no file but its own item", func(t *testing.T) {
@@ -386,17 +455,7 @@ func TestKeyVerbs(t *testing.T) {
 			assert.NotContains(t, r.stdout, canary)
 			assert.NotContains(t, r.stderr, canary)
 		}
-		var holders []string
-		require.NoError(t, filepath.WalkDir(e.home, func(path string, d os.DirEntry, err error) error {
-			if err != nil || d.IsDir() {
-				return err
-			}
-			raw, err := os.ReadFile(path)
-			if err == nil && bytes.Contains(raw, []byte(canary)) {
-				holders = append(holders, path)
-			}
-			return nil
-		}))
+		holders := e.holders()
 		assert.Equal(t, []string{filepath.Join(e.items(), "conn-a.item")}, holders)
 	})
 }
@@ -459,6 +518,7 @@ func TestStoreRulesThroughTheVerbs(t *testing.T) {
 				assert.Equal(t, exitTemporary, r.code, "verb %d", i)
 				assert.Equal(t, "denied", r.json(t)["store"], "verb %d", i)
 				assert.Contains(t, r.stderr, "denied", "the rule is named on stderr")
+				assert.Contains(t, r.stderr, e.home, "and so is the path")
 				assert.NotContains(t, r.stdout+r.stderr, canary)
 			}
 			assert.Nil(t, e.check().json(t)["present"], "present is null: the store could not say")
@@ -468,6 +528,25 @@ func TestStoreRulesThroughTheVerbs(t *testing.T) {
 			assert.Equal(t, st, stamp(e.check().json(t)))
 		})
 	}
+
+	t.Run("a home its group can write is a normal setup and works", func(t *testing.T) {
+		e, st, _ := seeded(t)
+		require.NoError(t, os.Chmod(e.home, 0o775))
+		assert.Equal(t, exitOK, e.check().code)
+		assert.Equal(t, exitOK, e.retarget(st, "A", "2", "small").code)
+	})
+
+	t.Run("a home that is a symlink is denied and nothing is created behind it", func(t *testing.T) {
+		e := newEnv(t)
+		link := filepath.Join(t.TempDir(), "home")
+		require.NoError(t, os.Symlink(e.home, link))
+		r := runIn(t, link, e.bin, payload(canary, "A", 1, "small"), "key", "set", "--connection", "conn-a", "--expect", "absent")
+		assert.Equal(t, exitTemporary, r.code)
+		assert.Equal(t, "denied", r.json(t)["store"])
+		assert.Contains(t, r.stderr, link)
+		_, err := os.Lstat(filepath.Join(e.home, ".anytype"))
+		assert.ErrorIs(t, err, os.ErrNotExist)
+	})
 
 	t.Run("the items folder at 000: unreachable", func(t *testing.T) {
 		if os.Geteuid() == 0 {
@@ -572,6 +651,53 @@ func TestExitSevenMeansNothingWasWritten(t *testing.T) {
 		assert.Equal(t, exitTemporary, e.commit(context.Background(), "c", next))
 		assert.NotContains(t, out.String(), "unconfirmed")
 	})
+}
+
+// deleteUnconfirmed removes the item and then can't confirm it.
+type deleteUnconfirmed struct{ *store.Mem }
+
+func (s *deleteUnconfirmed) Delete(ctx context.Context, id string) error {
+	if err := s.Mem.Delete(ctx, id); err != nil {
+		return err
+	}
+	return &store.UnconfirmedError{Err: errors.New("folder sync failed")}
+}
+
+func TestDeleteReceipt(t *testing.T) {
+	it := store.Item{V: 1, Rev: 1, Key: canary, Account: "A", Port: 1, Tier: "small"}
+	flags := keyFlags{connection: "c", expect: it.Stamp(), account: "A"}
+
+	t.Run("an unlink the store could not make durable is unconfirmed, exit 1", func(t *testing.T) {
+		st := &deleteUnconfirmed{Mem: store.NewMem()}
+		st.Put("c", it)
+		var out, errb bytes.Buffer
+		e := &keyEnv{st: st, stdout: &out, stderr: &errb}
+		assert.Equal(t, exitInternal, e.remove(context.Background(), flags))
+		var line map[string]any
+		require.NoError(t, json.Unmarshal(out.Bytes(), &line))
+		assert.Equal(t, true, line["unconfirmed"])
+		_, err := st.Mem.Read(context.Background(), "c")
+		assert.ErrorIs(t, err, store.ErrNotFound, "the item is gone")
+	})
+
+	t.Run("a delete the store refused is exit 7 and the item stays", func(t *testing.T) {
+		st := &refusesDelete{Mem: store.NewMem()}
+		st.Put("c", it)
+		var out, errb bytes.Buffer
+		e := &keyEnv{st: st, stdout: &out, stderr: &errb}
+		assert.Equal(t, exitTemporary, e.remove(context.Background(), flags))
+		assert.NotContains(t, out.String(), "unconfirmed")
+		_, err := st.Mem.Read(context.Background(), "c")
+		assert.NoError(t, err)
+	})
+}
+
+// refusesDelete fails a delete before it changes anything (a leftover it
+// could not sweep).
+type refusesDelete struct{ *store.Mem }
+
+func (s *refusesDelete) Delete(context.Context, string) error {
+	return store.Temporary(store.ReasonUnreachable, errors.New("a temp file could not be removed"))
 }
 
 // writesElse stores something other than what it was given.
@@ -823,6 +949,46 @@ func TestServeProcess(t *testing.T) {
 			return errCode(c.call(`{"jsonrpc":"2.0","id":2,"method":"tools/list"}`)) == 0
 		}, 10*time.Second, 100*time.Millisecond)
 		assert.NotZero(t, second.hits.Load())
+	})
+
+	t.Run("bytes heart never asked to send don't reach stderr through Go's own logger", func(t *testing.T) {
+		// a complete reply, then unsolicited bytes with the canary on the
+		// kept-alive connection: net/http reports those through the
+		// standard logger
+		extra := make(chan struct{})
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			body, _ := io.ReadAll(r.Body)
+			var msg struct {
+				ID json.RawMessage `json:"id"`
+			}
+			_ = json.Unmarshal(body, &msg)
+			reply := fmt.Sprintf(`{"jsonrpc":"2.0","id":%s,"result":{"protocolVersion":"2025-11-25"}}`, msg.ID)
+			conn, rw, err := w.(http.Hijacker).Hijack()
+			if err != nil {
+				return
+			}
+			fmt.Fprintf(rw, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s", len(reply), reply)
+			_ = rw.Flush()
+			go func() {
+				time.Sleep(100 * time.Millisecond)
+				_, _ = io.WriteString(conn, "HTTP/1.1 200 "+canary+"\r\n\r\n")
+				time.Sleep(200 * time.Millisecond)
+				_ = conn.Close()
+				close(extra)
+			}()
+		}))
+		t.Cleanup(srv.Close)
+		_, p, _ := net.SplitHostPort(srv.Listener.Addr().String())
+		port, _ := strconv.Atoi(p)
+		e := newEnv(t)
+		require.Equal(t, exitOK, e.set("absent", canary, "A", port, "full").code)
+		c := e.serve()
+		require.Zero(t, errCode(c.call(initLine)))
+		<-extra
+		require.NoError(t, c.stdin.Close())
+		assert.Equal(t, 0, c.wait())
+		assert.NotContains(t, c.stderr.String(), canary)
+		assert.NotContains(t, c.stderr.String(), "Unsolicited")
 	})
 
 	if runtime.GOOS == "windows" {

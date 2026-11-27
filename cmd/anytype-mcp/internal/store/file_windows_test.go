@@ -6,11 +6,14 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/windows"
 )
+
+// These tests have only ever run on the CI Windows job.
 
 func sddl(t *testing.T, path string) string {
 	sd, err := windows.GetNamedSecurityInfo(path, windows.SE_FILE_OBJECT,
@@ -19,58 +22,144 @@ func sddl(t *testing.T, path string) string {
 	return sd.String()
 }
 
-func setSDDL(t *testing.T, path, s string) {
+// setDACL replaces a path's DACL. protected says whether it stops
+// inheriting from the parent.
+func setDACL(t *testing.T, path, s string, protected bool) {
 	sd, err := windows.SecurityDescriptorFromString(s)
 	require.NoError(t, err)
 	dacl, _, err := sd.DACL()
 	require.NoError(t, err)
-	require.NoError(t, windows.SetNamedSecurityInfo(path, windows.SE_FILE_OBJECT,
-		windows.DACL_SECURITY_INFORMATION|windows.PROTECTED_DACL_SECURITY_INFORMATION, nil, nil, dacl, nil))
+	info := windows.SECURITY_INFORMATION(windows.DACL_SECURITY_INFORMATION | windows.UNPROTECTED_DACL_SECURITY_INFORMATION)
+	if protected {
+		info = windows.DACL_SECURITY_INFORMATION | windows.PROTECTED_DACL_SECURITY_INFORMATION
+	}
+	require.NoError(t, windows.SetNamedSecurityInfo(path, windows.SE_FILE_OBJECT, info, nil, nil, dacl, nil))
+}
+
+func me(t *testing.T) string {
+	sid, err := userSID()
+	require.NoError(t, err)
+	return sid.String()
 }
 
 func TestWindowsDescriptors(t *testing.T) {
 	f := newFile(t)
-	require.NoError(t, f.Write(ctx, "a", []byte("x")))
-	sid, err := userSID()
-	require.NoError(t, err)
-	me := sid.String()
-	assert.Equal(t, "O:"+me+"D:P(A;OICI;FA;;;"+me+")", sddl(t, f.Dir()))
+	require.NoError(t, f.Write(ctx, "a", []byte("x")), "the runner's standard inherited DACLs pass")
+	user := me(t)
+	assert.Equal(t, "O:"+user+"D:P(A;OICI;FA;;;"+user+")", sddl(t, f.Dir()))
 	item := filepath.Join(f.Dir(), "a.item")
-	assert.Equal(t, "O:"+me+"D:P(A;;FA;;;"+me+")", sddl(t, item))
+	assert.Equal(t, "O:"+user+"D:P(A;;FA;;;"+user+")", sddl(t, item))
 
 	t.Run("an item whose DACL also lets Everyone in", func(t *testing.T) {
-		setSDDL(t, item, "D:P(A;;FA;;;"+me+")(A;;FR;;;WD)")
+		setDACL(t, item, "D:P(A;;FA;;;"+user+")(A;;FR;;;WD)", true)
 		_, err := f.Read(ctx, "a")
 		requireDenied(t, err, "extra Everyone entry")
-		setSDDL(t, item, "D:P(A;;FA;;;"+me+")")
+		setDACL(t, item, "D:P(A;;FA;;;"+user+")", true)
 		_, err = f.Read(ctx, "a")
 		require.NoError(t, err)
 	})
 
+	t.Run("an item that inherits its DACL from the folder", func(t *testing.T) {
+		plain := filepath.Join(f.Dir(), "plain.item")
+		require.NoError(t, os.WriteFile(plain, []byte("x"), 0o600))
+		_, err := f.Read(ctx, "plain")
+		requireDenied(t, err, "inherited DACL")
+	})
+
 	t.Run("an items folder whose DACL also lets Everyone in", func(t *testing.T) {
-		setSDDL(t, f.Dir(), "D:P(A;OICI;FA;;;"+me+")(A;OICI;FR;;;WD)")
+		setDACL(t, f.Dir(), "D:P(A;OICI;FA;;;"+user+")(A;OICI;FR;;;WD)", true)
 		_, err := f.Read(ctx, "a")
 		requireDenied(t, err, "folder with an Everyone entry")
 		requireDenied(t, f.Write(ctx, "a", []byte("y")), "folder with an Everyone entry")
-		setSDDL(t, f.Dir(), "D:P(A;OICI;FA;;;"+me+")")
+		setDACL(t, f.Dir(), "D:P(A;OICI;FA;;;"+user+")", true)
 	})
 }
 
+// L4: .anytype and ai-connect may grant access to the user, SYSTEM and
+// Administrators and to nobody else; the home folder only must not let
+// anybody else rename its children.
+func TestWindowsFolderGrants(t *testing.T) {
+	user := me(t)
+	trustedOnly := "D:P(A;OICI;FA;;;" + user + ")(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)"
+
+	t.Run("ai-connect with an entry for Users", func(t *testing.T) {
+		f := newFile(t)
+		require.NoError(t, f.Write(ctx, "a", []byte("kept")))
+		dir := filepath.Dir(f.Dir())
+		setDACL(t, dir, trustedOnly+"(A;;FA;;;BU)", true)
+		_, err := f.Read(ctx, "a")
+		requireDenied(t, err, "Users on ai-connect")
+		assert.Contains(t, err.Error(), dir)
+		requireDenied(t, f.Write(ctx, "a", []byte("new")), "Users on ai-connect")
+		requireDenied(t, f.Delete(ctx, "a"), "Users on ai-connect")
+		setDACL(t, dir, trustedOnly, true)
+		raw, err := f.Read(ctx, "a")
+		require.NoError(t, err, "the user, SYSTEM and Administrators are fine")
+		assert.Equal(t, "kept", string(raw))
+	})
+
+	t.Run("an inherit-only entry for others on .anytype does not apply to the folder itself", func(t *testing.T) {
+		f := newFile(t)
+		require.NoError(t, f.Write(ctx, "a", []byte("x")))
+		setDACL(t, filepath.Join(f.home, ".anytype"), trustedOnly+"(A;OICIIO;FR;;;BU)", true)
+		_, err := f.Read(ctx, "a")
+		require.NoError(t, err)
+	})
+
+	t.Run("a home others may read is fine; one where they may delete children is not", func(t *testing.T) {
+		f := newFile(t)
+		require.NoError(t, f.Write(ctx, "a", []byte("x")))
+		setDACL(t, f.home, trustedOnly+"(A;OICI;0x1200a9;;;BU)", true) // read and execute
+		_, err := f.Read(ctx, "a")
+		require.NoError(t, err)
+		setDACL(t, f.home, trustedOnly+"(A;OICI;FA;;;BU)", true)
+		_, err = f.Read(ctx, "a")
+		requireDenied(t, err, "Users with full control of home")
+		setDACL(t, f.home, trustedOnly, true)
+	})
+}
+
+func openItem(t *testing.T, f *File, share uint32) windows.Handle {
+	p, err := windows.UTF16PtrFromString(filepath.Join(f.Dir(), "a.item"))
+	require.NoError(t, err)
+	h, err := windows.CreateFile(p, windows.GENERIC_READ, share, nil, windows.OPEN_EXISTING, windows.FILE_ATTRIBUTE_NORMAL, 0)
+	require.NoError(t, err)
+	return h
+}
+
+// L7: a reader that shares delete (the way the store opens items) never
+// blocks a replacement.
 func TestWindowsReaderDoesNotBlockTheRename(t *testing.T) {
 	f := newFile(t)
 	require.NoError(t, f.Write(ctx, "a", []byte("one")))
-	// a reader the way the store opens items: sharing delete
-	p, err := windows.UTF16PtrFromString(filepath.Join(f.Dir(), "a.item"))
-	require.NoError(t, err)
-	h, err := windows.CreateFile(p, windows.GENERIC_READ,
-		windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE, nil,
-		windows.OPEN_EXISTING, windows.FILE_ATTRIBUTE_NORMAL, 0)
-	require.NoError(t, err)
+	h := openItem(t, f, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE)
 	defer windows.CloseHandle(h)
 	require.NoError(t, f.Write(ctx, "a", []byte("two")))
 	raw, err := f.Read(ctx, "a")
 	require.NoError(t, err)
 	assert.Equal(t, "two", string(raw))
+	require.NoError(t, f.Delete(ctx, "a"), "nor a delete")
+}
+
+// L7: a handle that denies delete sharing makes the write give up after
+// the bounded retry: nothing written, the old item intact, no temp file.
+func TestWindowsBusyItem(t *testing.T) {
+	f := newFile(t)
+	require.NoError(t, f.Write(ctx, "a", []byte("one")))
+	h := openItem(t, f, windows.FILE_SHARE_READ)
+	released := time.AfterFunc(3*time.Second, func() { _ = windows.CloseHandle(h) })
+	defer released.Stop()
+	began := time.Now()
+	err := f.Write(ctx, "a", []byte("two"))
+	require.True(t, IsTemporary(err), "busy, nothing written: %v", err)
+	assert.GreaterOrEqual(t, time.Since(began), busyRetryFor-200*time.Millisecond)
+	assert.Less(t, time.Since(began), 3*time.Second)
+	time.Sleep(time.Until(began.Add(3200 * time.Millisecond)))
+	raw, err := f.Read(ctx, "a")
+	require.NoError(t, err)
+	assert.Equal(t, "one", string(raw))
+	assert.Empty(t, tempFiles(t, f.Dir()))
+	require.NoError(t, f.Write(ctx, "a", []byte("two")), "and the next write goes through")
 }
 
 func TestWindowsFolderLink(t *testing.T) {

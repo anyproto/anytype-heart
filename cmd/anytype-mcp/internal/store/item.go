@@ -77,12 +77,26 @@ func validKey(key string) error {
 	return nil
 }
 
-// Encode is the stored form.
+// Encode is the stored form. It is written without HTML escaping (a key
+// of & < > would otherwise grow sixfold), and it is only returned if the
+// reader accepts it: the output must decode back to this very item, so a
+// write can never replace a working item with one that reads as invalid.
 func (it Item) Encode() ([]byte, error) {
 	if err := it.Validate(); err != nil {
 		return nil, err
 	}
-	return json.Marshal(it)
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(it); err != nil {
+		return nil, errors.New("the item can't be encoded")
+	}
+	raw := bytes.TrimSpace(buf.Bytes())
+	back, err := DecodeItem(raw)
+	if err != nil || back != it {
+		return nil, errors.New("the item would not read back as written")
+	}
+	return raw, nil
 }
 
 // DecodeItem parses a stored value: exactly one valid item and nothing

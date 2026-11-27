@@ -23,6 +23,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -101,6 +102,10 @@ func serveCmd(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 
 	// a closed stdout must arrive as a write error, not as a signal
 	ignoreSIGPIPE()
+	// the forwarder logs only through its own logger: Go's net/http prints
+	// bytes heart never asked to send (on an idle connection) through the
+	// standard logger, straight to stderr
+	log.SetOutput(io.Discard)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	return forward.Serve(ctx, forward.Options{

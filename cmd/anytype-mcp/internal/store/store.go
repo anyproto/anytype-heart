@@ -82,12 +82,13 @@ func denied(rule string) error { return Temporary(ReasonDenied, errors.New(rule)
 
 func unreachable(err error) error { return Temporary(ReasonUnreachable, err) }
 
-// UnconfirmedError is a write the store took (the new item is in place)
-// that then failed to confirm. It is never "nothing was written".
+// UnconfirmedError is a change the store took (the new item is in place,
+// or the item is gone) that then failed to confirm. It is never "nothing
+// was changed".
 type UnconfirmedError struct{ Err error }
 
 func (e *UnconfirmedError) Error() string {
-	return fmt.Sprintf("the item was written but not confirmed: %v", e.Err)
+	return fmt.Sprintf("the item was changed but not confirmed: %v", e.Err)
 }
 
 func (e *UnconfirmedError) Unwrap() error { return e.Err }
@@ -104,7 +105,8 @@ type Store interface {
 	// Write replaces the item atomically. A TemporaryError means nothing
 	// was written; an UnconfirmedError means the new value is in place.
 	Write(ctx context.Context, id string, value []byte) error
-	// Delete removes the item; ErrNotFound when there is none.
+	// Delete removes the item; ErrNotFound when there is none. An
+	// UnconfirmedError means the item is gone.
 	Delete(ctx context.Context, id string) error
 	// Lock takes the connection's exclusive lock, which serializes the
 	// verbs of cooperating Anytype profiles.

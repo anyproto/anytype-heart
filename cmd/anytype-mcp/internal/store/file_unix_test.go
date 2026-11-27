@@ -162,10 +162,10 @@ func TestFileItemRule(t *testing.T) {
 		g := newFile(t)
 		require.NoError(t, g.Write(ctx, "a", []byte("x")))
 		calls := 0
-		// the folders pass (three checks); the item's owner differs
+		// the four folders pass (home included); the item's owner differs
 		g.uid = func() int {
 			calls++
-			if calls > 3 {
+			if calls > 4 {
 				return os.Geteuid() + 1
 			}
 			return os.Geteuid()
@@ -197,4 +197,60 @@ func TestFileUnreadableFolder(t *testing.T) {
 	require.True(t, IsTemporary(err), "try again, never 'gone': %v", err)
 	require.True(t, IsTemporary(f.Write(ctx, "a", []byte("y"))))
 	require.True(t, IsTemporary(f.Delete(ctx, "a")))
+}
+
+// L4: the chain starts at home. No other user may own it or be able to
+// replace it with a link; its mode is not judged.
+func TestFileHomeRule(t *testing.T) {
+	t.Run("a group-writable home is a normal setup", func(t *testing.T) {
+		f := newFile(t)
+		require.NoError(t, os.Chmod(f.home, 0o775))
+		require.NoError(t, f.Write(ctx, "a", []byte("x")))
+		raw, err := f.Read(ctx, "a")
+		require.NoError(t, err)
+		assert.Equal(t, "x", string(raw))
+	})
+
+	t.Run("a home owned by another user", func(t *testing.T) {
+		f := newFile(t)
+		require.NoError(t, f.Write(ctx, "a", []byte("kept")))
+		mine := os.Geteuid()
+		calls := 0
+		// only the first check of each walk (home) sees another owner
+		f.uid = func() int {
+			calls++
+			if calls%4 == 1 {
+				return mine + 1
+			}
+			return mine
+		}
+		_, err := f.Read(ctx, "a")
+		requireDenied(t, err, "foreign home")
+		assert.Contains(t, err.Error(), f.home, "the message names the path")
+		assert.Contains(t, err.Error(), "belongs to another user", "and the rule")
+		calls = 0
+		requireDenied(t, f.Write(ctx, "a", []byte("new")), "foreign home")
+		calls = 0
+		requireDenied(t, f.Delete(ctx, "a"), "foreign home")
+		raw, err := os.ReadFile(filepath.Join(f.Dir(), "a.item"))
+		require.NoError(t, err)
+		assert.Equal(t, "kept", string(raw))
+	})
+
+	t.Run("a home that is a symlink", func(t *testing.T) {
+		real := t.TempDir()
+		link := filepath.Join(t.TempDir(), "home")
+		require.NoError(t, os.Symlink(real, link))
+		f := OpenAt(link, NamespaceDev)
+		requireDenied(t, f.Write(ctx, "a", []byte("x")), "home symlink")
+		_, err := os.Lstat(filepath.Join(real, ".anytype"))
+		require.ErrorIs(t, err, os.ErrNotExist, "nothing was created behind the link")
+	})
+
+	t.Run("a home that does not exist is never created", func(t *testing.T) {
+		f := OpenAt(filepath.Join(t.TempDir(), "nobody"), NamespaceDev)
+		require.True(t, IsTemporary(f.Write(ctx, "a", []byte("x"))))
+		_, err := os.Lstat(f.home)
+		require.ErrorIs(t, err, os.ErrNotExist)
+	})
 }

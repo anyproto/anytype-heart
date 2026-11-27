@@ -530,7 +530,7 @@ func TestKeyInA200ReplyIsWithheld(t *testing.T) {
 			assert.NotContains(t, out, tc.key)
 			assert.NotContains(t, out, string(escaped[1:len(escaped)-1]))
 			assert.NotContains(t, h.log.String(), tc.key)
-			assert.Contains(t, h.log.String(), "withheld")
+			require.Eventually(t, func() bool { return strings.Contains(h.log.String(), "withheld") }, 3*time.Second, 5*time.Millisecond)
 		})
 	}
 }
@@ -564,7 +564,10 @@ func TestIDsAreMatchedByValue(t *testing.T) {
 		})
 		h.send(`{"jsonrpc":"2.0","id":"a&b","method":"tools/call","params":{"name":"x"}}`)
 		require.Eventually(t, func() bool { return h.heart.count("tools/call") == 1 }, 3*time.Second, time.Millisecond)
-		h.send(`{"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":"a&b"}}`)
+		// the same id, spelled with an escape
+		spelled := `"a` + uesc('&') + `b"`
+		require.NotEqual(t, `"a&b"`, spelled)
+		h.send(`{"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":` + spelled + `}}`)
 		h.silent()
 		close(release)
 		h.silent()
@@ -573,7 +576,7 @@ func TestIDsAreMatchedByValue(t *testing.T) {
 	t.Run("numbers keep their digits; a string and a number are different ids", func(t *testing.T) {
 		assert.Equal(t, "n:123456789012345678901234567890", idKey(json.RawMessage(`123456789012345678901234567890`)))
 		assert.NotEqual(t, idKey(json.RawMessage(`1`)), idKey(json.RawMessage(`"1"`)))
-		assert.Equal(t, idKey(json.RawMessage(`"a&b"`)), idKey(json.RawMessage(` "a&b" `)))
+		assert.Equal(t, idKey(json.RawMessage(`"a`+uesc('&')+`b"`)), idKey(json.RawMessage(` "a&b" `)))
 		assert.Empty(t, idKey(json.RawMessage(`null`)))
 		assert.Empty(t, idKey(nil))
 	})

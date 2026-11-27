@@ -80,12 +80,31 @@ func TestDependencyBudget(t *testing.T) {
 	assert.False(t, own(ownPackage+"x/internal"), "a sibling package is not this command")
 }
 
+// moduleLine names what a module contributes to the binary: its path and
+// version, and where a go.mod replace swaps it, what it is replaced with.
+// A replacement without a version (a local directory) can't be pinned and
+// is an error.
+func moduleLine(path, version, replacePath, replaceVersion string) (string, error) {
+	line := path + "@" + version
+	if replacePath == "" {
+		return line, nil
+	}
+	if replaceVersion == "" {
+		return "", fmt.Errorf("%s is replaced by %s, which has no version: Rev can't cover it", path, replacePath)
+	}
+	return line + " => " + replacePath + "@" + replaceVersion, nil
+}
+
 // modules lists every module version linked into any shipped target.
 func modules(t *testing.T) []string {
+	const format = "{{with .Module}}{{.Path}}|{{.Version}}|{{with .Replace}}{{.Path}}|{{.Version}}{{end}}{{end}}"
 	seen := map[string]bool{}
 	for _, target := range shipped {
-		for _, m := range goList(t, target, "{{with .Module}}{{.Path}}@{{.Version}}{{end}}") {
-			seen[m] = true
+		for _, m := range goList(t, target, format) {
+			f := append(strings.Split(m, "|"), "", "", "")
+			line, err := moduleLine(f[0], f[1], f[2], f[3])
+			require.NoError(t, err)
+			seen[line] = true
 		}
 	}
 	var out []string
@@ -190,6 +209,18 @@ func TestRevGuard(t *testing.T) {
 		assert.NotContains(t, list, "keychain")
 		assert.NotContains(t, list, "wincred")
 		assert.NotContains(t, list, "dbus")
+	})
+
+	t.Run("a replaced module changes the hash; a replacement without a version is refused", func(t *testing.T) {
+		plain, err := moduleLine("example.com/lock", "v0.12.1", "", "")
+		require.NoError(t, err)
+		replaced, err := moduleLine("example.com/lock", "v0.12.1", "example.com/fork/lock", "v0.12.1-patched")
+		require.NoError(t, err)
+		assert.Equal(t, "example.com/lock@v0.12.1 => example.com/fork/lock@v0.12.1-patched", replaced)
+		src := []string{"a.go\npackage a\n"}
+		assert.NotEqual(t, revHash(src, []string{plain}), revHash(src, []string{replaced}))
+		_, err = moduleLine("example.com/lock", "v0.12.1", "../lock", "")
+		require.Error(t, err, "a local directory can't be pinned")
 	})
 
 	t.Run("the lock can't be regenerated without a bump", func(t *testing.T) {

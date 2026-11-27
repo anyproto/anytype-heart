@@ -21,14 +21,21 @@ func TestItem(t *testing.T) {
 		assert.Less(t, len(raw), MaxItemBytes)
 	})
 
-	t.Run("the largest item fits the size an item may have", func(t *testing.T) {
-		big := good
-		big.Key = strings.Repeat("k", MaxKeyBytes)
-		big.Account = strings.Repeat("a", 256)
-		big.Rev = 1 << 60
-		raw, err := big.Encode()
+	t.Run("the largest item fits, whatever the key is made of", func(t *testing.T) {
+		// the characters JSON escapes, and the ones HTML escaping would
+		// have blown up sixfold
+		for _, ch := range []string{`"`, "&", "<", ">", `\`, "k"} {
+			big := Item{V: 1, Rev: 1 << 62, Key: strings.Repeat(ch, MaxKeyBytes), Account: strings.Repeat("a", 256), Port: 65535, Tier: "large"}
+			raw, err := big.Encode()
+			require.NoError(t, err, ch)
+			assert.LessOrEqual(t, len(raw), MaxItemBytes, ch)
+			back, err := DecodeItem(raw)
+			require.NoError(t, err, ch)
+			assert.Equal(t, big, back, ch)
+		}
+		raw, err := Item{V: 1, Rev: 1, Key: "a&b<c>", Account: "a", Port: 1, Tier: "full"}.Encode()
 		require.NoError(t, err)
-		assert.Less(t, len(raw), MaxItemBytes)
+		assert.Contains(t, string(raw), `"a&b<c>"`, "stored without HTML escaping")
 	})
 
 	t.Run("the fingerprint is the registry's: the first 16 hex of sha256(key)", func(t *testing.T) {

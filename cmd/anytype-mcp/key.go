@@ -99,9 +99,10 @@ func (e *keyEnv) storeFail(err error) int {
 	return e.fail(code, "the item store failed", state)
 }
 
-// unconfirmed reports a write the store took but could not confirm.
+// unconfirmed reports a write or a delete the store took but could not
+// confirm.
 func (e *keyEnv) unconfirmed(err error) int {
-	const reason = "the item was written but could not be confirmed: check before retrying"
+	const reason = "the item was changed but that could not be confirmed: check before retrying"
 	e.print(keyResult{Unconfirmed: true, Reason: reason})
 	fmt.Fprintf(e.stderr, "anytype-mcp: %s (%s)\n", reason, oneLine(err))
 	return exitInternal
@@ -242,8 +243,10 @@ func readPayload(stdin io.Reader, e *keyEnv) (setPayload, int) {
 	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
 		return p, e.fail(exitInvalidInput, "the payload is followed by something else", "")
 	}
-	probe := store.Item{V: store.ItemVersion, Rev: 1, Key: p.Key, Account: p.Account, Port: p.Port, Tier: p.Tier}
-	if err := probe.Validate(); err != nil {
+	// judged with the largest revision, so what is accepted here can
+	// always be stored
+	probe := store.Item{V: store.ItemVersion, Rev: 1 << 62, Key: p.Key, Account: p.Account, Port: p.Port, Tier: p.Tier}
+	if _, err := probe.Encode(); err != nil {
 		return p, e.fail(exitInvalidInput, "the payload is not valid: "+err.Error(), "")
 	}
 	return p, exitOK
@@ -318,8 +321,13 @@ func (e *keyEnv) remove(ctx context.Context, f keyFlags) int {
 		return code
 	}
 	if err := e.st.Delete(ctx, f.connection); err != nil {
-		if errors.Is(err, store.ErrNotFound) {
+		var taken *store.UnconfirmedError
+		switch {
+		case errors.Is(err, store.ErrNotFound):
 			return e.fail(exitNoItem, "no item for this connection", "")
+		case errors.As(err, &taken):
+			// the item is gone; only its confirmation failed
+			return e.unconfirmed(err)
 		}
 		return e.storeFail(err)
 	}

@@ -132,3 +132,67 @@ func TestFileWriteFailures(t *testing.T) {
 		require.NoError(t, err, "only this connection's leftovers are swept")
 	})
 }
+
+// L8: a receipt means the change is durable and the item is the only file
+// that holds the key (or no file at all after a delete).
+func TestFileReceipts(t *testing.T) {
+	failAt := func(stage string) func(string) error {
+		return func(s string) error {
+			if s == stage {
+				return errors.New("injected at " + stage)
+			}
+			return nil
+		}
+	}
+	leftover := func(t *testing.T, f *File) string {
+		p := filepath.Join(f.Dir(), "a.0011223344556677.tmp")
+		require.NoError(t, os.WriteFile(p, []byte("a crashed rotation, candidate key included"), 0o600))
+		return p
+	}
+
+	t.Run("delete removes a crashed rotation's temp file too", func(t *testing.T) {
+		f := newFile(t)
+		require.NoError(t, f.Write(ctx, "a", []byte("one")))
+		stale := leftover(t, f)
+		require.NoError(t, f.Delete(ctx, "a"))
+		_, err := os.Lstat(stale)
+		require.ErrorIs(t, err, os.ErrNotExist)
+		assert.Empty(t, tempFiles(t, f.Dir()))
+	})
+
+	t.Run("a failed folder sync after the unlink is unconfirmed, and the item is gone", func(t *testing.T) {
+		f := newFile(t)
+		require.NoError(t, f.Write(ctx, "a", []byte("one")))
+		f.hook = failAt("after-unlink")
+		err := f.Delete(ctx, "a")
+		var unconfirmed *UnconfirmedError
+		require.ErrorAs(t, err, &unconfirmed)
+		f.hook = nil
+		_, err = f.Read(ctx, "a")
+		require.ErrorIs(t, err, ErrNotFound)
+	})
+
+	t.Run("a sweep that fails stops the verb before it changes anything", func(t *testing.T) {
+		f := newFile(t)
+		require.NoError(t, f.Write(ctx, "a", []byte("one")))
+		stale := leftover(t, f)
+		f.hook = failAt("sweep")
+		require.True(t, IsTemporary(f.Delete(ctx, "a")))
+		require.True(t, IsTemporary(f.Write(ctx, "a", []byte("two"))))
+		f.hook = nil
+		raw, err := f.Read(ctx, "a")
+		require.NoError(t, err)
+		assert.Equal(t, "one", string(raw), "the item is unchanged")
+		_, err = os.Lstat(stale)
+		require.NoError(t, err)
+	})
+
+	t.Run("a new folder that can't be made durable: nothing is written", func(t *testing.T) {
+		f := newFile(t)
+		f.hook = failAt("sync-parent")
+		require.True(t, IsTemporary(f.Write(ctx, "a", []byte("one"))))
+		f.hook = nil
+		_, err := f.Read(ctx, "a")
+		require.ErrorIs(t, err, ErrNotFound)
+	})
+}

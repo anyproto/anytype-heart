@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -114,7 +115,9 @@ func TestStartAndPinning(t *testing.T) {
 			g := h.call(toolCall(1))
 			assert.Nil(t, g.Error, name)
 			assert.False(t, g.isError(), name)
-			assert.Contains(t, h.log.String(), "keeping the last snapshot")
+			// the logger is asynchronous
+			require.Eventually(t, func() bool { return strings.Contains(h.log.String(), "keeping the last snapshot") },
+				3*time.Second, 5*time.Millisecond, name)
 		}
 	})
 

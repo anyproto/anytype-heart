@@ -6,7 +6,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"time"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -17,7 +16,12 @@ const (
 	aceContainerInherit = 0x2
 	fileAllAccess       = 0x1F01FF
 	accessAllowedACE    = 0
-	renameRetryFor      = 2 * time.Second
+	aceInheritOnly      = 0x8
+	accessDeniedACE     = 1
+	callbackAllowedACE  = 9
+	// rights that let their holder rename or take over what is inside a
+	// folder: FILE_DELETE_CHILD, WRITE_DAC, WRITE_OWNER, GENERIC_ALL
+	takeoverRights = 0x40 | 0x40000 | 0x80000 | 0x10000000
 )
 
 // userSID is the SID of the user this process runs as.
@@ -90,10 +94,77 @@ func securityAttributes(folder bool) (*windows.SecurityAttributes, error) {
 	}, nil
 }
 
+// trusted reports whether sid is the user, SYSTEM or the Administrators
+// group. Administrators are trusted: they can read any file anyway.
+func trusted(sid, user *windows.SID) bool {
+	if sid == nil {
+		return false
+	}
+	return sid.Equals(user) || sid.IsWellKnown(windows.WinLocalSystemSid) || sid.IsWellKnown(windows.WinBuiltinAdministratorsSid)
+}
+
+// checkGrants is the rule for a folder the store did not create with its
+// own descriptor. strict (.anytype, ai-connect): the owner and every
+// principal an allow entry names for the folder itself must be the user,
+// SYSTEM or Administrators; inherited entries are fine, so a standard
+// profile passes. Not strict (the home folder): only that nobody else may
+// delete or rename its children or take the folder over.
+func checkGrants(dir string, strict bool) error {
+	sd, err := windows.GetNamedSecurityInfo(dir, windows.SE_FILE_OBJECT,
+		windows.OWNER_SECURITY_INFORMATION|windows.DACL_SECURITY_INFORMATION)
+	if err != nil {
+		return unreachable(err)
+	}
+	user, err := userSID()
+	if err != nil {
+		return unreachable(err)
+	}
+	if strict {
+		owner, _, err := sd.Owner()
+		if err != nil || !trusted(owner, user) {
+			return deniedAt(dir, "a folder on the item path belongs to another user")
+		}
+	}
+	dacl, _, err := sd.DACL()
+	if err != nil || dacl == nil {
+		// no DACL at all grants everything to everyone
+		return deniedAt(dir, "a folder on the item path grants access to everyone")
+	}
+	for i := uint32(0); i < uint32(dacl.AceCount); i++ {
+		var ace *windows.ACCESS_ALLOWED_ACE
+		if err := windows.GetAce(dacl, i, &ace); err != nil || ace == nil {
+			return deniedAt(dir, "a folder on the item path has an unreadable access list")
+		}
+		switch ace.Header.AceType {
+		case accessDeniedACE:
+			continue
+		case accessAllowedACE, callbackAllowedACE:
+		default:
+			if strict {
+				return deniedAt(dir, "a folder on the item path has an access entry of an unknown kind")
+			}
+			continue
+		}
+		if ace.Header.AceFlags&aceInheritOnly != 0 {
+			continue // applies to children only, and each child is checked itself
+		}
+		if trusted((*windows.SID)(unsafe.Pointer(&ace.SidStart)), user) {
+			continue
+		}
+		if strict {
+			return deniedAt(dir, "a folder on the item path grants access to another account")
+		}
+		if uint32(ace.Mask)&takeoverRights != 0 {
+			return deniedAt(dir, "another account may rename or take over folders in the home folder")
+		}
+	}
+	return nil
+}
+
 // mkdir creates one missing folder. The items folder is created with its
 // private descriptor in the same call, never tightened afterwards.
-func (f *File) mkdir(dir string, items bool) error {
-	if !items {
+func (f *File) mkdir(dir string, kind int) error {
+	if kind != kindItems {
 		return os.Mkdir(dir, 0o700)
 	}
 	sa, err := securityAttributes(true)
@@ -112,21 +183,25 @@ func (f *File) mkdir(dir string, items bool) error {
 }
 
 // checkDir is the folder rule: no component may be a reparse point (a
-// symlink or a junction), and the items folder must carry exactly the
-// private descriptor.
-func (f *File) checkDir(dir string, fi os.FileInfo, items bool) error {
+// symlink or a junction); the home folder, .anytype and ai-connect may
+// grant access to the user, SYSTEM and Administrators (see checkGrants);
+// the items folder must carry exactly the private descriptor.
+func (f *File) checkDir(dir string, fi os.FileInfo, kind int) error {
 	if fi.Mode()&(os.ModeSymlink|os.ModeIrregular) != 0 || !fi.IsDir() {
-		return denied("a folder on the item path is not a real directory")
+		return deniedAt(dir, "a folder on the item path is not a real directory")
 	}
-	if !items {
-		return nil
+	if kind != kindItems {
+		return checkGrants(dir, kind == kindAnytype)
 	}
 	sd, err := windows.GetNamedSecurityInfo(dir, windows.SE_FILE_OBJECT,
 		windows.OWNER_SECURITY_INFORMATION|windows.DACL_SECURITY_INFORMATION)
 	if err != nil {
 		return unreachable(err)
 	}
-	return checkSD(sd, true)
+	if err := checkSD(sd, true); err != nil {
+		return deniedAt(dir, "the items folder is not private to the user")
+	}
+	return nil
 }
 
 func notFound(err error) bool {
@@ -135,8 +210,8 @@ func notFound(err error) bool {
 
 // readItem is the item rule. The file is opened without following a
 // reparse point and with FILE_SHARE_DELETE, so a reader never blocks the
-// rename of a writer; the open handle must be a plain file with one link
-// and exactly the private descriptor.
+// replacement of a writer; the open handle must be a plain file with one
+// link and exactly the private descriptor.
 func (f *File) readItem(dir, name string) ([]byte, error) {
 	path := filepath.Join(dir, name)
 	p, err := windows.UTF16PtrFromString(path)
@@ -159,10 +234,10 @@ func (f *File) readItem(dir, name string) ([]byte, error) {
 		return nil, unreachable(err)
 	}
 	if info.FileAttributes&(windows.FILE_ATTRIBUTE_DIRECTORY|windows.FILE_ATTRIBUTE_REPARSE_POINT) != 0 {
-		return nil, denied("the item is not a regular file")
+		return nil, deniedAt(filepath.Join(dir, name), "the item is not a regular file")
 	}
 	if info.NumberOfLinks != 1 {
-		return nil, denied("the item has more than one link")
+		return nil, deniedAt(filepath.Join(dir, name), "the item has more than one link")
 	}
 	sd, err := windows.GetSecurityInfo(h, windows.SE_FILE_OBJECT,
 		windows.OWNER_SECURITY_INFORMATION|windows.DACL_SECURITY_INFORMATION)
@@ -170,7 +245,7 @@ func (f *File) readItem(dir, name string) ([]byte, error) {
 		return nil, unreachable(err)
 	}
 	if err := checkSD(sd, false); err != nil {
-		return nil, err
+		return nil, deniedAt(filepath.Join(dir, name), "the item is not private to the user")
 	}
 	return readChecked(fh)
 }
@@ -187,37 +262,33 @@ func (f *File) createPrivate(dir, name string) (*os.File, error) {
 	if err != nil {
 		return nil, unreachable(err)
 	}
-	h, err := windows.CreateFile(p, windows.GENERIC_WRITE, 0, sa, windows.CREATE_NEW, windows.FILE_ATTRIBUTE_NORMAL, 0)
+	h, err := windows.CreateFile(p, windows.GENERIC_WRITE, windows.FILE_SHARE_READ|windows.FILE_SHARE_DELETE, sa,
+		windows.CREATE_NEW, windows.FILE_ATTRIBUTE_NORMAL, 0)
 	if err != nil {
 		return nil, unreachable(err)
 	}
 	return os.NewFile(uintptr(h), path), nil
 }
 
-// renameIn replaces the item. Something that holds the old item open
-// without FILE_SHARE_DELETE (an antivirus scan) makes the rename fail for
-// a moment: it is retried for up to two seconds.
-func renameIn(dir, from, to string) error {
-	src, err := windows.UTF16PtrFromString(filepath.Join(dir, from))
-	if err != nil {
-		return err
-	}
-	dst, err := windows.UTF16PtrFromString(filepath.Join(dir, to))
-	if err != nil {
-		return err
-	}
-	deadline := time.Now().Add(renameRetryFor)
-	for {
-		err = windows.MoveFileEx(src, dst, windows.MOVEFILE_REPLACE_EXISTING|windows.MOVEFILE_WRITE_THROUGH)
-		busy := errors.Is(err, windows.ERROR_SHARING_VIOLATION) || errors.Is(err, windows.ERROR_ACCESS_DENIED)
-		if err == nil || !busy || time.Now().After(deadline) {
-			return err
-		}
-		time.Sleep(25 * time.Millisecond)
-	}
+// busy reports a failure that passes when whoever holds the file lets go:
+// a handle opened without delete sharing (an antivirus scan).
+func busy(err error) bool {
+	return errors.Is(err, windows.ERROR_SHARING_VIOLATION) || errors.Is(err, windows.ERROR_ACCESS_DENIED)
 }
 
-func removeIn(dir, name string) error { return os.Remove(filepath.Join(dir, name)) }
+// settle makes a finished rename durable: the item is opened for writing
+// and flushed (FlushFileBuffers) before the receipt is given.
+func settle(dir, name string) error {
+	fh, err := os.OpenFile(filepath.Join(dir, name), os.O_WRONLY, 0)
+	if err != nil {
+		return err
+	}
+	if err := fh.Sync(); err != nil {
+		ignore(fh.Close())
+		return err
+	}
+	return fh.Close()
+}
 
-// syncDir: NTFS journals the rename; there is no directory handle to sync.
+// syncDir: NTFS journals directory changes; there is no handle to sync.
 func syncDir(string) error { return nil }

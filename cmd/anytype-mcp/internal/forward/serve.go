@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -125,6 +126,7 @@ type server struct {
 	brokenOnce sync.Once
 	runCtx     context.Context
 	accepted   sync.WaitGroup
+	workers    sync.WaitGroup
 	// progress is when stdout last took a piece of the line being
 	// written; zero while the writer is idle
 	progress atomic.Int64
@@ -173,13 +175,34 @@ func Serve(ctx context.Context, o Options) int {
 	if o.onServer != nil {
 		o.onServer(s)
 	}
-	s.conn.start(ctx)
+	// the one read that decides this process's fate may stall (a network
+	// home): a signal must still end the process, so the read runs beside
+	// the wait. Nothing else starts before it returns: the reader and the
+	// workers never run on an empty snapshot.
+	started := make(chan struct{})
+	go func() {
+		defer close(started)
+		s.conn.start(ctx)
+	}()
+	select {
+	case <-started:
+	case <-ctx.Done():
+		log.printf("shutdown: signal before the item was read")
+		deadline, cancel := context.WithTimeout(context.Background(), o.ShutdownDeadline)
+		defer cancel()
+		log.close(deadline)
+		return 0
+	}
 
 	go s.writer()
 	go s.watchStdout()
 	go s.cleaner() //nolint:gosec // its DELETEs must outlive the run context: shutdown waits for them
 	for i := 0; i < contract.Workers; i++ {
-		go s.worker()
+		s.workers.Add(1)
+		go func() {
+			defer s.workers.Done()
+			s.worker()
+		}()
 	}
 	readerDone := make(chan struct{})
 	go func() {
@@ -229,6 +252,18 @@ func Serve(ctx context.Context, o Options) int {
 	go func() {
 		defer close(finished)
 		stopRun()
+		// a worker that already holds a session id from heart hands it to
+		// cleanup before the cleanup queue closes
+		idle := make(chan struct{})
+		go func() {
+			s.workers.Wait()
+			close(idle)
+		}()
+		select {
+		case <-idle:
+		case <-deadline.Done():
+			return
+		}
 		s.closeDrop()
 		select {
 		case <-s.dropDone:
@@ -740,29 +775,32 @@ func (s *server) handle(c *call) *reply {
 	}
 }
 
-// carriesKey reports whether a body contains the key, as it is or in a
-// form JSON may spell it (with or without HTML characters escaped).
-func carriesKey(body []byte, key string) bool {
+// carriesKey reports whether a body would put the key in front of the
+// client: in its bytes as they are, or in any string the client would
+// decode from it (a value or a member name), however JSON spells it. ok
+// is false when the body can't be walked to its end; such a body is not
+// relayed either.
+func carriesKey(body []byte, key string) (hit, ok bool) {
 	if key == "" {
-		return false
+		return false, true
 	}
 	if bytes.Contains(body, []byte(key)) {
-		return true
+		return true, true
 	}
-	if esc, err := json.Marshal(key); err == nil && len(esc) > 2 {
-		if bytes.Contains(body, esc[1:len(esc)-1]) {
-			return true
+	dec := json.NewDecoder(bytes.NewReader(body))
+	dec.UseNumber()
+	for {
+		tok, err := dec.Token()
+		if errors.Is(err, io.EOF) {
+			return false, true
+		}
+		if err != nil {
+			return false, false
+		}
+		if str, isString := tok.(string); isString && strings.Contains(str, key) {
+			return true, true
 		}
 	}
-	var plain bytes.Buffer
-	enc := json.NewEncoder(&plain)
-	enc.SetEscapeHTML(false)
-	if err := enc.Encode(key); err == nil {
-		if b := bytes.TrimSpace(plain.Bytes()); len(b) > 2 && bytes.Contains(body, b[1:len(b)-1]) {
-			return true
-		}
-	}
-	return false
 }
 
 // relay turns a 200 into the reply. Only a JSON-RPC response carrying this
@@ -783,7 +821,12 @@ func (s *server) relay(c *call, snap snapshot, ex exchange) *reply {
 		s.log.printf("%s: unreadable reply", m.method)
 		return unconfirmed(m)
 	}
-	if carriesKey(ex.body, snap.key) {
+	hit, walked := carriesKey(ex.body, snap.key)
+	if !walked {
+		s.log.printf("%s: unreadable reply", m.method)
+		return unconfirmed(m)
+	}
+	if hit {
 		s.log.printf("%s: the reply contained the connection's key and was withheld", m.method)
 		if m.method == "tools/call" {
 			return toolErrorReply(m.id, msgWithheld)
@@ -876,7 +919,9 @@ func (s *server) adoptInitialize(m *message, snap snapshot, ex exchange, result 
 	s.sess = session{id: ex.session, version: heartVersion, snap: snap}
 	s.initParams = append(json.RawMessage(nil), m.params...)
 	s.initialized = true
-	s.resetPending = false
+	// resetPending stays as it is: only the written warning clears the
+	// gate, or a tools/call sent before the client read the warning could
+	// run on this new session with targets from the old one
 	s.mu.Unlock()
 	if old.id != "" && old.id != ex.session {
 		// a replaced initialize ends the session it replaced
@@ -966,7 +1011,8 @@ func (s *server) renew(ctx context.Context, stale string) error {
 		return fail(ex.status, errRenewFailed)
 	}
 	rpc, ok := parseRPC(ex.body)
-	if !ok || rpc.Error != nil || idKey(rpc.ID) != idKey(id) || carriesKey(ex.body, snap.key) {
+	hit, walked := carriesKey(ex.body, snap.key)
+	if !ok || rpc.Error != nil || idKey(rpc.ID) != idKey(id) || hit || !walked {
 		return fail(ex.status, errRenewFailed)
 	}
 	var res struct {
@@ -976,6 +1022,11 @@ func (s *server) renew(ctx context.Context, stale string) error {
 		return fail(ex.status, errRenewFailed)
 	}
 	opened.version = res.ProtocolVersion
+	// the first leg may have taken a long time: the second is sent only
+	// if the item still names the port and key the session was opened on
+	if !s.stillHome(ctx, snap) {
+		return fail(ex.status, errRenewFailed)
+	}
 	note := []byte(`{"jsonrpc":"2.0","method":"notifications/initialized"}`)
 	ack := s.up.do(ctx, http.MethodPost, snap, opened.id, opened.version, note)
 	switch {
@@ -1027,15 +1078,31 @@ func (s *server) closeDrop() {
 	}
 }
 
+// stillHome reports whether the item still names the port and key of
+// snap, re-reading it when the last read is old. Every authenticated
+// follow-up on a session (a DELETE, the renewal's notification) is sent
+// only while this holds: the bearer never goes to a port Anytype has left,
+// where another user's program may now listen.
+func (s *server) stillHome(ctx context.Context, snap snapshot) bool {
+	cur, err := s.conn.current(ctx)
+	return err == nil && cur.port == snap.port && cur.key == snap.key
+}
+
 // cleaner ends dropped sessions one at a time, each with the snapshot that
-// opened it, so cleanup adds one call to the four workers and stays under
-// heart's limit per key. It outlives the run: shutdown closes the queue
-// and waits for it within the deadline.
+// opened it and only while the item still names that snapshot's port and
+// key; otherwise heart's idle timeout ends the session. Cleanup adds one
+// call to the four workers and stays under heart's limit per key. It
+// outlives the run: shutdown closes the queue and waits for it within the
+// deadline.
 func (s *server) cleaner() {
 	defer close(s.dropDone)
 	for sess := range s.drop {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		s.up.do(ctx, http.MethodDelete, sess.snap, sess.id, sess.version, nil)
+		if s.stillHome(ctx, sess.snap) {
+			s.up.do(ctx, http.MethodDelete, sess.snap, sess.id, sess.version, nil)
+		} else {
+			s.log.printf("session cleanup: its Anytype has moved; left to expire")
+		}
 		cancel()
 	}
 }
@@ -1050,8 +1117,7 @@ func (s *server) endSession(ctx context.Context) {
 	if sess.id == "" {
 		return
 	}
-	snap, err := s.conn.current(ctx)
-	if err != nil || snap.port != sess.snap.port || snap.key != sess.snap.key {
+	if !s.stillHome(ctx, sess.snap) {
 		s.log.printf("shutdown: the session's Anytype has moved; left to expire")
 		return
 	}
