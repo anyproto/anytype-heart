@@ -396,16 +396,12 @@ func TestV2CreateObjectDocument(t *testing.T) {
 			name, body, dry, real string
 		}{
 			{
-				name: "a promoted heading", body: `{"type":"page","markdown":"# Draft
-
-body"}`,
+				name: "a promoted heading", body: `{"type":"page","markdown":"# Draft\n\nbody"}`,
 				dry:  `the first heading would become the object's name: "Draft"`,
 				real: `the first heading became the object's name: "Draft"`,
 			},
 			{
-				name: "a heading that repeats the name", body: `{"type":"page","name":"Draft","markdown":"# Draft
-
-body"}`,
+				name: "a heading that repeats the name", body: `{"type":"page","name":"Draft","markdown":"# Draft\n\nbody"}`,
 				dry:  "the first heading repeats the object's name and would be dropped",
 				real: "the first heading repeated the object's name and was dropped",
 			},
