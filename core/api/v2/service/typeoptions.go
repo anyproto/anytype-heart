@@ -112,7 +112,7 @@ func (s *Service) applyDeclaredOptionsAt(defs []anyblockjson.TypeProperty, resol
 			// exists to end, and the opposite of the refusal
 			// PropertyStoredKey's own comment promises.
 			if !resolvers.CreateMissingConsent() {
-				return optionConsentErrorAt(resolvers.spaceId, docKey, def.Options[0].Name, defPath)
+				return optionConsentErrorAt(resolvers.spaceId, docKey, def.Options[0].Name, defPath, resolvers.dryRun)
 			}
 			for _, opt := range def.Options {
 				if opt.Name != "" {
@@ -198,8 +198,8 @@ func declaredOptionKey(def anyblockjson.TypeProperty) string {
 // It refuses only what the resolver would refuse. A declared option already
 // present on an existing property creates nothing, so it needs no consent and
 // is not reported here.
-func (s *Service) guardDeclaredOptions(spaceId string, defs []anyblockjson.TypeProperty, path string, createMissingOptions bool) error {
-	return s.guardDeclaredOptionsAt(spaceId, defs, indexedOptionsPath(path), createMissingOptions)
+func (s *Service) guardDeclaredOptions(spaceId string, defs []anyblockjson.TypeProperty, path string, createMissingOptions, dryRun bool) error {
+	return s.guardDeclaredOptionsAt(spaceId, defs, indexedOptionsPath(path), createMissingOptions, dryRun)
 }
 
 // indexedOptionsPath is the pointer a definition LIST gives its entries.
@@ -209,7 +209,7 @@ func indexedOptionsPath(path string) func(int) string {
 
 // guardDeclaredOptionsAt is guardDeclaredOptions with caller-supplied
 // pointers — see applyDeclaredOptionsAt.
-func (s *Service) guardDeclaredOptionsAt(spaceId string, defs []anyblockjson.TypeProperty, pathAt func(int) string, createMissingOptions bool) error {
+func (s *Service) guardDeclaredOptionsAt(spaceId string, defs []anyblockjson.TypeProperty, pathAt func(int) string, createMissingOptions, dryRun bool) error {
 	var declaring bool
 	for _, def := range defs {
 		if len(def.Options) > 0 {
@@ -265,7 +265,7 @@ func (s *Service) guardDeclaredOptionsAt(spaceId string, defs []anyblockjson.Typ
 		// a property this request mints holds no options at all, so every
 		// name declared against it is one the request would create
 		if !exists {
-			return optionConsentErrorAt(spaceId, docKey, def.Options[0].Name, defPath)
+			return optionConsentErrorAt(spaceId, docKey, def.Options[0].Name, defPath, dryRun)
 		}
 		held := map[string]bool{}
 		options, err := s.store.SpaceIndex(spaceId).ListRelationOptions(domain.RelationKey(entry.Key))
@@ -279,7 +279,7 @@ func (s *Service) guardDeclaredOptionsAt(spaceId string, defs []anyblockjson.Typ
 		}
 		for _, opt := range def.Options {
 			if opt.Name != "" && !held[opt.Name] {
-				return optionConsentErrorAt(spaceId, docKey, opt.Name, defPath)
+				return optionConsentErrorAt(spaceId, docKey, opt.Name, defPath, dryRun)
 			}
 		}
 	}

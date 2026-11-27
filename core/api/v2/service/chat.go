@@ -496,7 +496,7 @@ func (s *Service) EditChatMessage(ctx context.Context, spaceId, chatId, messageI
 	}
 	warnings := append(links.Warnings("/text"), body.warnings...)
 	if chatWritesBlocks(layout) {
-		warnings = append(warnings, blocksEditWarnings(existing.Blocks)...)
+		warnings = append(warnings, blocksEditWarnings(existing.Blocks, dryRun)...)
 	}
 	content, blocks := body.content, body.blocks
 	if err := v2ValidateChatBody(layout, body, len(existing.Attachments)); err != nil {
@@ -860,7 +860,7 @@ var markdownTextStyles = map[model.BlockContentTextStyle]bool{
 // syntax for — are dropped, and a caller
 // who merely echoed the served `text` back would not know. Served on the
 // dry run and the receipt alike.
-func blocksEditWarnings(blocks []*model.ChatMessageMessageBlock) []v2model.Issue {
+func blocksEditWarnings(blocks []*model.ChatMessageMessageBlock, dryRun bool) []v2model.Issue {
 	var lost []string
 	count := func(kind string, n int) {
 		if n > 0 {
@@ -888,10 +888,18 @@ func blocksEditWarnings(blocks []*model.ChatMessageMessageBlock) []v2model.Issue
 	if len(lost) == 0 {
 		return nil
 	}
+	if dryRun {
+		return []v2model.Issue{{
+			Path:    "/text",
+			Message: fmt.Sprintf("this edit would replace the message's blocks with the text: %s the text cannot express would be dropped", strings.Join(lost, ", ")),
+			Hint:    "quotes, links and embeds cannot be written through this API; keep the original message if they matter",
+		}}
+	}
+	// the edit is made: the original is gone, so there is nothing to keep
 	return []v2model.Issue{{
 		Path:    "/text",
-		Message: fmt.Sprintf("this edit replaces the message's blocks with the text: %s the text cannot express are dropped", strings.Join(lost, ", ")),
-		Hint:    "quotes, links and embeds cannot be written through this API; keep the original message if they matter",
+		Message: fmt.Sprintf("this edit replaced the message's blocks with the text: %s the text cannot express were dropped", strings.Join(lost, ", ")),
+		Hint:    "quotes, links and embeds cannot be written through this API, so they cannot be put back here",
 	}}
 }
 

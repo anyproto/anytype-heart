@@ -451,6 +451,40 @@ func TestV2DiscussionIsAChatForTheMessageOperations(t *testing.T) {
 		assert.Contains(t, got.Warnings[0].Message, "2 quote block(s), 1 link block(s), 1 embed block(s), 2 styled text block(s)")
 	})
 
+	t.Run("the loss warning says what a preview would drop and what an edit dropped", func(t *testing.T) {
+		quoted := func() *model.ChatMessage {
+			return &model.ChatMessage{Id: "msg1", Message: &model.ChatMessageMessageContent{}, Blocks: []*model.ChatMessageMessageBlock{
+				{Content: &model.ChatMessageMessageBlockContentOfEditorQuote{EditorQuote: &model.ChatMessageMessageBlockEditorQuote{BlockId: "b1", Content: &model.ChatMessageMessageBlockText{Text: "q1"}}}},
+			}}
+		}
+		for _, tc := range []struct {
+			dryRun bool
+			want   v2model.Issue
+		}{
+			{dryRun: true, want: v2model.Issue{Path: "/text",
+				Message: "this edit would replace the message's blocks with the text: 1 quote block(s) the text cannot express would be dropped",
+				Hint:    "quotes, links and embeds cannot be written through this API; keep the original message if they matter"}},
+			{dryRun: false, want: v2model.Issue{Path: "/text",
+				Message: "this edit replaced the message's blocks with the text: 1 quote block(s) the text cannot express were dropped",
+				Hint:    "quotes, links and embeds cannot be written through this API, so they cannot be put back here"}},
+		} {
+			// given
+			fx := newV2Fixture(t)
+			fx.addDiscussion(t, testDiscussionId)
+			fx.mwMock.EXPECT().ChatGetMessagesByIds(mock.Anything, mock.Anything).Return(&pb.RpcChatGetMessagesByIdsResponse{Messages: []*model.ChatMessage{quoted()}}).Once()
+			if !tc.dryRun {
+				fx.mwMock.EXPECT().ChatEditMessageContent(mock.Anything, mock.Anything).Return(&pb.RpcChatEditMessageContentResponse{}).Once()
+			}
+
+			// when
+			got, err := fx.EditChatMessage(context.Background(), testSpaceId, testDiscussionId, "msg1", v2model.EditChatMessageRequest{Text: "new"}, tc.dryRun)
+
+			// then
+			require.NoError(t, err, "dryRun=%v", tc.dryRun)
+			assert.Equal(t, []v2model.Issue{tc.want}, got.Warnings, "dryRun=%v", tc.dryRun)
+		}
+	})
+
 	t.Run("a space-chat edit keeps its blocks and warns about nothing", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.addChat(t, testChatId, "Team chat", 1000)

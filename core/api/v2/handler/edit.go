@@ -83,15 +83,18 @@ func DeleteObjectHandler(s *v2service.Service) gin.HandlerFunc {
 		// than ignored, because ignoring it archived with a 200 that read as
 		// the hard delete the caller asked for
 		if _, ok := c.GetQuery("skip_bin"); ok {
-			// on a dry run the resend stays a dry run, so it previews the
-			// delete for good rather than performing it
+			// the repair is the whole request, not a resend: a resend keeps
+			// the skip_bin this refusal is about. A dry run's carries dry_run
+			// itself, so following it from a preview previews
 			repair := "to delete for good, send %s instead"
+			ref := v2model.NewRef(v2model.OpDeleteObject, "space_id", c.Param("space_id"), "object_id", c.Param("object_id")).With("permanent", "true")
 			if isV2DryRun(c) {
 				repair = "to preview a delete for good, send %s instead"
+				ref = ref.With("dry_run", "true")
 			}
 			RespondError(c, v2model.ValidationFailed("unknown query parameter skip_bin",
 				v2model.Issue{Path: "skip_bin", Message: "this route has no skip_bin parameter"}.
-					Hintf(repair, v2model.Resend("permanent", "true"))))
+					Hintf(repair, ref)))
 			return
 		}
 		var permanent bool

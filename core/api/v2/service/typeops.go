@@ -188,7 +188,7 @@ func (s *Service) updateTypeOps(ctx context.Context, spaceId string, typeObject 
 		return nil, err
 	}
 	if err := s.guardDeclaredOptionsAt(spaceId, optionDefs,
-		func(i int) string { return optionPaths[i] + ".options" }, createMissingOptions); err != nil {
+		func(i int) string { return optionPaths[i] + ".options" }, createMissingOptions, dryRun); err != nil {
 		return nil, err
 	}
 
@@ -223,9 +223,9 @@ func (s *Service) updateTypeOps(ctx context.Context, spaceId string, typeObject 
 	if err != nil {
 		return nil, err
 	}
-	result.Warnings = append(result.Warnings, typePruneWarnings(prune, "/ops", s.servedKeySpeller(spaceId), dryRun)...)
 
 	if dryRun {
+		result.Warnings = append(result.Warnings, typePruneWarnings(prune, "/ops", s.servedKeySpeller(spaceId), true)...)
 		result.DryRun = true
 		return result, nil
 	}
@@ -240,10 +240,15 @@ func (s *Service) updateTypeOps(ctx context.Context, spaceId string, typeObject 
 	// only ever ADDS a column for a property the type recommends, so pruning
 	// before the lists were written invites it straight back
 	if len(prune.Pruned) > 0 {
-		if err := s.pruneTypeDataviewColumns(ctx, spaceId, typeObject.Id, plan.removedKeys()); err != nil {
+		// the receipt reports the plan applied under the lock: another edit
+		// may have started arranging a view by the property since the read
+		applied, err := s.pruneTypeDataviewColumns(ctx, spaceId, typeObject.Id, plan.removedKeys())
+		if err != nil {
 			return nil, err
 		}
+		prune = applied
 	}
+	result.Warnings = append(result.Warnings, typePruneWarnings(prune, "/ops", s.servedKeySpeller(spaceId), false)...)
 	// the view half, last. Property ops wrote the lists and the prune ran, so
 	// a view op here sees the state the batch actually produced rather than
 	// one the prune is about to edit underneath it.
@@ -1155,18 +1160,22 @@ func (s *Service) typeDataviewPrunePlan(ctx context.Context, spaceId, typeId str
 	return plan, nil
 }
 
-// pruneTypeDataviewColumns applies the prune to the live type.
-func (s *Service) pruneTypeDataviewColumns(ctx context.Context, spaceId, typeId string, keys []string) error {
+// pruneTypeDataviewColumns applies the prune to the live type and returns
+// the plan it applied, computed under the lock from the state it edited.
+func (s *Service) pruneTypeDataviewColumns(ctx context.Context, spaceId, typeId string, keys []string) (template.TypeDataviewColumnPlan, error) {
+	var applied template.TypeDataviewColumnPlan
 	// a view edit needs neither restriction axis: a type carries the blocks
 	// restriction, and the native view surface does not check it either —
 	// which is how the app edits a type's views at all
 	_, err := s.mutator.MutateObject(ctx, spaceId, typeId, apicore.EditNeeds{}, func(edit apicore.ObjectEdit) error {
+		applied = template.TypeDataviewColumnPlan{}
 		block := typeDataviewBlock(edit.State)
 		if block == nil {
 			return nil
 		}
 		edited := block.Copy()
 		dv := edited.Model().GetDataview()
+		applied = template.PlanTypeDataviewColumnPrune(dv, keys)
 		changed := template.PruneTypeDataviewColumns(dv, keys)
 		// the link that had no column to begin with — the half-consistent
 		// state a client's own delete leaves — which the prune above cannot
@@ -1183,9 +1192,9 @@ func (s *Service) pruneTypeDataviewColumns(ctx context.Context, spaceId, typeId 
 		return nil
 	})
 	if err != nil {
-		return mapWriteError(spaceId, typeId, err)
+		return template.TypeDataviewColumnPlan{}, mapWriteError(spaceId, typeId, err)
 	}
-	return nil
+	return applied, nil
 }
 
 // addTypeDataviewColumns is the add direction, and the reason this channel no
@@ -1277,14 +1286,16 @@ func typePruneWarnings(plan template.TypeDataviewColumnPlan, path string, spell 
 		})
 	}
 	if len(plan.InUse) > 0 {
-		verb := "group, sort or filter by a removed property and were left as they are"
+		// every arrangement the plan keeps a view whole for: grouping,
+		// sorting, filters, the cover and the calendar's end date
+		verb := "use a removed property for their grouping, sorting, filters, cover or end date and were left as they are"
 		switch {
 		case len(plan.InUse) == 1 && dryRun:
-			verb = "groups, sorts or filters by a removed property and would be left as it is"
+			verb = "uses a removed property for its grouping, sorting, filters, cover or end date and would be left as it is"
 		case len(plan.InUse) == 1:
-			verb = "groups, sorts or filters by a removed property and was left as it is"
+			verb = "uses a removed property for its grouping, sorting, filters, cover or end date and was left as it is"
 		case dryRun:
-			verb = "group, sort or filter by a removed property and would be left as they are"
+			verb = "use a removed property for their grouping, sorting, filters, cover or end date and would be left as they are"
 		}
 		issues = append(issues, v2model.Issue{
 			Path:    path,

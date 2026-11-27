@@ -45,10 +45,13 @@ refused for everything made in the app. What changed:
   and every route addressing it answers 410 `object_deleted` (§0.1).
 - **Every archive receipt carries a Bin notice**: where the object went, the
   restore op, and — evaluated per object — whether this key may also delete
-  it for good (`resend with ?permanent=true`) or why not. A dry run's notice
-  says what the real request does: the object can be restored once it is in
-  the Bin, and `?permanent=true` would delete it on the real request (a dry
-  run resent with it is still a dry run).
+  it for good (`resend with ?permanent=true`) or why not. When the
+  provenance read fails, the notice carries the restore op alone: the
+  verdict is advice, and an archive that succeeded is not failed over it. A
+  dry run's notice says what the real request does: the object can be
+  restored once it is in the Bin, and its resend is `?dry_run=true&permanent=true`,
+  which previews the delete for good (a bare `?permanent=true` copied in
+  place of the query would perform it).
 - `?skip_bin` is refused with a 400 steering to `permanent`.
 
 Sections below are kept as the record; where they say "DELETE" for the

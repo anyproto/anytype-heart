@@ -328,7 +328,7 @@ func (s *Service) guardCreateMissing(ctx context.Context, spaceId, objectId stri
 		// fixing typos one round trip at a time is the failure mode a
 		// pre-lock guard exists to avoid. A dry run gets the same refusal:
 		// its job is to preview what the real run would do.
-		return optionConsentError(spaceId, probe.keys.PropertySlug(pending[0].Property), pending[0].Name)
+		return optionConsentError(spaceId, probe.keys.PropertySlug(pending[0].Property), pending[0].Name, dryRun)
 	}
 	if len(pending) > v2MaxCreatedOptionsPerPatch {
 		props := map[string]int{}

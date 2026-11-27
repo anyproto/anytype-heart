@@ -2392,6 +2392,25 @@ func TestPatchObject(t *testing.T) {
 		assert.Contains(t, apiErr.Issues[0].Hint, "create_missing_options=true")
 	})
 
+	t.Run("an unmatched option's resend keeps a dry run a dry run", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").
+			Return(editRead(t, editBaseDoc), nil).Maybe()
+
+		// when
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"set_properties","set":{"severity":["Critical"]}}`), "", true, false)
+
+		// then
+		apiErr := v2ErrWithIssue(t, err)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Equal(t, []v2model.Ref{v2model.RefListPropertyOptions(testSpaceId, "severity"),
+			v2model.Resend("create_missing_options", "true").With("dry_run", "true")}, apiErr.Issues[0].SeeAlso)
+		assert.Contains(t, apiErr.Issues[0].Hint, "to preview creating it")
+	})
+
 	t.Run("an EXISTING option name needs no consent", func(t *testing.T) {
 		// the gate is about minting, not about using: a name the property
 		// already holds resolves on the default path, or the flag would be a

@@ -329,7 +329,7 @@ func (r *creatingResolvers) OptionId(key domain.RelationKey, name string) (strin
 		// caller. Refusing beats returning "unresolved": that would store the
 		// NAME where an option id belongs — a value matching nothing that
 		// reads as if it matched.
-		r.errs = append(r.errs, optionConsentError(r.spaceId, r.keys.PropertySlug(string(key)), name))
+		r.errs = append(r.errs, optionConsentError(r.spaceId, r.keys.PropertySlug(string(key)), name, r.dryRun))
 		return "", false
 	}
 	if r.dryRun {
@@ -411,22 +411,27 @@ func optionAmbiguityError(servedKey, name string, matches []*model.RelationOptio
 // served one throughout — path, message, and the URL it tells the caller to
 // fetch. An error reporting the stored id makes the caller map it back to the
 // field they wrote by hand.
-func optionConsentError(spaceId, servedKey, name string) error {
-	return optionConsentErrorAt(spaceId, servedKey, name, "/properties/"+servedKey)
+func optionConsentError(spaceId, servedKey, name string, dryRun bool) error {
+	return optionConsentErrorAt(spaceId, servedKey, name, "/properties/"+servedKey, dryRun)
 }
 
 // optionConsentErrorAt is the same refusal addressed at the member the caller
 // actually wrote. The type channel declares its options under
 // property_definitions, and a body sent there has no `properties` member at
 // all — the flat path rejects one by name — so the default path above would
-// point at a field the caller could not have written.
-func optionConsentErrorAt(spaceId, servedKey, name, path string) error {
+// point at a field the caller could not have written. A dry run's resend
+// carries dry_run itself: copied as a REST query in place of the request's,
+// a bare create_missing_options=true would commit the write it previews.
+func optionConsentErrorAt(spaceId, servedKey, name, path string, dryRun bool) error {
+	repair, resend := "check the spelling against %s, or resend with %s to create it", v2model.Resend("create_missing_options", "true")
+	if dryRun {
+		repair, resend = "check the spelling against %s, or resend with %s to preview creating it", resend.With("dry_run", "true")
+	}
 	return v2model.ValidationFailed("option does not exist",
 		v2model.Issue{
 			Path:    path,
 			Message: fmt.Sprintf("property %q has no option named %q, and this request did not ask to create one", servedKey, name),
-		}.Hintf("check the spelling against %s, or resend with %s to create it",
-			v2model.RefListPropertyOptions(spaceId, servedKey), v2model.Resend("create_missing_options", "true")))
+		}.Hintf(repair, v2model.RefListPropertyOptions(spaceId, servedKey), resend))
 }
 
 // prewarmCreateMissing resolves a PATCH's create-missing references BEFORE

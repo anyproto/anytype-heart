@@ -347,6 +347,120 @@ func TestV2CreateObjectDocument(t *testing.T) {
 		assert.Equal(t, want, got)
 	})
 
+	t.Run("label-shaped ids beside a template: those the template's blocks hold get fresh ids, on both runs", func(t *testing.T) {
+		// the merge remints a request block whose id a block of the applied
+		// template already holds, so such an id never becomes the object's
+		labelHint := v2model.Issue{}.Hintf("to clone with the source's real ids, read it with %s; to mint fresh ids, omit them", v2model.NewRef(v2model.OpGetObject).With("ids", "full"))
+		body := []byte(`{"formatVersion":"2.0","type":"memo","template":"tpl-weekly","blocks":[` +
+			`{"id":"aaaa1","type":"paragraph","text":"x"},{"id":"bbbb2","type":"paragraph","text":"y"}]}`)
+		cases := []struct {
+			dryRun bool
+			want   []v2model.Issue
+		}{
+			{dryRun: true, want: []v2model.Issue{
+				{Path: "/blocks", Message: `ids "aaaa1" look like compact labels from a default read and would become this object's real ids`, Hint: labelHint.Hint, SeeAlso: labelHint.SeeAlso},
+				{Path: "/blocks", Message: `ids "bbbb2" look like compact labels from a default read; blocks of the applied template already hold them, so the request's blocks would get fresh ids`},
+			}},
+			{dryRun: false, want: []v2model.Issue{
+				{Path: "/blocks", Message: `ids "aaaa1" look like compact labels from a default read and became this object's real ids`, Hint: labelHint.Hint, SeeAlso: labelHint.SeeAlso},
+				v2model.Issue{Path: "/blocks", Message: `ids "bbbb2" look like compact labels from a default read; blocks of the applied template already held them, so the request's blocks got fresh ids`}.
+					Hintf("read the object with %s for the ids it holds", v2model.NewRef(v2model.OpGetObject).With("ids", "full")),
+			}},
+		}
+		for _, tc := range cases {
+			// given: the template holds a bbbb2 of its own
+			fx := newV2Fixture(t)
+			fx.addTemplateType(t)
+			fx.addMemoType(t)
+			fx.addTemplate(t, "tpl-weekly", "Weekly memo", testMemoTypeId)
+			fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "tpl-weekly").Return(apicore.ObjectRead{
+				Snapshot: &model.SmartBlockSnapshotBase{Blocks: []*model.Block{{Id: "tpl-weekly", ChildrenIds: []string{"bbbb2"}}, {Id: "bbbb2"}}},
+			}, nil).Maybe()
+			if !tc.dryRun {
+				fx.expectCreateWithTemplate("newObj")
+				fx.expectEtagRead("newObj")
+			}
+
+			// when
+			result, err := fx.CreateObject(context.Background(), testSpaceId, body, tc.dryRun, false)
+
+			// then
+			require.NoError(t, err, "dryRun=%v", tc.dryRun)
+			require.GreaterOrEqual(t, len(result.Warnings), 2, "dryRun=%v: %v", tc.dryRun, result.Warnings)
+			assert.Equal(t, tc.want, result.Warnings[:2], "dryRun=%v", tc.dryRun)
+		}
+	})
+
+	t.Run("the title notice says what a dry run would do and what a create did", func(t *testing.T) {
+		for _, tc := range []struct {
+			name, body, dry, real string
+		}{
+			{
+				name: "a promoted heading", body: `{"type":"page","markdown":"# Draft
+
+body"}`,
+				dry:  `the first heading would become the object's name: "Draft"`,
+				real: `the first heading became the object's name: "Draft"`,
+			},
+			{
+				name: "a heading that repeats the name", body: `{"type":"page","name":"Draft","markdown":"# Draft
+
+body"}`,
+				dry:  "the first heading repeats the object's name and would be dropped",
+				real: "the first heading repeated the object's name and was dropped",
+			},
+		} {
+			for _, dryRun := range []bool{false, true} {
+				// given
+				fx := newV2Fixture(t)
+				if !dryRun {
+					fx.expectCreate("newObj")
+					fx.expectEtagRead("newObj")
+				}
+				want := tc.real
+				if dryRun {
+					want = tc.dry
+				}
+
+				// when
+				result, err := fx.CreateObject(context.Background(), testSpaceId, []byte(tc.body), dryRun, false)
+
+				// then
+				require.NoError(t, err, "%s, dryRun=%v", tc.name, dryRun)
+				require.Len(t, result.Warnings, 1, "%s, dryRun=%v", tc.name, dryRun)
+				assert.Equal(t, want, result.Warnings[0].Message, "%s, dryRun=%v", tc.name, dryRun)
+			}
+		}
+	})
+
+	t.Run("an unknown option's resend keeps a dry run a dry run", func(t *testing.T) {
+		// a resend copied as a REST query in place of the request's would
+		// drop dry_run and create the object; the preview's carries it
+		options := v2model.RefListPropertyOptions(testSpaceId, "severity")
+		for _, tc := range []struct {
+			dryRun bool
+			hint   string
+			resend v2model.Ref
+		}{
+			{hint: "check the spelling against %s, or resend with %s to create it", resend: v2model.Resend("create_missing_options", "true")},
+			{dryRun: true, hint: "check the spelling against %s, or resend with %s to preview creating it", resend: v2model.Resend("create_missing_options", "true").With("dry_run", "true")},
+		} {
+			// given: no create expectation, so a create fails the test
+			fx := newV2Fixture(t)
+			fx.addSelectProperty(t)
+			want := v2model.Issue{Path: "/properties/severity", Message: `property "severity" has no option named "Nope", and this request did not ask to create one`}.
+				Hintf(tc.hint, options, tc.resend)
+
+			// when
+			_, err := fx.CreateObject(context.Background(), testSpaceId, []byte(`{"type":"page","properties":{"severity":"Nope"}}`), tc.dryRun, false)
+
+			// then
+			apiErr := v2Err(t, err)
+			require.NotEmpty(t, apiErr.Issues, "dryRun=%v", tc.dryRun)
+			assert.Equal(t, want, apiErr.Issues[0], "dryRun=%v", tc.dryRun)
+		}
+	})
+
 	t.Run("a ?block= subtree read cannot be cloned (partial marker)", func(t *testing.T) {
 		// a ?block= read is a fragment of another document: schema-valid on
 		// its face, so the envelope carries an explicit partial marker and
