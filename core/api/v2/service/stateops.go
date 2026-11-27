@@ -2699,9 +2699,11 @@ func (a *v2StateApplier) decodePayloadRun(raws []json.RawMessage, opPath, field,
 // warnOffTypeKeys appends the F16 warning for each of keys (stored
 // spellings, in set or add) that the object's type does not list and the
 // object did not carry before this op. The type lookup runs only when a
-// candidate exists, once per type per PATCH.
+// candidate exists, once per type per PATCH. A template is judged against
+// its template_for as the read serves it, never against `template`.
 func (a *v2StateApplier) warnOffTypeKeys(doc *v2EditDoc, opPath string, fields map[string]string, spelledAs func(string) string) {
 	keys := sortedKeys(fields)
+	judged, forTemplate := offTypeJudge(doc.envelopeString("kind"), doc.docType(), doc.envelopeString("template_for"))
 	carried := func(key string) bool {
 		if _, ok := doc.properties[key]; ok {
 			return true
@@ -2727,16 +2729,16 @@ func (a *v2StateApplier) warnOffTypeKeys(doc *v2EditDoc, opPath string, fields m
 			if a.typeKeysCache == nil {
 				a.typeKeysCache = map[string]map[string]bool{}
 			}
-			if cached, ok := a.typeKeysCache[doc.docType()]; ok {
+			if cached, ok := a.typeKeysCache[judged]; ok {
 				typeKeys = cached
 			} else {
-				typeKeys = a.s.typeListedKeys(a.spaceId, doc.docType())
-				a.typeKeysCache[doc.docType()] = typeKeys
+				typeKeys = a.s.typeListedKeys(a.spaceId, judged)
+				a.typeKeysCache[judged] = typeKeys
 			}
 		}
 		if typeKeys == nil || typeKeys[key] {
 			continue
 		}
-		a.warnings = append(a.warnings, offTypePropertyIssue(spelledAs(key), doc.docType(), opPath+"."+fields[key]+"."+spelledAs(key)))
+		a.warnings = append(a.warnings, offTypePropertyIssue(spelledAs(key), judged, opPath+"."+fields[key]+"."+spelledAs(key), forTemplate))
 	}
 }

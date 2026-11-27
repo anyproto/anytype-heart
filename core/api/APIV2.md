@@ -605,6 +605,13 @@ PATCH/DELETE /v2/spaces/{space_id}/properties/{key}    # update / archive
 - **Templates**: no create-from-body RPC exists; `POST /templates` targets
   the generic AnyBlock create path (Template kind + `templateFor`), which the
   importer already supports (R-note).
+- **A value on a property the type does not list is stored and warned
+  about**, on create and on `set_properties`, once, when the object first
+  takes the key. A template is judged against `template_for`, the type whose
+  objects take its values, never against the type `template`, and the
+  warning names that target. A template whose target is unknown, or not
+  resolvable in the space, gets no such warning
+  (`core/api/v2/service/refs.go:638`).
 - **Every side effect a write creates** — properties and options, real on a
   live run and would-be on a dry run — is reported under `created` in the
   response, each option named once however many ops resolved it

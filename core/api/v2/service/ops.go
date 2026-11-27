@@ -313,11 +313,21 @@ func (d *v2EditDoc) subtreeEnd(i int) int {
 
 // docType returns the envelope type key.
 func (d *v2EditDoc) docType() string {
-	var t string
-	if raw, ok := d.fields["type"]; ok {
-		_ = json.Unmarshal(raw, &t)
+	return d.envelopeString("type")
+}
+
+// envelopeString returns one string member of the envelope (`kind`,
+// `template_for`), empty when it is absent or not a string.
+func (d *v2EditDoc) envelopeString(member string) string {
+	raw, ok := d.fields[member]
+	if !ok {
+		return ""
 	}
-	return t
+	var s string
+	if err := json.Unmarshal(raw, &s); err != nil {
+		return "" // not a string: the document's own validation owns that verdict
+	}
+	return s
 }
 
 //

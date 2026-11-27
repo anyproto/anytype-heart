@@ -627,9 +627,31 @@ func offTypeCandidate(key string) bool {
 	return true
 }
 
+// offTypeJudge names the type the F16 warning judges a document's property
+// values against, from the document's kind, type and template_for: its own
+// type, or, for a template, the type the template is for. A template's
+// values are what objects of that type start with, and the type `template`
+// lists none of them, so judging them against it warned on every property
+// the target does list (APIV2-035). A template whose target is not known is
+// judged against nothing: the empty key, which typeListedKeys answers with
+// nil, because a warning the code cannot substantiate is worse than none.
+func offTypeJudge(kind, docType, templateFor string) (typeKey string, forTemplate bool) {
+	if kind == "template" || docType == string(bundle.TypeKeyTemplate) || templateFor != "" {
+		return templateFor, true
+	}
+	return docType, false
+}
+
 // offTypePropertyIssue is the F16 warning: the value lands, but the type's
-// own surfaces do not reach it.
-func offTypePropertyIssue(spelling, typeKey, path string) v2model.Issue {
+// own surfaces do not reach it. On a template the type is the one the
+// template is for, whose objects take the value from it.
+func offTypePropertyIssue(spelling, typeKey, path string, forTemplate bool) v2model.Issue {
+	if forTemplate {
+		return v2model.Issue{
+			Path:    path,
+			Message: fmt.Sprintf("property %q is not on type %q, the type this template is for — objects created from the template take the value, but type-scoped search and queries over %q refuse the key and the type's default columns omit it", spelling, typeKey, typeKey),
+		}.Hintf("list it on type %q with the add_property op (%s)", typeKey, v2model.RefGetOpSchema("add_property"))
+	}
 	return v2model.Issue{
 		Path:    path,
 		Message: fmt.Sprintf("property %q is not on type %q — the value is stored and served on the object, but type-scoped search and queries over %q refuse the key and the type's default columns omit it", spelling, typeKey, typeKey),

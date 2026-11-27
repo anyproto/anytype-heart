@@ -123,41 +123,46 @@ func TestV2FavoriteFlag(t *testing.T) {
 	})
 }
 
+// newOffTypeFixture is the F16 setting: "chore" and the space-minted
+// "errand" (stored key a bson id) both list severity; spiciness and labels
+// are on no type.
+func newOffTypeFixture(t *testing.T) *v2Fixture {
+	fx := newV2Fixture(t)
+	fx.addSelectProperty(t)
+	fx.addTaskType(t) // "chore" recommends severity
+	fx.addRelation(t, testSpaceId, objectstore.TestObject{
+		bundle.RelationKeyId:           domain.String("rel-spice"),
+		bundle.RelationKeyRelationKey:  domain.String("6a8f2c1d9e4b7a3f5c2d8e77"),
+		bundle.RelationKeyApiObjectKey: domain.String("spiciness"),
+		bundle.RelationKeyName:         domain.String("Spiciness"),
+	})
+	fx.addRelation(t, testSpaceId, objectstore.TestObject{
+		bundle.RelationKeyId:             domain.String("rel-labels"),
+		bundle.RelationKeyRelationKey:    domain.String("6a8f2c1d9e4b7a3f5c2d8e78"),
+		bundle.RelationKeyApiObjectKey:   domain.String("labels"),
+		bundle.RelationKeyName:           domain.String("Labels"),
+		bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_tag)),
+	})
+	fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+		bundle.RelationKeyId:             domain.String("opt-mild"),
+		bundle.RelationKeyRelationKey:    domain.String("6a8f2c1d9e4b7a3f5c2d8e78"),
+		bundle.RelationKeyName:           domain.String("mild"),
+		bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
+	}})
+	// a space-minted type: stored key a bson id, served as "errand"
+	fx.addType(t, testSpaceId, objectstore.TestObject{
+		bundle.RelationKeyId:                   domain.String("type-errand"),
+		bundle.RelationKeyUniqueKey:            domain.String("ot-6a8f2c1d9e4b7a3f5c2d8e88"),
+		bundle.RelationKeyApiObjectKey:         domain.String("errand"),
+		bundle.RelationKeyName:                 domain.String("Errand"),
+		bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-severity"}),
+	})
+	return fx
+}
+
 func TestV2WritesSayWhatTheyLeaveInvisible(t *testing.T) {
 	ctx := context.Background()
-	setup := func(t *testing.T) *v2Fixture {
-		fx := newV2Fixture(t)
-		fx.addSelectProperty(t)
-		fx.addTaskType(t) // "chore" recommends severity
-		fx.addRelation(t, testSpaceId, objectstore.TestObject{
-			bundle.RelationKeyId:           domain.String("rel-spice"),
-			bundle.RelationKeyRelationKey:  domain.String("6a8f2c1d9e4b7a3f5c2d8e77"),
-			bundle.RelationKeyApiObjectKey: domain.String("spiciness"),
-			bundle.RelationKeyName:         domain.String("Spiciness"),
-		})
-		fx.addRelation(t, testSpaceId, objectstore.TestObject{
-			bundle.RelationKeyId:             domain.String("rel-labels"),
-			bundle.RelationKeyRelationKey:    domain.String("6a8f2c1d9e4b7a3f5c2d8e78"),
-			bundle.RelationKeyApiObjectKey:   domain.String("labels"),
-			bundle.RelationKeyName:           domain.String("Labels"),
-			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_tag)),
-		})
-		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
-			bundle.RelationKeyId:             domain.String("opt-mild"),
-			bundle.RelationKeyRelationKey:    domain.String("6a8f2c1d9e4b7a3f5c2d8e78"),
-			bundle.RelationKeyName:           domain.String("mild"),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
-		}})
-		// a space-minted type: stored key a bson id, served as "errand"
-		fx.addType(t, testSpaceId, objectstore.TestObject{
-			bundle.RelationKeyId:                   domain.String("type-errand"),
-			bundle.RelationKeyUniqueKey:            domain.String("ot-6a8f2c1d9e4b7a3f5c2d8e88"),
-			bundle.RelationKeyApiObjectKey:         domain.String("errand"),
-			bundle.RelationKeyName:                 domain.String("Errand"),
-			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-severity"}),
-		})
-		return fx
-	}
+	setup := newOffTypeFixture
 
 	t.Run("a value on a property the type does not list is stored with a warning naming the repair", func(t *testing.T) {
 		fx := setup(t)
@@ -273,6 +278,195 @@ func TestV2WritesSayWhatTheyLeaveInvisible(t *testing.T) {
 		assert.Contains(t, issue.Message, `type "chore" has no property "spiciness"`)
 		assert.NotContains(t, issue.Message, "6a8f2c1d9e4b7a3f5c2d8e77")
 		assert.NotContains(t, issue.Hint, "6a8f2c1d9e4b7a3f5c2d8e77")
+	})
+}
+
+// APIV2-035: a template's values are what objects of its target type start
+// with, so the F16 warning judges them against template_for, never against
+// the type `template`, and names that target.
+func TestV2TemplatePropertiesJudgedAgainstTarget(t *testing.T) {
+	ctx := context.Background()
+	setup := func(t *testing.T) *v2Fixture {
+		fx := newOffTypeFixture(t)
+		// the space's template type lists none of chore's properties, so a
+		// template judged against it warns on every one
+		fx.addTemplateType(t)
+		return fx
+	}
+	const choreTemplateDoc = `{"formatVersion":"2.0","id":"obj1","kind":"template","type":"template","template_for":"chore","properties":{"name":"Weekly"}}`
+	spicinessOffChore := func(path string) v2model.Issue {
+		return v2model.Issue{
+			Path:    path,
+			Message: `property "spiciness" is not on type "chore", the type this template is for — objects created from the template take the value, but type-scoped search and queries over "chore" refuse the key and the type's default columns omit it`,
+			SeeAlso: []v2model.Ref{v2model.RefGetOpSchema("add_property")},
+		}
+	}
+	assertWarning := func(t *testing.T, want v2model.Issue, got []v2model.Issue) {
+		t.Helper()
+		require.Len(t, got, 1, "%v", got)
+		assert.Equal(t, want.Path, got[0].Path)
+		assert.Equal(t, want.Message, got[0].Message)
+		assert.Equal(t, want.SeeAlso, got[0].SeeAlso)
+		assert.Contains(t, got[0].Hint, `list it on type "chore"`, "the repair names the type to add it to, not the template's own")
+	}
+
+	t.Run("a template create setting its target's properties warns nothing", func(t *testing.T) {
+		// given
+		fx := setup(t)
+		fx.expectCreate("tpl1")
+		fx.expectEtagRead("tpl1")
+
+		// when
+		result, err := fx.CreateTemplate(ctx, testSpaceId,
+			[]byte(`{"formatVersion":"2.0","template_for":"chore","properties":{"name":"Weekly","severity":["High"]}}`), false, true)
+
+		// then
+		require.NoError(t, err)
+		assert.Empty(t, result.Warnings)
+	})
+
+	t.Run("a template create setting a property its target does not list warns, naming the target", func(t *testing.T) {
+		// given
+		fx := setup(t)
+		fx.expectCreate("tpl1")
+		fx.expectEtagRead("tpl1")
+		want := spicinessOffChore("/properties/spiciness")
+
+		// when
+		result, err := fx.CreateTemplate(ctx, testSpaceId,
+			[]byte(`{"formatVersion":"2.0","template_for":"chore","properties":{"name":"Weekly","severity":["High"],"spiciness":"mild"}}`), false, true)
+
+		// then
+		require.NoError(t, err)
+		assertWarning(t, want, result.Warnings)
+	})
+
+	t.Run("a template for a space-minted type is judged against it and names it by its slug, on a dry run too", func(t *testing.T) {
+		// given
+		fx := setup(t)
+
+		// when
+		result, err := fx.CreateTemplate(ctx, testSpaceId,
+			[]byte(`{"formatVersion":"2.0","template_for":"errand","properties":{"name":"Weekly","severity":["High"],"spiciness":"mild"}}`), true, true)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, result.Warnings, 1, "severity is on errand; %v", result.Warnings)
+		assert.Equal(t, "/properties/spiciness", result.Warnings[0].Path)
+		assert.Contains(t, result.Warnings[0].Message, `is not on type "errand", the type this template is for`)
+		assert.NotContains(t, result.Warnings[0].Message, "6a8f2c1d9e4b7a3f5c2d8e88")
+	})
+
+	t.Run("a template for a type this space cannot resolve warns nothing", func(t *testing.T) {
+		// given: task is bundled, so it passes the type gate, but this space
+		// holds no row for it and so no list to judge against
+		fx := setup(t)
+		fx.expectCreate("tpl1")
+		fx.expectEtagRead("tpl1")
+
+		// when
+		result, err := fx.CreateTemplate(ctx, testSpaceId,
+			[]byte(`{"formatVersion":"2.0","template_for":"task","properties":{"name":"Weekly","spiciness":"mild"}}`), false, true)
+
+		// then
+		require.NoError(t, err)
+		assert.Empty(t, result.Warnings)
+	})
+
+	t.Run("a template's own system property warns nothing", func(t *testing.T) {
+		// given: the name-prefill setting belongs to templates, and no target
+		// type lists it
+		fx := setup(t)
+
+		// when
+		result, err := fx.CreateTemplate(ctx, testSpaceId,
+			[]byte(`{"formatVersion":"2.0","template_for":"chore","properties":{"name":"Weekly","template_name_prefill_type":1}}`), true, true)
+
+		// then
+		require.NoError(t, err)
+		assert.Empty(t, result.Warnings)
+	})
+
+	t.Run("set_properties on a template setting its target's properties warns nothing", func(t *testing.T) {
+		// given
+		fx := setup(t)
+		fx.expectMutate(editRead(t, choreTemplateDoc), "headB")
+
+		// when
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"set_properties","set":{"severity":["High"]}}`), "", false, true)
+
+		// then
+		require.NoError(t, err)
+		assert.Empty(t, result.Warnings)
+	})
+
+	t.Run("set_properties on a template setting a property its target does not list warns, naming the target", func(t *testing.T) {
+		// given
+		fx := setup(t)
+		fx.expectMutate(editRead(t, choreTemplateDoc), "headB")
+		want := spicinessOffChore("ops[0].set.spiciness")
+
+		// when
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"set_properties","set":{"severity":["High"],"spiciness":"mild"}}`), "", false, true)
+
+		// then
+		require.NoError(t, err)
+		assertWarning(t, want, result.Warnings)
+	})
+
+	t.Run("set_properties on a template of a space-minted type names the target by its slug", func(t *testing.T) {
+		// given: the template's target is stored by errand's bson key, which
+		// the read serves as the slug
+		fx := setup(t)
+		fx.expectMutate(editRead(t, `{"formatVersion":"2.0","id":"obj1","kind":"template","type":"template","template_for":"6a8f2c1d9e4b7a3f5c2d8e88","properties":{"name":"Weekly"}}`), "headB")
+
+		// when
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"set_properties","set":{"severity":["High"],"spiciness":"mild"}}`), "", false, true)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, result.Warnings, 1, "severity is on errand; %v", result.Warnings)
+		assert.Equal(t, "ops[0].set.spiciness", result.Warnings[0].Path)
+		assert.Contains(t, result.Warnings[0].Message, `is not on type "errand", the type this template is for`)
+		assert.NotContains(t, result.Warnings[0].Message, "6a8f2c1d9e4b7a3f5c2d8e88")
+	})
+
+	t.Run("set_properties on a template whose target is not known warns nothing", func(t *testing.T) {
+		// given: no template_for, so nothing says which type the values are for
+		fx := setup(t)
+		fx.expectMutate(editRead(t, `{"formatVersion":"2.0","id":"obj1","kind":"template","type":"template","properties":{"name":"Weekly"}}`), "headB")
+
+		// when
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"set_properties","set":{"spiciness":"mild"}}`), "", false, true)
+
+		// then
+		require.NoError(t, err)
+		assert.Empty(t, result.Warnings)
+	})
+
+	t.Run("a plain create keeps the plain warning", func(t *testing.T) {
+		// given
+		fx := setup(t)
+		fx.expectCreate("new1")
+		fx.expectEtagRead("new1")
+		want := v2model.Issue{
+			Path:    "/properties/spiciness",
+			Message: `property "spiciness" is not on type "chore" — the value is stored and served on the object, but type-scoped search and queries over "chore" refuse the key and the type's default columns omit it`,
+			Hint:    "list it on the type with the add_property op (GET /v2/schemas/ops/add_property)",
+			SeeAlso: []v2model.Ref{v2model.RefGetOpSchema("add_property")},
+		}
+
+		// when
+		result, err := fx.CreateObject(ctx, testSpaceId,
+			[]byte(`{"formatVersion":"2.0","type":"chore","properties":{"name":"X","spiciness":"mild"}}`), false, true)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []v2model.Issue{want}, result.Warnings)
 	})
 }
 

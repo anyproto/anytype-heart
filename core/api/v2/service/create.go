@@ -824,8 +824,11 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	// a cross-space object link whose space reference could not be expanded
 	result.Warnings = append(result.Warnings, links.Warnings("/blocks")...)
 	// F16: a value on a property the type does not list, said at create as
-	// on set_properties (the object takes the key here for the first time)
-	if typeKeys := s.typeListedKeys(spaceId, envelope.Type); typeKeys != nil {
+	// on set_properties (the object takes the key here for the first time).
+	// A template is judged against template_for, never against `template`.
+	judged, forTemplate := offTypeJudge(envelope.Kind, envelope.Type, envelope.TemplateFor)
+	if typeKeys := s.typeListedKeys(spaceId, judged); typeKeys != nil {
+		judgedSlug := resolvers.keys.TypeSlug(judged)
 		for _, key := range sortedKeys(envelope.Properties) {
 			if typeKeys[key] || !offTypeCandidate(key) {
 				continue
@@ -834,7 +837,7 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 			if original, ok := spellings[key]; ok {
 				spelling = original
 			}
-			result.Warnings = append(result.Warnings, offTypePropertyIssue(spelling, result.Type, "/properties/"+spelling))
+			result.Warnings = append(result.Warnings, offTypePropertyIssue(spelling, judgedSlug, "/properties/"+spelling, forTemplate))
 		}
 	}
 	if opts.dryRun {
