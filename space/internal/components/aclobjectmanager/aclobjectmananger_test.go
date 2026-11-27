@@ -194,14 +194,17 @@ func TestAclObjectManager(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		cmds []string
+		// whether the space view knows the acl head this device has, instead of no head at all
+		latestAclHeadIsHead bool
 	}{
 		{
 			name: "participant removed while offline, then a newcomer asked to join",
 			cmds: removedThenJoined,
 		},
 		{
-			name: "participant removed while offline, then a newcomer was accepted",
-			cmds: append(slices.Clone(removedThenJoined), "a.approve::c,r"),
+			name:                "participant removed while offline, then a newcomer was accepted",
+			cmds:                append(slices.Clone(removedThenJoined), "a.approve::c,r"),
+			latestAclHeadIsHead: true,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -216,7 +219,11 @@ func TestAclObjectManager(t *testing.T) {
 			fx.mockSpace.EXPECT().Id().Return("spaceId")
 			fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
 			fx.mockCommonSpace.EXPECT().Id().AnyTimes().Return("spaceId")
-			fx.mockStatus.EXPECT().GetLatestAclHeadId().Return("").Once()
+			latestAclHeadId := ""
+			if tc.latestAclHeadIsHead {
+				latestAclHeadId = acl.Head().Id
+			}
+			fx.mockStatus.EXPECT().GetLatestAclHeadId().Return(latestAclHeadId).Once()
 			fx.mockParticipantWatcher.EXPECT().GetProcessedAclHeadId(mock.Anything, fx.mockSpace).Return("").Once()
 			fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
 
@@ -268,8 +275,9 @@ func TestAclObjectManager(t *testing.T) {
 		{
 			name: "account absent from the acl is not marked removed",
 			acl: func(t *testing.T) (*syncAclStub, crypto.PrivKey) {
-				// an outsider holds none of the keys, so not even the owner's metadata decrypts
-				a, _ := newMemberAcl(t, []string{"a.init::a"}, "a")
+				// another member, b, was removed, and an outsider holds none of the keys, so not even
+				// the owner's metadata decrypts
+				a, _ := newMemberAcl(t, removedThenJoined, "a")
 				ownerAcl := a.ActualAccounts()["a"].Acl
 				records, err := ownerAcl.RecordsAfter(ctx, "")
 				require.NoError(t, err)
