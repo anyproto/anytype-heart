@@ -36,6 +36,14 @@ func setDACL(t *testing.T, path, s string, protected bool) {
 	require.NoError(t, windows.SetNamedSecurityInfo(path, windows.SE_FILE_OBJECT, info, nil, nil, dacl, nil))
 }
 
+// canonical is a descriptor string as Windows prints it: it spells some
+// accounts by an alias (the runner's user is "LA").
+func canonical(t *testing.T, s string) string {
+	sd, err := windows.SecurityDescriptorFromString(s)
+	require.NoError(t, err)
+	return sd.String()
+}
+
 func me(t *testing.T) string {
 	sid, err := userSID()
 	require.NoError(t, err)
@@ -46,9 +54,9 @@ func TestWindowsDescriptors(t *testing.T) {
 	f := newFile(t)
 	require.NoError(t, f.Write(ctx, "a", []byte("x")), "the runner's standard inherited DACLs pass")
 	user := me(t)
-	assert.Equal(t, "O:"+user+"D:P(A;OICI;FA;;;"+user+")", sddl(t, f.Dir()))
+	assert.Equal(t, canonical(t, "O:"+user+"D:P(A;OICI;FA;;;"+user+")"), sddl(t, f.Dir()))
 	item := filepath.Join(f.Dir(), "a.item")
-	assert.Equal(t, "O:"+user+"D:P(A;;FA;;;"+user+")", sddl(t, item))
+	assert.Equal(t, canonical(t, "O:"+user+"D:P(A;;FA;;;"+user+")"), sddl(t, item))
 
 	t.Run("an item whose DACL also lets Everyone in", func(t *testing.T) {
 		setDACL(t, item, "D:P(A;;FA;;;"+user+")(A;;FR;;;WD)", true)
@@ -101,14 +109,23 @@ func TestWindowsFolderGrants(t *testing.T) {
 	t.Run("an inherit-only entry for others on .anytype does not apply to the folder itself", func(t *testing.T) {
 		f := newFile(t)
 		require.NoError(t, f.Write(ctx, "a", []byte("x")))
-		setDACL(t, filepath.Join(f.home, ".anytype"), trustedOnly+"(A;OICIIO;FR;;;BU)", true)
+		// for files only: ai-connect inherits it as inherit-only too. An
+		// entry that folders inherit (CI) would apply to ai-connect itself,
+		// and ai-connect is rightly refused then.
+		setDACL(t, filepath.Join(f.home, ".anytype"), trustedOnly+"(A;OIIO;FR;;;BU)", true)
 		_, err := f.Read(ctx, "a")
 		require.NoError(t, err)
+		setDACL(t, filepath.Join(f.home, ".anytype"), trustedOnly+"(A;OICIIO;FR;;;BU)", true)
+		_, err = f.Read(ctx, "a")
+		requireDenied(t, err, "Users inherited by ai-connect")
 	})
 
 	t.Run("a home others may read is fine; one where they may delete children is not", func(t *testing.T) {
 		f := newFile(t)
 		require.NoError(t, f.Write(ctx, "a", []byte("x")))
+		// .anytype keeps its own list: one that inherited the home's entry
+		// for Users would be refused by its own rule
+		setDACL(t, filepath.Join(f.home, ".anytype"), trustedOnly, true)
 		setDACL(t, f.home, trustedOnly+"(A;OICI;0x1200a9;;;BU)", true) // read and execute
 		_, err := f.Read(ctx, "a")
 		require.NoError(t, err)
