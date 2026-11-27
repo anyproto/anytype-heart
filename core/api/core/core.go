@@ -3,6 +3,7 @@ package apicore
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -419,4 +420,47 @@ type SpaceLoads interface {
 	// waits for a load in progress for as long as ctx allows and returns the
 	// load's error, or ctx's, otherwise. For a loaded space it does not wait.
 	WaitLoaded(ctx context.Context, spaceId string) error
+}
+
+// SyncStatus is the sync-state port of API v2: the sync status the app shows
+// for a space, and the storage quota the space's file uploads count against.
+// No read waits on the backup node.
+type SyncStatus interface {
+	// Network is where the account's spaces sync to.
+	Network() pb.EventSpaceNetwork
+	// SpaceSyncStatus computes the space's sync status now: the value the
+	// app is sent for it, without the app's storage warning, counted from
+	// the store without creating subscriptions. connectionChecked is false
+	// while no connection to the space's node has been tried yet; the status
+	// then shows the connection as fine.
+	SpaceSyncStatus(spaceId string) (status *pb.EventSpaceSyncStatusUpdate, connectionChecked bool, err error)
+	// SpaceStorage is the quota the space's uploads count against, as the
+	// backup node last reported it: the space owner's, or in a one-to-one
+	// space the caller's own. ok is false when there is none to report:
+	// local-only mode, or the node has not answered for the space yet.
+	SpaceStorage(spaceId string) (storage SpaceStorage, ok bool, err error)
+}
+
+// SpaceStorage is a space's storage quota as the backup node reported it.
+type SpaceStorage struct {
+	LimitBytes int64
+	// NodeUsedBytes is the usage against LimitBytes as the node reported it
+	// at ReportedAt. Uploads still queued or in flight are not in it.
+	NodeUsedBytes int64
+	// Confirmed holds the uploads confirmed lately, by file object id.
+	// Shared: do not change it.
+	Confirmed  map[string]ConfirmedUpload
+	ReportedAt time.Time
+	// PlanLimit is true when the caller's account report shows its whole
+	// limit shared by its spaces, none given a limit of its own: for a space
+	// the caller pays for, a plan upgrade then raises the limit. False when
+	// not so, or not known.
+	PlanLimit bool
+}
+
+// ConfirmedUpload is an upload the node confirmed.
+type ConfirmedUpload struct {
+	Bytes int64
+	// InReport is true when NodeUsedBytes already includes the upload.
+	InReport bool
 }

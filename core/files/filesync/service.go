@@ -56,6 +56,7 @@ import (
 	"io"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -95,6 +96,10 @@ type FileSync interface {
 	RequestNodeUsageUpdate()
 	NodeUsage(ctx context.Context) (usage NodeUsage, err error)
 	SpaceStat(ctx context.Context, spaceId string) (ss SpaceStat, err error)
+	// SpaceLimits returns the quota uploads to the space count against, as
+	// the file node last reported it, without asking the node. ok is false
+	// while the node has not answered for the space, and in local-only mode.
+	SpaceLimits(spaceId string) (limits SpaceLimits, ok bool, err error)
 	DebugQueue(*http.Request) (*QueueInfo, error)
 	SendImportEvents()
 	ClearImportEvents()
@@ -136,6 +141,8 @@ type fileSync struct {
 	nodeUsageStore keyvaluestore.Store[NodeUsage]
 	nodeUsageLock  sync.RWMutex
 	nodeUsage      *NodeUsage
+	// accountLimits is the last account report's limits, see SpaceLimits
+	accountLimits atomic.Pointer[accountLimits]
 	// nodeUsageUpdateCh (capacity 1) wakes runNodeUsageUpdater
 	nodeUsageUpdateCh chan struct{}
 

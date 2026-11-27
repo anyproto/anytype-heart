@@ -22,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/filesync"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/subscription"
+	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus/mock_nodestatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus/mock_spacesyncstatus"
@@ -441,5 +442,111 @@ func TestSpaceStatus(t *testing.T) {
 		}))
 		fx.session.RunHooks(mockSessionContext{"sessionId"})
 		defer fx.ctrl.Finish()
+	})
+}
+
+// noSubscriptions fails the test when a subscription is asked for.
+type noSubscriptions struct {
+	syncsubscriptions.SyncSubscriptions
+	t *testing.T
+}
+
+func (n noSubscriptions) GetSubscription(spaceId string) (syncsubscriptions.SyncSubscription, error) {
+	n.t.Errorf("a status read asked for the subscriptions of %s", spaceId)
+	return nil, fmt.Errorf("no subscriptions in this test")
+}
+
+func TestSpaceSyncStatus_SpaceStatus(t *testing.T) {
+	fileObject := func(id string, status filesyncstatus.Status, creator string) objectstore.TestObject {
+		return objectstore.TestObject{
+			bundle.RelationKeyId:               domain.String(id),
+			bundle.RelationKeyResolvedLayout:   domain.Int64(int64(model.ObjectType_file)),
+			bundle.RelationKeyFileBackupStatus: domain.Int64(int64(status)),
+			bundle.RelationKeyCreator:          domain.String(creator),
+		}
+	}
+	// newSpaceFixture seeds three objects not in sync, one of this account's
+	// files uploading and another member's file refused for the limit, and
+	// swaps the subscriptions for a stand-in that fails on use
+	newSpaceFixture := func(t *testing.T, checked bool) *fixture {
+		fx := newFixture(t, func(fx *fixture) {
+			fx.objectStore.AddObjects(t, "spaceId", genSyncingObjects(0, 3, "spaceId"))
+			fx.objectStore.AddObjects(t, "spaceId", []objectstore.TestObject{
+				fileObject("file-uploading", filesyncstatus.Queued, domain.NewParticipantId("spaceId", "account1")),
+				fileObject("file-uploading-2", filesyncstatus.Syncing, domain.NewParticipantId("spaceId", "account1")),
+				fileObject("file-refused", filesyncstatus.Limited, domain.NewParticipantId("spaceId", "someoneElse")),
+			})
+			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig).Maybe()
+			fx.spaceIdGetter.EXPECT().AllLoadedSpaceIds().Return(nil).Maybe()
+			fx.nodeStatus.EXPECT().TryGetNodeStatus("spaceId").Return(nodestatus.Online, checked)
+			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.Online)
+			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
+		})
+		fx.spaceSyncStatus.subs = noSubscriptions{t: t}
+		return fx
+	}
+
+	t.Run("counts from the store, without subscriptions, broadcasts or the account usage", func(t *testing.T) {
+		// given: the event sender mock fails the test on any Broadcast, the
+		// node usage mock on any GetNodeUsage (the account usage can wait on
+		// the backup node), and the stand-in on any subscription
+		fx := newSpaceFixture(t, true)
+		defer fx.ctrl.Finish()
+		// two objects the node holds that this device has not downloaded
+		fx.UpdateMissingIds("spaceId", []string{"missing1", "missing2"})
+		want := &pb.EventSpaceSyncStatusUpdate{
+			Id:                    "spaceId",
+			Status:                pb.EventSpace_Syncing,
+			Network:               pb.EventSpace_Anytype,
+			SyncingObjectsCounter: 5,
+			UploadingFilesCounter: 2,
+			NotSyncedFilesCounter: 1,
+		}
+
+		// when
+		got, checked, err := fx.SpaceStatus("spaceId")
+
+		// then
+		require.NoError(t, err)
+		require.Equal(t, want, got)
+		require.True(t, checked)
+		// the broadcast dedup is untouched: a read must not suppress the
+		// next status the app is sent
+		fx.mx.Lock()
+		require.Empty(t, fx.lastSentEvents)
+		fx.mx.Unlock()
+	})
+	t.Run("a connection not tried yet is reported unchecked", func(t *testing.T) {
+		// given
+		fx := newSpaceFixture(t, false)
+		defer fx.ctrl.Finish()
+
+		// when
+		_, checked, err := fx.SpaceStatus("spaceId")
+
+		// then
+		require.NoError(t, err)
+		require.False(t, checked)
+	})
+	t.Run("local only", func(t *testing.T) {
+		// given: in local-only mode nothing but the network mode is read
+		fx := newFixture(t, func(fx *fixture) {
+			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_LocalOnly)
+			fx.spaceIdGetter.EXPECT().AllLoadedSpaceIds().Return(nil).Maybe()
+		})
+		defer fx.ctrl.Finish()
+		want := &pb.EventSpaceSyncStatusUpdate{
+			Id:      "spaceId",
+			Status:  pb.EventSpace_Offline,
+			Network: pb.EventSpace_LocalOnly,
+		}
+
+		// when
+		got, checked, err := fx.SpaceStatus("spaceId")
+
+		// then
+		require.NoError(t, err)
+		require.Equal(t, want, got)
+		require.True(t, checked)
 	})
 }

@@ -23,8 +23,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/files/filesync"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
+	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -84,6 +86,7 @@ type apiService struct {
 	objectProvenance     apicore.ObjectProvenance
 	widgets              apicore.Widgets
 	spaceLoads           apicore.SpaceLoads
+	syncStatus           apicore.SyncStatus
 	objectStore          objectstore.ObjectStore
 
 	listenAddr string
@@ -149,6 +152,8 @@ func (s *apiService) Init(a *app.App) error {
 	s.objectProvenance = newObjectProvenanceAdapter(app.MustComponent[space.Service](a), a.MustComponent(account.CName).(account.Service))
 	s.widgets = newWidgetAdapter(app.MustComponent[cache.ObjectGetterComponent](a), app.MustComponent[space.Service](a))
 	s.spaceLoads = newSpaceLoadsAdapter(app.MustComponent[space.Service](a))
+	s.syncStatus = newSyncStatusAdapter(app.MustComponent[spacesyncstatus.Updater](a), app.MustComponent[filesync.FileSync](a),
+		app.MustComponent[spacesyncstatus.NetworkConfig](a))
 	return nil
 }
 
@@ -239,7 +244,7 @@ func (s *apiService) bindLocked(listenAddr string) *pb.EventAccountJsonApiStatus
 		s.crossSpaceSubService,
 		s.chatSubService,
 		s.fileObjectService,
-		server.V2Deps{Reader: s.objectReader, Creator: s.objectCreator, Mutator: s.objectMutator, Provenance: s.objectProvenance, Widgets: s.widgets, ChatSub: s.chatSubService, ObjectSearch: s.objectSearch, SpaceLoads: s.spaceLoads, Store: s.objectStore, FullTable: FullTable, AccountId: s.accountId()},
+		server.V2Deps{Reader: s.objectReader, Creator: s.objectCreator, Mutator: s.objectMutator, Provenance: s.objectProvenance, Widgets: s.widgets, ChatSub: s.chatSubService, ObjectSearch: s.objectSearch, SpaceLoads: s.spaceLoads, SyncStatus: s.syncStatus, Store: s.objectStore, FullTable: FullTable, AccountId: s.accountId()},
 		listenAddr,
 		server.OpenApiDocs{
 			V1YAML: openapiV1YAML,

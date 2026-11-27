@@ -594,6 +594,69 @@ func (_c *MockFileSync_SendImportEvents_Call) RunAndReturn(run func()) *MockFile
 	return _c
 }
 
+// SpaceLimits provides a mock function with given fields: spaceId
+func (_m *MockFileSync) SpaceLimits(spaceId string) (filesync.SpaceLimits, bool, error) {
+	ret := _m.Called(spaceId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SpaceLimits")
+	}
+
+	var r0 filesync.SpaceLimits
+	var r1 bool
+	var r2 error
+	if rf, ok := ret.Get(0).(func(string) (filesync.SpaceLimits, bool, error)); ok {
+		return rf(spaceId)
+	}
+	if rf, ok := ret.Get(0).(func(string) filesync.SpaceLimits); ok {
+		r0 = rf(spaceId)
+	} else {
+		r0 = ret.Get(0).(filesync.SpaceLimits)
+	}
+
+	if rf, ok := ret.Get(1).(func(string) bool); ok {
+		r1 = rf(spaceId)
+	} else {
+		r1 = ret.Get(1).(bool)
+	}
+
+	if rf, ok := ret.Get(2).(func(string) error); ok {
+		r2 = rf(spaceId)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
+// MockFileSync_SpaceLimits_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SpaceLimits'
+type MockFileSync_SpaceLimits_Call struct {
+	*mock.Call
+}
+
+// SpaceLimits is a helper method to define mock.On call
+//   - spaceId string
+func (_e *MockFileSync_Expecter) SpaceLimits(spaceId interface{}) *MockFileSync_SpaceLimits_Call {
+	return &MockFileSync_SpaceLimits_Call{Call: _e.mock.On("SpaceLimits", spaceId)}
+}
+
+func (_c *MockFileSync_SpaceLimits_Call) Run(run func(spaceId string)) *MockFileSync_SpaceLimits_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockFileSync_SpaceLimits_Call) Return(limits filesync.SpaceLimits, ok bool, err error) *MockFileSync_SpaceLimits_Call {
+	_c.Call.Return(limits, ok, err)
+	return _c
+}
+
+func (_c *MockFileSync_SpaceLimits_Call) RunAndReturn(run func(string) (filesync.SpaceLimits, bool, error)) *MockFileSync_SpaceLimits_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SpaceStat provides a mock function with given fields: ctx, spaceId
 func (_m *MockFileSync) SpaceStat(ctx context.Context, spaceId string) (filesync.SpaceStat, error) {
 	ret := _m.Called(ctx, spaceId)

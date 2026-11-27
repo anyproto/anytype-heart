@@ -282,6 +282,7 @@ packages:
       ObjectMutator:
       ObjectProvenance:
       Widgets:
+      SyncStatus:
   github.com/anyproto/anytype-heart/core/api/filter:
     interfaces:
       ApiService:

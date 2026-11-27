@@ -81,6 +81,7 @@ var operations = map[string]operation{
 	OpHeadFile:             {"HEAD", "/v2/spaces/{space_id}/files/{file_id}/content"},
 	OpListMembers:          {"GET", "/v2/spaces/{space_id}/members"},
 	OpGetMemberMe:          {"GET", "/v2/spaces/{space_id}/members/me"},
+	OpGetSyncStatus:        {"GET", "/v2/spaces/{space_id}/sync"},
 	OpListObjects:          {"GET", "/v2/spaces/{space_id}/objects"},
 	OpCreateObject:         {"POST", "/v2/spaces/{space_id}/objects"},
 	OpDeleteObject:         {"DELETE", "/v2/spaces/{space_id}/objects/{object_id}"},
@@ -145,6 +146,7 @@ const (
 	OpHeadFile             = "head_file"
 	OpListMembers          = "list_members"
 	OpGetMemberMe          = "get_member_me"
+	OpGetSyncStatus        = "get_sync_status"
 	OpListObjects          = "list_objects"
 	OpCreateObject         = "create_object"
 	OpDeleteObject         = "delete_object"

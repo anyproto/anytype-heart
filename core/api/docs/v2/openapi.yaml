@@ -815,13 +815,24 @@ components:
         dry_run:
           type: boolean
         id:
+          description: Dry runs store nothing and omit id.
           type: string
         mime_type:
           type: string
         name:
           type: string
+        note:
+          description: How to fix over_limit=true.
+          type: string
+        over_limit:
+          description: True if the file won't fit. It then stays local until backup
+            has room. Present whenever fit can be estimated. Dry runs count bytes
+            as new.
+          type: boolean
         size:
           type: integer
+        storage:
+          $ref: '#/components/schemas/Storage'
       type: object
     Issue:
       properties:
@@ -1125,6 +1136,28 @@ components:
         name:
           type: string
       type: object
+    PendingObject:
+      properties:
+        error:
+          description: Cause of the error.
+          enum:
+          - network_error
+          type: string
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          description: not_backed_up means the file didn't fit the quota.
+          enum:
+          - syncing
+          - queued
+          - error
+          - not_backed_up
+          type: string
+        type:
+          type: string
+      type: object
     PropertyRow:
       properties:
         format:
@@ -1243,6 +1276,90 @@ components:
           type: string
         name:
           type: string
+      type: object
+    Storage:
+      properties:
+        left_bytes:
+          description: Free space after pending uploads that fit. Refused files take
+            no room.
+          type: integer
+        limit_bytes:
+          description: Payer's storage limit.
+          type: integer
+        pending_bytes:
+          description: This account's files here awaiting upload, still uncounted
+            by the node.
+          type: integer
+        used_bytes:
+          description: Node's last reported usage plus uploads it confirmed since.
+          type: integer
+      type: object
+    SyncStatus:
+      properties:
+        error:
+          description: Cause of offline or error.
+          enum:
+          - network_error
+          - incompatible_version
+          type: string
+        has_more:
+          description: More objects follow.
+          type: boolean
+        network:
+          description: Backup network, or local_only for none.
+          enum:
+          - anytype
+          - self_hosted
+          - local_only
+          type: string
+        not_backed_up_file_count:
+          description: Files refused for lack of room stay on the device that added
+            them and upload once they fit.
+          type: integer
+        notes:
+          description: One sentence per sync or storage issue and its fix.
+          items:
+            type: string
+          type: array
+          uniqueItems: false
+        objects:
+          description: This device's out-of-sync objects, last changed first. Page
+            with objects=true, offset and limit. Omitted in local_only or when empty.
+          items:
+            $ref: '#/components/schemas/PendingObject'
+          type: array
+          uniqueItems: false
+        pending_object_count:
+          description: App count of objects out of sync with the backup node. Includes
+            objects not yet downloaded, which `objects` omits.
+          type: integer
+        space_id:
+          type: string
+        status:
+          description: The app's object sync status. In local_only, devices sync on
+            one network without node backup. While connecting, this device hasn't
+            reached the backup node. Quota refusals don't affect status.
+          enum:
+          - synced
+          - syncing
+          - offline
+          - error
+          - network_needs_update
+          - local_only
+          - connecting
+          type: string
+        storage:
+          $ref: '#/components/schemas/Storage'
+        upgrade_needed:
+          type: boolean
+        uploading_file_count:
+          description: This account's files uploading here.
+          type: integer
+        warnings:
+          items:
+            $ref: '#/components/schemas/Issue'
+          type: array
+          uniqueItems: false
       type: object
     TemplateRow:
       properties:
@@ -1902,6 +2019,22 @@ info:
     Events carry no id and nothing replays. After a reconnect the stream opens
     with a fresh snapshot, and a space you hold that is absent from it has left
     the set.
+
+    ## Check sync and storage
+
+    `GET /v2/spaces/{space_id}/sync` returns how the space's objects sync, as the
+    app shows it, and what is out of sync: pending objects, files still
+    uploading, and files not backed up because they did not fit in the storage
+    limit. `connecting` means this device has not reached the backup node yet.
+    It returns counts; add `?objects=true` for the list of what is out of sync.
+
+    `storage` is the quota the space's files count against: the owner's, or in a
+    one-to-one space your own. Its numbers are estimates. `notes` say what is wrong
+    and who can fix it.
+
+    A file upload reports the same `storage` with the new file counted. Its
+    `over_limit` says whether that file will fit, and `note` says what fixes it
+    when it will not. A multipart dry run gives the verdict before uploading.
 
     ## Download files and icons
 
@@ -3605,10 +3738,11 @@ paths:
       - Lists
   /v2/spaces/{space_id}/files:
     post:
-      description: 'Send multipart/form-data with a `file` field, or JSON {"url":
-        …}. A source that refuses the fetch, or a URL that cannot be fetched, is a
-        400 naming /url; only a genuine server fault answers 500. The id that comes
-        back is the one file blocks, image blocks and icon_image values reference.'
+      description: Send multipart/form-data field `file` or JSON {"url":…}. Failed
+        or refused fetches return 400 at /url. Only server faults return 500. Use
+        the returned id in file and image blocks and icon_image. `storage` includes
+        this file in the space's quota. With over_limit=true, backup waits for room.
+        Multipart dry runs check fit before upload.
       operationId: upload_file
       parameters:
       - description: Space id, from GET /v2/spaces
@@ -5607,6 +5741,77 @@ paths:
       summary: Stream a space search
       tags:
       - Search
+  /v2/spaces/{space_id}/sync:
+    get:
+      description: App sync status and counts of pending objects, uploads and files
+        over quota. Outside local_only, storage estimates the owner's quota (yours
+        in one-to-one spaces) once the backup node reports it. notes give issues and
+        fixes.
+      operationId: get_sync_status
+      parameters:
+      - description: Space id, from GET /v2/spaces
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: List out-of-sync objects (counts only by default)
+        in: query
+        name: objects
+        schema:
+          type: boolean
+      - description: Objects to skip
+        in: query
+        name: offset
+        schema:
+          default: 0
+          type: integer
+      - description: Page size
+        in: query
+        name: limit
+        schema:
+          default: 25
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncStatus'
+          description: Space sync status
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Invalid objects or limit
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Space missing or unavailable
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Failed to read sync counts
+        "501":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Sync status unsupported
+      security:
+      - bearerauth: []
+      summary: Get the sync status
+      tags:
+      - Spaces
   /v2/spaces/{space_id}/templates:
     get:
       description: '`type` narrows the list to the templates of one type. Each row''s

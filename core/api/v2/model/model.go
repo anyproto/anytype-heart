@@ -598,16 +598,24 @@ type UploadFileRequest struct {
 // FileUploadResult is the POST files response: the file object id that
 // file/image blocks and iconImage values need (R11).
 //
+// storage is the space's quota with this file counted (syncstatus.go). It
+// carries no field comment: swag moves a comment on a $ref field onto the
+// shared Storage schema. over_limit is a pointer so that false is served:
+// present whenever the verdict could be made, absent when it could not.
+//
 // mime_type is v2's OWN response field and follows C2's snake_case. The
 // query surface's `mimeType` field alias (object.go v2FieldAliases) is a
 // different thing wearing the same word — the FORMAT's file-block field
 // name — and is renamed on the anyblock branch, not here.
 type FileUploadResult struct {
-	Id       string `json:"id"`
-	Name     string `json:"name,omitempty"`
-	MimeType string `json:"mime_type,omitempty"`
-	Size     int64  `json:"size,omitempty"`
-	DryRun   bool   `json:"dry_run,omitempty"`
+	Id        string   `json:"id,omitempty"` // Dry runs store nothing and omit id.
+	Name      string   `json:"name,omitempty"`
+	MimeType  string   `json:"mime_type,omitempty"`
+	Size      int64    `json:"size,omitempty"`
+	DryRun    bool     `json:"dry_run,omitempty"`
+	Storage   *Storage `json:"storage,omitempty"`
+	OverLimit *bool    `json:"over_limit,omitempty"` // True if the file won't fit. It then stays local until backup has room. Present whenever fit can be estimated. Dry runs count bytes as new.
+	Note      string   `json:"note,omitempty"`       // How to fix over_limit=true.
 }
 
 //

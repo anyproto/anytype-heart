@@ -819,6 +819,32 @@ holds returns the existing object with its existing name — `name` in the
 result is how a caller detects that — and the embedded file block keeps the
 source-derived filename regardless (`core/api/v2/service/file.go:29`).
 
+**An upload reports the storage quota with its own file counted** (`storage`,
+the same block as the sync read below) and a per-file `over_limit` verdict:
+whether the uploader, taking the waiting files oldest first, will refuse
+this one. It is present whenever it could be judged, so `false` is served,
+and `note` says who can fix a `true`. The quota and the waiting files are
+read BEFORE the upload: read after, a fast upload could already be in the
+usage and still read as waiting in the store, and count twice. Bytes the
+space already backed up (the result is an existing, synced file) need no
+room; an existing file refused earlier needs room like a new one, since it
+uploads once there is; in a one-to-one space the other member's existing
+file is billed to them, so it gets no verdict. A multipart dry run gives the
+verdict from the staged size, judging the bytes as new; a URL dry run
+reports the quota only, the size being unknown until the fetch. Uploads in
+flight to the same space count against each other: each registers before
+its RPC and takes the ones registered before it, BEFORE reading the store,
+so one that finishes meanwhile is in the store or still listed, never in
+neither; they are read as they stand when the verdict is made, so one of the
+same bytes that resolved to this very file is counted once
+(`uploadsInFlight`). While one ahead is a url upload of unknown size, a file
+that would fit gets no verdict: that upload may yet take the room. Bytes the
+node already confirmed (a re-upload returning a file the store still reads
+as syncing) need no room. A report that
+cannot be made (local-only, no quota reported yet) is left out, never an
+error: the upload itself succeeded (`core/api/v2/service/syncstatus.go`,
+`addUploadStorage`). A dry run's result has no `id`: it stores nothing.
+
 #### Archiving, restoring and deleting
 
 - **`DELETE /objects/{object_id}` archives any user content the grant can
@@ -1835,8 +1861,87 @@ GET   /v2/spaces/{space_id}      # RPC-free tech-space-view read
 POST  /v2/spaces                 # ONE WorkspaceCreate call
 PATCH /v2/spaces/{space_id}
 GET   /v2/spaces/stream          # SSE: GET /v2/spaces held open; when enabled
+GET   /v2/spaces/{space_id}/sync # the app's sync status + the storage quota
 ```
 
+- **`GET /v2/spaces/{space_id}/sync`** (`get_sync_status`) is the space's
+  sync state for an agent asked "is my data syncing?". It is a unary read,
+  not a stream, and never waits on the backup node: the quota is a snapshot
+  the uploader publishes (`filesync.SpaceLimits`), and the status is
+  computed without the app's storage warning, the one input that reads the
+  account's usage. Its counts are read from the store by the filters of the
+  app's sync subscriptions (`syncsubscriptions.*Filters`), without creating
+  any: the subscriptions exist to push the app's widget, and a read that
+  built them would leave three live subscriptions behind for every space it
+  touched, for the rest of the session.
+  - **The object status and counts are the app's own** (`spacesyncstatus`
+    `SpaceStatus`, the value its sync widget is sent): `pending_object_count`
+    includes objects not downloaded yet, `uploading_file_count` is this
+    account's files still uploading. Three mappings differ from the app on
+    purpose. A local-only account is `status: local_only` (the app says
+    offline). A space whose node connection has not been tried yet is
+    `connecting` (the app shows the connection as fine until the first
+    check). And the app's `StorageLimitExceed` is not computed for this read
+    at all: the app raises it below 10% of the CALLER's own account storage
+    left, whichever space this is, and also when that usage could not be read.
+  - **`objects` pages what is out of sync on this device**, most recently
+    changed first: the app's pending objects (syncing, queued or error,
+    oversized excluded) and the files refused for the limit as
+    `not_backed_up`, which the app marks oversized and counts apart. Refused
+    files are counted and listed space-wide, also in a one-to-one space.
+    Counts alone are the default; `?objects=true` adds the list. Local-only
+    lists nothing.
+    Objects not downloaded yet are counted, not listed: an agent can neither
+    read nor name them.
+  - **`storage` is the quota the uploader itself checks for the space**:
+    the limit of whoever pays, the usage the node last reported plus the
+    uploads it confirmed since (a confirmed file still reading waiting in the
+    store is counted once, among the waiting; one a later report already
+    includes is kept, marked, for ten minutes past the first report that
+    includes it, so a store lagging behind the report does not count it
+    twice), `pending_bytes` for this account's files still waiting (archived
+    ones too: archiving does not stop an upload), and `left_bytes` after the
+    waiting files are taken the way
+    the uploader takes them: oldest first, a file that does not fit refused
+    without taking room. The waiting files are read before the quota, so an
+    upload completing between the two reads is counted (twice at worst, never
+    lost). The uploader really takes files in the order it scheduled them,
+    which a failed attempt can change; that order is not readable here. Whoever pays is the space owner, and
+    in a one-to-one space each member for their own files (the file node
+    bills the caller's own account there, and heart does not list the
+    derived owner as a participant). Absent in local-only mode and until the
+    node reports. Estimates: a file counts at its original's size, so an
+    image's resized copies are left out, and other members' and other
+    spaces' waiting uploads are not counted.
+  - **`upgrade_needed` is a shortage seen, not forecast, that a plan upgrade
+    fixes**, judged on the node's own reported room alone, never on local
+    bookkeeping and never after taking the waiting files off it (a waiting
+    file can already be in the report, and a confirmation can overlap one, so
+    either could make a shortage up; the node's figure cannot): the usage is
+    at the limit (or the limit is zero), or the files refused for it do not
+    fit in the room the node shows; the caller pays for the space; the
+    network is Anytype's; the space report is under five minutes old (an
+    older one is from a device that was offline, and the plan may have
+    changed since); and a caller's account report under five minutes old
+    PROVES the limit is the plan's shared one (`filesync.isPlanLimit`): it
+    equals the account's shared limit and is larger than everything the
+    account gave to spaces with a limit of their own together
+    (`AccountLimitBytes - LimitBytes`), so it cannot be one of those. Anything
+    short of that proof (a stale account report, a node that sends no whole
+    limit, a limit that could be an isolated one) advises no purchase. A refused file alone is no shortage: it can
+    be stale, retried only by the device that holds it. Waiting files that
+    will not fit are a forecast and only a note.
+  - **`notes`** say in one sentence each what is wrong and who can fix it:
+    the payer, a member deleting files they added, the space owner, or a
+    self-hosted node's administrator. Buying storage is advised in prose
+    exactly where `upgrade_needed` is true, and on an upload only under the
+    same gate with the file alone larger than the room the node shows. With
+    no report, or a stale one, refused files are named without a remedy, and
+    an upload's note says what the last report said, with none. In a
+    one-to-one space the caller's own shortage gets a note of its own when
+    only the other member's files were refused. A payer not yet known (the
+    membership not indexed) gets a neutral remedy.
+  (`core/api/v2/service/syncstatus.go`)
 - **The spaces stream** (`APIV2_SPACE_STREAM.md`) serves the list's row set
   over Server-Sent Events and keeps it current: `space_added`,
   `space_updated`, `space_removed` with a reason, `not_granted_updated`. It

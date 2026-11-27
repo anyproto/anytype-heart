@@ -765,7 +765,7 @@
   },
   {
    "name": "upload_file",
-   "description": "Upload a file. Stores a file fetched from a URL in the space. A source that refuses the fetch, or a URL that cannot be fetched, is a 400 naming /url. The id that comes back is the one file blocks, image blocks and icon_image values reference.",
+   "description": "Upload a file. Save a URL's file in the space. Failed or refused fetches return 400 at /url. Use the returned id in file and image blocks and icon_image. `storage` includes this file in the space's quota. With over_limit=true, the file stays local until backup has room. See note for the fix.",
    "inputSchema": {
     "additionalProperties": false,
     "properties": {
@@ -2727,6 +2727,40 @@
       ]
      }
     }
+   },
+   "annotations": {
+    "readOnlyHint": true
+   }
+  },
+  {
+   "name": "get_sync_status",
+   "description": "Get the sync status. App sync status and counts of pending objects, uploads and files over quota. Outside local_only, storage estimates the owner's quota (yours in one-to-one spaces) once the backup node reports it. notes give issues and fixes.",
+   "inputSchema": {
+    "additionalProperties": false,
+    "properties": {
+     "limit": {
+      "default": 25,
+      "description": "Page size",
+      "type": "integer"
+     },
+     "objects": {
+      "description": "List out-of-sync objects (counts only by default)",
+      "type": "boolean"
+     },
+     "offset": {
+      "default": 0,
+      "description": "Objects to skip",
+      "type": "integer"
+     },
+     "space_id": {
+      "description": "Space id, from `list_spaces`",
+      "type": "string"
+     }
+    },
+    "required": [
+     "space_id"
+    ],
+    "type": "object"
    },
    "annotations": {
     "readOnlyHint": true

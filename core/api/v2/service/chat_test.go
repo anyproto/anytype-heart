@@ -1065,7 +1065,7 @@ func TestV2ToggleChatReaction(t *testing.T) {
 		}})
 		reader := mock_apicore.NewMockObjectReader(t)
 		reader.EXPECT().IsDeleted(mock.Anything, testSpaceId, testChatId).Return(false, nil)
-		svc := NewService(mwMock, reader, nil, nil, nil, nil, nil, nil, nil, nil, store, objectstore.TestTechSpaceId, "" /* no accountId */)
+		svc := NewService(mwMock, reader, nil, nil, nil, nil, nil, nil, nil, nil, nil, store, objectstore.TestTechSpaceId, "" /* no accountId */)
 		msg := chatProtoMessage()
 		msg.Reactions = &model.ChatMessageReactions{Reactions: map[string]*model.ChatMessageReactionsIdentityList{
 			"👍": {Ids: []string{"someoneElse"}},

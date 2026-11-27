@@ -80,6 +80,11 @@ type Service struct {
 	// spaceLoadWait is how long ensureSpaceLoaded waits; a field so a test
 	// can shorten it.
 	spaceLoadWait time.Duration
+	// syncStatus backs the space sync status read and the storage report of
+	// an upload. Nil answers the read with 501 and reports no storage.
+	syncStatus apicore.SyncStatus
+	// uploads are the file uploads in flight, for the storage report
+	uploads uploadsInFlight
 }
 
 // defaultSpaceLoadWait is how long a request waits for a space that is still
@@ -92,10 +97,11 @@ const defaultSpaceLoadWait = 10 * time.Second
 // may be nil when the edit surface is not served; provenance may be nil
 // (object DELETE then refuses everything — fail closed). chatSub and
 // objectSearch may be nil when their streams are not served. spaceLoads may
-// be nil (the wait for a loading space is then not bounded). accountId may
+// be nil (the wait for a loading space is then not bounded). syncStatus may
+// be nil (no sync status read, no storage report on uploads). accountId may
 // be empty (degraded placeholder substitution only).
-func NewService(mw apicore.ClientCommands, reader apicore.ObjectReader, creator apicore.ObjectCreator, mutator apicore.ObjectMutator, provenance apicore.ObjectProvenance, widgets apicore.Widgets, chatSub apicore.ChatSubscriptionService, objectSearch apicore.ObjectSearchService, spaceLoads apicore.SpaceLoads, fileService apicore.FileObjectService, store objectstore.ObjectStore, techSpaceId, accountId string) *Service {
-	return &Service{fileService: fileService, mw: mw, reader: reader, creator: creator, mutator: mutator, provenance: provenance, widgets: widgets, chatSub: chatSub, objectSearch: objectSearch, spaceLoads: spaceLoads, spaceLoadWait: defaultSpaceLoadWait, clock: systemClock{}, store: store, techSpaceId: techSpaceId, accountId: accountId}
+func NewService(mw apicore.ClientCommands, reader apicore.ObjectReader, creator apicore.ObjectCreator, mutator apicore.ObjectMutator, provenance apicore.ObjectProvenance, widgets apicore.Widgets, chatSub apicore.ChatSubscriptionService, objectSearch apicore.ObjectSearchService, spaceLoads apicore.SpaceLoads, syncStatus apicore.SyncStatus, fileService apicore.FileObjectService, store objectstore.ObjectStore, techSpaceId, accountId string) *Service {
+	return &Service{fileService: fileService, mw: mw, reader: reader, creator: creator, mutator: mutator, provenance: provenance, widgets: widgets, chatSub: chatSub, objectSearch: objectSearch, spaceLoads: spaceLoads, spaceLoadWait: defaultSpaceLoadWait, syncStatus: syncStatus, clock: systemClock{}, store: store, techSpaceId: techSpaceId, accountId: accountId}
 }
 
 // ensureSpaceGranted is the space half of the service-level backstop of the
