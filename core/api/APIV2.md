@@ -337,12 +337,12 @@ refuses several as `ambiguous_input`; and only last the **display name** and
 its fold, on the same one-or-refuse rule. The format's own chain underneath
 (`pkg/lib/anyblockjson/storeresolver/keyvocab.go:495`) has the same order but
 degrades to the verbatim term wherever v2 would refuse — it never guesses
-either. Ambiguity at any step lists every holder by id and by the public
-key it answers to (its slug, a built-in's derived slug, or the stored key of
-a property that has no slug) when those keys tell the holders apart. When
-they do not (twin slugs, or a slug that shadows a built-in), each holder is
-listed by its stored key, the one address that always resolves, and the hint
-adds the lasting repair: rename one. It never picks by store order; a full miss
+either. Ambiguity at any step lists every holder by id and by an address
+verified to resolve back to it: the key the listings serve it under (its
+slug, or its stored key when the slug is shared or shadowed), else its
+stored key, marked as such. A retry with the address shown reaches that
+holder; renaming is not offered, since a slug is frozen at mint. It never
+picks by store order; a full miss
 falls to the unknown-key refusal with did-you-mean (§1.3). The chain is wired
 into route params, search and set type scopes, document creates,
 `set_properties` keys and the option pre-resolution pass, so one spelling

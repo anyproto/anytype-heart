@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // rejectMisplacedPropertyArray answers the mistake every agent makes on this
@@ -228,13 +229,12 @@ func (s *Service) guardDeclaredOptionsAt(spaceId string, defs []anyblockjson.Typ
 	if err != nil {
 		return err
 	}
+	// the same chain the apply resolves the property by (folds and names
+	// included), so harvestStage or STAGE finds the existing property here
+	// as it will there; only a live, installed property holds options
 	find := func(spelling string) (propertyEntry, bool) {
-		for _, entry := range properties {
-			if entry.Key == spelling || (entry.Slug != "" && entry.Slug == spelling) || entry.Name == spelling {
-				return entry, true
-			}
-		}
-		return propertyEntry{}, false
+		entry, ok, ambiguous := s.resolvePropertyInput(spelling, properties)
+		return entry, ok && len(ambiguous) == 0 && entry.Id != ""
 	}
 
 	for i, def := range defs {
@@ -273,27 +273,36 @@ func (s *Service) guardDeclaredOptionsAt(spaceId string, defs []anyblockjson.Typ
 				})
 		}
 
-		if createMissingOptions {
-			continue // the format rule above still applied; consent is granted
-		}
-
 		// a property this request mints holds no options at all, so every
 		// name declared against it is one the request would create
 		if !exists {
+			if createMissingOptions {
+				continue // the format rule above still applied; consent is granted
+			}
 			return optionConsentErrorPending(spelling, def.Options[0].Name, defPath)
 		}
-		held := map[string]bool{}
+		// held counts each name: a declared name two options share is the
+		// resolver's ambiguity refusal, with or without consent — said HERE,
+		// before the batch mints anything, or an earlier op's property is
+		// created and left behind by a refused request
+		held := map[string][]*model.RelationOption{}
 		options, err := s.store.SpaceIndex(spaceId).ListRelationOptions(domain.RelationKey(entry.Key))
 		if err != nil {
 			return fmt.Errorf("list options of property %s: %w", entry.Key, err)
 		}
 		for _, option := range options {
 			if option != nil {
-				held[option.Text] = true
+				held[option.Text] = append(held[option.Text], option)
 			}
 		}
 		for _, opt := range def.Options {
-			if opt.Name != "" && !held[opt.Name] {
+			if opt.Name == "" {
+				continue
+			}
+			if matches := held[opt.Name]; len(matches) > 1 {
+				return optionAmbiguityError(spelling, defPath, opt.Name, matches)
+			}
+			if !createMissingOptions && len(held[opt.Name]) == 0 {
 				return optionConsentErrorAs(spaceId, spelling, routeKey, opt.Name, defPath)
 			}
 		}

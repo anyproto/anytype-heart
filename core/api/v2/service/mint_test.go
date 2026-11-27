@@ -2,6 +2,7 @@ package v2service
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/gogo/protobuf/types"
@@ -375,11 +376,14 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 		_, err := fx.CreateType(context.Background(), testSpaceId,
 			[]byte(`{"kind":"object_type","properties":{"name":"Twin user"},"type_settings":{"api_key":"twinuser","property_definitions":[{"property":"twin_key"}]}}`), false, true)
 
-		// then
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "ambiguous")
-		assert.Contains(t, err.Error(), "rel-twin1")
-		assert.Contains(t, err.Error(), "rel-twin2")
+		// then: the typed 400, at the definition that named the property
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/type_settings/property_definitions/0/property", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, "rel-twin1")
+		assert.Contains(t, apiErr.Issues[0].Message, "rel-twin2")
 	})
 
 	t.Run("a declared format conflicting with the resolved property is a loud 400", func(t *testing.T) {

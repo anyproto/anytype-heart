@@ -248,16 +248,17 @@ func TestV2AmbiguityNamesPublicKeysWhenTheyDiffer(t *testing.T) {
 		})
 	}
 
-	t.Run("twin slugs fall back to stored keys and suggest a rename", func(t *testing.T) {
+	t.Run("twin slugs are named by the stored key the listings serve them under", func(t *testing.T) {
 		// given: two properties answering to one slug
 		fx := slugSpaceFixture(t)
 		addTwin(t, fx, "rel-twin-a", "6a7663db61fab21cd4b9e1a1", "Twin A")
 		addTwin(t, fx, "rel-twin-b", "6a7663db61fab21cd4b9e1b1", "Twin B")
 		want := v2model.Issue{
 			Path: "/properties/twin",
-			Message: `"twin" matches "Twin A" (stored key 6a7663db61fab21cd4b9e1a1, id rel-twin-a)` +
-				` and "Twin B" (stored key 6a7663db61fab21cd4b9e1b1, id rel-twin-b)`,
-			Hint: "address the intended one by its exact key; no public key tells them apart, so rename one to give it a key of its own",
+			Message: `"twin" matches "Twin A" (key 6a7663db61fab21cd4b9e1a1, id rel-twin-a)` +
+				` and "Twin B" (key 6a7663db61fab21cd4b9e1b1, id rel-twin-b)`,
+			// renaming is no repair: a slug is frozen at mint
+			Hint: "address the intended one by its exact key",
 		}
 
 		// when
@@ -284,8 +285,8 @@ func TestV2AmbiguityNamesPublicKeysWhenTheyDiffer(t *testing.T) {
 		apiErr := v2Err(t, err)
 		require.Len(t, apiErr.Issues, 1)
 		assert.Equal(t, `several properties answer to "twin" (`+
-			`"Twin A" (stored key 6a7663db61fab21cd4b9e1a1, id rel-twin-a) and "Twin B" (stored key 6a7663db61fab21cd4b9e1b1, id rel-twin-b))`+
-			` — pass an explicit different key; no public key tells the holders apart, so rename one to give it a key of its own`,
+			`"Twin A" (key 6a7663db61fab21cd4b9e1a1, id rel-twin-a) and "Twin B" (key 6a7663db61fab21cd4b9e1b1, id rel-twin-b))`+
+			` — pass an explicit different key`,
 			apiErr.Issues[0].Hint)
 	})
 

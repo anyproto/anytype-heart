@@ -253,7 +253,7 @@ func (s *Service) resolvePropertyInputIn(input string, entries []propertyEntry, 
 	if len(listed) == 1 {
 		return listed[0], true, nil
 	}
-	return propertyEntry{}, false, describePropertyCandidates(candidates)
+	return propertyEntry{}, false, describePropertyCandidates(candidates, entries)
 }
 
 // typePropertyScope is the set of property ids a type lists, across its four
@@ -515,12 +515,12 @@ func (s *Service) resolveTypeInput(spaceId, input string, entries []typeEntry) (
 	if len(slugMatches) == 1 {
 		if _, ok := shadowedBundledType(input, slugMatches[0].Key); ok {
 			key, _ := bundle.TypeKeyByApiSlug(input)
-			return typeEntry{}, false, describeTypeCandidates(slugMatches, string(key)), nil
+			return typeEntry{}, false, describeTypeCandidates(slugMatches, string(key), entries), nil
 		}
 		return slugMatches[0], true, nil, nil
 	}
 	if len(slugMatches) > 1 {
-		return typeEntry{}, false, describeTypeCandidates(slugMatches, ""), nil
+		return typeEntry{}, false, describeTypeCandidates(slugMatches, "", entries), nil
 	}
 	if t, err := bundle.GetType(domain.TypeKey(input)); err == nil {
 		return typeEntry{Key: input, Name: t.Name}, true, nil, nil
@@ -575,7 +575,7 @@ func (s *Service) resolveTypeInput(spaceId, input string, entries []typeEntry) (
 		return candidates[0], true, nil, nil
 	}
 	if len(candidates) > 1 {
-		return typeEntry{}, false, describeTypeCandidates(candidates, ""), nil
+		return typeEntry{}, false, describeTypeCandidates(candidates, "", entries), nil
 	}
 	// 5: display names — resolvePropertyInput's step 5 on the type
 	// namespace, same order, same shadow discipline, same refusal rules
@@ -587,12 +587,12 @@ func (s *Service) resolveTypeInput(spaceId, input string, entries []typeEntry) (
 		}
 	}
 	if len(nameMatches) > 1 {
-		return typeEntry{}, false, describeTypeCandidates(nameMatches, ""), nil
+		return typeEntry{}, false, describeTypeCandidates(nameMatches, "", entries), nil
 	}
 	if len(nameMatches) == 1 {
 		if _, ok := shadowedBundledTypeName(nfcInput, nameMatches[0].Key); ok {
 			key, _ := anyblockjson.BundledTypeKeyByName(nfcInput)
-			return typeEntry{}, false, describeTypeCandidates(nameMatches, key), nil
+			return typeEntry{}, false, describeTypeCandidates(nameMatches, key, entries), nil
 		}
 		return nameMatches[0], true, nil, nil
 	}
@@ -625,7 +625,7 @@ func (s *Service) resolveTypeInput(spaceId, input string, entries []typeEntry) (
 		return nameCandidates[0], true, nil, nil
 	}
 	if len(nameCandidates) > 1 {
-		return typeEntry{}, false, describeTypeCandidates(nameCandidates, ""), nil
+		return typeEntry{}, false, describeTypeCandidates(nameCandidates, "", entries), nil
 	}
 	return typeEntry{}, false, nil, nil
 }
@@ -711,26 +711,18 @@ func bundledTypeCandidate(key string, entries []typeEntry) typeEntry {
 	return typeEntry{Key: key, Name: bundle.MustGetType(domain.TypeKey(key)).Name}
 }
 
-// describePropertyCandidates renders ambiguity candidates ACTIONABLY, by
-// the public key each one answers to — its slug, a built-in's derived slug,
-// or the stored key of a property that has no slug — when those keys tell
-// the candidates apart. When they do not (twin slugs, or a property whose
-// slug shadows a built-in's), the slug alone would steer the caller back
-// into the same 400, so each is named by its stored key, the one address
-// that always resolves, marked as such so the hint can add the lasting
-// repair: renaming one (ambiguityHint).
-func describePropertyCandidates(candidates []propertyCandidate) []string {
-	publics := make([]string, len(candidates))
-	for i, candidate := range candidates {
-		publics[i] = publicPropertyKey(candidate.entry)
-	}
-	distinct := distinctKeys(publics)
+// describePropertyCandidates renders ambiguity candidates ACTIONABLY: each
+// by an address that resolves back to that holder. The first choice is the
+// key the listings serve it under (servedKey, over the whole live namespace,
+// so a slug another property's stored key shadows is never offered); the
+// fallback is the stored key, the one address that always resolves, marked
+// as such. Every address is verified through the chain itself, so a retry
+// with it reaches the holder it was offered for.
+func describePropertyCandidates(candidates []propertyCandidate, entries []propertyEntry) []string {
+	keyTaken, slugHolders := servedPropertyKeySets(entries)
 	out := make([]string, 0, len(candidates))
-	for i, candidate := range candidates {
-		key := "key " + publics[i]
-		if !distinct {
-			key = "stored key " + candidate.entry.Key
-		}
+	for _, candidate := range candidates {
+		key := propertyCandidateAddress(candidate.entry, entries, keyTaken, slugHolders)
 		if candidate.bundled {
 			out = append(out, fmt.Sprintf("the bundled %q (%s)", bundle.MustGetRelation(domain.RelationKey(candidate.entry.Key)).Name, key))
 			continue
@@ -740,92 +732,79 @@ func describePropertyCandidates(candidates []propertyCandidate) []string {
 	return out
 }
 
+// propertyCandidateAddress is "key <served>" when the served key resolves
+// back to the holder, else "stored key <stored>".
+func propertyCandidateAddress(holder propertyEntry, entries []propertyEntry, keyTaken map[string]bool, slugHolders map[string][]string) string {
+	served := servedKey(holder.Key, holder.Slug, keyTaken, slugHolders)
+	if entry, ok, ambiguous := resolvePropertyChain(served, entries); ok && len(ambiguous) == 0 && entry.Key == holder.Key {
+		return "key " + served
+	}
+	return "stored key " + holder.Key
+}
+
 // describeTypeCandidates is describePropertyCandidates for the type
-// namespace. bundledKey, when set, is the built-in the live entries shadow,
-// named last as the bundled type.
-func describeTypeCandidates(entries []typeEntry, bundledKey string) []string {
-	publics := make([]string, 0, len(entries)+1)
-	stored := make([]string, 0, len(entries)+1)
-	for _, entry := range entries {
-		public := entry.Slug
-		if public == "" {
-			public = entry.Key
-			if bundle.HasObjectTypeByKey(domain.TypeKey(entry.Key)) {
-				public = bundle.TypeApiSlug(entry.Key)
-			}
+// namespace. bundledKey, when set, is the built-in the live candidates
+// shadow, named last as the bundled type; entries is the whole live set.
+func describeTypeCandidates(candidates []typeEntry, bundledKey string, entries []typeEntry) []string {
+	keyTaken, slugHolders := servedTypeKeySets(entries)
+	address := func(key, slug string) string {
+		served := servedTypeKeyOf(key, slug, keyTaken, slugHolders)
+		if typeAddressResolves(served, key, entries) {
+			return "key " + served
 		}
-		publics = append(publics, public)
-		stored = append(stored, entry.Key)
+		return "stored key " + key
+	}
+	out := make([]string, 0, len(candidates)+1)
+	for _, entry := range candidates {
+		out = append(out, fmt.Sprintf("%q (%s, id %s)", entry.Name, address(entry.Key, entry.Slug), entry.Id))
 	}
 	if bundledKey != "" {
-		publics = append(publics, bundle.TypeApiSlug(bundledKey))
-		stored = append(stored, bundledKey)
-	}
-	distinct := distinctKeys(publics)
-	label := func(i int) string {
-		if distinct {
-			return "key " + publics[i]
-		}
-		return "stored key " + stored[i]
-	}
-	out := make([]string, 0, len(publics))
-	for i, entry := range entries {
-		out = append(out, fmt.Sprintf("%q (%s, id %s)", entry.Name, label(i), entry.Id))
-	}
-	if bundledKey != "" {
-		out = append(out, fmt.Sprintf("the bundled %q (%s)", bundle.MustGetType(domain.TypeKey(bundledKey)).Name, label(len(entries))))
+		out = append(out, fmt.Sprintf("the bundled %q (%s)", bundle.MustGetType(domain.TypeKey(bundledKey)).Name, address(bundledKey, "")))
 	}
 	return out
 }
 
-// publicPropertyKey is the key a property is publicly addressed by: its
-// slug, a built-in's derived slug, else its stored key — which, for a
-// property with no slug, is the spelling the listings serve.
-func publicPropertyKey(entry propertyEntry) string {
-	if entry.Slug != "" {
-		return entry.Slug
+// typeAddressResolves reports whether an exact address reaches the type
+// stored under holderKey, by the type chain's exact steps (stored key, sole
+// visible slug holder unshadowed, the built-in table). It mirrors them
+// rather than calling resolveTypeInput, which describes its own
+// ambiguities through this file.
+func typeAddressResolves(addr, holderKey string, entries []typeEntry) bool {
+	for _, entry := range entries {
+		if entry.Key == addr {
+			return entry.Key == holderKey
+		}
 	}
-	if bundle.HasRelation(domain.RelationKey(entry.Key)) {
-		return bundle.ApiSlug(entry.Key)
+	var slugMatches []typeEntry
+	for _, entry := range entries {
+		if !entry.Hidden && entry.Slug != "" && entry.Slug == addr {
+			slugMatches = append(slugMatches, entry)
+		}
 	}
-	return entry.Key
-}
-
-// distinctKeys reports whether no key repeats.
-func distinctKeys(keys []string) bool {
-	seen := make(map[string]bool, len(keys))
-	for _, key := range keys {
-		if seen[key] {
+	if len(slugMatches) == 1 {
+		if _, shadowed := shadowedBundledType(addr, slugMatches[0].Key); shadowed {
 			return false
 		}
-		seen[key] = true
+		return slugMatches[0].Key == holderKey
 	}
-	return true
-}
-
-// storedKeyMark labels a candidate named by its stored key
-// (describePropertyCandidates): no public key told the holders apart.
-const storedKeyMark = "(stored key "
-
-// ambiguityHint is the repair an ambiguity refusal offers: the key shown
-// resolves, and when only stored keys tell the holders apart, renaming one
-// is the lasting fix — a stored key is not a spelling a caller should have
-// to keep.
-func ambiguityHint(candidates []string) string {
-	hint := "address the intended one by its exact key"
-	if namesStoredKeys(candidates) {
-		hint += "; no public key tells them apart, so rename one to give it a key of its own"
+	if len(slugMatches) > 1 {
+		return false
 	}
-	return hint
-}
-
-func namesStoredKeys(candidates []string) bool {
-	for _, candidate := range candidates {
-		if strings.Contains(candidate, storedKeyMark) {
-			return true
-		}
+	if _, err := bundle.GetType(domain.TypeKey(addr)); err == nil {
+		return addr == holderKey
+	}
+	if key, ok := bundle.TypeKeyByApiSlug(addr); ok {
+		return string(key) == holderKey
 	}
 	return false
+}
+
+// ambiguityHint is the repair an ambiguity refusal offers. Every candidate
+// is listed by an address verified to resolve back to it, so the exact key
+// shown is the repair; renaming would not be one — a slug is frozen at
+// mint, so a renamed twin still answers to the shared slug.
+func ambiguityHint([]string) string {
+	return "address the intended one by its exact key"
 }
 
 // ambiguousKeyError is the loud 400 the chain owes an input that several
@@ -882,30 +861,29 @@ func propertiesPointer(name string) string {
 	return "/properties/" + v2model.PointerToken(name)
 }
 
-// refuseTwoSpellingsOfOneProperty refuses a properties map carrying one
-// property under two spellings (its slug and its name, say), naming both
-// spellings as sent — the same refusal canonicalizeDocumentKeys makes on the
-// object channel, for a body that is not canonicalized before import.
-func (s *Service) refuseTwoSpellingsOfOneProperty(spaceId string, props map[string]json.RawMessage) error {
-	if len(props) < 2 {
+// refuseTwoSpellingsBoundAlike refuses a properties map carrying one
+// property under two spellings, naming both as sent. It binds each spelling
+// exactly as the importer does — the vocabulary the import runs with, on the
+// NFC form — so it refuses precisely the pairs the codec would, whose own
+// refusal names the stored key both resolve to (a bson id the caller never
+// wrote). Two spellings that are one name in two Unicode forms are left to
+// the codec, which names their code points apart.
+func refuseTwoSpellingsBoundAlike(props map[string]json.RawMessage, keys anyblockjson.KeyVocabulary) error {
+	if len(props) < 2 || keys == nil {
 		return nil
 	}
-	entries, err := s.liveProperties(spaceId)
-	if err != nil {
-		return fmt.Errorf("load properties of space %s: %w", spaceId, err)
-	}
-	spelledBy := make(map[string]string, len(props))
-	for _, key := range sortedKeys(props) {
-		canonical := key
-		if entry, ok, ambiguous := s.resolvePropertyInput(key, entries); ok && len(ambiguous) == 0 {
-			canonical = entry.Key
+	boundBy := make(map[string]string, len(props))
+	for _, term := range sortedKeys(props) {
+		key, _ := keys.PropertyKey(norm.NFC.String(term))
+		if key == "" {
+			key = term
 		}
-		if first, dup := spelledBy[canonical]; dup {
+		if first, dup := boundBy[key]; dup && norm.NFC.String(first) != norm.NFC.String(term) {
 			return v2model.ValidationFailed("duplicate property key",
-				v2model.Issue{Path: propertiesPointer(key),
-					Message: fmt.Sprintf("%q and %q both address one property — keep one", first, key)})
+				v2model.Issue{Path: propertiesPointer(term),
+					Message: fmt.Sprintf("%q and %q both address one property — keep one", first, term)})
 		}
-		spelledBy[canonical] = key
+		boundBy[key] = term
 	}
 	return nil
 }

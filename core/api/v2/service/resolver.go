@@ -100,6 +100,10 @@ type creatingResolvers struct {
 	mintedSlugByKey map[string]string
 	sideEffects     v2model.SideEffects
 	errs            []error
+	// definitionPaths locates each property_definitions entry by the term it
+	// names its property with, for a refusal PropertyId raises on it
+	// (definitionPathsOf); nil outside a type body.
+	definitionPaths map[string]string
 	// optionSite is the member being resolved right now — a set_properties
 	// entry or a view filter leaf, in the PATCH prewarm or the op itself: an
 	// option refusal is addressed to it, in the spelling the caller wrote.
@@ -777,7 +781,13 @@ func (r *creatingResolvers) PropertyId(def anyblockjson.PropertyDefinition) (str
 	}
 	entry, ok, ambiguous := r.svc.resolvePropertyInputIn(docKey, entries, r.scope)
 	if len(ambiguous) > 0 {
-		r.errs = append(r.errs, fmt.Errorf("property key %q is ambiguous — held by %s; address the intended property by its listed key", docKey, strings.Join(ambiguous, " and ")))
+		// a caller's term several properties answer to: the same typed 400
+		// every channel gives, addressed at the definition that named it
+		path, ok := r.definitionPaths[docKey]
+		if !ok {
+			path = "/type_settings/property_definitions"
+		}
+		r.errs = append(r.errs, ambiguousKeyError(r.v.propertyWord(), docKey, path, ambiguous))
 		return "", false
 	}
 	if ok && entry.Id != "" {
@@ -1054,4 +1064,137 @@ func (r *creatingResolvers) liveProps() ([]propertyEntry, error) {
 	r.livePropsLoaded = true
 	r.liveEntries, r.livePropsErr = r.svc.liveProperties(r.spaceId)
 	return r.liveEntries, r.livePropsErr
+}
+
+// definitionPathsOf maps each property_definitions entry's identifying term
+// (property, else internal_key, else name — the order the format states) to
+// the pointer of that member, first entry winning.
+func definitionPathsOf(raw json.RawMessage) map[string]string {
+	var defs []map[string]any
+	if len(raw) == 0 || json.Unmarshal(raw, &defs) != nil {
+		return nil
+	}
+	out := map[string]string{}
+	for i, def := range defs {
+		for _, member := range []string{"property", "internal_key", "name"} {
+			if term, ok := def[member].(string); ok && term != "" {
+				if _, seen := out[term]; !seen {
+					out[term] = fmt.Sprintf("/type_settings/property_definitions/%d/%s", i, member)
+				}
+				break
+			}
+		}
+	}
+	return out
+}
+
+// optionSiteIndex records where a request carries each option name, by
+// (stored key, name), with the property spelled as the caller wrote it —
+// for a body that imports whole, where no single entry is being resolved
+// when an option refusal fires.
+type optionSiteIndex struct {
+	sites map[optionRef]*optionErrorSite
+	canon func(string) string
+}
+
+func newOptionSiteIndex(canon func(string) string) *optionSiteIndex {
+	return &optionSiteIndex{sites: map[optionRef]*optionErrorSite{}, canon: canon}
+}
+
+// recordAs indexes the names a value carries (a string or a list of them)
+// under key, at path, spelled as spelling. The first occurrence wins.
+func (x *optionSiteIndex) recordAs(key, spelling string, value json.RawMessage, path string) {
+	if key == "" || len(value) == 0 {
+		return
+	}
+	var decoded any
+	if json.Unmarshal(value, &decoded) != nil {
+		return
+	}
+	var names []string
+	switch v := decoded.(type) {
+	case string:
+		names = append(names, v)
+	case []any:
+		for _, item := range v {
+			if name, ok := item.(string); ok {
+				names = append(names, name)
+			}
+		}
+	}
+	for _, name := range names {
+		ref := optionRef{property: key, name: name}
+		if _, taken := x.sites[ref]; !taken {
+			x.sites[ref] = &optionErrorSite{path: path, spelling: spelling}
+		}
+	}
+}
+
+func (x *optionSiteIndex) record(property string, value json.RawMessage, path string) {
+	if property != "" {
+		x.recordAs(x.canon(property), property, value, path)
+	}
+}
+
+// filters walks a §6.2 filter tree at base; flat addresses every leaf at base
+// itself (a compact string has no array of its own).
+func (x *optionSiteIndex) filters(raw json.RawMessage, base string, flat bool) {
+	var nodes []viewFilterProbe
+	if len(raw) == 0 || json.Unmarshal(raw, &nodes) != nil {
+		return
+	}
+	var walk func(nodes []viewFilterProbe, base string)
+	walk = func(nodes []viewFilterProbe, base string) {
+		for j, node := range nodes {
+			at := fmt.Sprintf("%s/%d", base, j)
+			if flat {
+				at = base
+			}
+			if len(node.Filters) > 0 {
+				nested := at + "/filters"
+				if flat {
+					nested = base
+				}
+				walk(node.Filters, nested)
+				continue
+			}
+			leaf := at + "/value"
+			if flat {
+				leaf = base
+			}
+			x.record(node.Property, node.Value, leaf)
+		}
+	}
+	walk(nodes, base)
+}
+
+func (x *optionSiteIndex) sorts(raw json.RawMessage, base string) {
+	var list []struct {
+		Property    string          `json:"property"`
+		CustomOrder json.RawMessage `json:"custom_order"`
+	}
+	if len(raw) > 0 && json.Unmarshal(raw, &list) == nil {
+		for j, sort := range list {
+			x.record(sort.Property, sort.CustomOrder, fmt.Sprintf("%s/%d/custom_order", base, j))
+		}
+	}
+}
+
+// views walks a views array's filters and sorts at base.
+func (x *optionSiteIndex) views(raw json.RawMessage, base string) {
+	var views []struct {
+		Filters json.RawMessage `json:"filters"`
+		Sorts   json.RawMessage `json:"sorts"`
+	}
+	if len(raw) == 0 || json.Unmarshal(raw, &views) != nil {
+		return
+	}
+	for j, view := range views {
+		x.filters(view.Filters, fmt.Sprintf("%s/%d/filters", base, j), false)
+		x.sorts(view.Sorts, fmt.Sprintf("%s/%d/sorts", base, j))
+	}
+}
+
+func (x *optionSiteIndex) lookup(key domain.RelationKey, name string) *optionErrorSite {
+	return x.sites[optionRef{property: string(key), name: name}]
 }

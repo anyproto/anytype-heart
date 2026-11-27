@@ -170,6 +170,9 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 	// here (round-six R6-7)
 	spelled := req
 	if req.Filters, err = kc.canonicalizeRawChannel(req.Filters, "filters", "/filters"); err != nil {
+		if fromCompact {
+			return nil, rebaseIssuePaths(err, func(string) string { return "/filter" })
+		}
 		return nil, err
 	}
 	if req.Sorts, err = kc.canonicalizeRawChannel(req.Sorts, "sorts", "/sorts"); err != nil {
@@ -511,8 +514,13 @@ func (s *Service) validateViewKeys(ctx context.Context, spaceId, typeId, typeKey
 	// inputs arrive canonicalized (CreateQuery's kc rewrite); the candidate
 	// list must speak the SERVED spelling — never advertise what the
 	// channel rejects (review cause 3)
-	entries, entriesErr := s.liveProperties(spaceId)
-	if entriesErr == nil {
+	// a failed read fails the request: listing the raw keys instead would
+	// advertise stored keys, bson ids for space-minted properties
+	entries, err := s.liveProperties(spaceId)
+	if err != nil {
+		return fmt.Errorf("load properties of space %s: %w", spaceId, err)
+	}
+	{
 		kc := &keyCanon{s: s, spaceId: spaceId, entries: entries}
 		// structured input can carry any spelling, so the list speaks the
 		// request's vocabulary (names under ?keys=name)
@@ -524,7 +532,7 @@ func (s *Service) validateViewKeys(ctx context.Context, spaceId, typeId, typeKey
 	var issues []v2model.Issue
 	for _, ref := range refs {
 		if allowed[ref.key] {
-			if entriesErr == nil && bundle.HasRelation(domain.RelationKey(ref.key)) && !propertyKeyInstalledIn(entries, ref.key) {
+			if bundle.HasRelation(domain.RelationKey(ref.key)) && !propertyKeyInstalledIn(entries, ref.key) {
 				if removedBundled == nil {
 					var err error
 					if removedBundled, err = s.bundledRemovalSet(spaceId); err != nil {
@@ -728,95 +736,18 @@ func convertRawViewDateFilters(raw json.RawMessage, formatName func(string) (str
 }
 
 // queryOptionSites indexes the option names a query create's filters, sorts
-// and views carry by (stored key, name), at the member the caller wrote each
-// in. The query DOCUMENT is composed by the server, so an option refusal
-// raised while importing it would otherwise point into a document the caller
-// never saw (/properties/<key>), under the served spelling.
+// and views carry, at the member the caller wrote each in. The query
+// DOCUMENT is composed by the server, so an option refusal raised while
+// importing it would otherwise point into a document the caller never saw
+// (/properties/<key>), under the served spelling.
 func queryOptionSites(spelled v2model.CreateQueryRequest, compact bool, canon func(string) string) func(domain.RelationKey, string) *optionErrorSite {
-	sites := map[optionRef]*optionErrorSite{}
-	record := func(property string, value json.RawMessage, path string) {
-		if property == "" || len(value) == 0 {
-			return
-		}
-		var decoded any
-		if json.Unmarshal(value, &decoded) != nil {
-			return
-		}
-		var names []string
-		switch v := decoded.(type) {
-		case string:
-			names = append(names, v)
-		case []any:
-			for _, item := range v {
-				if name, ok := item.(string); ok {
-					names = append(names, name)
-				}
-			}
-		}
-		key := canon(property)
-		for _, name := range names {
-			ref := optionRef{property: key, name: name}
-			if _, taken := sites[ref]; !taken {
-				sites[ref] = &optionErrorSite{path: path, spelling: property}
-			}
-		}
-	}
-	var walkFilters func(nodes []viewFilterProbe, base string, flat bool)
-	walkFilters = func(nodes []viewFilterProbe, base string, flat bool) {
-		for j, node := range nodes {
-			at := fmt.Sprintf("%s/%d", base, j)
-			if flat {
-				at = base
-			}
-			if len(node.Filters) > 0 {
-				nested := at + "/filters"
-				if flat {
-					nested = base
-				}
-				walkFilters(node.Filters, nested, flat)
-				continue
-			}
-			leaf := at + "/value"
-			if flat {
-				leaf = base
-			}
-			record(node.Property, node.Value, leaf)
-		}
-	}
-	filters := func(raw json.RawMessage, base string, flat bool) {
-		var nodes []viewFilterProbe
-		if len(raw) > 0 && json.Unmarshal(raw, &nodes) == nil {
-			walkFilters(nodes, base, flat)
-		}
-	}
-	sorts := func(raw json.RawMessage, base string) {
-		var list []struct {
-			Property    string          `json:"property"`
-			CustomOrder json.RawMessage `json:"custom_order"`
-		}
-		if len(raw) > 0 && json.Unmarshal(raw, &list) == nil {
-			for j, sort := range list {
-				record(sort.Property, sort.CustomOrder, fmt.Sprintf("%s/%d/custom_order", base, j))
-			}
-		}
-	}
+	idx := newOptionSiteIndex(canon)
 	if compact {
-		filters(spelled.Filters, "/filter", true)
+		idx.filters(spelled.Filters, "/filter", true)
 	} else {
-		filters(spelled.Filters, "/filters", false)
+		idx.filters(spelled.Filters, "/filters", false)
 	}
-	sorts(spelled.Sorts, "/sorts")
-	var views []struct {
-		Filters json.RawMessage `json:"filters"`
-		Sorts   json.RawMessage `json:"sorts"`
-	}
-	if len(spelled.Views) > 0 && json.Unmarshal(spelled.Views, &views) == nil {
-		for j, view := range views {
-			filters(view.Filters, fmt.Sprintf("/views/%d/filters", j), false)
-			sorts(view.Sorts, fmt.Sprintf("/views/%d/sorts", j))
-		}
-	}
-	return func(key domain.RelationKey, name string) *optionErrorSite {
-		return sites[optionRef{property: string(key), name: name}]
-	}
+	idx.sorts(spelled.Sorts, "/sorts")
+	idx.views(spelled.Views, "/views")
+	return idx.lookup
 }

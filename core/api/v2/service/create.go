@@ -745,6 +745,7 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	// the type terms as the caller wrote them, before canonicalization
 	// replaces a custom type's slug with its stored key (a bson id)
 	var sent sentTypeTerms
+	sentBody := body // the body as written, for the option refusals' sites
 	if err := json.Unmarshal(body, &sent); err != nil {
 		// a slot that is not a string: the validators below refuse it, and a
 		// refusal meanwhile quotes the canonical term
@@ -808,7 +809,9 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	// an option refusal names the member the caller wrote the name in
 	resolvers.siteFor = opts.optionSites
 	if resolvers.siteFor == nil {
-		resolvers.siteFor = propertyOptionSites(envelope.Properties, spellings)
+		if resolvers.siteFor, err = s.documentOptionSites(spaceId, sentBody, envelope.Properties, spellings); err != nil {
+			return nil, err
+		}
 	}
 	_, snapshot, err := anyblockjson.Unmarshal(body, resolvers.Options())
 	if err != nil {
@@ -1141,18 +1144,32 @@ func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, enve
 	return s.validatePropertyKeys(ctx, spaceId, envelope.Properties, spellings)
 }
 
-// propertyOptionSites addresses an option refusal on a create body at the
-// properties member the caller wrote, in the spelling they wrote it under.
-// The body is canonicalized by import time, so spellings maps each stored
-// key back to what was sent.
-func propertyOptionSites(props map[string]json.RawMessage, spellings map[string]string) func(domain.RelationKey, string) *optionErrorSite {
-	return func(key domain.RelationKey, _ string) *optionErrorSite {
-		if _, ok := props[string(key)]; !ok {
-			return nil // a name carried elsewhere in the body (a dataview block)
-		}
-		spelling := orDefault(spellings[string(key)], string(key))
-		return &optionErrorSite{path: propertiesPointer(spelling), spelling: spelling}
+// documentOptionSites addresses an option refusal on a create body at the
+// member the caller wrote the name in, in the spelling written there: a
+// properties value (the body is canonicalized by import time, so spellings
+// maps each stored key back to what was sent), or a filter value or custom
+// sort order inside a dataview block's views (read from the body as sent).
+func (s *Service) documentOptionSites(spaceId string, sentBody []byte, props map[string]json.RawMessage, spellings map[string]string) (func(domain.RelationKey, string) *optionErrorSite, error) {
+	kc, err := s.newKeyCanon(spaceId)
+	if err != nil {
+		return nil, fmt.Errorf("load the key vocabulary of space %s: %w", spaceId, err)
 	}
+	idx := newOptionSiteIndex(kc.canonKey)
+	for _, key := range sortedKeys(props) {
+		spelling := orDefault(spellings[key], key)
+		idx.recordAs(key, spelling, props[key], propertiesPointer(spelling))
+	}
+	var doc struct {
+		Blocks []struct {
+			Views json.RawMessage `json:"views"`
+		} `json:"blocks"`
+	}
+	if json.Unmarshal(sentBody, &doc) == nil {
+		for j, block := range doc.Blocks {
+			idx.views(block.Views, fmt.Sprintf("/blocks/%d/views", j))
+		}
+	}
+	return idx.lookup, nil
 }
 
 // sentTypeTerms are a create body's type slots exactly as the caller wrote

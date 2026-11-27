@@ -250,7 +250,7 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 				return nil, v2model.ValidationFailed("type key already exists",
 					v2model.Issue{Path: keyPath,
 						Message: fmt.Sprintf("key %q is answered by several types in space %s: %s", submitted, spaceId, holder.Name),
-					}.WithHint(v2model.Plain("pick a different key"+holderRenameNote(holder))))
+					}.WithHint(v2model.Plain("pick a different key")))
 			}
 			return nil, v2model.ValidationFailed("type key already exists",
 				v2model.Issue{Path: keyPath,
@@ -297,17 +297,17 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 		}
 	}
 
-	// two spellings of one property in the type's properties map: the codec
-	// would refuse them by the stored key both resolve to, a bson id the
-	// caller never wrote. The object channel refuses them by what was sent
-	// (canonicalizeDocumentKeys); so does this one.
-	if err := s.refuseTwoSpellingsOfOneProperty(spaceId, envelope.Properties); err != nil {
-		return nil, err
-	}
-
 	// Unmarshal rebuilds the four recommended-relation lists from
 	// typeProperties, creating missing properties through the resolver
 	resolvers := s.newCreatingResolvers(ctx, spaceId, dryRun, createMissingOptions)
+	resolvers.definitionPaths = definitionPathsOf(envelope.propertyDefinitions())
+	// two spellings of one property in the type's properties map: the codec
+	// would refuse them by the stored key both resolve to, a bson id the
+	// caller never wrote. The object channel refuses them by what was sent
+	// (canonicalizeDocumentKeys); so does this one, binding as the import will.
+	if err := refuseTwoSpellingsBoundAlike(envelope.Properties, resolvers.Options().Keys); err != nil {
+		return nil, err
+	}
 	_, snapshot, err := anyblockjson.Unmarshal(body, resolvers.Options())
 	if err != nil {
 		return nil, mapUnmarshalError(body, err, kind)
@@ -905,6 +905,11 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 	}
 
 	resolvers := s.newCreatingResolvers(ctx, spaceId, dryRun, createMissingOptions)
+	if defs := patch.propertyDefinitions(); defs != nil {
+		if raw, err := json.Marshal(*defs); err == nil {
+			resolvers.definitionPaths = definitionPathsOf(raw)
+		}
+	}
 	// the dataview half of a list replacement (round-two eval F2): the op
 	// channel keeps the type's views in step with its lists — a column for
 	// every property added, none for one removed — and a replaced list must
@@ -1360,7 +1365,7 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, req v2mode
 				// update by that slug nor "use the existing property" can be
 				// followed — both would be refused as ambiguous — so the only
 				// repair is a key of the caller's own, whichever slot they wrote
-				hint = v2model.Plain(fmt.Sprintf("several properties answer to %q (%s) — pass an explicit different key", orDefault(req.Key, slug), holder.Name) + holderRenameNote(holder))
+				hint = v2model.Plain(fmt.Sprintf("several properties answer to %q (%s) — pass an explicit different key", orDefault(req.Key, slug), holder.Name))
 			}
 			if _, bundled := bundle.PickRelation(domain.RelationKey(holder.Key)); bundled == nil || holder.Kind == "bundled property" {
 				// a built-in property, installed or not: an update by its key
@@ -1619,15 +1624,6 @@ func (s *Service) propertyDeleteWarnings(spaceId string, entry propertyEntry, se
 		}
 	}
 	return issues
-}
-
-// holderRenameNote is the lasting repair a multi-holder collision adds when
-// only stored keys tell its holders apart (describePropertyCandidates).
-func holderRenameNote(holder slugHolder) string {
-	if !strings.Contains(holder.Name, storedKeyMark) {
-		return ""
-	}
-	return "; no public key tells the holders apart, so rename one to give it a key of its own"
 }
 
 // builtInPropertyHint is the repair for a key a built-in property holds:
