@@ -127,6 +127,27 @@ func TestOpenRules(t *testing.T) {
 		_ = d.Close()
 	})
 
+	t.Run("a link above the home folder hides nothing: folders are compared where they really lie", func(t *testing.T) {
+		// /home -> /srv/storage/homes, and the user picks /srv/storage
+		base := t.TempDir()
+		storage := filepath.Join(base, "srv", "storage")
+		require.NoError(t, os.MkdirAll(filepath.Join(storage, "homes", "user", ".anytype", "ai-connect"), 0o700))
+		symlink(t, filepath.Join(storage, "homes"), filepath.Join(base, "home"))
+		anytype := filepath.Join(base, "home", "user", ".anytype")
+		for _, path := range []string{storage, filepath.Join(base, "srv"), filepath.Join(storage, "homes"), filepath.Join(storage, "homes", "user"),
+			filepath.Join(storage, "homes", "user", ".anytype", "ai-connect")} {
+			_, err := Open(path, anytype)
+			require.ErrorContains(t, err, "apart from Anytype's own folder", path)
+		}
+		// and with .anytype not there yet
+		require.NoError(t, os.RemoveAll(filepath.Join(storage, "homes", "user", ".anytype")))
+		_, err := Open(storage, anytype)
+		require.ErrorContains(t, err, "apart from Anytype's own folder")
+		d, err := Open(filepath.Join(storage, "elsewhere"), anytype)
+		require.NoError(t, err)
+		_ = d.Close()
+	})
+
 	t.Run("a missing folder is created private, parents included", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "a", "b", "files")
 		d, err := Open(path)
@@ -445,6 +466,37 @@ func TestSave(t *testing.T) {
 		}
 		_, _, err := d.Save(ctx, "a.txt", strings.NewReader("whole"))
 		require.ErrorContains(t, err, "changed while")
+		// nothing under the final name, and the other writer's entry stays
+		left := entries(t, root)
+		require.Len(t, left, 1)
+		assert.True(t, strings.HasSuffix(left[0], partSuffix), left[0])
+		raw, _ := os.ReadFile(filepath.Join(root, left[0]))
+		assert.Equal(t, "planted", string(raw))
+	})
+
+	t.Run("a part file swapped in the instant before the link: the link is taken back", func(t *testing.T) {
+		d, root := openDir(t)
+		d.beforeLink = func(string) {
+			for _, name := range entries(t, root) {
+				require.NoError(t, os.Remove(filepath.Join(root, name)))
+				require.NoError(t, os.WriteFile(filepath.Join(root, name), []byte("planted"), 0o600))
+			}
+		}
+		_, _, err := d.Save(ctx, "a.txt", strings.NewReader("whole"))
+		require.ErrorContains(t, err, "changed while")
+		left := entries(t, root)
+		require.Len(t, left, 1, "the final name is gone again")
+		assert.True(t, strings.HasSuffix(left[0], partSuffix), left[0])
+	})
+
+	t.Run("a transfer that ends between two name attempts publishes nothing", func(t *testing.T) {
+		d, root := openDir(t)
+		require.NoError(t, os.WriteFile(filepath.Join(root, "a.txt"), []byte("mine"), 0o600))
+		ctx, cancel := context.WithCancel(context.Background())
+		d.beforeLink = func(string) { cancel() } // during the attempt on the taken name
+		_, _, err := d.Save(ctx, "a.txt", strings.NewReader("whole"))
+		require.ErrorIs(t, err, context.Canceled)
+		assert.Equal(t, []string{"a.txt"}, entries(t, root))
 	})
 
 	t.Run("a name can't leave the folder or hide in it", func(t *testing.T) {

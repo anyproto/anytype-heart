@@ -49,6 +49,7 @@ type Dir struct {
 	link          func(oldname, newname string) error
 	afterLstat    func()
 	beforePublish func()
+	beforeLink    func(candidate string)
 }
 
 // Open opens the folder the user named: any directory of their choice.
@@ -179,8 +180,10 @@ func (d *Dir) overlaps(other string) bool {
 			}
 		}
 	}
-	// the folder is other or holds it (other need not exist yet)
-	if climb(other, d.info) {
+	// the folder is other or holds it (other need not exist yet): up the
+	// path as it is written, and up the path as it really lies, with
+	// every link in it resolved (a home below a linked /home)
+	if climb(other, d.info) || climb(physical(other), d.info) {
 		return true
 	}
 	// the folder is inside other
@@ -188,6 +191,24 @@ func (d *Dir) overlaps(other string) bool {
 		return true
 	}
 	return false
+}
+
+// physical is a path with the links in its existing part resolved; what
+// does not exist yet is kept as written below that.
+func physical(path string) string {
+	path = filepath.Clean(path)
+	rest := ""
+	for {
+		if resolved, err := filepath.EvalSymlinks(path); err == nil {
+			return filepath.Join(resolved, rest)
+		}
+		parent := filepath.Dir(path)
+		if parent == path {
+			return filepath.Join(path, rest)
+		}
+		rest = filepath.Join(filepath.Base(path), rest)
+		path = parent
+	}
 }
 
 // Located reports whether the folder's path still names the folder: it
@@ -311,9 +332,19 @@ func (d *Dir) Save(ctx context.Context, name string, body io.Reader) (saved stri
 	if err != nil {
 		return "", 0, err
 	}
-	defer d.root.Remove(part) //nolint:errcheck // ours by its random name; a published file keeps its own link
+	// the part file is removed when it is still ours: a name another
+	// writer took meanwhile is theirs to keep
+	var written os.FileInfo
+	defer func() {
+		if at, err := d.root.Lstat(part); written == nil || (err == nil && os.SameFile(at, written)) {
+			d.root.Remove(part) //nolint:errcheck // gone already, or not removable: nothing more to do
+		}
+	}()
 	size, err = io.Copy(f, body)
-	written, serr := f.Stat()
+	var serr error
+	if written, serr = f.Stat(); serr != nil {
+		written = nil
+	}
 	if err == nil {
 		err = serr
 	}
@@ -340,7 +371,7 @@ func (d *Dir) Save(ctx context.Context, name string, body io.Reader) (saved stri
 	if err != nil {
 		return "", 0, err
 	}
-	saved, err = d.publish(part, SafeName(name), written)
+	saved, err = d.publish(ctx, part, SafeName(name), written)
 	if err != nil {
 		return "", 0, err
 	}
@@ -352,8 +383,11 @@ func (d *Dir) Save(ctx context.Context, name string, body io.Reader) (saved stri
 // under its name only complete and never over another. Numbered on a
 // collision. Where the file system has no hard links (FAT, exFAT) there is
 // no such step, and the download fails rather than risk another file. What
-// was published must be the file that was written.
-func (d *Dir) publish(part, name string, written os.FileInfo) (string, error) {
+// was published must be the file that was written: the part file's name
+// is checked before it is linked, and should another file take that name
+// in the instant between, the link just made is taken back. No name is
+// tried once the transfer is over.
+func (d *Dir) publish(ctx context.Context, part, name string, written os.FileInfo) (string, error) {
 	ext := extensionOf(name)
 	stem := strings.TrimSuffix(name, ext)
 	candidates := make([]string, 0, 101)
@@ -365,6 +399,15 @@ func (d *Dir) publish(part, name string, written os.FileInfo) (string, error) {
 		candidates = append(candidates, stem+"-"+tail+ext)
 	}
 	for _, candidate := range candidates {
+		if err := ctx.Err(); err != nil {
+			return "", err
+		}
+		if at, err := d.root.Lstat(part); err != nil || !os.SameFile(at, written) {
+			return "", fmt.Errorf("the files folder changed while %s was being published", candidate)
+		}
+		if d.beforeLink != nil {
+			d.beforeLink(candidate)
+		}
 		err := d.link(part, candidate)
 		if errors.Is(err, fs.ErrExist) {
 			continue
@@ -374,6 +417,10 @@ func (d *Dir) publish(part, name string, written os.FileInfo) (string, error) {
 				"Ask the user to choose a folder on a file system with hard links (not FAT or exFAT); nothing was saved.", d.path)
 		}
 		if fi, err := d.root.Lstat(candidate); err != nil || !os.SameFile(fi, written) {
+			// the name this call just made, holding what is not its file
+			if err == nil {
+				d.root.Remove(candidate) //nolint:errcheck // the error below is the one to report
+			}
 			return "", fmt.Errorf("the files folder changed while %s was being published", candidate)
 		}
 		return candidate, nil
