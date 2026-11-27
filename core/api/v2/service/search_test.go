@@ -1441,6 +1441,22 @@ func TestV2SearchRefusalsNameTheCallersSpelling(t *testing.T) {
 		return fx
 	}
 
+	t.Run("a not_equal date refusal keeps the operator, so the repair still selects the undated", func(t *testing.T) {
+		// given
+		fx := setup(t)
+		req := v2model.SearchRequest{
+			Filters: json.RawMessage(`[{"property":"close_date","condition":"not_equal","value":"2026-08-01"}]`),
+		}
+
+		// when
+		_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Contains(t, apiErr.Issues[0].Hint, `"close_date != `)
+	})
+
 	t.Run("a date value refusal quotes the slug the caller sent", func(t *testing.T) {
 		// given
 		fx := setup(t)
@@ -1457,7 +1473,7 @@ func TestV2SearchRefusalsNameTheCallersSpelling(t *testing.T) {
 		assert.Contains(t, apiErr.Issues[0].Message, `property "close_date" is a date`)
 		assert.NotContains(t, apiErr.Issues[0].Message, hexKey, "never the stored key")
 		assert.NotContains(t, apiErr.Issues[0].Hint, hexKey, "and not in the worked example either")
-		assert.Contains(t, apiErr.Issues[0].Hint, `"close_date > `, "the example is one the caller can paste")
+		assert.Contains(t, apiErr.Issues[0].Hint, `"close_date < `, "the example is one the caller can paste, and keeps the caller's operator")
 
 		// and the example really is pasteable: the parser that parses the
 		// compact channel accepts it, and so does the search that offered it
