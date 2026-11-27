@@ -5,7 +5,9 @@ name: Build
 # (MinGW is the toolchain the tantivy library is built with, linking the Universal C Runtime;
 # Ubuntu's MinGW links msvcrt.dll instead); iOS in another (Xcode); linux natively on Linux (amd64
 # and arm64, both with musl); and Android on x86_64 Linux (the NDK has no Linux arm64 host build).
-# The protos are generated once, on macOS for the Swift plugin. The release job
+# The protos are generated once, on macOS for the Swift plugin. Each server job also builds
+# anytype-mcp, the stdio forwarder AI apps start, twice per target (the development and the release
+# keychain namespace); both go into the js_ archive next to the server. The release job
 # packs the archives, publishes the libraries to Maven and makes the GitHub release only once every
 # build has succeeded.
 
@@ -114,6 +116,7 @@ jobs:
           for target in $TARGETS; do
             echo "::group::$target"
             make cross-compile-library-$target
+            make cross-compile-mcp-$target
             echo "::endgroup::"
           done
 
@@ -128,24 +131,26 @@ jobs:
             -v "$PWD:/src" -w /src \
             -v "$(go env GOROOT):/opt/go:ro" \
             -v "$(go env GOMODCACHE):/root/go/pkg/mod" \
-            -e FLAGS -e BUILD_TAG_NETWORK -e GOPRIVATE -e TARGETS -e GOTOOLCHAIN=local \
+            -e FLAGS -e BUILD_TAG_NETWORK -e GOPRIVATE -e TARGETS -e VERSION -e GOTOOLCHAIN=local \
             alpine:3.22 sh -euc '
               apk add --no-cache build-base git make >/dev/null
               git config --global --add safe.directory /src
               # The Makefile calls the compiler by its musl-cross name, <arch>-linux-musl-gcc
               ln -s "$(command -v gcc)" "/usr/local/bin/$(uname -m)-linux-musl-gcc"
               export PATH=/opt/go/bin:$PATH
-              for target in $TARGETS; do make cross-compile-library-$target; done'
+              for target in $TARGETS; do make cross-compile-library-$target cross-compile-mcp-$target; done'
 
       - name: Check the binaries
         run: |
           for target in $TARGETS; do
-            file $target
+            file $target $target-mcp-dev $target-mcp-release
             # A linux server linked dynamically against musl doesn't start on glibc distributions
-            if [[ $target == linux-* ]] && ! file $target | grep -q 'statically linked'; then
-              echo "::error::$target is not statically linked"
-              exit 1
-            fi
+            for bin in $target $target-mcp-dev $target-mcp-release; do
+              if [[ $target == linux-* ]] && ! file $bin | grep -q 'statically linked'; then
+                echo "::error::$bin is not statically linked"
+                exit 1
+              fi
+            done
             # The windows server uses the Universal C Runtime (api-ms-win-crt-*), like the tantivy
             # library it links; a MinGW that defaults to msvcrt.dll would mix the two runtimes
             if [[ $target == windows-* ]]; then
@@ -157,17 +162,22 @@ jobs:
             fi
           done
 
+      # The digests of the build outputs travel next to the tars: the release job checks the
+      # binaries inside the final archives against them
       - name: Bundle
         run: |
+          bash .github/scripts/check-server-archives.sh digest $TARGETS
           for target in $TARGETS; do
-            tar -cf server-$target.tar $target
+            tar -cf server-$target.tar $target $target-mcp-dev $target-mcp-release
           done
 
       - name: Upload
         uses: actions/upload-artifact@v7
         with:
           name: server-${{ matrix.name }}
-          path: server-*.tar
+          path: |
+            server-*.tar
+            server-*.sha256
           if-no-files-found: error
           retention-days: 7
 
@@ -275,6 +285,9 @@ jobs:
 
       - name: Pack the release archives
         run: bash .github/scripts/pack-release.sh "$VERSION" artifacts .release
+
+      - name: Inspect the server archives
+        run: bash .github/scripts/check-server-archives.sh verify "$VERSION" .release artifacts
 
       - name: Validate release artifacts
         run: |

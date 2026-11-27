@@ -189,6 +189,8 @@ jobs:
       - name: Cross-compile library mac/win/linux
         run: |
           make cross-compile-library
+          make cross-compile-mcp
+          bash .github/scripts/check-server-archives.sh digest darwin-amd64 darwin-arm64 linux-amd64 linux-arm64 windows-amd64
           ls -lha .
 
       - name: Make JS protos
@@ -200,7 +202,9 @@ jobs:
         run: make ci-add-system-relations-types-jsons
 
       - name: Pack servers
-        run: make pack-server
+        run: |
+          make pack-server
+          bash .github/scripts/check-server-archives.sh verify "$VERSION" .release .
 
       - name: Make swift protos
         run: make swift-protos

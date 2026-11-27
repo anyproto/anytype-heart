@@ -1,14 +1,17 @@
 #!/usr/bin/env bash
 # Packs the release archives from the outputs of the build jobs, with the same layout and commands as
 # the single-job build used:
-#   js_<version>_<os-arch>.tar.gz (.zip for windows): grpc-server[.exe], protobuf/ (JS), json/
+#   js_<version>_<os-arch>.tar.gz (.zip for windows): grpc-server[.exe], anytype-mcp-dev[.exe],
+#                                  anytype-mcp-release[.exe], protobuf/ (JS), json/
 #   ios_framework_<version>.tar.gz: Lib.xcframework, protobuf/ (Swift), json/
 #   android_lib_<version>.tar.gz: lib.aar, protobuf/ (Java), json/
 #
 # Usage: pack-release.sh <version> <artifacts dir> <output dir>
 # The artifacts dir holds one directory per build artifact, as actions/download-artifact writes them:
 #   protos/protos.tar          js/, swift/ and java/, each with its protobuf/ and json/
-#   <any>/server-<os-arch>.tar the server binary, named <os-arch> (one job may upload several)
+#   <any>/server-<os-arch>.tar three binaries: the server, named <os-arch>, and the two anytype-mcp
+#                              builds, <os-arch>-mcp-dev and <os-arch>-mcp-release (one job may
+#                              upload several tars)
 #   ios/ios.tar                Lib.xcframework
 #   android/lib.aar
 # TAR overrides the tar binary; it must be GNU tar (gtar on macOS).
@@ -34,12 +37,18 @@ for target in darwin-amd64 darwin-arm64 linux-amd64 linux-arm64 windows-amd64; d
   fi
   "$tar" -xf "$src" -C "$dir"
   cp -R "$work/js/protobuf" "$work/js/json" "$dir/"
+  ext=
   if [ "$target" = windows-amd64 ]; then
-    mv "$dir/$target" "$dir/grpc-server.exe"
-    (cd "$dir" && zip -qr "$out/js_${version}_$target.zip" grpc-server.exe protobuf json)
+    ext=.exe
+  fi
+  mv "$dir/$target" "$dir/grpc-server$ext"
+  mv "$dir/$target-mcp-dev" "$dir/anytype-mcp-dev$ext"
+  mv "$dir/$target-mcp-release" "$dir/anytype-mcp-release$ext"
+  members=("grpc-server$ext" "anytype-mcp-dev$ext" "anytype-mcp-release$ext" protobuf json)
+  if [ "$target" = windows-amd64 ]; then
+    (cd "$dir" && zip -qr "$out/js_${version}_$target.zip" "${members[@]}")
   else
-    mv "$dir/$target" "$dir/grpc-server"
-    (cd "$dir" && "$tar" -czf "$out/js_${version}_$target.tar.gz" grpc-server protobuf json)
+    (cd "$dir" && "$tar" -czf "$out/js_${version}_$target.tar.gz" "${members[@]}")
   fi
 done
 
