@@ -45,7 +45,10 @@ refused for everything made in the app. What changed:
   and every route addressing it answers 410 `object_deleted` (§0.1).
 - **Every archive receipt carries a Bin notice**: where the object went, the
   restore op, and — evaluated per object — whether this key may also delete
-  it for good (`resend with ?permanent=true`) or why not.
+  it for good (`resend with ?permanent=true`) or why not. A dry run's notice
+  says what the real request does: the object can be restored once it is in
+  the Bin, and `?permanent=true` would delete it on the real request (a dry
+  run resent with it is still a dry run).
 - `?skip_bin` is refused with a 400 steering to `permanent`.
 
 Sections below are kept as the record; where they say "DELETE" for the
@@ -719,7 +722,8 @@ Each carries `issues: [{path: "objectId", hint: "probe deletability without
 writing via DELETE …?dry_run=true; the created_date/creator properties on
 GET show who created the object"}]`, and the standard `WWW-Authenticate:
 Bearer error="insufficient_scope"` channel stays untouched (this is not a
-scope failure).
+scope failure). A refused dry run already was the probe, so its hint drops
+the advice to resend with `?dry_run=true` (GO-7616).
 
 **9.6 `?dry_run=true` (C9) is the deletability probe.** A dry run executes
 steps 1–5 — including the provenance verdict — and skips only the archive:

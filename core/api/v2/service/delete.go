@@ -46,15 +46,22 @@ import (
 const fileUserProbeLimit = 5
 
 // deleteProbeIssue is the C6 issue every ownership refusal carries (§9.5):
-// the probe idiom and where provenance is visible.
-var deleteProbeIssue = v2model.Issue{
-	Path: "object_id",
-	// message is the one required member of an issue, and this one shipped
-	// empty on four production 403s: the whole reason lived in the OPTIONAL
-	// hint, so a reader that renders only the required field got nothing
-	Message: "this key may permanently delete only objects it created",
-}.Hintf("probe without writing by resending with %s; the created_date/creator properties on a read show who created the object; without permanent, DELETE moves the object to the Bin instead",
-	v2model.Resend("dry_run", "true"))
+// the probe idiom and where provenance is visible. A refused dry run already
+// was the probe, so its issue leaves the advice to resend as one out.
+func deleteProbeIssue(dryRun bool) v2model.Issue {
+	issue := v2model.Issue{
+		Path: "object_id",
+		// message is the one required member of an issue, and this one shipped
+		// empty on four production 403s: the whole reason lived in the OPTIONAL
+		// hint, so a reader that renders only the required field got nothing
+		Message: "this key may permanently delete only objects it created",
+	}
+	if dryRun {
+		return issue.WithHint(v2model.Plain("the created_date/creator properties on a read show who created the object; without permanent, DELETE moves the object to the Bin instead"))
+	}
+	return issue.Hintf("probe without writing by resending with %s; the created_date/creator properties on a read show who created the object; without permanent, DELETE moves the object to the Bin instead",
+		v2model.Resend("dry_run", "true"))
+}
 
 // DeleteObject implements DELETE /v2/spaces/{space_id}/objects/{object_id}
 // (§9.4). For scoped keys the space and write grants run first and
@@ -82,17 +89,17 @@ func (s *Service) DeleteObject(ctx context.Context, spaceId, objectId string, dr
 
 	// already archived → idempotent no-op receipt, consistent with C8 retries
 	if archived {
-		result.Warnings = append(result.Warnings, s.binNotice(ctx, spaceId, objectId, read, "already archived"))
+		result.Warnings = append(result.Warnings, s.binNotice(ctx, spaceId, objectId, read, true, dryRun))
 		return result, nil
 	}
 	if dryRun {
-		result.Warnings = append(result.Warnings, s.binNotice(ctx, spaceId, objectId, read, "a real request moves this object to the Bin"))
+		result.Warnings = append(result.Warnings, s.binNotice(ctx, spaceId, objectId, read, false, true))
 		return result, nil
 	}
 	if err := s.setArchived(ctx, objectId, true); err != nil {
 		return nil, fmt.Errorf("archive %s: %w", objectId, err)
 	}
-	result.Warnings = append(result.Warnings, s.binNotice(ctx, spaceId, objectId, read, "moved to the Bin"))
+	result.Warnings = append(result.Warnings, s.binNotice(ctx, spaceId, objectId, read, false, false))
 	return result, nil
 }
 
@@ -283,7 +290,7 @@ func (s *Service) receiptType(spaceId string, read apicore.ObjectRead) string {
 // companions, then the delete RPC — archived first or not, as the app's
 // delete from the Bin does.
 func (s *Service) deletePermanently(ctx context.Context, spaceId, objectId string, read apicore.ObjectRead, result *v2model.CreateResult) (*v2model.CreateResult, error) {
-	refusal, err := s.permanentDeleteCheck(ctx, spaceId, objectId, read)
+	refusal, err := s.permanentDeleteCheck(ctx, spaceId, objectId, read, result.DryRun)
 	if err != nil {
 		return nil, fmt.Errorf("check permanent delete of %s: %w", objectId, err)
 	}
@@ -341,8 +348,8 @@ type permanentRefusal struct {
 // no discussion, and for a file, no other object still using it. A nil
 // refusal and nil error is the allow verdict; err is an infrastructure
 // failure, on which the caller must refuse. Fail-closed: a nil provenance
-// dependency refuses.
-func (s *Service) permanentDeleteCheck(ctx context.Context, spaceId, objectId string, read apicore.ObjectRead) (*permanentRefusal, error) {
+// dependency refuses. dryRun words the refusal for the run that receives it.
+func (s *Service) permanentDeleteCheck(ctx context.Context, spaceId, objectId string, read apicore.ObjectRead, dryRun bool) (*permanentRefusal, error) {
 	// chats and discussions are store-backed: their changes carry no
 	// creation stamp, so the creator rule could never pass — refused up
 	// front, without building what can be a long message history
@@ -362,7 +369,7 @@ func (s *Service) permanentDeleteCheck(ctx context.Context, spaceId, objectId st
 	if err != nil {
 		return nil, fmt.Errorf("read creator provenance for %s: %w", objectId, err)
 	}
-	if refusal := checkCreatorProvenance(ctx, prov); refusal != nil {
+	if refusal := checkCreatorProvenance(ctx, prov, dryRun); refusal != nil {
 		return &permanentRefusal{why: "only objects this key created can be deleted permanently", err: refusal}, nil
 	}
 	if prov.EditedByOthers {
@@ -504,17 +511,34 @@ func holdsFile(details *domain.Details, fileKeys []domain.RelationKey, fileId st
 // exactly which objects a permanent resend would remove. It is advice, not
 // the archive's own outcome: an infrastructure failure in the verdict drops
 // the permanent clause rather than failing an archive that succeeded.
-func (s *Service) binNotice(ctx context.Context, spaceId, objectId string, read apicore.ObjectRead, message string) v2model.Issue {
-	issue := v2model.Issue{Path: "object_id", Message: message}
-	restore := v2model.RefRestoreObject(spaceId, objectId)
-	refusal, err := s.permanentDeleteCheck(ctx, spaceId, objectId, read)
+//
+// archived is whether the object was in the Bin before this request. A dry
+// run's notice says what the real request does: an object it would move is
+// not in the Bin to restore from yet, and a resend of a dry run with
+// permanent=true is still a dry run, so it deletes nothing.
+func (s *Service) binNotice(ctx context.Context, spaceId, objectId string, read apicore.ObjectRead, archived, dryRun bool) v2model.Issue {
+	issue := v2model.Issue{Path: "object_id", Message: "moved to the Bin"}
+	restore := "restore it with %s"
+	switch {
+	case archived:
+		issue.Message = "already archived"
+	case dryRun:
+		issue.Message = "a real request moves this object to the Bin"
+		restore = "once it is in the Bin, restore it with %s"
+	}
+	permanent := "this key created it, so resending with %s deletes it for good"
+	if dryRun {
+		permanent = "this key created it, so with %s the real request deletes it for good"
+	}
+	restoreRef := v2model.RefRestoreObject(spaceId, objectId)
+	refusal, err := s.permanentDeleteCheck(ctx, spaceId, objectId, read, dryRun)
 	switch {
 	case err != nil:
-		return issue.Hintf("restore it with %s", restore)
+		return issue.Hintf(restore, restoreRef)
 	case refusal != nil:
-		return issue.Hintf("restore it with %s; %s", restore, refusal.why)
+		return issue.Hintf(restore+"; %s", restoreRef, refusal.why)
 	default:
-		return issue.Hintf("restore it with %s; this key created it, so resending with %s deletes it for good", restore, v2model.Resend("permanent", "true"))
+		return issue.Hintf(restore+"; "+permanent, restoreRef, v2model.Resend("permanent", "true"))
 	}
 }
 
@@ -589,23 +613,24 @@ func steerSchemaRestore(sbType model.SmartBlockType, _ string) error {
 // checkCreatorProvenance evaluates the §10 conjunction and words the §9.5
 // refusal variants — each names what IS recorded, so the repair is
 // discoverable.
-func checkCreatorProvenance(ctx context.Context, prov apicore.Provenance) *v2model.Error {
+func checkCreatorProvenance(ctx context.Context, prov apicore.Provenance, dryRun bool) *v2model.Error {
+	probe := deleteProbeIssue(dryRun)
 	if !prov.AccountMatch {
 		return v2model.NotCreatedByThisKey(
 			"permanent deletion is limited to objects this API key created, and this object was created by another space member or by the system. "+
-				"Without permanent, DELETE moves it to the Bin instead.", deleteProbeIssue)
+				"Without permanent, DELETE moves it to the Bin instead.", probe)
 	}
 	if prov.IntegrationName == "" {
 		return v2model.NotCreatedByThisKey(
 			"permanent deletion is limited to objects this API key created, and no API key is recorded as this object's creator "+
-				"(created by the Anytype app or before provenance existed). Without permanent, DELETE moves it to the Bin; the app can empty the Bin.", deleteProbeIssue)
+				"(created by the Anytype app or before provenance existed). Without permanent, DELETE moves it to the Bin; the app can empty the Bin.", probe)
 	}
 	caller := domain.IntegrationNameFromCtx(ctx)
 	if caller == "" {
 		// a nameless key can never match a recorded name (§5): name the repair
 		return v2model.NotCreatedByThisKey(fmt.Sprintf(
 			"permanent deletion is limited to objects this API key created, and this key has no recorded app name to compare against the recorded creator (%q). "+
-				"Without permanent, DELETE moves it to the Bin instead.", prov.IntegrationName), deleteProbeIssue)
+				"Without permanent, DELETE moves it to the Bin instead.", prov.IntegrationName), probe)
 	}
 	// EXACT comparison of raw names, deliberately (§5): the former slug
 	// normalization was many-to-one ("Claude/Desktop" could delete "Claude
@@ -616,7 +641,7 @@ func checkCreatorProvenance(ctx context.Context, prov apicore.Provenance) *v2mod
 	if prov.IntegrationName != caller {
 		return v2model.NotCreatedByThisKey(fmt.Sprintf(
 			"permanent deletion is limited to objects this API key created: this object was created via %q, not via this key (%q). "+
-				"App names are compared exactly. Without permanent, DELETE moves it to the Bin instead.", prov.IntegrationName, caller), deleteProbeIssue)
+				"App names are compared exactly. Without permanent, DELETE moves it to the Bin instead.", prov.IntegrationName, caller), probe)
 	}
 	return nil
 }
