@@ -410,6 +410,9 @@ func (a *aclObjectManager) processStates(states []list.AccountState, upToDate bo
 // processOwnRemoval does for our own account what processStates does when we were removed from the
 // space, for when the other members' metadata cannot be decrypted. It reports whether we were removed;
 // a guest is never marked removed here, as processStates never finds a guest's own account either.
+// Only a removal counts: an account that asked to join again (joining, then declined or canceled) has
+// no permissions either, but its space view status belongs to the join flow, and it syncs to the
+// account's other devices
 func (a *aclObjectManager) processOwnRemoval(aclState *list.AclState, upToDate bool) (removed bool, err error) {
 	if a.guestKey != nil || !upToDate {
 		return false, nil
@@ -419,7 +422,7 @@ func (a *aclObjectManager) processOwnRemoval(aclState *list.AclState, upToDate b
 		if !state.PubKey.Equals(myIdentity) {
 			continue
 		}
-		if !state.Permissions.NoPermissions() {
+		if state.Status != list.StatusRemoved || !state.Permissions.NoPermissions() {
 			return false, nil
 		}
 		if err = a.status.SetMyParticipantStatus(domain.ConvertAclStatus(state.Status)); err != nil {
