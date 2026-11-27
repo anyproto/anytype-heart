@@ -34,7 +34,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/anyproto/any-store/v2/anyenc"
 	"github.com/gogo/protobuf/types"
+	"golang.org/x/text/collate"
 
 	"github.com/anyproto/anytype-heart/core/api/util"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
@@ -45,6 +47,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/storeresolver"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -72,7 +76,7 @@ const SearchNarrowHint = "narrow with filter or query, or request the next offse
 // narrowing and the space search past it, where the next offset is refused.
 func GlobalSearchNarrowHint(offset, limit int) string {
 	if offset+limit > maxGlobalSearchOffset {
-		return fmt.Sprintf("global search pages at most %d rows deep; narrow with filter or query, or search one space at a time", maxGlobalSearchOffset)
+		return fmt.Sprintf("the maximum starting offset of global search is %d; narrow with filter or query, or search one space at a time", maxGlobalSearchOffset)
 	}
 	return SearchNarrowHint
 }
@@ -1290,7 +1294,7 @@ func (s *Service) GlobalSearchObjects(ctx context.Context, req v2model.SearchReq
 	case fulltext:
 		s.orderGlobalFulltext(merged)
 	case len(groups) > 1:
-		s.sortGlobalRecords(merged, func(record globalRecord) []database.SortRequest { return record.group.sorts })
+		s.mergeGlobalGroups(merged, func(record globalRecord) []database.SortRequest { return record.group.sorts })
 	}
 	page := merged[minInt(offset, len(merged)):minInt(need, len(merged))]
 
@@ -1356,18 +1360,50 @@ func dedupeIssues(issues []v2model.Issue) []v2model.Issue {
 // rest stay in relevance order. Both steps depend only on matches every
 // page's cut holds, so offset paging serves each match once.
 func (s *Service) orderGlobalFulltext(records []globalRecord) {
-	s.sortGlobalRecords(records, func(globalRecord) []database.SortRequest { return relevanceSorts })
-	head := records[:minInt(globalFulltextHead, len(records))]
-	s.sortGlobalRecords(head, func(record globalRecord) []database.SortRequest { return record.group.sorts })
+	s.mergeGlobalGroups(records, func(globalRecord) []database.SortRequest { return relevanceSorts })
+	s.orderGlobalFulltextHead(records[:minInt(globalFulltextHead, len(records))])
 }
 
-// sortGlobalRecords merges records of several store cuts. Each record is
-// encoded under its sorts the way its space's store sorts it
-// (database.SortKeyer), with the store's collation, custom orders, date
-// precision and empty placement, so the merge keeps the order every cut was
-// taken in. The sorts end on the id, so only one id in two spaces ties: the
-// space id decides.
-func (s *Service) sortGlobalRecords(records []globalRecord, sortsOf func(globalRecord) []database.SortRequest) {
+// orderGlobalFulltextHead orders the best matches by their group's sorts the
+// way a space search orders its full-text head: by Order.Compare, stable
+// over relevance order, with formats, options and linked objects resolved
+// over the spaces the head holds. Groups whose sorts differ (a property
+// with another key in each space) share no comparison: such a head is
+// ordered by each row's store key instead.
+func (s *Service) orderGlobalFulltextHead(head []globalRecord) {
+	if len(head) < 2 {
+		return
+	}
+	sorts := head[0].group.sorts
+	var spaceIds []string
+	for _, record := range head {
+		if record.group != head[0].group && !reflect.DeepEqual(record.group.sorts, sorts) {
+			s.sortGlobalRecords(head, func(record globalRecord) []database.SortRequest { return record.group.sorts })
+			return
+		}
+		if !slices.Contains(spaceIds, record.spaceId) {
+			spaceIds = append(spaceIds, record.spaceId)
+		}
+	}
+	slices.Sort(spaceIds)
+	indexes := make([]spaceindex.Store, len(spaceIds))
+	for i, spaceId := range spaceIds {
+		indexes[i] = s.store.SpaceIndex(spaceId)
+	}
+	var store database.ObjectStore = indexes[0]
+	if len(indexes) > 1 {
+		store = objectstore.NewUnionOrderStore(indexes)
+	}
+	order := database.NewSetOrder(store, &anyenc.Arena{}, &collate.Buffer{}, sorts)
+	slices.SortStableFunc(head, func(a, b globalRecord) int {
+		return order.Compare(a.record.Details, b.record.Details)
+	})
+}
+
+// keyGlobalRecords encodes each record under its sorts the way its space's
+// store sorts it (database.SortKeyer), with the store's collation, custom
+// orders, date precision and empty placement.
+func (s *Service) keyGlobalRecords(records []globalRecord, sortsOf func(globalRecord) []database.SortRequest) {
 	// one keyer per sort list and space: formats and order maps are per space
 	keyers := map[*database.SortRequest]map[string]*database.SortKeyer{}
 	for i := range records {
@@ -1388,10 +1424,47 @@ func (s *Service) sortGlobalRecords(records []globalRecord, sortsOf func(globalR
 		}
 		records[i].key = keyer.Key(records[i].record.Details)
 	}
-	slices.SortStableFunc(records, func(a, b globalRecord) int {
-		return cmp.Or(bytes.Compare(a.key, b.key), strings.Compare(a.spaceId, b.spaceId),
-			strings.Compare(a.record.Details.GetString(bundle.RelationKeyId), b.record.Details.GetString(bundle.RelationKeyId)))
-	})
+}
+
+// compareGlobalRecords compares keyed records. The sorts end on the id, so
+// only one id in two spaces ties: the space id decides.
+func compareGlobalRecords(a, b globalRecord) int {
+	return cmp.Or(bytes.Compare(a.key, b.key), strings.Compare(a.spaceId, b.spaceId),
+		strings.Compare(a.record.Details.GetString(bundle.RelationKeyId), b.record.Details.GetString(bundle.RelationKeyId)))
+}
+
+// sortGlobalRecords sorts records by their store keys (keyGlobalRecords).
+func (s *Service) sortGlobalRecords(records []globalRecord, sortsOf func(globalRecord) []database.SortRequest) {
+	s.keyGlobalRecords(records, sortsOf)
+	slices.SortStableFunc(records, compareGlobalRecords)
+}
+
+// mergeGlobalGroups merges the cuts of the query groups, held one group
+// after another, by their store keys (keyGlobalRecords). It never reorders
+// one group's cut: the key of a row can differ from the one its store cut
+// it by (a row's spaceId is filled in after the cut), and the merge of
+// shorter cuts must stay a prefix of the merge of longer ones.
+func (s *Service) mergeGlobalGroups(records []globalRecord, sortsOf func(globalRecord) []database.SortRequest) {
+	s.keyGlobalRecords(records, sortsOf)
+	var cuts [][]globalRecord
+	for start := 0; start < len(records); {
+		end := start + 1
+		for end < len(records) && records[end].group == records[start].group {
+			end++
+		}
+		cuts = append(cuts, slices.Clone(records[start:end]))
+		start = end
+	}
+	for i := range records {
+		next := -1
+		for c, cut := range cuts {
+			if len(cut) > 0 && (next < 0 || compareGlobalRecords(cut[0], cuts[next][0]) < 0) {
+				next = c
+			}
+		}
+		records[i] = cuts[next][0]
+		cuts[next] = cuts[next][1:]
+	}
 }
 
 // servedBundledSpellings spells bundled keys the way the surface serves

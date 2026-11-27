@@ -505,6 +505,78 @@ func TestV2OffsetPagingTieBreak(t *testing.T) {
 		}))
 	})
 
+	// spaceIdRows adds the spaceId relation to both spaces and, in each,
+	// rows without a stored spaceId (written before it was stored), with
+	// ids before the rows that have it.
+	spaceIdRows := func(t *testing.T, fx *v2Fixture, otherSpaceId, otherTypeId string) {
+		for _, spaceId := range []string{testSpaceId, otherSpaceId} {
+			fx.objectStore.AddObjects(t, spaceId, []objectstore.TestObject{{
+				bundle.RelationKeyId:             domain.String("rel-spaceId"),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeySpaceId.String()),
+				bundle.RelationKeyName:           domain.String("Space"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+			}})
+		}
+		fx.objectStore.AddObjects(t, testSpaceId, slices.Concat(
+			tiedObjects([]string{"b1", "b2"}, nil),
+			tiedObjects([]string{"y1", "z1"}, objectstore.TestObject{bundle.RelationKeySpaceId: domain.String(testSpaceId)}),
+		))
+		fx.objectStore.AddObjects(t, otherSpaceId, slices.Concat(
+			tiedObjects([]string{"b3"}, objectstore.TestObject{bundle.RelationKeyType: domain.String(otherTypeId)}),
+			tiedObjects([]string{"z2"}, objectstore.TestObject{bundle.RelationKeyType: domain.String(otherTypeId), bundle.RelationKeySpaceId: domain.String(otherSpaceId)}),
+		))
+	}
+	// a manual order of the spaces: a row without a stored spaceId is unlisted
+	spaceIdSort := func(otherSpaceId string) json.RawMessage {
+		return json.RawMessage(fmt.Sprintf(`[{"property":"spaceId","direction":"custom","custom_order":[%q,%q]}]`, testSpaceId, otherSpaceId))
+	}
+
+	t.Run("global search pages rows that lack their stored spaceId", func(t *testing.T) {
+		// given: one query group over two spaces
+		fx := newV2Fixture(t)
+		const otherSpaceId = "space2"
+		fx.registerSpace(t, otherSpaceId)
+		fx.addTaskType(t)
+		spaceIdRows(t, fx, otherSpaceId, "type-chore")
+		req := v2model.SearchRequest{Sorts: spaceIdSort(otherSpaceId)}
+		// the listed rows, then the unlisted ones as their stores cut them
+		want := []string{"y1", "z1", "z2", "b1", "b2", "b3"}
+
+		// when, then
+		assertConsistentPaging(t, want, []int{1, 2}, objectPages(func(offset, limit int) ([]v2model.ObjectRow, bool, error) {
+			rows, _, hasMore, _, err := fx.GlobalSearchObjects(ctx, req, offset, limit)
+			return rows, hasMore, err
+		}))
+	})
+
+	t.Run("global search pages rows that lack their stored spaceId across query groups", func(t *testing.T) {
+		// given: the chore type has another id in space2, so each space
+		// runs its own query
+		fx := newV2Fixture(t)
+		const otherSpaceId = "space2"
+		fx.registerSpace(t, otherSpaceId)
+		for spaceId, typeId := range map[string]string{testSpaceId: "type-chore", otherSpaceId: "other-chore-type"} {
+			fx.addType(t, spaceId, objectstore.TestObject{
+				bundle.RelationKeyId:                   domain.String(typeId),
+				bundle.RelationKeyName:                 domain.String("Chore"),
+				bundle.RelationKeyUniqueKey:            domain.String("ot-chore"),
+				bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-spaceId"}),
+			})
+		}
+		spaceIdRows(t, fx, otherSpaceId, "other-chore-type")
+		req := v2model.SearchRequest{Type: "chore", Sorts: spaceIdSort(otherSpaceId)}
+		// each space's cut keeps its order; the cuts merge on the spaceId
+		// served
+		want := []string{"y1", "z1", "b1", "b2", "z2", "b3"}
+
+		// when, then
+		assertConsistentPaging(t, want, []int{1, 2}, objectPages(func(offset, limit int) ([]v2model.ObjectRow, bool, error) {
+			rows, _, hasMore, _, err := fx.GlobalSearchObjects(ctx, req, offset, limit)
+			return rows, hasMore, err
+		}))
+	})
+
 	t.Run("global full-text search orders the best 100 of two groups by the requested sort", func(t *testing.T) {
 		// given: 500 tied matches over two query groups (the chore type has
 		// another id in space2), indexed in reverse id order, so a small cut
@@ -555,36 +627,62 @@ func TestV2OffsetPagingTieBreak(t *testing.T) {
 		}))
 	})
 
-	t.Run("space and global full-text heads agree on a zero under empty placement", func(t *testing.T) {
-		// given: a number property, ascending with empty values last; the
-		// store counts 0 as empty there
-		fx := newV2Fixture(t)
-		fx.addTaskType(t)
-		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
-			bundle.RelationKeyId:             domain.String("rel-rank"),
-			bundle.RelationKeyRelationKey:    domain.String("rank"),
-			bundle.RelationKeyName:           domain.String("Rank"),
-			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_number)),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
-		}})
-		fx.objectStore.AddObjects(t, testSpaceId, slices.Concat(
-			tiedObjects([]string{"zero"}, objectstore.TestObject{"rank": domain.Int64(0)}),
-			tiedObjects([]string{"one"}, objectstore.TestObject{"rank": domain.Int64(1)}),
-		))
-		indexBodies(t, fx, testSpaceId, []string{"zero", "one"})
-		req := v2model.SearchRequest{Query: "sharedword", Sorts: json.RawMessage(`[{"property":"rank","direction":"asc","empty_placement":"end"}]`)}
-		want := []string{"one", "zero"}
+	for _, tc := range []struct {
+		name, key string
+		format    model.RelationFormat
+		sort      string
+		rows      map[string]domain.Value
+		want      []string
+	}{
+		{
+			name: "a zero under empty placement", key: "rank", format: model.RelationFormat_number,
+			sort: `[{"property":"rank","direction":"asc","empty_placement":"end"}]`,
+			rows: map[string]domain.Value{"zero": domain.Int64(0), "one": domain.Int64(1)},
+			want: []string{"zero", "one"},
+		},
+		{
+			name: "URLs of two cases", key: "site", format: model.RelationFormat_url,
+			sort: `[{"property":"site","direction":"asc"}]`,
+			rows: map[string]domain.Value{"upper": domain.String("https://x.test/Z"), "lower": domain.String("https://x.test/a")},
+			want: []string{"lower", "upper"},
+		},
+		{
+			name: "emails of two cases", key: "mail", format: model.RelationFormat_email,
+			sort: `[{"property":"mail","direction":"asc"}]`,
+			rows: map[string]domain.Value{"zoo": domain.String("Zoo@example.com"), "alpha": domain.String("alpha@example.com")},
+			want: []string{"alpha", "zoo"},
+		},
+	} {
+		t.Run("space and global full-text heads agree on "+tc.name, func(t *testing.T) {
+			// given: one space, so both heads order the same two matches
+			fx := newV2Fixture(t)
+			fx.addTaskType(t)
+			fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+				bundle.RelationKeyId:             domain.String("rel-" + tc.key),
+				bundle.RelationKeyRelationKey:    domain.String(tc.key),
+				bundle.RelationKeyName:           domain.String(tc.key),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(tc.format)),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+			}})
+			ids := make([]string, 0, len(tc.rows))
+			for id, value := range tc.rows {
+				fx.objectStore.AddObjects(t, testSpaceId, tiedObjects([]string{id}, objectstore.TestObject{domain.RelationKey(tc.key): value}))
+				ids = append(ids, id)
+			}
+			indexBodies(t, fx, testSpaceId, ids)
+			req := v2model.SearchRequest{Query: "sharedword", Sorts: json.RawMessage(tc.sort)}
 
-		// when
-		spaceRows, _, _, _, spaceErr := fx.SearchObjects(ctx, testSpaceId, req, 0, 25)
-		globalRows, _, _, _, globalErr := fx.GlobalSearchObjects(ctx, req, 0, 25)
+			// when
+			spaceRows, _, _, _, spaceErr := fx.SearchObjects(ctx, testSpaceId, req, 0, 25)
+			globalRows, _, _, _, globalErr := fx.GlobalSearchObjects(ctx, req, 0, 25)
 
-		// then
-		require.NoError(t, spaceErr)
-		require.NoError(t, globalErr)
-		assert.Equal(t, want, rowIds(spaceRows))
-		assert.Equal(t, want, rowIds(globalRows))
-	})
+			// then
+			require.NoError(t, spaceErr)
+			require.NoError(t, globalErr)
+			assert.Equal(t, tc.want, rowIds(spaceRows), "space search")
+			assert.Equal(t, tc.want, rowIds(globalRows), "global search")
+		})
+	}
 
 	t.Run("global full-text search pages 160 tied matches by id", func(t *testing.T) {
 		// given: one space, 160 objects with the same body, so every score ties
@@ -695,8 +793,9 @@ func TestV2OffsetPagingTieBreak(t *testing.T) {
 		assert.Equal(t, want, rowIds(rows))
 	})
 
-	t.Run("a stored view sorted by id lists objects by name", func(t *testing.T) {
-		// given: names run against ids
+	t.Run("a stored view sorted by id lists objects by id", func(t *testing.T) {
+		// given: names run against ids; the store reads an id as no
+		// reference, so the appended raw id decides
 		fx := newV2Fixture(t)
 		fx.addTaskType(t)
 		fx.objectStore.AddObjects(t, testSpaceId, slices.Concat(
@@ -707,7 +806,7 @@ func TestV2OffsetPagingTieBreak(t *testing.T) {
 			Id:    "view1abc",
 			Sorts: []*model.BlockContentDataviewSort{{RelationKey: bundle.RelationKeyId.String(), Type: model.BlockContentDataviewSort_Asc}},
 		}}}))
-		want := []string{"b", "a"}
+		want := []string{"a", "b"}
 
 		// when
 		rows, _, _, _, err := fx.GetQueryObjects(ctx, testSpaceId, "query1", "", nil, 0, 25)
@@ -900,7 +999,7 @@ func TestGlobalSearchNarrowHint(t *testing.T) {
 
 	t.Run("a page whose next offset passes the cap steers to space search", func(t *testing.T) {
 		// given
-		want := "global search pages at most 2000 rows deep; narrow with filter or query, or search one space at a time"
+		want := "the maximum starting offset of global search is 2000; narrow with filter or query, or search one space at a time"
 
 		// when
 		got := GlobalSearchNarrowHint(2000, 1)
