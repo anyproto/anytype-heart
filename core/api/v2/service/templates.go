@@ -28,6 +28,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
+
+	"github.com/gogo/protobuf/types"
 )
 
 const (
@@ -168,6 +171,116 @@ func (s *Service) liveTypeIdInSpace(spaceId, typeKey string) (string, bool, erro
 	}
 	id := details.GetString(bundle.RelationKeyId)
 	return id, id != "", nil
+}
+
+// liveType is one type row a write decision may rest on: found by its exact
+// stored key or id, and live (not archived, deleted or uninstalled).
+type liveType struct {
+	Key string // the stored type key
+	Id  string
+}
+
+// liveTypeRow reports whether a type row may decide anything.
+func liveTypeRow(row *domain.Details) bool {
+	return row.GetString(bundle.RelationKeyId) != "" &&
+		!row.GetBool(bundle.RelationKeyIsArchived) &&
+		!row.GetBool(bundle.RelationKeyIsDeleted) &&
+		!row.GetBool(bundle.RelationKeyIsUninstalled)
+}
+
+// liveTypeByKey reads the live type row of one stored key, exactly. No slug,
+// fold or name step runs: a decision about a type must never land on another
+// type that merely answers to the same spelling. found=false is a confirmed
+// absence; a store failure is an error, never a miss.
+func (s *Service) liveTypeByKey(spaceId, typeKey string) (liveType, bool, error) {
+	if typeKey == "" {
+		return liveType{}, false, nil
+	}
+	uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, typeKey)
+	if err != nil {
+		return liveType{}, false, nil // not a type key shape
+	}
+	row, err := s.store.SpaceIndex(spaceId).GetObjectByUniqueKey(uk)
+	if err != nil {
+		if errors.Is(err, spaceindex.ErrObjectNotFound) {
+			return liveType{}, false, nil
+		}
+		return liveType{}, false, fmt.Errorf("read type %s of space %s: %w", typeKey, spaceId, err)
+	}
+	if !liveTypeRow(row) {
+		return liveType{}, false, nil
+	}
+	return liveType{Key: typeKey, Id: row.GetString(bundle.RelationKeyId)}, true, nil
+}
+
+// templateTarget is the type a template object is for. Key is its stored
+// key, empty when nothing names one; Live is its live row, set only when
+// IsLive. Only a live target decides anything (a name's scope, an off-type
+// warning); the key alone spells the read's template_for.
+type templateTarget struct {
+	Key    string
+	Live   liveType
+	IsLive bool
+}
+
+// isTemplateObject is offTypeJudge's rule over what a stored object carries:
+// its smartblock type (the kind its read serves) and its first type key.
+func isTemplateObject(sbType model.SmartBlockType, typeKeys []domain.TypeKey) bool {
+	return sbType == model.SmartBlockType_Template || (len(typeKeys) > 0 && typeKeys[0] == bundle.TypeKeyTemplate)
+}
+
+// templateTargetOf resolves the type a template is for, from its details and
+// stored type keys. targetObjectType decides first: heart's own template
+// application reads it, and a retarget moves it while the type keys stay
+// behind. The second type key answers only when the detail is absent. A
+// detail naming no type row this space holds is an unknown target, not a
+// reason to trust a second key a retarget may have left behind.
+func (s *Service) templateTargetOf(spaceId string, details *types.Struct, typeKeys []domain.TypeKey) (templateTarget, error) {
+	if id := pbtypes.GetString(details, bundle.RelationKeyTargetObjectType.String()); id != "" {
+		row, err := s.store.SpaceIndex(spaceId).GetDetails(id)
+		if err != nil {
+			return templateTarget{}, fmt.Errorf("read template target %s of space %s: %w", id, spaceId, err)
+		}
+		if row.GetString(bundle.RelationKeyId) != id {
+			return templateTarget{}, nil // a miss reads as empty details
+		}
+		key, err := domain.GetTypeKeyFromRawUniqueKey(row.GetString(bundle.RelationKeyUniqueKey))
+		if err != nil {
+			return templateTarget{}, nil // the row is not a type
+		}
+		target := templateTarget{Key: string(key)}
+		if liveTypeRow(row) {
+			target.Live, target.IsLive = liveType{Key: target.Key, Id: id}, true
+		}
+		return target, nil
+	}
+	if len(typeKeys) < 2 || typeKeys[1] == "" {
+		return templateTarget{}, nil
+	}
+	target := templateTarget{Key: string(typeKeys[1])}
+	live, found, err := s.liveTypeByKey(spaceId, target.Key)
+	if err != nil {
+		return templateTarget{}, fmt.Errorf("resolve template target: %w", err)
+	}
+	target.Live, target.IsLive = live, found
+	return target, nil
+}
+
+// withTemplateTarget is a template snapshot carrying its target as the
+// second type key, the slot the format reads template_for from. A document
+// rendered from it names the target templateTargetOf resolved, so a read,
+// the PATCH view, name scope and warnings agree on one identity.
+func withTemplateTarget(snapshot *model.SmartBlockSnapshotBase, target templateTarget) *model.SmartBlockSnapshotBase {
+	if snapshot == nil || target.Key == "" || len(snapshot.ObjectTypes) == 0 {
+		return snapshot
+	}
+	want := domain.TypeKey(target.Key).URL()
+	if len(snapshot.ObjectTypes) == 2 && snapshot.ObjectTypes[1] == want {
+		return snapshot
+	}
+	out := *snapshot
+	out.ObjectTypes = []string{snapshot.ObjectTypes[0], want}
+	return &out
 }
 
 // inspectTemplate reads one template candidate and reports its display name

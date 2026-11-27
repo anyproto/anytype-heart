@@ -226,6 +226,17 @@ func (s *Service) GetObject(ctx context.Context, spaceId, objectId string, q Obj
 		return nil, "", err
 	}
 	etag := ComputeEtag(read.Heads)
+	// a template names the type it is for as every write resolves it
+	// (templateTargetOf), not by whichever slot a retarget left behind
+	if read.Snapshot != nil {
+		if typeKeys := readTypeKeys(read.Snapshot.GetObjectTypes()); isTemplateObject(read.SbType, typeKeys) {
+			target, err := s.templateTargetOf(spaceId, read.Snapshot.GetDetails(), typeKeys)
+			if err != nil {
+				return nil, "", err
+			}
+			read.Snapshot = withTemplateTarget(read.Snapshot, target)
+		}
+	}
 
 	reads := storeresolver.New(s.store.SpaceIndex(spaceId))
 	if read.SbType == model.SmartBlockType_STType {

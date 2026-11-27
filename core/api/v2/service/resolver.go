@@ -74,6 +74,9 @@ type creatingResolvers struct {
 	// settle a key two properties answer to (resolvePropertyInputIn); nil
 	// when no type is in view
 	scope map[string]bool
+	// patch is the PATCH's once-read view of the object (newPatchContext),
+	// nil on every other write
+	patch *patchContext
 	// mintedSlugs are the slugs THIS request already minted (doc key by
 	// slug): the live snapshot predates them, so without this a document
 	// declaring two spellings of one key minted both (review cause 4)

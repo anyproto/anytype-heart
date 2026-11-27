@@ -196,7 +196,12 @@ func (s *Service) PatchObject(ctx context.Context, spaceId, objectId string, bod
 	if isArchivedRead(cur) {
 		return nil, v2model.ObjectArchived(spaceId, objectId, deletableSbType(cur.SbType))
 	}
-	resolvers.scope = s.objectPropertyScope(spaceId, cur)
+	// read once, shared by the probe and the apply below
+	pc, err := s.newPatchContext(spaceId, cur)
+	if err != nil {
+		return nil, err
+	}
+	resolvers.patch, resolvers.scope = pc, pc.objectScope
 	// the object's own restrictions, from the same read — so a dry run reaches
 	// the same verdict as the real edit rather than reporting a success the
 	// adapter would refuse (review C′3). Per-op, not per-request: a set and a
@@ -214,7 +219,7 @@ func (s *Service) PatchObject(ctx context.Context, spaceId, objectId string, bod
 	if err != nil {
 		return nil, err
 	}
-	if err := s.guardCreateMissing(ctx, spaceId, objectId, ops, ifMatch, cur, dryRun, createMissingOptions); err != nil {
+	if err := s.guardCreateMissing(ctx, spaceId, objectId, ops, ifMatch, cur, pc, dryRun, createMissingOptions); err != nil {
 		return nil, err
 	}
 	s.prewarmCreateMissing(ops, resolvers)
@@ -306,14 +311,14 @@ const v2MaxCreatedOptionsPerPatch = 64
 // existing option by name before creating, so a retry adopts what the first
 // attempt made instead of duplicating it), and detectable — created options
 // carry ObjectOrigin_api.
-func (s *Service) guardCreateMissing(ctx context.Context, spaceId, objectId string, ops []json.RawMessage, ifMatch string, cur apicore.ObjectRead, dryRun, createMissingOptions bool) error {
+func (s *Service) guardCreateMissing(ctx context.Context, spaceId, objectId string, ops []json.RawMessage, ifMatch string, cur apicore.ObjectRead, pc *patchContext, dryRun, createMissingOptions bool) error {
 	// a resolver in dry mode records would-be creations instead of performing
 	// them: no RPCs, no document work, just a walk of the op payloads
 	// the probe must see the SAME consent as the real run: it exists to
 	// preview what that run would create, and a probe with a different answer
 	// previews a different request
 	probe := s.newCreatingResolvers(ctx, spaceId, true, createMissingOptions)
-	probe.scope = s.objectPropertyScope(spaceId, cur)
+	probe.patch, probe.scope = pc, pc.objectScope
 	s.prewarmCreateMissing(ops, probe)
 	if err := probe.err(); err != nil {
 		return err
@@ -614,40 +619,42 @@ func checkEditPreconditions(sbType model.SmartBlockType, heads []string, ifMatch
 	return nil
 }
 
-// objectPropertyScope is the property scope of an object's own keys: the ids
-// its type lists (resolvePropertyInputIn). A template's is the type it is
-// for (scopeTypeKey), and its own type's when the target has no row.
-func (s *Service) objectPropertyScope(spaceId string, cur apicore.ObjectRead) map[string]bool {
-	if cur.Snapshot == nil {
-		return nil
-	}
-	kind, docType, templateFor := readTypeTerms(cur)
-	if key := scopeTypeKey(kind, docType, templateFor); key != docType {
-		if targetId, ok := s.typeIdInSpace(spaceId, key); ok {
-			return s.typePropertyScope(spaceId, targetId)
-		}
-	}
-	return s.typePropertyScope(spaceId, pbtypes.GetString(cur.Snapshot.Details, bundle.RelationKeyType.String()))
+// patchContext is what one PATCH reads off the object once and shares
+// between its create-missing probe and its apply: whether it is a template,
+// the template's target, and the scope its own property terms resolve in.
+type patchContext struct {
+	template    bool
+	target      templateTarget
+	objectScope map[string]bool
 }
 
-// readTypeTerms is a read's kind, type and template_for by stored key, as
-// its document derives them: a template's target is its second type key,
-// and only a template models one.
-func readTypeTerms(cur apicore.ObjectRead) (kind, docType, templateFor string) {
-	var keys []string
-	for _, raw := range cur.Snapshot.GetObjectTypes() {
-		if key, err := domain.GetTypeKeyFromRawUniqueKey(raw); err == nil {
-			keys = append(keys, string(key))
+// newPatchContext reads an object's template target and property scope: the
+// ids its type lists (resolvePropertyInputIn), or for a template the ids its
+// live target lists (templateTargetOf), and its own type's when the target is
+// unknown or has no live row. A store failure is an error, so a hiccup never
+// settles a name by the template type's list.
+func (s *Service) newPatchContext(spaceId string, cur apicore.ObjectRead) (*patchContext, error) {
+	pc := &patchContext{}
+	if cur.Snapshot == nil {
+		return pc, nil
+	}
+	typeKeys := readTypeKeys(cur.Snapshot.GetObjectTypes())
+	pc.template = isTemplateObject(cur.SbType, typeKeys)
+	if pc.template {
+		target, err := s.templateTargetOf(spaceId, cur.Snapshot.GetDetails(), typeKeys)
+		if err != nil {
+			return nil, err
+		}
+		pc.target = target
+		if target.IsLive {
+			scope, err := s.typePropertyScopeOf(spaceId, target.Live.Id)
+			if err != nil {
+				return nil, fmt.Errorf("read the template target's properties: %w", err)
+			}
+			pc.objectScope = scope
+			return pc, nil
 		}
 	}
-	if len(keys) > 0 {
-		docType = keys[0]
-	}
-	if cur.SbType == model.SmartBlockType_Template {
-		kind = "template"
-		if len(keys) > 1 {
-			templateFor = keys[1]
-		}
-	}
-	return kind, docType, templateFor
+	pc.objectScope = s.typePropertyScope(spaceId, pbtypes.GetString(cur.Snapshot.Details, bundle.RelationKeyType.String()))
+	return pc, nil
 }

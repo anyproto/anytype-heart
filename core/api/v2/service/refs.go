@@ -542,9 +542,19 @@ var typeRecommendedListKeys = []domain.RelationKey{
 // (its four recommended-relation lists, resolved id→key) — the R9 reference
 // set for set filters and sorts.
 func (s *Service) typePropertyKeys(spaceId, typeId string) []string {
-	details, err := s.store.SpaceIndex(spaceId).GetDetails(typeId)
+	keys, err := s.typePropertyKeysOf(spaceId, typeId)
 	if err != nil {
 		return nil
+	}
+	return keys
+}
+
+// typePropertyKeysOf is typePropertyKeys with the store error kept, so an
+// unreadable list stays distinct from a type that lists nothing.
+func (s *Service) typePropertyKeysOf(spaceId, typeId string) ([]string, error) {
+	details, err := s.store.SpaceIndex(spaceId).GetDetails(typeId)
+	if err != nil {
+		return nil, fmt.Errorf("read type %s of space %s: %w", typeId, spaceId, err)
 	}
 	reads := storeresolver.New(s.store.SpaceIndex(spaceId))
 	var out []string
@@ -560,7 +570,7 @@ func (s *Service) typePropertyKeys(spaceId, typeId string) []string {
 		}
 	}
 	sort.Strings(out)
-	return out
+	return out, nil
 }
 
 // recommendedRelationIds reads the relation object ids a type's four
@@ -585,32 +595,36 @@ func (s *Service) recommendedRelationIds(spaceId, typeId string) map[string]bool
 	return out
 }
 
-// typeListedKeys is the stored key set a type recommends, resolved from the
-// key a document spells the type by — a bundled key (ot-page), or the api
-// slug this surface serves for a space-minted type. Nil when the type cannot
-// be resolved: then no F16 warning is issued, because a warning the code
-// cannot substantiate is worse than none.
-func (s *Service) typeListedKeys(spaceId, typeKey string) map[string]bool {
-	if typeKey == "" {
-		return nil
+// offTypeJudgedType is the live type a document's off-type warnings judge
+// against (offTypeJudge), found by its exact stored key: no slug step, which
+// could land a missing type's key on another type that answers to it.
+// found=false (an unknown target, a type with no live row) means no warning.
+func (s *Service) offTypeJudgedType(spaceId, kind, typeKey, templateFor string) (judged liveType, forTemplate, found bool, err error) {
+	key, forTemplate := offTypeJudge(kind, typeKey, templateFor)
+	judged, found, err = s.liveTypeByKey(spaceId, key)
+	if err != nil {
+		return liveType{}, forTemplate, false, fmt.Errorf("resolve the type to judge properties against: %w", err)
 	}
-	typeId, ok := s.typeIdInSpace(spaceId, typeKey)
-	if !ok {
-		entries, err := s.liveTypes(spaceId)
-		if err != nil {
-			return nil
-		}
-		entry, found, ambiguous, err := s.resolveTypeInput(spaceId, typeKey, entries)
-		if err != nil || !found || len(ambiguous) > 0 || entry.Id == "" {
-			return nil
-		}
-		typeId = entry.Id
+	return judged, forTemplate, found, nil
+}
+
+// listedKeysOf is the stored key set one live type lists. readable=false: the
+// list could not be read, which is not a type listing nothing, so no warning
+// may rest on it.
+func (s *Service) listedKeysOf(spaceId, typeId string) (keys map[string]bool, readable bool) {
+	if typeId == "" {
+		return nil, false
 	}
-	keys := map[string]bool{}
-	for _, key := range s.typePropertyKeys(spaceId, typeId) {
+	listed, err := s.typePropertyKeysOf(spaceId, typeId)
+	if err != nil {
+		log.Warnf("api v2: read the property list of type %s in space %s: %v", typeId, spaceId, err)
+		return nil, false
+	}
+	keys = map[string]bool{}
+	for _, key := range listed {
 		keys[key] = true
 	}
-	return keys
+	return keys, true
 }
 
 // offTypeCandidate reports whether a stored property key is one the F16

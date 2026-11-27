@@ -111,7 +111,8 @@ type v2StateApplier struct {
 	// can report the members the batch added and removed as a set
 	// difference (F19), the way the block and property counts are diffs.
 	itemsBefore []string
-	// typeKeysCache memoizes typeListedKeys per type for this PATCH.
+	// typeKeysCache memoizes listedKeysOf per type id for this PATCH; nil
+	// marks a list that could not be read.
 	typeKeysCache map[string]map[string]bool
 	// setObjectType is the editor's type change (apicore.ObjectEdit
 	// .SetObjectType). simulate says no editor is behind the state BY
@@ -232,7 +233,7 @@ func (a *v2StateApplier) marshalDoc(onWarning func(anyblockjson.Issue)) ([]byte,
 		}
 	}
 	opts.OnWarning = onWarning
-	doc, err := anyblockjson.Marshal(a.sbType, snapshotFromState(a.st), opts)
+	doc, err := anyblockjson.Marshal(a.sbType, a.renderSnapshot(), opts)
 	if err != nil {
 		return nil, fmt.Errorf("marshal object %s: %w", a.objectId, err)
 	}
@@ -1256,7 +1257,9 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	for key := range addEntries {
 		offTypeFields[key] = "add"
 	}
-	a.warnOffTypeKeys(doc, opPath, offTypeFields, spelledAs)
+	if err := a.warnOffTypeKeys(doc, opPath, offTypeFields, spelledAs); err != nil {
+		return err
+	}
 	for _, key := range setKeys {
 		var raw any
 		if err := decodeJSONUseNumber(op.Set[key], &raw); err != nil {
@@ -2699,11 +2702,10 @@ func (a *v2StateApplier) decodePayloadRun(raws []json.RawMessage, opPath, field,
 // warnOffTypeKeys appends the F16 warning for each of keys (stored
 // spellings, in set or add) that the object's type does not list and the
 // object did not carry before this op. The type lookup runs only when a
-// candidate exists, once per type per PATCH. A template is judged against
-// its template_for as the read serves it, never against `template`.
-func (a *v2StateApplier) warnOffTypeKeys(doc *v2EditDoc, opPath string, fields map[string]string, spelledAs func(string) string) {
+// candidate exists. A template is judged against its live target, never
+// against `template` (offTypeJudged).
+func (a *v2StateApplier) warnOffTypeKeys(doc *v2EditDoc, opPath string, fields map[string]string, spelledAs func(string) string) error {
 	keys := sortedKeys(fields)
-	judged, forTemplate := offTypeJudge(doc.envelopeString("kind"), doc.docType(), doc.envelopeString("template_for"))
 	carried := func(key string) bool {
 		if _, ok := doc.properties[key]; ok {
 			return true
@@ -2718,7 +2720,11 @@ func (a *v2StateApplier) warnOffTypeKeys(doc *v2EditDoc, opPath string, fields m
 		}
 		return false
 	}
-	var typeKeys map[string]bool
+	var (
+		judged              liveType
+		forTemplate, judges bool
+		typeKeys            map[string]bool
+	)
 	loaded := false
 	for _, key := range keys {
 		if key == bundle.RelationKeyIsFavorite.String() || carried(key) || !offTypeCandidate(key) {
@@ -2726,19 +2732,85 @@ func (a *v2StateApplier) warnOffTypeKeys(doc *v2EditDoc, opPath string, fields m
 		}
 		if !loaded {
 			loaded = true
-			if a.typeKeysCache == nil {
-				a.typeKeysCache = map[string]map[string]bool{}
+			found := false
+			var err error
+			if judged, forTemplate, found, err = a.offTypeJudged(); err != nil {
+				return err
 			}
-			if cached, ok := a.typeKeysCache[judged]; ok {
-				typeKeys = cached
-			} else {
-				typeKeys = a.s.typeListedKeys(a.spaceId, judged)
-				a.typeKeysCache[judged] = typeKeys
+			if found {
+				typeKeys, judges = a.listedKeys(judged.Id)
 			}
 		}
-		if typeKeys == nil || typeKeys[key] {
+		if !judges || typeKeys[key] {
 			continue
 		}
-		a.warnings = append(a.warnings, offTypePropertyIssue(spelledAs(key), judged, opPath+"."+fields[key]+"."+spelledAs(key), forTemplate))
+		a.warnings = append(a.warnings, offTypePropertyIssue(spelledAs(key), a.servedTypeWord(judged.Key), opPath+"."+fields[key]+"."+spelledAs(key), forTemplate))
 	}
+	return nil
+}
+
+// offTypeJudged is the live type this object's off-type warnings judge
+// against, by its exact stored key: a template's live target, as the PATCH
+// resolved it once (patchContext), and any other object's own type as it
+// stands now, a set_type earlier in the batch included. found=false means no
+// warning.
+func (a *v2StateApplier) offTypeJudged() (judged liveType, forTemplate, found bool, err error) {
+	if target, ok := a.patchTemplate(); ok {
+		return target.Live, true, target.IsLive, nil
+	}
+	keys := a.st.ObjectTypeKeys()
+	if len(keys) == 0 {
+		return liveType{}, false, false, nil
+	}
+	kind := ""
+	if a.sbType == model.SmartBlockType_Template {
+		kind = "template"
+	}
+	// a template with no PATCH behind it has no target here, and so is
+	// judged against nothing
+	return a.s.offTypeJudgedType(a.spaceId, kind, string(keys[0]), "")
+}
+
+// listedKeys is listedKeysOf memoized per type for this PATCH.
+func (a *v2StateApplier) listedKeys(typeId string) (map[string]bool, bool) {
+	if cached, ok := a.typeKeysCache[typeId]; ok {
+		return cached, cached != nil
+	}
+	if a.typeKeysCache == nil {
+		a.typeKeysCache = map[string]map[string]bool{}
+	}
+	keys, readable := a.s.listedKeysOf(a.spaceId, typeId)
+	a.typeKeysCache[typeId] = keys
+	return keys, readable
+}
+
+// patchTemplate is the template target this PATCH resolved once
+// (patchContext). ok=false: the object is not a template, or no PATCH is
+// behind this applier.
+func (a *v2StateApplier) patchTemplate() (templateTarget, bool) {
+	if a.resolvers == nil || a.resolvers.patch == nil || !a.resolvers.patch.template {
+		return templateTarget{}, false
+	}
+	return a.resolvers.patch.target, true
+}
+
+// renderSnapshot is the state as this PATCH's documents render it: a
+// template names the target the PATCH resolved (withTemplateTarget), as its
+// read does.
+func (a *v2StateApplier) renderSnapshot() *model.SmartBlockSnapshotBase {
+	snapshot := snapshotFromState(a.st)
+	if target, ok := a.patchTemplate(); ok {
+		return withTemplateTarget(snapshot, target)
+	}
+	return snapshot
+}
+
+// servedTypeWord spells a stored type key the way this PATCH's documents
+// do: the api slug vocabulary.
+func (a *v2StateApplier) servedTypeWord(key string) string {
+	a.marshalOptions() // primes the key vocabulary once
+	if a.marshalKeys != nil {
+		return a.marshalKeys.TypeSlug(key)
+	}
+	return bundle.TypeApiSlug(key)
 }

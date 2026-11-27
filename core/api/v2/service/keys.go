@@ -267,9 +267,23 @@ func (s *Service) typePropertyScope(spaceId, typeId string) map[string]bool {
 	if typeId == "" {
 		return nil
 	}
-	details, err := s.store.SpaceIndex(spaceId).GetDetails(typeId)
-	if err != nil || details == nil {
+	scope, err := s.typePropertyScopeOf(spaceId, typeId)
+	if err != nil {
 		return nil
+	}
+	return scope
+}
+
+// typePropertyScopeOf is typePropertyScope with the store error kept: a
+// write decision taken on a list that could not be read would settle a name
+// by another type's list instead.
+func (s *Service) typePropertyScopeOf(spaceId, typeId string) (map[string]bool, error) {
+	details, err := s.store.SpaceIndex(spaceId).GetDetails(typeId)
+	if err != nil {
+		return nil, fmt.Errorf("read type %s of space %s: %w", typeId, spaceId, err)
+	}
+	if details == nil {
+		return nil, nil
 	}
 	scope := map[string]bool{}
 	for _, listKey := range typeRecommendedListKeys {
@@ -277,7 +291,7 @@ func (s *Service) typePropertyScope(spaceId, typeId string) map[string]bool {
 			scope[id] = true
 		}
 	}
-	return scope
+	return scope, nil
 }
 
 // typeKeyPropertyScope is typePropertyScope by the type's stored key.
@@ -294,16 +308,22 @@ func (s *Service) typeKeyPropertyScope(spaceId, typeKey string) map[string]bool 
 	return nil
 }
 
-// documentPropertyScope is the scope of a created document's own keys, by
-// stored keys: a template's is the type it is for (scopeTypeKey), and its
-// own type's when the target has no row.
-func (s *Service) documentPropertyScope(spaceId, kind, docType, templateFor string) map[string]bool {
-	if key := scopeTypeKey(kind, docType, templateFor); key != docType {
-		if scope := s.typeKeyPropertyScope(spaceId, key); scope != nil {
-			return scope
+// createPropertyScope is the scope of a created document's own keys, by
+// stored keys: a template's is its target's list (scopeTypeKey), read off
+// the target's exact live row, and its own type's when the target has none.
+// A store failure is an error: falling back on one would settle a name by
+// the template type's list.
+func (s *Service) createPropertyScope(spaceId, kind, typeKey, templateFor string) (map[string]bool, error) {
+	if key := scopeTypeKey(kind, typeKey, templateFor); key != typeKey {
+		target, found, err := s.liveTypeByKey(spaceId, key)
+		if err != nil {
+			return nil, fmt.Errorf("resolve template target: %w", err)
+		}
+		if found {
+			return s.typePropertyScopeOf(spaceId, target.Id)
 		}
 	}
-	return s.typeKeyPropertyScope(spaceId, docType)
+	return s.typeKeyPropertyScope(spaceId, typeKey), nil
 }
 
 // propertyCandidate is one holder of an ambiguous term, with the words the
@@ -1287,9 +1307,8 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 	changed := false
 
 	var typeEntries []typeEntry
-	// the resolved type slots, by field: the caller's term, stored key and
-	// type id
-	terms, resolvedKeys, resolvedIds := map[string]string{}, map[string]string{}, map[string]string{}
+	// the resolved type slots, by field: the caller's term and stored key
+	terms, resolvedKeys := map[string]string{}, map[string]string{}
 	for _, field := range []string{"type", "template_for"} {
 		raw, ok := fields[field]
 		if !ok {
@@ -1313,7 +1332,7 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 			return nil, nil, ambiguousKeyError("type key", term, "/"+field, ambiguous)
 		}
 		if ok {
-			resolvedKeys[field], resolvedIds[field] = entry.Key, entry.Id
+			resolvedKeys[field] = entry.Key
 		}
 		if ok && entry.Key != term {
 			if fields[field], err = rawJSON(entry.Key); err != nil {
@@ -1334,12 +1353,9 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 	// the object's type settles a term two properties answer to
 	// (resolvePropertyInputIn); a template's, the type it is for
 	// (scopeTypeKey), or its own when that one has no row
-	var scope map[string]bool
-	if scopeTypeKey(kind, ownKey, resolvedKeys["template_for"]) != ownKey {
-		scope = s.typePropertyScope(spaceId, resolvedIds["template_for"])
-	}
-	if scope == nil {
-		scope = s.typePropertyScope(spaceId, resolvedIds["type"])
+	scope, err := s.createPropertyScope(spaceId, kind, ownKey, resolvedKeys["template_for"])
+	if err != nil {
+		return nil, nil, err
 	}
 
 	if raw, ok := fields["properties"]; ok {

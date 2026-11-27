@@ -15,6 +15,7 @@ import (
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -184,7 +185,9 @@ func TestV2WritesSayWhatTheyLeaveInvisible(t *testing.T) {
 
 	t.Run("the warning fires for a space-minted type served by its slug, and for add", func(t *testing.T) {
 		fx := setup(t)
-		fx.expectMutate(editRead(t, `{"formatVersion":"2.0","id":"obj1","type":"errand","properties":{"name":"Doc"}}`), "headB")
+		// the object stores errand by its stored key, as a real one does; the
+		// warning still names it by its slug
+		fx.expectMutate(editRead(t, `{"formatVersion":"2.0","id":"obj1","type":"6a8f2c1d9e4b7a3f5c2d8e88","properties":{"name":"Doc"}}`), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
 			patchBody(`{"op":"set_properties","add":{"labels":["mild"]}}`), "", false, true)
@@ -476,44 +479,70 @@ func TestV2TemplatePropertiesJudgedAgainstTarget(t *testing.T) {
 // that lists one of them (resolvePropertyInputIn). A template's own type
 // lists neither, so a template is scoped by the type it is for, by the rule
 // offTypeJudge applies.
+// The "Effort" setting: two properties share the display name. Sprint lists
+// the points one; the template type lists neither.
+const (
+	effortPointsKey   = "6a8f2c1d9e4b7a3f5c2d8e90"
+	effortHoursKey    = "6a8f2c1d9e4b7a3f5c2d8e91"
+	sprintTemplateDoc = `{"formatVersion":"2.0","id":"obj1","kind":"template","type":"template","template_for":"sprint","properties":{"name":"Weekly"}}`
+)
+
+// newEffortFixture registers the template type and both Effort properties,
+// but no sprint type: addSprintType adds it, in the shape a case needs.
+func newEffortFixture(t *testing.T) *v2Fixture {
+	fx := newV2Fixture(t)
+	fx.addTemplateType(t)
+	fx.addRelation(t, testSpaceId, objectstore.TestObject{
+		bundle.RelationKeyId:           domain.String("rel-effort-points"),
+		bundle.RelationKeyRelationKey:  domain.String(effortPointsKey),
+		bundle.RelationKeyApiObjectKey: domain.String("effort_points"),
+		bundle.RelationKeyName:         domain.String("Effort"),
+	})
+	fx.addRelation(t, testSpaceId, objectstore.TestObject{
+		bundle.RelationKeyId:           domain.String("rel-effort-hours"),
+		bundle.RelationKeyRelationKey:  domain.String(effortHoursKey),
+		bundle.RelationKeyApiObjectKey: domain.String("effort_hours"),
+		bundle.RelationKeyName:         domain.String("Effort"),
+	})
+	return fx
+}
+
+// addSprintType registers sprint (stored key "sprint", id type-sprint),
+// listing the points Effort, with extra details on top.
+func (fx *v2Fixture) addSprintType(t *testing.T, extra ...objectstore.TestObject) {
+	row := objectstore.TestObject{
+		bundle.RelationKeyId:                   domain.String("type-sprint"),
+		bundle.RelationKeyUniqueKey:            domain.String("ot-sprint"),
+		bundle.RelationKeyName:                 domain.String("Sprint"),
+		bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-effort-points"}),
+	}
+	for _, more := range extra {
+		for key, value := range more {
+			row[key] = value
+		}
+	}
+	fx.addType(t, testSpaceId, row)
+}
+
+// templateRead is the read a template comes back as: its type detail is the
+// template type's id, and its target rides as the second type key.
+func templateRead(t *testing.T, doc string) apicore.ObjectRead {
+	read := editRead(t, doc)
+	read.Snapshot.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(testTemplateTypeId)
+	return read
+}
+
 func TestV2TemplateNamesResolveAgainstTarget(t *testing.T) {
 	const (
-		pointsKey = "6a8f2c1d9e4b7a3f5c2d8e90"
-		hoursKey  = "6a8f2c1d9e4b7a3f5c2d8e91"
+		pointsKey = effortPointsKey
+		hoursKey  = effortHoursKey
 	)
 	ctx := context.Background()
 	setup := func(t *testing.T) *v2Fixture {
-		fx := newV2Fixture(t)
-		fx.addTemplateType(t)
-		// two properties named "Effort"; only the first is on sprint
-		fx.addRelation(t, testSpaceId, objectstore.TestObject{
-			bundle.RelationKeyId:           domain.String("rel-effort-points"),
-			bundle.RelationKeyRelationKey:  domain.String(pointsKey),
-			bundle.RelationKeyApiObjectKey: domain.String("effort_points"),
-			bundle.RelationKeyName:         domain.String("Effort"),
-		})
-		fx.addRelation(t, testSpaceId, objectstore.TestObject{
-			bundle.RelationKeyId:           domain.String("rel-effort-hours"),
-			bundle.RelationKeyRelationKey:  domain.String(hoursKey),
-			bundle.RelationKeyApiObjectKey: domain.String("effort_hours"),
-			bundle.RelationKeyName:         domain.String("Effort"),
-		})
-		fx.addType(t, testSpaceId, objectstore.TestObject{
-			bundle.RelationKeyId:                   domain.String("type-sprint"),
-			bundle.RelationKeyUniqueKey:            domain.String("ot-sprint"),
-			bundle.RelationKeyName:                 domain.String("Sprint"),
-			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-effort-points"}),
-		})
+		fx := newEffortFixture(t)
+		fx.addSprintType(t)
 		return fx
 	}
-	// the read a template comes back as: its type detail is the template
-	// type's id, and its target rides as the second type key
-	templateRead := func(t *testing.T, doc string) apicore.ObjectRead {
-		read := editRead(t, doc)
-		read.Snapshot.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(testTemplateTypeId)
-		return read
-	}
-	const sprintTemplateDoc = `{"formatVersion":"2.0","id":"obj1","kind":"template","type":"template","template_for":"sprint","properties":{"name":"Weekly"}}`
 
 	t.Run("a template create writes the property its target lists", func(t *testing.T) {
 		// given
@@ -582,6 +611,7 @@ func TestV2TemplateNamesResolveAgainstTarget(t *testing.T) {
 			patchBody(`{"op":"set_properties","set":{"Effort":"3"}}`), "", false, true)
 
 		// then
+		assert.Equal(t, v2model.CodeAmbiguousInput, v2Err(t, err).Code)
 		issue := issueAt(t, err, "ops[0].set.Effort")
 		assert.Contains(t, issue.Message, pointsKey)
 		assert.Contains(t, issue.Message, hoursKey)
@@ -592,6 +622,223 @@ func TestV2TemplateNamesResolveAgainstTarget(t *testing.T) {
 // another type the create would resolve property names against the target
 // and then build an object of that other type, so the generic create holds
 // the same line POST /templates does, before any property term resolves.
+// GO-7614: one identity for a template's target. targetObjectType decides,
+// the second type key answers only when the detail is absent, and only a
+// LIVE row found by its exact stored key decides a name's scope or an
+// off-type warning. A read names the same target.
+func TestV2TemplateTargetIdentity(t *testing.T) {
+	ctx := context.Background()
+	// a template stored with typeKeys and, when targetId is set, the
+	// targetObjectType detail
+	storedTemplate := func(t *testing.T, targetId string, typeKeys ...string) apicore.ObjectRead {
+		read := templateRead(t, `{"formatVersion":"2.0","id":"obj1","kind":"template","type":"template","properties":{"name":"Weekly"}}`)
+		read.Snapshot.ObjectTypes = typeKeys
+		if targetId != "" {
+			read.Snapshot.Details.Fields[bundle.RelationKeyTargetObjectType.String()] = pbtypes.String(targetId)
+		}
+		return read
+	}
+	// backlog lists the hours Effort: a template retargeted from backlog to
+	// sprint still carries backlog as its second type key
+	addBacklog := func(t *testing.T, fx *v2Fixture) {
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:                   domain.String("type-backlog"),
+			bundle.RelationKeyUniqueKey:            domain.String("ot-backlog"),
+			bundle.RelationKeyName:                 domain.String("Backlog"),
+			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-effort-hours"}),
+		})
+	}
+	setEffort := func(t *testing.T, fx *v2Fixture, read apicore.ObjectRead, op string) (*v2model.EditResult, **state.State, error) {
+		t.Helper()
+		captured := fx.expectMutate(read, "headB")
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(op), "", false, true)
+		return result, captured, err
+	}
+	templateFor := func(t *testing.T, fx *v2Fixture, read apicore.ObjectRead) string {
+		t.Helper()
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(read, nil).Maybe()
+		body, _, err := fx.GetObject(ctx, testSpaceId, "obj1", ObjectQuery{})
+		require.NoError(t, err)
+		var doc struct {
+			TemplateFor string `json:"template_for"`
+		}
+		require.NoError(t, json.Unmarshal(body, &doc))
+		return doc.TemplateFor
+	}
+
+	t.Run("a retargeted template resolves names against targetObjectType, not the second type key", func(t *testing.T) {
+		// given
+		fx := newEffortFixture(t)
+		fx.addSprintType(t)
+		addBacklog(t, fx)
+
+		// when
+		_, captured, err := setEffort(t, fx, storedTemplate(t, "type-sprint", "ot-template", "ot-backlog"),
+			`{"op":"set_properties","set":{"Effort":"3"}}`)
+
+		// then
+		require.NoError(t, err)
+		details := (*captured).CombinedDetails()
+		assert.Equal(t, "3", details.GetString(domain.RelationKey(effortPointsKey)))
+		assert.False(t, details.Has(domain.RelationKey(effortHoursKey)))
+	})
+
+	t.Run("a retargeted template is judged and named by targetObjectType", func(t *testing.T) {
+		// given
+		fx := newEffortFixture(t)
+		fx.addSprintType(t)
+		addBacklog(t, fx)
+
+		// when: hours is on the old target, not on sprint
+		result, _, err := setEffort(t, fx, storedTemplate(t, "type-sprint", "ot-template", "ot-backlog"),
+			`{"op":"set_properties","set":{"effort_hours":"3"}}`)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, result.Warnings, 1, "%v", result.Warnings)
+		assert.Contains(t, result.Warnings[0].Message, `is not on type "sprint"`)
+	})
+
+	t.Run("a retargeted template reads back naming targetObjectType", func(t *testing.T) {
+		// given
+		fx := newEffortFixture(t)
+		fx.addSprintType(t)
+		addBacklog(t, fx)
+
+		// when
+		got := templateFor(t, fx, storedTemplate(t, "type-sprint", "ot-template", "ot-backlog"))
+
+		// then
+		assert.Equal(t, "sprint", got)
+	})
+
+	t.Run("a template whose target rides only in targetObjectType resolves, warns and reads by it", func(t *testing.T) {
+		// given
+		fx := newEffortFixture(t)
+		fx.addSprintType(t)
+		read := storedTemplate(t, "type-sprint", "ot-template")
+
+		// when
+		result, captured, err := setEffort(t, fx, read, `{"op":"set_properties","set":{"Effort":"3","effort_hours":"4"}}`)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "3", (*captured).CombinedDetails().GetString(domain.RelationKey(effortPointsKey)))
+		require.Len(t, result.Warnings, 1, "%v", result.Warnings)
+		assert.Equal(t, "ops[0].set.effort_hours", result.Warnings[0].Path)
+		assert.Equal(t, "sprint", templateFor(t, fx, read))
+	})
+
+	t.Run("an uninstalled target decides nothing: the template's own type settles names and nothing warns", func(t *testing.T) {
+		// given: the template type lists the hours Effort, the uninstalled
+		// sprint row the points one
+		fx := newEffortFixture(t)
+		fx.addSprintType(t, objectstore.TestObject{bundle.RelationKeyIsUninstalled: domain.Bool(true)})
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:                   domain.String(testTemplateTypeId),
+			bundle.RelationKeyName:                 domain.String("Template"),
+			bundle.RelationKeyUniqueKey:            domain.String(bundle.TypeKeyTemplate.URL()),
+			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-effort-hours"}),
+		})
+
+		// when
+		result, captured, err := setEffort(t, fx, templateRead(t, sprintTemplateDoc), `{"op":"set_properties","set":{"Effort":"3"}}`)
+
+		// then
+		require.NoError(t, err)
+		details := (*captured).CombinedDetails()
+		assert.Equal(t, "3", details.GetString(domain.RelationKey(effortHoursKey)), "the template type's own holder wins")
+		assert.False(t, details.Has(domain.RelationKey(effortPointsKey)))
+		assert.Empty(t, result.Warnings)
+	})
+
+	t.Run("a missing target is never matched to another type that answers to its key", func(t *testing.T) {
+		// given: no sprint row; another live type is served under the slug
+		// "sprint" and lists nothing
+		fx := newEffortFixture(t)
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:           domain.String("type-squatter"),
+			bundle.RelationKeyUniqueKey:    domain.String("ot-6a8f2c1d9e4b7a3f5c2d8e99"),
+			bundle.RelationKeyApiObjectKey: domain.String("sprint"),
+			bundle.RelationKeyName:         domain.String("Squatter"),
+		})
+
+		// when
+		result, _, err := setEffort(t, fx, templateRead(t, sprintTemplateDoc), `{"op":"set_properties","set":{"effort_hours":"3"}}`)
+
+		// then
+		require.NoError(t, err)
+		assert.Empty(t, result.Warnings)
+	})
+
+	t.Run("an unknown target keeps the template type's own holder as the winner", func(t *testing.T) {
+		// given: nothing names a target; the template type lists one holder
+		fx := newEffortFixture(t)
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:                   domain.String(testTemplateTypeId),
+			bundle.RelationKeyName:                 domain.String("Template"),
+			bundle.RelationKeyUniqueKey:            domain.String(bundle.TypeKeyTemplate.URL()),
+			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-effort-hours"}),
+		})
+
+		// when
+		_, captured, err := setEffort(t, fx, storedTemplate(t, "", "ot-template"), `{"op":"set_properties","set":{"Effort":"3"}}`)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "3", (*captured).CombinedDetails().GetString(domain.RelationKey(effortHoursKey)))
+	})
+
+	t.Run("a template's query_source property resolves against its target", func(t *testing.T) {
+		// given: this slot reaches the importer's resolver as sent, so only the
+		// create's resolver scope settles it
+		fx := newEffortFixture(t)
+		fx.addSprintType(t)
+		captured := fx.expectCreate("tpl1")
+		fx.expectEtagRead("tpl1")
+
+		// when
+		_, err := fx.CreateTemplate(ctx, testSpaceId,
+			[]byte(`{"formatVersion":"2.0","template_for":"sprint","properties":{"name":"Weekly"},"query_source":{"properties":["Effort"]}}`), false, true)
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, *captured)
+		assert.Equal(t, []string{"rel-effort-points"}, pbtypes.GetStringList((*captured).Details, bundle.RelationKeySetOf.String()))
+	})
+
+	t.Run("a property block on a template binds the target's property, on a dry run and for real", func(t *testing.T) {
+		// given
+		fx := newEffortFixture(t)
+		fx.addSprintType(t)
+		read := templateRead(t, sprintTemplateDoc)
+		op := `{"op":"insert_blocks","blocks":[{"type":"property","property":"Effort"}]}`
+		relationKeys := func(st *state.State) []string {
+			var keys []string
+			st.Iterate(func(b simple.Block) bool {
+				if rel := b.Model().GetRelation(); rel != nil {
+					keys = append(keys, rel.Key)
+				}
+				return true
+			})
+			return keys
+		}
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(read, nil).Once()
+
+		// when: the dry run reaches no mutator
+		preview, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(op), "", true, true)
+		require.NoError(t, err)
+		captured := fx.expectMutate(read, "headB")
+		committed, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(op), "", false, true)
+
+		// then
+		require.NoError(t, err)
+		assert.True(t, preview.DryRun)
+		assert.Equal(t, committed.DiffStats, preview.DiffStats)
+		assert.Equal(t, []string{effortPointsKey}, relationKeys(*captured))
+	})
+}
+
 func TestV2TemplateKindNeedsTemplateType(t *testing.T) {
 	ctx := context.Background()
 	setup := func(t *testing.T) *v2Fixture {

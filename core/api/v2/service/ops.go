@@ -313,16 +313,11 @@ func (d *v2EditDoc) subtreeEnd(i int) int {
 
 // docType returns the envelope type key.
 func (d *v2EditDoc) docType() string {
-	return d.envelopeString("type")
+	return envelopeString(d.fields, "type")
 }
 
-// envelopeString returns one string member of the envelope (`kind`,
-// `template_for`), empty when it is absent or not a string.
-func (d *v2EditDoc) envelopeString(member string) string {
-	return envelopeString(d.fields, member)
-}
-
-// envelopeString is the member read on a parsed envelope.
+// envelopeString returns one string member of a parsed envelope (`type`,
+// `kind`), empty when it is absent or not a string.
 func envelopeString(fields map[string]json.RawMessage, member string) string {
 	raw, ok := fields[member]
 	if !ok {

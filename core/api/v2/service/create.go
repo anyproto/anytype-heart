@@ -791,7 +791,9 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	// 3. Unmarshal with create-missing resolvers (SPEC §3/§2a); on a dry run
 	// the resolvers only record would-be creations
 	resolvers := s.newCreatingResolvers(ctx, spaceId, opts.dryRun, opts.createMissingOptions)
-	resolvers.scope = s.documentPropertyScope(spaceId, envelope.Kind, envelope.Type, envelope.TemplateFor)
+	if resolvers.scope, err = s.createPropertyScope(spaceId, envelope.Kind, envelope.Type, envelope.TemplateFor); err != nil {
+		return nil, err
+	}
 	_, snapshot, err := anyblockjson.Unmarshal(body, resolvers.Options())
 	if err != nil {
 		return nil, mapUnmarshalError(body, err, "object")
@@ -826,9 +828,12 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	// F16: a value on a property the type does not list, said at create as
 	// on set_properties (the object takes the key here for the first time).
 	// A template is judged against template_for, never against `template`.
-	judged, forTemplate := offTypeJudge(envelope.Kind, envelope.Type, envelope.TemplateFor)
-	if typeKeys := s.typeListedKeys(spaceId, judged); typeKeys != nil {
-		judgedSlug := resolvers.keys.TypeSlug(judged)
+	judged, forTemplate, found, err := s.offTypeJudgedType(spaceId, envelope.Kind, envelope.Type, envelope.TemplateFor)
+	if err != nil {
+		return nil, err
+	}
+	if typeKeys, readable := s.listedKeysOf(spaceId, judged.Id); found && readable {
+		judgedSlug := resolvers.keys.TypeSlug(judged.Key)
 		for _, key := range sortedKeys(envelope.Properties) {
 			if typeKeys[key] || !offTypeCandidate(key) {
 				continue

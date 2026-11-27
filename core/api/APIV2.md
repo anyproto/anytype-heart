@@ -341,10 +341,13 @@ either. Ambiguity at any step lists every holder by stored key and id (the
 addresses that always resolve) and never picks by store order; a full miss
 falls to the unknown-key refusal with did-you-mean (§1.3). The one tie-break
 is the object's type: of several holders, the single one the type lists wins
-(`core/api/v2/service/keys.go:242`). A template is scoped by its
-`template_for`, because the type `template` lists none of its properties; a
-template whose target is unknown keeps its own type
-(`core/api/v2/service/refs.go:651`). The chain is wired
+(`core/api/v2/service/keys.go:242`). A template is scoped by the type it is
+for, because the type `template` lists none of its properties. So a spelling
+the target lists wins on a template even when it is also the display name of
+a template-owned property (`Template's Type` is `targetObjectType`); the
+exact stored key still addresses that one. A template whose target is
+unknown, or has no live row in the space, keeps its own type
+(`core/api/v2/service/refs.go:665`). The chain is wired
 into route params, search and set type scopes, document creates,
 `set_properties` keys and the option pre-resolution pass, so one spelling
 works at every level and no channel keeps a private resolution.
@@ -615,11 +618,19 @@ PATCH/DELETE /v2/spaces/{space_id}/properties/{key}    # update / archive
   an object of that other type (`core/api/v2/service/keys.go:1332`).
 - **A value on a property the type does not list is stored and warned
   about**, on create and on `set_properties`, once, when the object first
-  takes the key. A template is judged against `template_for`, the type whose
-  objects take its values, never against the type `template`, and the
-  warning names that target. A template whose target is unknown, or not
-  resolvable in the space, gets no such warning
-  (`core/api/v2/service/refs.go:638`).
+  takes the key. `name`, the system query keys and hidden built-in
+  properties never warn (`core/api/v2/service/refs.go:634`). A template is
+  judged against the type it is for, the one whose objects take its values,
+  never against the type `template`, and the warning names that target. The
+  type judged against is found by its exact stored key and must be live. A
+  template whose target is unknown, or has no live row in the space, gets no
+  such warning, and neither does a property list that cannot be read
+  (`core/api/v2/service/refs.go:652`).
+- **A template's target is one identity.** It is the `targetObjectType`
+  detail, which heart's own template application reads and a retarget
+  moves; the second type key counts only when that detail is absent. GET
+  serves it as `template_for`, and name scope and off-type warnings use the
+  same type (`core/api/v2/service/templates.go:238`).
 - **Every side effect a write creates** — properties and options, real on a
   live run and would-be on a dry run — is reported under `created` in the
   response, each option named once however many ops resolved it
