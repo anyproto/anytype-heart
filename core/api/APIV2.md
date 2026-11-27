@@ -1415,10 +1415,12 @@ Secondary example — programmatic composition (the structured array):
      match an object with no value for the property (any-store v2 compares
      only values of one type), so `dueDate < today()` lists dated objects
      only. The exception needs `include_time: true` and no preset: a
-     `less_or_equal` with no value then compares against null and a
-     `valueFromRelation` operand compares encoded bytes, and either can match
-     a missing value. With the default `include_time: false` the operand
-     becomes an end-of-day bound and the undated stay out. To include the
+     `less_or_equal` or `greater_or_equal` with no value then compares against
+     null and a `valueFromRelation` operand compares encoded bytes, and either
+     can match a missing value. With the default `include_time: false` the
+     operand becomes a day bound (an absent one reads as the epoch day): `>=`
+     and `<` use the start of the day, `>` and `<=` its end, and the undated
+     stay out. To include the
      undated, OR an `empty` leaf in. Neither import nor search warns about
      this.
   6. **`type` is a filterable pseudo-key.** The top-level `type` stays a
@@ -1476,11 +1478,13 @@ Secondary example — programmatic composition (the structured array):
   total. Unknown filter and sort keys keep the skip-with-warning behaviour on
   the global path (`core/api/v2/service/search.go:178`).
 - **Stored-view execution (`?view=`) substitutes dynamic placeholders.**
-  SPEC §6.2's `_filter_template_<n>_` values are client-substituted and opaque
-  to the middleware. Stored-view execution substitutes into every
-  string-valued leaf, whatever the property's format; direct search
-  (`POST .../search`) compares the literal token, and warns when it sits on
-  a property that is not an object or file. The handler substitutes `_filter_template_2_` → the
+  SPEC §6.2's `_filter_template_<n>_` values are client-substituted; the
+  codec leaves them verbatim. Stored-view execution substitutes into every
+  string-valued leaf, whatever the property's format. Direct search
+  (`POST .../search`) does not substitute: it applies ordinary value
+  validation, so a placeholder in a date leaf or an unknown select option is a
+  400, and on a text leaf it compares the literal token with a warning. The
+  handler substitutes `_filter_template_2_` → the
   caller's participant id (`_participant_<space>_<account>`) and
   `_filter_template_1_` → the hosting object id before building the store
   query; any other placeholder degrades to a C6 warning, never a silent

@@ -6,7 +6,7 @@ require (
 	github.com/JohannesKaufmann/html-to-markdown v1.4.0
 	github.com/PuerkitoBio/goquery v1.10.2
 	github.com/ahmetb/govvv v0.3.0
-	github.com/anyproto/any-block v0.0.0-20261127192618-352b2833c3a2 // v2.0.0-rc5; upstream module path has no /v2 suffix
+	github.com/anyproto/any-block v0.0.0-20261127195720-5252f77b29e7 // v2.0.0-rc5; upstream module path has no /v2 suffix
 	github.com/anyproto/any-store v1.0.3
 	github.com/anyproto/any-store/v2 v2.6.1
 	github.com/anyproto/any-sync v0.13.9

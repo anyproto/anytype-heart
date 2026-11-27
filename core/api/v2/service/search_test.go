@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,7 +12,6 @@ import (
 
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/filterstring"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
@@ -413,7 +411,7 @@ func TestV2SearchObjects(t *testing.T) {
 		}
 	})
 
-	t.Run("a value-less less_or_equal reaches undated objects only with include_time (GO-7613)", func(t *testing.T) {
+	t.Run("a value-less less_or_equal or greater_or_equal reaches undated objects only with include_time (GO-7613)", func(t *testing.T) {
 		// given: the one operand that is compared against null. With the
 		// default include_time:false the engine turns the operand into an
 		// end-of-day bound first, so the undated stay out.
@@ -431,6 +429,8 @@ func TestV2SearchObjects(t *testing.T) {
 		}{
 			{"include_time false", `[{"property":"lastModifiedDate","condition":"less_or_equal"}]`, []string{"chore1", "chore2"}},
 			{"include_time true", `[{"property":"lastModifiedDate","condition":"less_or_equal","include_time":true}]`, []string{"chore3"}},
+			{"greater_or_equal, include_time false", `[{"property":"lastModifiedDate","condition":"greater_or_equal"}]`, []string{"chore1", "chore2"}},
+			{"greater_or_equal, include_time true", `[{"property":"lastModifiedDate","condition":"greater_or_equal","include_time":true}]`, []string{"chore3"}},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
 				req := v2model.SearchRequest{Type: "chore", Filters: json.RawMessage(tc.filter)}
@@ -581,7 +581,7 @@ func TestV2SearchStructuredDateValues(t *testing.T) {
 		require.Len(t, apiErr.Issues, 1)
 		assert.Equal(t, "/filters/0/value", apiErr.Issues[0].Path)
 		assert.Contains(t, apiErr.Issues[0].Message, `property "verifiedUntil" is a date — the structured form takes unix seconds (1785542400), not "2026-08-01"`)
-		assert.Contains(t, apiErr.Issues[0].Hint, "compact filter string")
+		assert.Contains(t, apiErr.Issues[0].Hint, `replace "value" with 1785542400`)
 	})
 
 	t.Run("a non-date string on a date property is rejected too", func(t *testing.T) {
@@ -1398,23 +1398,6 @@ func TestV2FieldAliasShadowing(t *testing.T) {
 	})
 }
 
-// compactExampleIn lifts the compact filter string out of a date refusal's
-// hint so a test can hand it straight back to the parser the search path
-// parses with: an example that does not parse is a repair the caller cannot
-// perform, and finding that out costs them a whole round trip.
-func compactExampleIn(t *testing.T, hint string) string {
-	t.Helper()
-	const prefix = `e.g. "filter": `
-	start := strings.Index(hint, prefix)
-	require.GreaterOrEqual(t, start, 0, "the hint offers a compact example: %s", hint)
-	rest := hint[start+len(prefix):]
-	end := strings.Index(rest, " — ")
-	require.GreaterOrEqual(t, end, 0, "the example ends before the datePreset alternative: %s", hint)
-	var literal string
-	require.NoError(t, json.Unmarshal([]byte(rest[:end]), &literal), "the example is a JSON string literal")
-	return literal
-}
-
 // TestV2SearchRefusalsNameTheCallersSpelling is round-six R6-7: search
 // canonicalizes every filter leaf's property to its STORED key before
 // validating, so a refusal quoted that key — for a space-minted property a
@@ -1441,48 +1424,74 @@ func TestV2SearchRefusalsNameTheCallersSpelling(t *testing.T) {
 		return fx
 	}
 
-	t.Run("a not_equal date refusal keeps the operator, so the repair still selects the undated", func(t *testing.T) {
-		// given
+	// the repair replaces only the leaf's value, so the condition and
+	// include_time it was sent with still decide which rows come back
+	t.Run("a date value refusal quotes the slug the caller sent, and its repair selects the same rows", func(t *testing.T) {
+		// given: a 09:00 row and a 15:00 row on 2026-08-01
 		fx := setup(t)
-		req := v2model.SearchRequest{
-			Filters: json.RawMessage(`[{"property":"close_date","condition":"not_equal","value":"2026-08-01"}]`),
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId: domain.String("morning"), bundle.RelationKeyName: domain.String("Morning"),
+				bundle.RelationKeyType: domain.String("type-chore"), domain.RelationKey(hexKey): domain.Int64(1785574800),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			},
+			{
+				bundle.RelationKeyId: domain.String("afternoon"), bundle.RelationKeyName: domain.String("Afternoon"),
+				bundle.RelationKeyType: domain.String("type-chore"), domain.RelationKey(hexKey): domain.Int64(1785596400),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			},
+		})
+		for _, tc := range []struct {
+			name     string
+			leaf     string // the repaired leaf, as the hint tells the caller to build it
+			sent     string
+			wantHint string
+			wantRows []string
+			notRows  []string
+		}{
+			{
+				name:     "less with include_time keeps the 09:00 row",
+				sent:     `{"property":"close_date","condition":"less","include_time":true,"value":"2026-08-01T12:00:00Z"}`,
+				wantHint: `replace "value" with 1785585600 (unix seconds) for "close_date" and keep the condition and include_time as sent, or use "date_preset" for a named window`,
+				leaf:     `{"property":"close_date","condition":"less","include_time":true,"value":1785585600}`,
+				wantRows: []string{"morning"},
+				notRows:  []string{"afternoon"},
+			},
+			{
+				name:     "not_equal offers no preset",
+				sent:     `{"property":"close_date","condition":"not_equal","include_time":true,"value":"2026-08-01T09:00:00Z"}`,
+				wantHint: `replace "value" with 1785574800 (unix seconds) for "close_date" and keep the condition and include_time as sent`,
+				leaf:     `{"property":"close_date","condition":"not_equal","include_time":true,"value":1785574800}`,
+				wantRows: []string{"afternoon", "chore1"},
+				notRows:  []string{"morning"},
+			},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				// when
+				_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
+					v2model.SearchRequest{Filters: json.RawMessage(`[` + tc.sent + `]`)}, 0, 25)
+
+				// then
+				apiErr := v2Err(t, err)
+				require.Len(t, apiErr.Issues, 1)
+				assert.Contains(t, apiErr.Issues[0].Message, `property "close_date" is a date`)
+				assert.NotContains(t, apiErr.Issues[0].Message, hexKey, "never the stored key")
+				assert.NotContains(t, apiErr.Issues[0].Hint, hexKey)
+				assert.Equal(t, tc.wantHint, apiErr.Issues[0].Hint)
+
+				// and the repaired leaf returns the rows the caller asked for
+				rows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
+					v2model.SearchRequest{Filters: json.RawMessage(`[` + tc.leaf + `]`)}, 0, 25)
+				require.NoError(t, err)
+				got := rowIds(rows)
+				for _, id := range tc.wantRows {
+					assert.Contains(t, got, id)
+				}
+				for _, id := range tc.notRows {
+					assert.NotContains(t, got, id)
+				}
+			})
 		}
-
-		// when
-		_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
-
-		// then
-		apiErr := v2Err(t, err)
-		require.Len(t, apiErr.Issues, 1)
-		assert.Contains(t, apiErr.Issues[0].Hint, `"close_date != `)
-	})
-
-	t.Run("a date value refusal quotes the slug the caller sent", func(t *testing.T) {
-		// given
-		fx := setup(t)
-		req := v2model.SearchRequest{
-			Filters: json.RawMessage(`[{"property":"close_date","condition":"less","value":"2026-08-01"}]`),
-		}
-
-		// when
-		_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
-
-		// then
-		apiErr := v2Err(t, err)
-		require.Len(t, apiErr.Issues, 1)
-		assert.Contains(t, apiErr.Issues[0].Message, `property "close_date" is a date`)
-		assert.NotContains(t, apiErr.Issues[0].Message, hexKey, "never the stored key")
-		assert.NotContains(t, apiErr.Issues[0].Hint, hexKey, "and not in the worked example either")
-		assert.Contains(t, apiErr.Issues[0].Hint, `"close_date < `, "the example is one the caller can paste, and keeps the caller's operator")
-
-		// and the example really is pasteable: the parser that parses the
-		// compact channel accepts it, and so does the search that offered it
-		example := compactExampleIn(t, apiErr.Issues[0].Hint)
-		_, parseErr := filterstring.Parse(example, filterstring.Options{})
-		require.NoError(t, parseErr, "the suggested example must parse: %s", example)
-		_, _, _, _, err = fx.SearchObjects(context.Background(), testSpaceId,
-			v2model.SearchRequest{Filter: example}, 0, 25)
-		require.NoError(t, err, "and be accepted by the surface that suggested it")
 	})
 
 	t.Run("a display name under ?keys=name comes back as the display name", func(t *testing.T) {
@@ -1500,14 +1509,11 @@ func TestV2SearchRefusalsNameTheCallersSpelling(t *testing.T) {
 		require.Len(t, apiErr.Issues, 1)
 		assert.Contains(t, apiErr.Issues[0].Message, `property "Close date" is a date`)
 		assert.NotContains(t, apiErr.Issues[0].Message, hexKey)
-		// a display name is no compact identifier — `Close date > "…"` fails
-		// to parse at the space, so the repair is the structured one
-		assert.NotContains(t, apiErr.Issues[0].Hint, `"filter":`)
-		assert.Equal(t, `the structured form takes unix seconds — send "value": 1785542400 for "Close date", or use a datePreset`,
+		assert.Equal(t, `replace "value" with 1785542400 (unix seconds) for "Close date" and keep the condition and include_time as sent, or use "date_preset" for a named window`,
 			apiErr.Issues[0].Hint)
 	})
 
-	t.Run("a value that is no date offers no example the parser would reject", func(t *testing.T) {
+	t.Run("a value that is no date offers no computed value", func(t *testing.T) {
 		// given
 		fx := setup(t)
 		req := v2model.SearchRequest{
@@ -1523,10 +1529,8 @@ func TestV2SearchRefusalsNameTheCallersSpelling(t *testing.T) {
 		assert.Equal(t, `property "close_date" is a date — the structured form takes unix seconds, and "bananas" is not a date`,
 			apiErr.Issues[0].Message)
 		assert.NotContains(t, apiErr.Issues[0].Message, hexKey)
-		assert.Equal(t, `the structured form takes unix seconds for "close_date" — or use a datePreset for a named window`,
+		assert.Equal(t, `the structured form takes unix seconds for "close_date", or use "date_preset" for a named window`,
 			apiErr.Issues[0].Hint)
-		assert.NotContains(t, apiErr.Issues[0].Hint, `"filter":`,
-			`the compact channel has no literal for "bananas", so an example built from it could only mislead`)
 	})
 
 	// One request may name one property two ways. A spelling recorded per

@@ -625,13 +625,16 @@ func (b *byPrecomputedKey) Swap(i, j int) {
 }
 
 // danglingFilterWarnings reports the view filters keyed on a property the
-// space does not hold. The page is empty and a stored view now applies by
+// space cannot serve. The page is empty and a stored view now applies by
 // default, so without this the caller sees no rows and no reason. The warning
-// names the unavailable properties and does not say what the filters do: a
-// missing property reads as no value, so `=` fails and `!=` holds.
+// names the unavailable properties and says nothing about what the filters do.
 //
-// Keys that query creation accepts without a relation row (name, the system
-// keys, the discussion counters) are not unavailable and are never named. The
+// A key is available when a live relation row holds it, or when it is a
+// bundled property the store supplies without a row (done, isFavorite, dueDate
+// and the system keys); a bundled key is unavailable only when this space
+// explicitly removed it, the same verdict the write channels use. A nested path
+// such as `type.uniqueKey` is judged by its first component. The label of each
+// key is the one the views read emits for it, in the request's vocabulary. The
 // store is consulted only when a view actually carries filters.
 func (s *Service) danglingFilterWarnings(ctx context.Context, spaceId string, view *model.BlockContentDataviewView, otherViews bool) []v2model.Issue {
 	if len(view.Filters) == 0 {
@@ -645,15 +648,12 @@ func (s *Service) danglingFilterWarnings(ctx context.Context, spaceId string, vi
 				continue
 			}
 			if node.RelationKey != "" {
-				keys[node.RelationKey] = true
+				keys[strings.SplitN(node.RelationKey, ".", 2)[0]] = true
 			}
 			walk(node.NestedFilters)
 		}
 	}
 	walk(view.Filters)
-	for _, key := range append(append([]string{"name"}, v2SystemQueryKeys...), v2BundledQueryKeys...) {
-		delete(keys, key)
-	}
 	if len(keys) == 0 {
 		return nil
 	}
@@ -661,39 +661,39 @@ func (s *Service) danglingFilterWarnings(ctx context.Context, spaceId string, vi
 	if err != nil {
 		return nil // a store hiccup must not fail the read; the rows still stand
 	}
-	for _, entry := range entries {
-		delete(keys, entry.Key)
-	}
-	if len(keys) == 0 {
+	removedSet, err := s.bundledRemovalSet(spaceId)
+	if err != nil {
 		return nil
 	}
-	// spelled the way the request's own reads spell it: the served slug (a
-	// live holder of the spelling keeps it) or, under ?keys=name, the name
-	keyTaken, slugHolders := servedPropertyKeySets(entries)
-	removed, err := s.removedProperties(spaceId)
-	if err != nil {
-		removed = nil // the spelling degrades to the stored key; the warning still stands
-	}
-	removedByKey := map[string]propertyEntry{}
-	for _, entry := range removed {
-		removedByKey[entry.Key] = entry
-	}
-	v := errKeysFor(ctx)
-	missing := make([]string, 0, len(keys))
+	var unavailable []string
 	for key := range keys {
-		entry := removedByKey[key]
-		name := entry.Name
-		if rel, err := bundle.GetRelation(domain.RelationKey(key)); err == nil && rel.Name != "" {
-			name = rel.Name
+		if propertyKeyInstalledIn(entries, key) {
+			continue
 		}
-		spelling := v.spell(servedKey(key, entry.Slug, keyTaken, slugHolders), name)
-		missing = append(missing, strconv.Quote(spelling))
+		if bundle.HasRelation(domain.RelationKey(key)) {
+			removed, err := s.bundledPropertyRemoved(ctx, spaceId, entries, removedSet, key)
+			if err != nil || !removed {
+				continue
+			}
+		}
+		unavailable = append(unavailable, key)
 	}
-	sort.Strings(missing)
+	if len(unavailable) == 0 {
+		return nil
+	}
+	var vocab anyblockjson.KeyVocabulary = storeresolver.New(s.store.SpaceIndex(spaceId)).Options().Keys
+	if !nameKeysRequested(ctx) {
+		vocab = s.apiKeys(spaceId, vocab)
+	}
+	labels := make([]string, 0, len(unavailable))
+	for _, key := range unavailable {
+		labels = append(labels, strconv.Quote(vocab.PropertySlug(key)))
+	}
+	sort.Strings(labels)
 	issue := v2model.Issue{
 		Path: "view",
 		Message: fmt.Sprintf("view %s returned no rows. Its filters reference unavailable properties (%s)",
-			describeView(view), strings.Join(missing, ", ")),
+			describeView(view), strings.Join(labels, ", ")),
 	}
 	if otherViews {
 		return []v2model.Issue{issue.Hintf("edit the view's filters, or pass %s to read through another view", v2model.Resend("view", "<view_id>"))}

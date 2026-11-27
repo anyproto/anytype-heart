@@ -462,6 +462,7 @@ func TestUpdateViewOp(t *testing.T) {
 		view := viewsOf(t, dataviewOf(t, *captured, "dataview"))[0]
 		filters, _ := view["filters"].([]any)
 		require.Len(t, filters, 1, "the filter is stored")
+		assert.Equal(t, map[string]any{"property": "due_date", "condition": "less", "date_preset": "today"}, filters[0])
 	})
 
 	t.Run("an ignored date preset warns (C11), it does not reject", func(t *testing.T) {
@@ -1503,8 +1504,8 @@ func TestV2ViewAcceptsPropertyByServedKey(t *testing.T) {
 }
 
 // TestV2StoredDateFiltersTakeDateStrings: a view PERSISTS its filter, so a
-// date left as a string is not a bad query but a view that compares
-// string-against-int64 and quietly matches nothing (round-six eval R6-1).
+// date left as a string is not a bad query but a view that compares a string
+// with stored numbers, for good (round-six eval R6-1).
 // update_view converts a date string to unix seconds on write and refuses a
 // string that is no date — the same value search refuses with the
 // conversion spelled out.

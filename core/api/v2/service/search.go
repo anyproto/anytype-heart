@@ -833,7 +833,7 @@ func validateFilterStructure(nodes []searchFilterNode, path string) []v2model.Is
 					Path:    nodePath + "/condition",
 					Message: fmt.Sprintf("filter on %q has no condition", node.Property),
 				}.Hintf("a leaf needs a condition (equal, not_equal, contains, in, empty, …); "+
-					"without one the filter is dropped — the node shape is on %s", v2model.RefGetSchema("filters")))
+					"add the condition — the node shape is on %s", v2model.RefGetSchema("filters")))
 			}
 		}
 	}
@@ -890,9 +890,9 @@ func (s *Service) validateStructuredFilters(spaceId string, raw json.RawMessage,
 			}
 			format, formatKnown := formatName(canonical)
 			// a date property takes unix seconds in the structured form
-			// (SPEC §6.2) — an RFC 3339 string would survive to the store,
-			// compare string-against-int64 and silently match nothing (or,
-			// through the quick-option day-range transform, everything).
+			// (SPEC §6.2) — an RFC 3339 string would survive to the store
+			// unconverted, and what a string leaf then selects is not
+			// something a caller can see.
 			// The string form converts RFC 3339 at parse time; here the
 			// mistake is rejected with the conversion spelled out.
 			if formatKnown && format == "date" {
@@ -933,34 +933,30 @@ func (s *Service) validateStructuredFilters(spaceId string, raw json.RawMessage,
 }
 
 // dateValueRepair is the hint beside a date refusal in the structured form.
-// The compact example is offered only where the caller can paste it back and
-// have it parse: the grammar's `key` production is a bare identifier
-// (filterstring.IsBareKey), so a display name like "Close date" — a spelling
-// §7.5a accepts — has no compact form at all, and a value that is no date has
-// no compact literal either. An example the parser rejects at the first space
-// costs a whole round trip to find out about, which is worse than no example.
-// Everything offered carries the caller's own spelling, so the repair is
-// written in the vocabulary the request was.
+// The repair replaces only the leaf's `value` with the computed unix seconds:
+// the condition and `include_time` stay as sent, because either one moves the
+// selected rows (a compact string has no include_time, and `!=` and `>` select
+// different rows). A named window is offered only for the conditions that apply
+// a date preset, spelled as the wire spells it.
 func dateValueRepair(spelling, condition, value string, sec int64, isDate bool) string {
-	// the compact example keeps the caller's own operator: a different one
-	// selects other rows (`!=` keeps the undated objects, `>` drops them)
-	op, hasOp := compactDateOperators[strings.ToLower(strings.ReplaceAll(condition, "_", ""))]
-	switch {
-	case isDate && hasOp && filterstring.IsBareKey(spelling):
-		return fmt.Sprintf(`RFC 3339 dates belong to the compact filter string, e.g. "filter": "%s %s \"%s\"" — or use a datePreset`, spelling, op, value)
-	case isDate:
-		return fmt.Sprintf(`the structured form takes unix seconds — send "value": %d for %q, or use a datePreset`, sec, spelling)
-	default:
-		return fmt.Sprintf("the structured form takes unix seconds for %q — or use a datePreset for a named window", spelling)
+	alternative := ""
+	if _, applies := datePresetConditionNames[normalizeCondition(condition)]; applies {
+		alternative = `, or use "date_preset" for a named window`
 	}
+	if isDate {
+		return fmt.Sprintf(`replace "value" with %d (unix seconds) for %q and keep the condition and include_time as sent%s`, sec, spelling, alternative)
+	}
+	return fmt.Sprintf(`the structured form takes unix seconds for %q%s`, spelling, alternative)
 }
 
-// compactDateOperators maps the structured conditions that have a one-operator
-// compact spelling to it, keyed lower-cased without underscores.
-var compactDateOperators = map[string]string{
-	"equal": "=", "notequal": "!=",
-	"less": "<", "lessorequal": "<=",
-	"greater": ">", "greaterorequal": ">=",
+// datePresetConditionNames are the conditions that apply a date preset's range
+// (transformDateFilter), keyed lower-cased without underscores.
+var datePresetConditionNames = map[string]struct{}{
+	"equal": {}, "in": {}, "less": {}, "lessorequal": {}, "greater": {}, "greaterorequal": {},
+}
+
+func normalizeCondition(c string) string {
+	return strings.ToLower(strings.ReplaceAll(c, "_", ""))
 }
 
 // stringValues extracts the string entries of a filter value (bare string or
