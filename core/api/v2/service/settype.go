@@ -106,7 +106,41 @@ func (a *v2StateApplier) applySetType(op opSetType, opPath string) error {
 		a.typeChanged = &v2model.TypeChange{From: from}
 	}
 	a.typeChanged.To = a.spellType([]domain.TypeKey{key})
+	// the batch's later ops address the properties of the type the object
+	// has now, as the prewarm assumed (prewarmCreateMissing)
+	if a.resolvers != nil {
+		live, found, err := a.s.liveTypeByKey(a.spaceId, string(key))
+		if err != nil {
+			return err
+		}
+		a.resolvers.scope = nil
+		if found {
+			if a.resolvers.scope, err = a.s.typePropertyScopeOf(a.spaceId, live.Id); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
+}
+
+// setTypeScope is the property scope an object takes on with a set_type to
+// term: the list of the live type the term resolves to, by the op's own
+// resolution. ok=false leaves the scope as it was: a term that resolves to
+// no live type is the apply's to refuse, or names a built-in the batch
+// installs, whose row the prewarm cannot read yet.
+func (s *Service) setTypeScope(spaceId, term string, entries []typeEntry) (map[string]bool, bool) {
+	if term == "" || entries == nil {
+		return nil, false
+	}
+	entry, ok, ambiguous, err := s.resolveTypeInput(spaceId, term, entries)
+	if err != nil || !ok || len(ambiguous) > 0 || entry.Id == "" {
+		return nil, false
+	}
+	scope, err := s.typePropertyScopeOf(spaceId, entry.Id)
+	if err != nil {
+		return nil, false
+	}
+	return scope, true
 }
 
 // spellType is the receipt's spelling of a type: exactly what the caller's

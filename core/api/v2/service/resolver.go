@@ -444,16 +444,44 @@ func optionConsentErrorAt(spaceId, servedKey, name, path string) error {
 // from the in-lock op pass, in unchanged order — and create failures ride
 // resolvers.err(), exactly where the in-lock path checks them.
 func (s *Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creatingResolvers) {
+	// the apply resolves each op's keys in the scope the object has at that
+	// op, so the prewarm walks the same order: a set_type moves the scope of
+	// the ops after it, and the walk leaves the scope as it found it
+	base := resolvers.scope
+	defer func() { resolvers.scope = base }()
+	var viewScope map[string]bool
+	if resolvers.patch != nil {
+		viewScope = resolvers.patch.viewScope
+	}
+	var typeEntries []typeEntry
+	typeEntriesLoaded := false
 	for _, raw := range ops {
 		var probe struct {
-			Op  string                     `json:"op"`
-			Set map[string]json.RawMessage `json:"set"`
+			Op   string                     `json:"op"`
+			Type string                     `json:"type"`
+			Set  map[string]json.RawMessage `json:"set"`
 			// add resolves option names with the same create-missing
 			// semantics as set (v0.3.5), so it prewarms too — otherwise
 			// option creation moves back inside the object lock
 			Add map[string]json.RawMessage `json:"add"`
 		}
 		if err := json.Unmarshal(raw, &probe); err != nil {
+			continue
+		}
+		if probe.Op == "set_type" {
+			if !typeEntriesLoaded {
+				typeEntriesLoaded = true
+				var err error
+				if typeEntries, err = s.liveTypes(resolvers.spaceId); err != nil {
+					// the prewarm is lenient (an unread type keeps the scope
+					// it had); the apply reads the types again and fails
+					// closed on the same error
+					typeEntries = nil
+				}
+			}
+			if scope, ok := s.setTypeScope(resolvers.spaceId, probe.Type, typeEntries); ok {
+				resolvers.scope = scope
+			}
 			continue
 		}
 		if probe.Op == "update_view" || probe.Op == "insert_view" {
@@ -463,7 +491,7 @@ func (s *Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creatin
 			// the live proto at commit and imported with a no-create resolver
 			// (viewops.go commitDataviewBlock), so this prewarm is exhaustive:
 			// a name it cannot see is a name the commit will not mint.
-			s.prewarmViewOptionValues(probe.Set, resolvers)
+			s.prewarmViewOptionValues(probe.Set, resolvers, viewScope)
 			continue
 		}
 		if probe.Op != "set_properties" {
@@ -524,9 +552,11 @@ type viewFilterProbe struct {
 // properties, both of which the dataview import resolves with create-missing
 // (SPEC §6.2/§3) — so the creates run before the object lock and the M5
 // bound sees them. Same leniency contract as the set_properties pass.
-func (s *Service) prewarmViewOptionValues(set map[string]json.RawMessage, resolvers *creatingResolvers) {
+func (s *Service) prewarmViewOptionValues(set map[string]json.RawMessage, resolvers *creatingResolvers, viewScope map[string]bool) {
 	resolveSelect := func(rawKey string, value json.RawMessage) {
-		key := resolvers.canonicalPropertyKey(rawKey)
+		// a view key is the query source's, as the apply resolves it
+		// (canonicalViewKey), never the object's own type's
+		key := resolvers.canonicalPropertyKeyIn(rawKey, viewScope)
 		format, err := bundle.GetRelationFormat(domain.RelationKey(key))
 		if err != nil {
 			var ok bool
@@ -930,6 +960,11 @@ func (r *creatingResolvers) MintingProperty(docKey string) bool {
 // error passes through too (the prewarm is best-effort; the in-lock pass
 // fails closed on the same error).
 func (r *creatingResolvers) canonicalPropertyKey(key string) string {
+	return r.canonicalPropertyKeyIn(key, r.scope)
+}
+
+// canonicalPropertyKeyIn is canonicalPropertyKey in an explicit scope.
+func (r *creatingResolvers) canonicalPropertyKeyIn(key string, scope map[string]bool) string {
 	if _, ok := r.createdProps[key]; ok {
 		return key
 	}
@@ -937,7 +972,7 @@ func (r *creatingResolvers) canonicalPropertyKey(key string) string {
 	if err != nil {
 		return key
 	}
-	entry, ok, ambiguous := r.svc.resolvePropertyInputIn(key, entries, r.scope)
+	entry, ok, ambiguous := r.svc.resolvePropertyInputIn(key, entries, scope)
 	if len(ambiguous) > 0 || !ok {
 		return key
 	}

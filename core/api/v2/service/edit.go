@@ -434,6 +434,11 @@ func (s *Service) applyPatchOps(ctx context.Context, spaceId, objectId string, o
 	if err := checkEditPreconditions(edit.SbType, edit.Heads, ifMatch); err != nil {
 		return nil, nil, err
 	}
+	if resolvers.patch != nil {
+		// every pass starts from the object's own scope: a set_type in the
+		// batch moves it, and a pass that ran before must not leave it moved
+		resolvers.scope = resolvers.patch.objectScope
+	}
 	applier := newV2StateApplier(s, spaceId, objectId, edit.SbType, edit.State, resolvers, errKeysFor(ctx))
 	applier.setObjectType = edit.SetObjectType
 	applier.simulate = simulate
@@ -626,6 +631,10 @@ type patchContext struct {
 	template    bool
 	target      templateTarget
 	objectScope map[string]bool
+	// viewScope settles a view filter or sort key: the list of the type the
+	// object's query source names (v2StateApplier.viewScope, read off the
+	// same detail), never the object's own type
+	viewScope map[string]bool
 }
 
 // newPatchContext reads an object's template target and property scope: the
@@ -637,6 +646,9 @@ func (s *Service) newPatchContext(spaceId string, cur apicore.ObjectRead) (*patc
 	pc := &patchContext{}
 	if cur.Snapshot == nil {
 		return pc, nil
+	}
+	if setOf := pbtypes.GetStringList(cur.Snapshot.GetDetails(), bundle.RelationKeySetOf.String()); len(setOf) == 1 {
+		pc.viewScope = s.typePropertyScope(spaceId, setOf[0])
 	}
 	typeKeys := readTypeKeys(cur.Snapshot.GetObjectTypes())
 	pc.template = isTemplateObject(cur.SbType, typeKeys)

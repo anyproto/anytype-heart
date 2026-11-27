@@ -3,6 +3,7 @@ package v2service
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -836,6 +837,157 @@ func TestV2TemplateTargetIdentity(t *testing.T) {
 		assert.True(t, preview.DryRun)
 		assert.Equal(t, committed.DiffStats, preview.DiffStats)
 		assert.Equal(t, []string{effortPointsKey}, relationKeys(*captured))
+	})
+}
+
+// GO-7614: each key slot resolves in its own scope, in both passes of a
+// PATCH. A view filter is the view's query source's; the object's own keys
+// are its type's as it stands at that op, a set_type earlier in the batch
+// included. The create-missing prewarm follows the same scopes in the same
+// op order, so it never pre-creates an option on another property.
+func TestV2PatchScopesFollowTheirSource(t *testing.T) {
+	ctx := context.Background()
+	const (
+		stageBacklogKey  = "6a8f2c1d9e4b7a3f5c2d8ea1"
+		stageSprintKey   = "6a8f2c1d9e4b7a3f5c2d8ea2"
+		stagePipelineKey = "6a8f2c1d9e4b7a3f5c2d8ea3"
+	)
+	// three select properties named "Stage", one per type: backlog, sprint
+	// (beside the points Effort) and pipeline; readyOn names the one that
+	// holds an option "Ready"
+	setup := func(t *testing.T, readyOn string) *v2Fixture {
+		fx := newEffortFixture(t)
+		for _, stage := range []struct{ id, key, slug string }{
+			{"rel-stage-backlog", stageBacklogKey, "stage_backlog"},
+			{"rel-stage-sprint", stageSprintKey, "stage_sprint"},
+			{"rel-stage-pipeline", stagePipelineKey, "stage_pipeline"},
+		} {
+			fx.addRelation(t, testSpaceId, objectstore.TestObject{
+				bundle.RelationKeyId:             domain.String(stage.id),
+				bundle.RelationKeyRelationKey:    domain.String(stage.key),
+				bundle.RelationKeyApiObjectKey:   domain.String(stage.slug),
+				bundle.RelationKeyName:           domain.String("Stage"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_status)),
+			})
+		}
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("opt-ready"),
+			bundle.RelationKeyRelationKey:    domain.String(readyOn),
+			bundle.RelationKeyName:           domain.String("Ready"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
+		}})
+		fx.addSprintType(t, objectstore.TestObject{
+			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-effort-points", "rel-stage-sprint"}),
+		})
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:                   domain.String("type-backlog"),
+			bundle.RelationKeyUniqueKey:            domain.String("ot-backlog"),
+			bundle.RelationKeyName:                 domain.String("Backlog"),
+			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-effort-hours", "rel-stage-backlog"}),
+		})
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:                   domain.String("type-pipeline"),
+			bundle.RelationKeyUniqueKey:            domain.String("ot-pipeline"),
+			bundle.RelationKeyName:                 domain.String("Pipeline"),
+			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-stage-pipeline"}),
+		})
+		return fx
+	}
+	// a template for sprint holding a view of pipeline objects
+	viewTemplate := func(t *testing.T) apicore.ObjectRead {
+		read := templateRead(t, `{"formatVersion":"2.0","id":"obj1","kind":"template","type":"template","template_for":"sprint","properties":{"name":"Weekly"},`+
+			`"blocks":[{"id":"dataview","type":"dataview","views":[{"id":"view1","name":"All"}]}]}`)
+		read.Snapshot.Details.Fields[bundle.RelationKeySetOf.String()] = pbtypes.StringList([]string{"type-pipeline"})
+		return read
+	}
+	// an ordinary backlog object
+	backlogRead := func(t *testing.T) apicore.ObjectRead {
+		read := editRead(t, `{"formatVersion":"2.0","id":"obj1","type":"backlog","properties":{"name":"Doc"}}`)
+		read.Snapshot.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String("type-backlog")
+		return read
+	}
+	createdOptions := func(created *v2model.SideEffects) []v2model.CreatedOption {
+		if created == nil {
+			return nil
+		}
+		return created.Options
+	}
+
+	for _, consent := range []bool{false, true} {
+		t.Run(fmt.Sprintf("a template's view filter resolves in the query source, creating nothing (create_missing_options=%v)", consent), func(t *testing.T) {
+			// given: `status` is both the installed built-in's key and the
+			// slug of the space's own Pipeline status. Sprint lists the
+			// built-in, pipeline its own, and only the own one holds
+			// Ready; the strict mock fails any option create
+			const ownStatusKey = "6a8f2c1d9e4b7a3f5c2d8ea4"
+			fx := setup(t, ownStatusKey)
+			fx.addRelation(t, testSpaceId, objectstore.TestObject{
+				bundle.RelationKeyId:             domain.String("rel-status"),
+				bundle.RelationKeyRelationKey:    domain.String("status"),
+				bundle.RelationKeyName:           domain.String("Status"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_status)),
+			})
+			fx.addRelation(t, testSpaceId, objectstore.TestObject{
+				bundle.RelationKeyId:             domain.String("rel-own-status"),
+				bundle.RelationKeyRelationKey:    domain.String(ownStatusKey),
+				bundle.RelationKeyApiObjectKey:   domain.String("status"),
+				bundle.RelationKeyName:           domain.String("Pipeline status"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_status)),
+			})
+			fx.addSprintType(t, objectstore.TestObject{
+				bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-effort-points", "rel-status"}),
+			})
+			fx.addType(t, testSpaceId, objectstore.TestObject{
+				bundle.RelationKeyId:                   domain.String("type-pipeline"),
+				bundle.RelationKeyUniqueKey:            domain.String("ot-pipeline"),
+				bundle.RelationKeyName:                 domain.String("Pipeline"),
+				bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-own-status"}),
+			})
+			committed := fx.expectMutateState(viewTemplate(t), nil)
+
+			// when
+			result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+				patchBody(`{"op":"update_view","set":{"filters":[{"property":"status","condition":"equal","value":["Ready"]}]}}`), "", false, consent)
+
+			// then
+			require.NoError(t, err)
+			assert.Empty(t, createdOptions(result.Created))
+			dv := (*committed).Pick(state.DataviewBlockID).Model().GetDataview()
+			require.Len(t, dv.Views, 1)
+			require.Len(t, dv.Views[0].Filters, 1)
+			assert.Equal(t, ownStatusKey, dv.Views[0].Filters[0].RelationKey)
+		})
+	}
+
+	t.Run("set_properties after set_type writes the new type's property", func(t *testing.T) {
+		// given
+		fx := setup(t, stageSprintKey)
+		typed := fx.expectMutateTyped(backlogRead(t), "headB")
+
+		// when
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"set_type","type":"sprint"}`, `{"op":"set_properties","set":{"Effort":"3"}}`), "", false, true)
+
+		// then
+		require.NoError(t, err)
+		details := typed.state.CombinedDetails()
+		assert.Equal(t, "3", details.GetString(domain.RelationKey(effortPointsKey)))
+		assert.False(t, details.Has(domain.RelationKey(effortHoursKey)))
+	})
+
+	t.Run("an option after set_type resolves on the new type's property, creating nothing", func(t *testing.T) {
+		// given: only sprint's Stage holds Ready
+		fx := setup(t, stageSprintKey)
+		typed := fx.expectMutateTyped(backlogRead(t), "headB")
+
+		// when
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"set_type","type":"sprint"}`, `{"op":"set_properties","set":{"Stage":"Ready"}}`), "", false, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Empty(t, createdOptions(result.Created))
+		assert.Equal(t, []string{"opt-ready"}, typed.state.CombinedDetails().GetStringList(domain.RelationKey(stageSprintKey)))
 	})
 }
 
