@@ -661,6 +661,66 @@ func TestAclObjectManagerUpdateAclUnderAclWriteLock(t *testing.T) {
 	assert.Equal(t, newHead, fx.aclObjectManager.lastIndexed)
 }
 
+// TestAclObjectManagerProcessesRemovalUnderAclWriteLock covers the removal fallback on the path
+// any-sync drives: a sync response delivers our removal together with a newcomer's join request, and
+// UpdateAcl runs with the ACL write lock held. The fallback must not take the ACL read lock either
+// (GO-7525), and still has to mark the space deleted.
+func TestAclObjectManagerProcessesRemovalUnderAclWriteLock(t *testing.T) {
+	// given: b is an active reader at startup
+	a := list.NewAclExecutor("spaceId")
+	for _, cmd := range []string{"a.init::a", "a.invite::invId", "b.join::invId", "a.approve::b,r"} {
+		require.NoError(t, a.Execute(cmd))
+	}
+	acl := &syncAclStub{AclList: a.ActualAccounts()["b"].Acl}
+
+	fx := newFixture(t)
+	defer fx.finish(t)
+	fx.mockLoader.EXPECT().WaitLoad(mock.Anything).Return(fx.mockSpace, nil)
+	fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
+	fx.mockSpace.EXPECT().Id().Return("spaceId")
+	fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
+	fx.mockCommonSpace.EXPECT().Id().AnyTimes().Return("spaceId")
+	fx.mockStatus.EXPECT().GetLatestAclHeadId().Return("").Times(2)
+	fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
+	fx.mockStatus.EXPECT().SetOwner(a.ActualAccounts()["a"].Acl.AclState().Identity().Account(), mock.Anything).Return(nil).Once()
+	fx.mockStatus.EXPECT().SetAclInfo(false, mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+	fx.mockStatus.EXPECT().SetMyParticipantStatus(model.ParticipantStatus_Active).Return(nil).Once()
+	fx.mockParticipantWatcher.EXPECT().GetProcessedAclHeadId(mock.Anything, fx.mockSpace).Return("").Once()
+	fx.mockParticipantWatcher.EXPECT().SetProcessedAclHeadId(mock.Anything, fx.mockSpace, acl.Head().Id).Return(nil).Once()
+	// a and b at startup only: the removal must not process anyone's participant
+	fx.mockParticipantWatcher.EXPECT().UpdateParticipantFromAclState(mock.Anything, fx.mockSpace, mock.Anything).Return(nil).Times(2)
+	fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything, mock.Anything).Return(nil).Times(2)
+	fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsReader, "spaceId", spaceinfo.AccountStatusActive, spaceinfo.LocalStatusOk).Once()
+	fx.run(t)
+	<-fx.aclObjectManager.wait
+
+	// the removal and c's join request, keyed to the read key the removal rotates in, arrive together
+	for _, cmd := range []string{"a.remove::b", "a.invite::invId2", "c.join::invId2"} {
+		require.NoError(t, a.Execute(cmd))
+	}
+	fx.mockSpace.EXPECT().OnAclUpdated().Once()
+
+	// then
+	fx.mockStatus.EXPECT().SetMyParticipantStatus(model.ParticipantStatus_Removed).Return(nil).Once()
+	fx.mockStatus.EXPECT().SetPersistentStatus(spaceinfo.AccountStatusDeleted).Return(nil).Once()
+	fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsNone, "spaceId", spaceinfo.AccountStatusDeleted, spaceinfo.LocalStatusOk).Once()
+
+	// when
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		// exactly how any-sync enters the callback
+		acl.Lock()
+		defer acl.Unlock()
+		fx.aclObjectManager.UpdateAcl(acl)
+	}()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("UpdateAcl deadlocked: the removal path took the acl read lock while the write lock was held")
+	}
+}
+
 // TestAclObjectManagerForwardsOneToOne pins the other half of the GO-7525 handoff: the flag the
 // callback passes down has to come from the locked ACL state. In a one-to-one space the derived
 // owner must be skipped, and the members must be announced with isOneToOne true - their account
