@@ -159,8 +159,11 @@ jobs:
         run: git config --global url.https://${{ secrets.ANYTYPE_PAT }}@github.com/.insteadOf https://github.com/
       - name: Checkout code
         uses: actions/checkout@v7
+      # -v on Windows: the symlink and junction tests skip when the runner can't make a link, and the
+      # log has to show whether they ran
       - name: Go test anytype-mcp
-        run: go test ./cmd/anytype-mcp/...
+        shell: bash
+        run: go test ${{ runner.os == 'Windows' && '-v' || '' }} ./cmd/anytype-mcp/...
       - name: Go test anytype-mcp with the race detector
         if: runner.os == 'Linux'
         run: go test -race ./cmd/anytype-mcp/...
