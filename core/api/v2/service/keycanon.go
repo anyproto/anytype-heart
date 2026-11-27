@@ -347,7 +347,7 @@ func canonFormatName(base func(string) (string, bool), kc *keyCanon) func(string
 func ambiguousInputIssue(what, input, path string, candidates []string) v2model.Issue {
 	return v2model.Issue{Path: path,
 		Message: fmt.Sprintf("%s %q matches %s", what, input, joinAnd(candidates)),
-		Hint:    "address the intended one by its exact key"}
+		Hint:    ambiguityHint(candidates)}
 }
 
 func joinAnd(parts []string) string {

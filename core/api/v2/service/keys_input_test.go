@@ -267,11 +267,18 @@ func TestV2PropertyPathsEscapeTheMemberName(t *testing.T) {
 		_, err := fx.CreateObject(context.Background(), testSpaceId,
 			[]byte(`{"formatVersion":"2.0","type":"meeting_note","properties":{"wins/losses":1}}`), false, true)
 
-		// then
+		// then: the slugs tell the two apart, so they name them — never the
+		// stored keys, which are ids the caller was never served
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
+		assert.Equal(t, `property key "wins/losses" is ambiguous`, apiErr.Message)
 		require.Len(t, apiErr.Issues, 1)
-		assert.Equal(t, wantPath, apiErr.Issues[0].Path)
+		assert.Equal(t, v2model.Issue{
+			Path: wantPath,
+			Message: `"wins/losses" matches "wins/losses" (key ratio_a, id rel-ratio-a)` +
+				` and "wins/losses" (key ratio_b, id rel-ratio-b)`,
+			Hint: "address the intended one by its exact key",
+		}, apiErr.Issues[0])
 	})
 
 	t.Run("the off-type warning on create", func(t *testing.T) {

@@ -247,7 +247,7 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 				return nil, v2model.ValidationFailed("type key already exists",
 					v2model.Issue{Path: keyPath,
 						Message: fmt.Sprintf("key %q is answered by several types in space %s: %s", slug, spaceId, holder.Name),
-					}.WithHint(v2model.Plain("pick a different key")))
+					}.WithHint(v2model.Plain("pick a different key"+holderRenameNote(holder))))
 			}
 			return nil, v2model.ValidationFailed("type key already exists",
 				v2model.Issue{Path: keyPath,
@@ -1349,7 +1349,7 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, req v2mode
 				// update by that slug nor "use the existing property" can be
 				// followed — both would be refused as ambiguous — so the only
 				// repair is a key of the caller's own, whichever slot they wrote
-				hint = v2model.Plain(fmt.Sprintf("several properties answer to %q (%s) — pass an explicit different key", slug, holder.Name))
+				hint = v2model.Plain(fmt.Sprintf("several properties answer to %q (%s) — pass an explicit different key", slug, holder.Name) + holderRenameNote(holder))
 			}
 			if _, bundled := bundle.PickRelation(domain.RelationKey(holder.Key)); bundled == nil || holder.Kind == "bundled property" {
 				// a built-in property, installed or not: an update by its key
@@ -1607,6 +1607,15 @@ func (s *Service) propertyDeleteWarnings(spaceId string, entry propertyEntry, se
 		}
 	}
 	return issues
+}
+
+// holderRenameNote is the lasting repair a multi-holder collision adds when
+// only stored keys tell its holders apart (describePropertyCandidates).
+func holderRenameNote(holder slugHolder) string {
+	if !strings.Contains(holder.Name, storedKeyMark) {
+		return ""
+	}
+	return "; no public key tells the holders apart, so rename one to give it a key of its own"
 }
 
 // builtInPropertyHint is the repair for a key a built-in property holds:

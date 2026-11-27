@@ -253,11 +253,7 @@ func (s *Service) resolvePropertyInputIn(input string, entries []propertyEntry, 
 	if len(listed) == 1 {
 		return listed[0], true, nil
 	}
-	out := make([]string, 0, len(candidates))
-	for _, candidate := range candidates {
-		out = append(out, candidate.desc)
-	}
-	return propertyEntry{}, false, out
+	return propertyEntry{}, false, describePropertyCandidates(candidates)
 }
 
 // typePropertyScope is the set of property ids a type lists, across its four
@@ -294,18 +290,17 @@ func (s *Service) typeKeyPropertyScope(spaceId, typeKey string) map[string]bool 
 	return nil
 }
 
-// propertyCandidate is one holder of an ambiguous term, with the words the
-// refusal names it by.
+// propertyCandidate is one holder of an ambiguous term. bundled marks the
+// built-in itself, which the refusal names as such.
 type propertyCandidate struct {
-	entry propertyEntry
-	desc  string
+	entry   propertyEntry
+	bundled bool
 }
 
 func liveCandidates(entries []propertyEntry) []propertyCandidate {
-	descs := describePropertyEntries(entries)
 	out := make([]propertyCandidate, 0, len(entries))
-	for i, entry := range entries {
-		out = append(out, propertyCandidate{entry: entry, desc: descs[i]})
+	for _, entry := range entries {
+		out = append(out, propertyCandidate{entry: entry})
 	}
 	return out
 }
@@ -314,11 +309,7 @@ func liveCandidates(entries []propertyEntry) []propertyCandidate {
 // installed (so a type listing it can pick it), described as the bundled
 // property either way.
 func bundledCandidate(key string, entries []propertyEntry) propertyCandidate {
-	rel := bundle.MustGetRelation(domain.RelationKey(key))
-	return propertyCandidate{
-		entry: bundledPropertyCandidate(key, entries),
-		desc:  fmt.Sprintf("the bundled %q (key %s)", rel.Name, key),
-	}
+	return propertyCandidate{entry: bundledPropertyCandidate(key, entries), bundled: true}
 }
 
 // visibleSlugHolders are the live visible entries answering to slug, other
@@ -522,13 +513,14 @@ func (s *Service) resolveTypeInput(spaceId, input string, entries []typeEntry) (
 		}
 	}
 	if len(slugMatches) == 1 {
-		if shadowed, ok := shadowedBundledType(input, slugMatches[0].Key); ok {
-			return typeEntry{}, false, append(describeTypeEntries(slugMatches), shadowed), nil
+		if _, ok := shadowedBundledType(input, slugMatches[0].Key); ok {
+			key, _ := bundle.TypeKeyByApiSlug(input)
+			return typeEntry{}, false, describeTypeCandidates(slugMatches, string(key)), nil
 		}
 		return slugMatches[0], true, nil, nil
 	}
 	if len(slugMatches) > 1 {
-		return typeEntry{}, false, describeTypeEntries(slugMatches), nil
+		return typeEntry{}, false, describeTypeCandidates(slugMatches, ""), nil
 	}
 	if t, err := bundle.GetType(domain.TypeKey(input)); err == nil {
 		return typeEntry{Key: input, Name: t.Name}, true, nil, nil
@@ -583,7 +575,7 @@ func (s *Service) resolveTypeInput(spaceId, input string, entries []typeEntry) (
 		return candidates[0], true, nil, nil
 	}
 	if len(candidates) > 1 {
-		return typeEntry{}, false, describeTypeEntries(candidates), nil
+		return typeEntry{}, false, describeTypeCandidates(candidates, ""), nil
 	}
 	// 5: display names — resolvePropertyInput's step 5 on the type
 	// namespace, same order, same shadow discipline, same refusal rules
@@ -595,11 +587,12 @@ func (s *Service) resolveTypeInput(spaceId, input string, entries []typeEntry) (
 		}
 	}
 	if len(nameMatches) > 1 {
-		return typeEntry{}, false, describeTypeEntries(nameMatches), nil
+		return typeEntry{}, false, describeTypeCandidates(nameMatches, ""), nil
 	}
 	if len(nameMatches) == 1 {
-		if shadowed, ok := shadowedBundledTypeName(nfcInput, nameMatches[0].Key); ok {
-			return typeEntry{}, false, append(describeTypeEntries(nameMatches), shadowed), nil
+		if _, ok := shadowedBundledTypeName(nfcInput, nameMatches[0].Key); ok {
+			key, _ := anyblockjson.BundledTypeKeyByName(nfcInput)
+			return typeEntry{}, false, describeTypeCandidates(nameMatches, key), nil
 		}
 		return nameMatches[0], true, nil, nil
 	}
@@ -632,7 +625,7 @@ func (s *Service) resolveTypeInput(spaceId, input string, entries []typeEntry) (
 		return nameCandidates[0], true, nil, nil
 	}
 	if len(nameCandidates) > 1 {
-		return typeEntry{}, false, describeTypeEntries(nameCandidates), nil
+		return typeEntry{}, false, describeTypeCandidates(nameCandidates, ""), nil
 	}
 	return typeEntry{}, false, nil, nil
 }
@@ -718,24 +711,121 @@ func bundledTypeCandidate(key string, entries []typeEntry) typeEntry {
 	return typeEntry{Key: key, Name: bundle.MustGetType(domain.TypeKey(key)).Name}
 }
 
-// describePropertyEntries renders ambiguity candidates ACTIONABLY: the
-// stored key is the one address that always resolves (twin slugs print
-// identically, so the slug alone steers the caller back into the same
-// 400 — the review's unactionable-floor finding).
-func describePropertyEntries(entries []propertyEntry) []string {
-	out := make([]string, 0, len(entries))
-	for _, entry := range entries {
-		out = append(out, fmt.Sprintf("%q (key %s, id %s)", entry.Name, entry.Key, entry.Id))
+// describePropertyCandidates renders ambiguity candidates ACTIONABLY, by
+// the public key each one answers to — its slug, a built-in's derived slug,
+// or the stored key of a property that has no slug — when those keys tell
+// the candidates apart. When they do not (twin slugs, or a property whose
+// slug shadows a built-in's), the slug alone would steer the caller back
+// into the same 400, so each is named by its stored key, the one address
+// that always resolves, marked as such so the hint can add the lasting
+// repair: renaming one (ambiguityHint).
+func describePropertyCandidates(candidates []propertyCandidate) []string {
+	publics := make([]string, len(candidates))
+	for i, candidate := range candidates {
+		publics[i] = publicPropertyKey(candidate.entry)
+	}
+	distinct := distinctKeys(publics)
+	out := make([]string, 0, len(candidates))
+	for i, candidate := range candidates {
+		key := "key " + publics[i]
+		if !distinct {
+			key = "stored key " + candidate.entry.Key
+		}
+		if candidate.bundled {
+			out = append(out, fmt.Sprintf("the bundled %q (%s)", bundle.MustGetRelation(domain.RelationKey(candidate.entry.Key)).Name, key))
+			continue
+		}
+		out = append(out, fmt.Sprintf("%q (%s, id %s)", candidate.entry.Name, key, candidate.entry.Id))
 	}
 	return out
 }
 
-func describeTypeEntries(entries []typeEntry) []string {
-	out := make([]string, 0, len(entries))
+// describeTypeCandidates is describePropertyCandidates for the type
+// namespace. bundledKey, when set, is the built-in the live entries shadow,
+// named last as the bundled type.
+func describeTypeCandidates(entries []typeEntry, bundledKey string) []string {
+	publics := make([]string, 0, len(entries)+1)
+	stored := make([]string, 0, len(entries)+1)
 	for _, entry := range entries {
-		out = append(out, fmt.Sprintf("%q (key %s, id %s)", entry.Name, entry.Key, entry.Id))
+		public := entry.Slug
+		if public == "" {
+			public = entry.Key
+			if bundle.HasObjectTypeByKey(domain.TypeKey(entry.Key)) {
+				public = bundle.TypeApiSlug(entry.Key)
+			}
+		}
+		publics = append(publics, public)
+		stored = append(stored, entry.Key)
+	}
+	if bundledKey != "" {
+		publics = append(publics, bundle.TypeApiSlug(bundledKey))
+		stored = append(stored, bundledKey)
+	}
+	distinct := distinctKeys(publics)
+	label := func(i int) string {
+		if distinct {
+			return "key " + publics[i]
+		}
+		return "stored key " + stored[i]
+	}
+	out := make([]string, 0, len(publics))
+	for i, entry := range entries {
+		out = append(out, fmt.Sprintf("%q (%s, id %s)", entry.Name, label(i), entry.Id))
+	}
+	if bundledKey != "" {
+		out = append(out, fmt.Sprintf("the bundled %q (%s)", bundle.MustGetType(domain.TypeKey(bundledKey)).Name, label(len(entries))))
 	}
 	return out
+}
+
+// publicPropertyKey is the key a property is publicly addressed by: its
+// slug, a built-in's derived slug, else its stored key — which, for a
+// property with no slug, is the spelling the listings serve.
+func publicPropertyKey(entry propertyEntry) string {
+	if entry.Slug != "" {
+		return entry.Slug
+	}
+	if bundle.HasRelation(domain.RelationKey(entry.Key)) {
+		return bundle.ApiSlug(entry.Key)
+	}
+	return entry.Key
+}
+
+// distinctKeys reports whether no key repeats.
+func distinctKeys(keys []string) bool {
+	seen := make(map[string]bool, len(keys))
+	for _, key := range keys {
+		if seen[key] {
+			return false
+		}
+		seen[key] = true
+	}
+	return true
+}
+
+// storedKeyMark labels a candidate named by its stored key
+// (describePropertyCandidates): no public key told the holders apart.
+const storedKeyMark = "(stored key "
+
+// ambiguityHint is the repair an ambiguity refusal offers: the key shown
+// resolves, and when only stored keys tell the holders apart, renaming one
+// is the lasting fix — a stored key is not a spelling a caller should have
+// to keep.
+func ambiguityHint(candidates []string) string {
+	hint := "address the intended one by its exact key"
+	if namesStoredKeys(candidates) {
+		hint += "; no public key tells them apart, so rename one to give it a key of its own"
+	}
+	return hint
+}
+
+func namesStoredKeys(candidates []string) bool {
+	for _, candidate := range candidates {
+		if strings.Contains(candidate, storedKeyMark) {
+			return true
+		}
+	}
+	return false
 }
 
 // ambiguousKeyError is the loud 400 the chain owes an input that several
@@ -745,7 +835,7 @@ func ambiguousKeyError(what, input, path string, candidates []string) error {
 		fmt.Sprintf("%s %q is ambiguous", what, input),
 		v2model.Issue{Path: path,
 			Message: fmt.Sprintf("%q matches %s", input, strings.Join(candidates, " and ")),
-			Hint:    "address the intended one by its exact key"})
+			Hint:    ambiguityHint(candidates)})
 }
 
 // requireLiveProperty resolves a property-addressing route param: ambiguity

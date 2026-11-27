@@ -467,7 +467,7 @@ func (a *v2StateApplier) canonicalizeDecodedKeySlots(nodes []any, path string, i
 		if len(ambiguous) > 0 {
 			*issues = append(*issues, v2model.Issue{Path: fmt.Sprintf("%s[%d].property", path, i),
 				Message: fmt.Sprintf("%q matches %s", key, strings.Join(ambiguous, " and ")),
-				Hint:    "address the intended one by its exact key"})
+				Hint:    ambiguityHint(ambiguous)})
 			continue
 		}
 		node["property"] = canonical
@@ -503,7 +503,7 @@ func (a *v2StateApplier) applyViewSetField(field, kind string, raw json.RawMessa
 			if len(ambiguous) > 0 {
 				*issues = append(*issues, v2model.Issue{Path: path,
 					Message: fmt.Sprintf("%q matches %s", s, strings.Join(ambiguous, " and ")),
-					Hint:    "address the intended one by its exact key"})
+					Hint:    ambiguityHint(ambiguous)})
 				return nil
 			}
 			s = canonical
@@ -747,7 +747,7 @@ func (a *v2StateApplier) applyViewColumns(patches map[string]json.RawMessage, vi
 		if len(ambiguous) > 0 {
 			*issues = append(*issues, v2model.Issue{Path: path,
 				Message: fmt.Sprintf("%q matches %s", rawKey, strings.Join(ambiguous, " and ")),
-				Hint:    "address the intended one by its exact key"})
+				Hint:    ambiguityHint(ambiguous)})
 			continue
 		}
 		ci := indexOf(key)

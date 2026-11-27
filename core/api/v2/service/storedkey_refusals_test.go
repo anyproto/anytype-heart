@@ -231,3 +231,90 @@ func TestV2CreateRefusalsQuoteTheTypeAsSent(t *testing.T) {
 		assertNoStoredKey(t, apiErr)
 	})
 }
+
+// An ambiguity refusal names each holder by the public key it answers to
+// when those keys tell the holders apart. Only when they do not — twin slugs
+// — does it fall back to the stored key, the one address that always
+// resolves, and then it adds the lasting repair: rename one.
+func TestV2AmbiguityNamesPublicKeysWhenTheyDiffer(t *testing.T) {
+	addTwin := func(t *testing.T, fx *v2Fixture, id, key, name string) {
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:           domain.String(id),
+			bundle.RelationKeyRelationKey:  domain.String(key),
+			bundle.RelationKeyApiObjectKey: domain.String("twin"),
+			bundle.RelationKeyName:         domain.String(name),
+		})
+	}
+
+	t.Run("twin slugs fall back to stored keys and suggest a rename", func(t *testing.T) {
+		// given: two properties answering to one slug
+		fx := slugSpaceFixture(t)
+		addTwin(t, fx, "rel-twin-a", "6a7663db61fab21cd4b9e1a1", "Twin A")
+		addTwin(t, fx, "rel-twin-b", "6a7663db61fab21cd4b9e1b1", "Twin B")
+		want := v2model.Issue{
+			Path: "/properties/twin",
+			Message: `"twin" matches "Twin A" (stored key 6a7663db61fab21cd4b9e1a1, id rel-twin-a)` +
+				` and "Twin B" (stored key 6a7663db61fab21cd4b9e1b1, id rel-twin-b)`,
+			Hint: "address the intended one by its exact key; no public key tells them apart, so rename one to give it a key of its own",
+		}
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"formatVersion":"2.0","type":"meeting_note","properties":{"twin":"x"}}`), false, true)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, want, apiErr.Issues[0])
+	})
+
+	t.Run("a slug collision on create says the same", func(t *testing.T) {
+		// given
+		fx := slugSpaceFixture(t)
+		addTwin(t, fx, "rel-twin-a", "6a7663db61fab21cd4b9e1a1", "Twin A")
+		addTwin(t, fx, "rel-twin-b", "6a7663db61fab21cd4b9e1b1", "Twin B")
+
+		// when
+		_, err := fx.CreateProperty(context.Background(), testSpaceId,
+			v2model.CreatePropertyRequest{Key: "twin", Name: "Third", Format: "text"}, false)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, `several properties answer to "twin" (`+
+			`"Twin A" (stored key 6a7663db61fab21cd4b9e1a1, id rel-twin-a) and "Twin B" (stored key 6a7663db61fab21cd4b9e1b1, id rel-twin-b))`+
+			` — pass an explicit different key; no public key tells the holders apart, so rename one to give it a key of its own`,
+			apiErr.Issues[0].Hint)
+	})
+
+	t.Run("two types sharing a name are told apart by their slugs", func(t *testing.T) {
+		// given
+		fx := slugSpaceFixture(t)
+		for _, tp := range []struct{ id, key, slug string }{
+			{"type-errand-a", "6a7663db61fab21cd4b9e3a1", "errand_a"},
+			{"type-errand-b", "6a7663db61fab21cd4b9e3b1", "errand_b"},
+		} {
+			fx.addType(t, testSpaceId, objectstore.TestObject{
+				bundle.RelationKeyId:           domain.String(tp.id),
+				bundle.RelationKeyUniqueKey:    domain.String("ot-" + tp.key),
+				bundle.RelationKeyApiObjectKey: domain.String(tp.slug),
+				bundle.RelationKeyName:         domain.String("Errand"),
+			})
+		}
+		want := v2model.Issue{
+			Path: "/type",
+			Message: `"Errand" matches "Errand" (key errand_a, id type-errand-a)` +
+				` and "Errand" (key errand_b, id type-errand-b)`,
+			Hint: "address the intended one by its exact key",
+		}
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"formatVersion":"2.0","type":"Errand"}`), false, true)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, want, apiErr.Issues[0])
+	})
+}
