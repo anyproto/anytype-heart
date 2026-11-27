@@ -34,9 +34,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/anyproto/any-store/v2/anyenc"
 	"github.com/gogo/protobuf/types"
-	"golang.org/x/text/collate"
 
 	"github.com/anyproto/anytype-heart/core/api/util"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
@@ -1256,7 +1254,9 @@ func (s *Service) GlobalSearchObjects(ctx context.Context, req v2model.SearchReq
 		if fulltext {
 			sorts, groupLimit = relevanceSorts, max(need, globalFulltextHead)+1
 		}
-		resp := s.mw.ObjectCrossSpaceSearch(ctx, &pb.RpcObjectCrossSpaceSearchRequest{
+		// the request is proto, which has no form for the id tie-break: ctx
+		// carries it to the store
+		resp := s.mw.ObjectCrossSpaceSearch(database.ContextWithIdTieBreak(ctx), &pb.RpcObjectCrossSpaceSearchRequest{
 			SpaceIds: group.spaceIds,
 			FullText: req.Query,
 			Filters:  database.FiltersToProto(group.filters),
@@ -1353,31 +1353,30 @@ func (s *Service) orderGlobalFulltext(records []globalRecord) {
 
 // sortGlobalRecords merges records of several store cuts. Each record is
 // encoded under its sorts the way its space's store sorts it
-// (database.SortKey), with the store's collation, custom orders, date
+// (database.SortKeyer), with the store's collation, custom orders, date
 // precision and empty placement, so the merge keeps the order every cut was
 // taken in. The sorts end on the id, so only one id in two spaces ties: the
 // space id decides.
 func (s *Service) sortGlobalRecords(records []globalRecord, sortsOf func(globalRecord) []database.SortRequest) {
-	// one order per sort list and space: formats and order maps are per space
-	orders := map[*database.SortRequest]map[string]database.Order{}
-	valueArena := &anyenc.Arena{}
+	// one keyer per sort list and space: formats and order maps are per space
+	keyers := map[*database.SortRequest]map[string]*database.SortKeyer{}
 	for i := range records {
 		sorts := sortsOf(records[i])
 		if len(sorts) == 0 {
 			records[i].key = nil
 			continue
 		}
-		bySpace, ok := orders[&sorts[0]]
+		bySpace, ok := keyers[&sorts[0]]
 		if !ok {
-			bySpace = map[string]database.Order{}
-			orders[&sorts[0]] = bySpace
+			bySpace = map[string]*database.SortKeyer{}
+			keyers[&sorts[0]] = bySpace
 		}
-		order, ok := bySpace[records[i].spaceId]
+		keyer, ok := bySpace[records[i].spaceId]
 		if !ok {
-			order = database.NewSetOrder(s.store.SpaceIndex(records[i].spaceId), &anyenc.Arena{}, &collate.Buffer{}, sorts)
-			bySpace[records[i].spaceId] = order
+			keyer = database.NewSortKeyer(s.store.SpaceIndex(records[i].spaceId), sorts)
+			bySpace[records[i].spaceId] = keyer
 		}
-		records[i].key = database.SortKey(order, records[i].record.Details, valueArena)
+		records[i].key = keyer.Key(records[i].record.Details)
 	}
 	slices.SortStableFunc(records, func(a, b globalRecord) int {
 		return cmp.Or(bytes.Compare(a.key, b.key), strings.Compare(a.spaceId, b.spaceId),

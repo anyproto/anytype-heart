@@ -108,21 +108,16 @@ func TestFulltextQueryFillsThePage(t *testing.T) {
 // candidate budget, and a budget-dependent NameMatch would shift the object's
 // final score (±1.0) between page requests, breaking pagination consistency.
 func TestFulltextNameMatchBudgetStable(t *testing.T) {
-	fx := NewStoreFixture(t)
 	nameDoc := &ftsearch.DocumentMatch{Score: 3.0, ID: "obj1/r/name"}
 	pluralDoc := &ftsearch.DocumentMatch{Score: 1.0, ID: "obj1/r/pluralName"}
 
-	searchReturning := func(docs ...*ftsearch.DocumentMatch) func() ([]*ftsearch.DocumentMatch, error) {
-		return func() ([]*ftsearch.DocumentMatch, error) { return docs, nil }
-	}
-
 	// small budget: only the name doc is in the candidate set
-	small, _, _, err := fx.performFulltextSearch(true, searchReturning(nameDoc))
+	small, err := GroupFulltextResults([]*ftsearch.DocumentMatch{nameDoc}, true)
 	require.NoError(t, err)
 	require.Len(t, small, 1)
 
 	// bigger budget: the pluralName doc enters and becomes the representative
-	big, _, _, err := fx.performFulltextSearch(true, searchReturning(nameDoc, pluralDoc))
+	big, err := GroupFulltextResults([]*ftsearch.DocumentMatch{nameDoc, pluralDoc}, true)
 	require.NoError(t, err)
 	require.Len(t, big, 1)
 

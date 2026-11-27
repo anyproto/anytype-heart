@@ -313,7 +313,7 @@ func (s *Service) listObjects(ctx context.Context, spaceId, listId string, want 
 			Filters: filters,
 			// a stored view cannot tell an omitted date precision from
 			// false: keep the one the store implies, as the app does
-			Sorts:  database.WithIdTieBreak(database.ImplyIncludeTime(sorts)),
+			Sorts:  database.WithIdTieBreak(database.ImplyIncludeTime(index, sorts)),
 			Offset: offset,
 			Limit:  limit,
 		})

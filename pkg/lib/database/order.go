@@ -31,15 +31,50 @@ type ObjectStore interface {
 	ListRelationOptions(relationKey domain.RelationKey) (options []*model.RelationOption, err error)
 }
 
-// SortKey encodes details the way the store sorts them under order
-// (AnystoreSort). Comparing two keys with bytes.Compare reproduces the
-// store's order, so records merged from several store cuts keep the order
-// each cut was taken in; Order.Compare differs from the store on some sorts
-// (where a day-only date sort puts an empty value, for one). arena backs the
-// decoded value only and is reset on return; the order uses its own.
-func SortKey(order Order, details *domain.Details, arena *anyenc.Arena) []byte {
-	defer arena.Reset()
-	return order.AnystoreSort().AppendKey(nil, details.ToAnyEnc(arena))
+// SortKeyer encodes records the way the store sorts them (AnystoreSort).
+// Comparing two keys with bytes.Compare reproduces the store's order, so
+// records merged from several store cuts keep the order each cut was taken
+// in; Order.Compare differs from the store on some sorts (where a day-only
+// date sort puts an empty value, for one). A key reads only the details its
+// sorts read, so its cost does not grow with the record.
+type SortKeyer struct {
+	order Order
+	deps  []domain.RelationKey
+	arena *anyenc.Arena
+}
+
+// NewSortKeyer builds the keyer of sorts over store, which supplies the
+// relation formats and the option and object order maps: a merge keys each
+// record with the store of its own space. It returns nil for no sorts.
+func NewSortKeyer(store ObjectStore, sorts []SortRequest) *SortKeyer {
+	if len(sorts) == 0 {
+		return nil
+	}
+	deps := make([]domain.RelationKey, 0, len(sorts)+2)
+	for _, sort := range sorts {
+		deps = append(deps, sort.RelationKey)
+		if sort.RelationKey == bundle.RelationKeyName {
+			// a note without a name sorts by its snippet (textSort)
+			deps = append(deps, bundle.RelationKeyResolvedLayout, bundle.RelationKeySnippet)
+		}
+	}
+	return &SortKeyer{
+		order: NewSetOrder(store, &anyenc.Arena{}, &collate.Buffer{}, sorts),
+		deps:  deps,
+		arena: &anyenc.Arena{},
+	}
+}
+
+// Key encodes details under the keyer's sorts.
+func (k *SortKeyer) Key(details *domain.Details) []byte {
+	defer k.arena.Reset()
+	value := k.arena.NewObject()
+	for _, key := range k.deps {
+		if v := details.Get(key); v.Ok() {
+			value.Set(string(key), v.ToAnyEnc(k.arena))
+		}
+	}
+	return k.order.AnystoreSort().AppendKey(nil, value)
 }
 
 type setOrder []Order
@@ -180,10 +215,16 @@ func (ko *keyOrder) UpdateOrderMap(depDetails []*domain.Details) (updated bool) 
 	return ko.orderMap.Update(depDetails)
 }
 
+// placesEmptyValues reports whether the store sorts by emptyPlacementSort,
+// which moves empty values against the sort's direction; otherwise they fall
+// where the plain field order puts them.
+func (ko *keyOrder) placesEmptyValues() bool {
+	return (ko.emptyPlacement == model.BlockContentDataviewSort_Start && ko.sortType == model.BlockContentDataviewSort_Desc) ||
+		(ko.emptyPlacement == model.BlockContentDataviewSort_End && ko.sortType == model.BlockContentDataviewSort_Asc)
+}
+
 func (ko *keyOrder) basicSort(valType anyenc.Type) query.Sort {
-	if ko.emptyPlacement == model.BlockContentDataviewSort_Start && ko.sortType == model.BlockContentDataviewSort_Desc {
-		return ko.emptyPlacementSort(valType)
-	} else if ko.emptyPlacement == model.BlockContentDataviewSort_End && ko.sortType == model.BlockContentDataviewSort_Asc {
+	if ko.placesEmptyValues() {
 		return ko.emptyPlacementSort(valType)
 	} else {
 		return &query.SortField{
@@ -327,10 +368,13 @@ func (ko *keyOrder) compareDates(av domain.Value, bv domain.Value) int {
 }
 
 func (ko *keyOrder) compareNumbers(av domain.Value, bv domain.Value) int {
-	_, okA := av.TryInt64()
-	_, okB := bv.TryInt64()
+	a, okA := av.TryFloat64()
+	b, okB := bv.TryFloat64()
+	// where the store places empty values itself (emptyPlacementSort), it
+	// counts 0 as empty: so does the comparison, or the two orders differ
+	zeroIsEmpty := ko.placesEmptyValues()
 
-	comp, ok := ko.tryCompareEmptyValues(!okA, !okB)
+	comp, ok := ko.tryCompareEmptyValues(!okA || (zeroIsEmpty && a == 0), !okB || (zeroIsEmpty && b == 0))
 	if ok {
 		return comp
 	}

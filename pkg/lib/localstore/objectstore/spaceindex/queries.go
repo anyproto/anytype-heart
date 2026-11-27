@@ -576,86 +576,137 @@ func (s *dsObjectStore) performQuery(q database.Query) (records []database.Recor
 // doc→object grouping run AFTER the fulltext search, so a fixed candidate cap
 // can starve a page even though more matches exist; clients interpret a short
 // page as "no more results", which must therefore be true. The common query is
-// served by the first round; extra rounds only run for queries that
-// demonstrably starved, and stop as soon as the index is exhausted (tantivy
-// returned fewer docs than the budget) or the hard limit is reached.
+// served by the first round. Another round runs when the page or the re-rank
+// head starved, when grouping kept nothing of a full batch, or, for a paged
+// query that asked for a total order, when the budget cut split a score tie
+// (fulltextRound). Rounds stop as soon as the index is exhausted (tantivy
+// returned fewer docs than asked) or the hard limit is reached.
 func (s *dsObjectStore) performFulltextQuery(q database.Query, filters *database.Filters) ([]database.Record, error) {
-	search := func(limit int) ([]*ftsearch.DocumentMatch, error) {
-		if q.PrefixNameQuery {
-			return s.fts.NamePrefixSearch(q.SpaceId, q.TextQuery, limit)
-		}
-		return s.fts.Search(q.SpaceId, q.TextQuery, limit, true)
-	}
-
 	needed := 0
 	if q.Limit > 0 {
 		needed = q.Offset + q.Limit
 	}
+	// a paged caller that asked for a total order (the id tie-break) must
+	// find the same candidates at every page size
+	settle := needed > 0 && database.HasIdTieBreak(q.Sorts)
 	ftLimit := ftCandidatesLimit(q)
-	// a caller that asked for a total order (the id tie-break) pages by
-	// offset: its candidates must not depend on the budget
-	settle := database.HasIdTieBreak(q.Sorts)
+	highlights := true
 	for {
-		fulltextResults, ftDocs, minScore, err := s.performFulltextSearch(!q.PrefixNameQuery, func() ([]*ftsearch.DocumentMatch, error) {
-			return search(ftLimit)
-		})
+		round, err := s.fulltextRound(q, ftLimit, settle, highlights)
 		if err != nil {
 			return nil, fmt.Errorf("perform fulltext search: %w", err)
 		}
-
-		// Fallback to anystore search when Tantivy returns 0 results
-		if len(fulltextResults) == 0 {
+		atHardLimit := ftLimit >= ftCandidatesHardLimit
+		if len(round.results) == 0 && (round.exhausted || atHardLimit) {
+			// Tantivy has nothing usable: fall back to the anystore search
 			return s.performFulltextFallback(q, filters)
 		}
-
-		indexExhausted := ftDocs < ftLimit
-		if settle && !indexExhausted && ftLimit < ftCandidatesHardLimit {
-			fulltextResults = SettledFulltextResults(fulltextResults, minScore)
-		}
-
-		records := s.queryFromFulltextRecords(fulltextResults, *filters, q.TextQuery, needed)
-
-		pageFilled := needed == 0 || len(records) >= needed
-		// the re-rank head must be the same object set for every request, or
-		// offset pagination drifts: keep escalating until the full head pool
-		// is materialized (or the index has no more docs to offer)
-		headMaterialized := len(fulltextResults) >= ftRerankPoolSize
-		if (pageFilled && headMaterialized) || indexExhausted || ftLimit >= ftCandidatesHardLimit {
-			if !pageFilled && !indexExhausted {
-				// the page stays underfilled although more matches exist:
-				// the client will read it as the end of the results
-				ftCandidatesTruncated.Add(1)
-				log.With("limit", ftLimit).With("records", len(records)).With("needed", needed).
-					Warn("fulltext page underfilled at the candidate hard limit")
+		if len(round.results) > 0 {
+			records := s.queryFromFulltextRecords(round.results, *filters, q.TextQuery, needed)
+			pageFilled := needed == 0 || len(records) >= needed
+			// the re-rank head must be the same object set for every request, or
+			// offset pagination drifts: keep escalating until the full head pool
+			// is materialized (or the index has no more docs to offer)
+			headMaterialized := len(round.results) >= ftRerankPoolSize
+			if (pageFilled && headMaterialized) || round.exhausted || atHardLimit {
+				if !pageFilled && !round.exhausted {
+					// the page stays underfilled although more matches exist:
+					// the client will read it as the end of the results
+					ftCandidatesTruncated.Add(1)
+					log.With("limit", ftLimit).With("records", len(records)).With("needed", needed).
+						Warn("fulltext page underfilled at the candidate hard limit")
+				}
+				ftHits.Add(1)
+				return paginateRecords(records, q.Offset, q.Limit), nil
 			}
-			ftHits.Add(1)
-			return paginateRecords(records, q.Offset, q.Limit), nil
 		}
-
-		ftLimit *= 2
-		if ftLimit > ftCandidatesHardLimit {
+		// a tie that fills half the batch runs on: read up to the hard limit
+		// at once rather than doubling through it
+		if round.tiedDocs*2 > ftLimit {
 			ftLimit = ftCandidatesHardLimit
+		} else {
+			ftLimit = min(2*ftLimit, ftCandidatesHardLimit)
 		}
+		// a wider round of a settling query only selects candidates: its
+		// caller serves no highlights, and the score gate reads them only
+		// when a doc scores under it (fulltextRound)
+		highlights = !settle
 	}
 }
 
-// performFulltextSearch groups raw doc matches per object and converts them to
-// fulltext results; ftDocs is the raw doc count, used by the caller to detect
-// whether the index was exhausted (ftDocs < requested budget), and minScore
-// the lowest doc score returned (SettledFulltextResults). enforceMinScore
-// drops near-zero-score results without highlights — it must be disabled for
-// the prefix-name path, which runs without highlight generation and would lose
-// legitimate low-scoring prefix matches.
-func (s *dsObjectStore) performFulltextSearch(enforceMinScore bool, search func() (results []*ftsearch.DocumentMatch, err error)) (results []database.FulltextResult, ftDocs int, minScore float64, err error) {
-	ftsResults, err := search()
-	if err != nil {
-		return nil, 0, 0, fmt.Errorf("fullText search: %w", err)
+// fulltextRoundResult is one tantivy search at a candidate budget, grouped
+// into per-object results.
+type fulltextRoundResult struct {
+	results []database.FulltextResult
+	// exhausted reports that the index returned fewer docs than asked
+	exhausted bool
+	// tiedDocs counts the docs within the budget tied with a lookahead
+	// doc beyond it: the part of a split tie the round saw
+	tiedDocs int
+}
+
+// fulltextRound reads up to budget docs and groups them per object. With
+// settle it reads one doc more, a lookahead: when it scores as low as the
+// last doc within the budget, the cut split a score tie, and which of the
+// tied docs the index kept is its own choice, so another budget keeps
+// others. The results tied at that score are then dropped
+// (SettledFulltextResults) and the caller widens the budget for them, up to
+// the hard limit, where the tie is kept as it is. A round without
+// highlights reads them after all when a doc scores under the score gate,
+// which needs them.
+func (s *dsObjectStore) fulltextRound(q database.Query, budget int, settle, highlights bool) (fulltextRoundResult, error) {
+	ask := budget
+	if settle {
+		ask++
 	}
-	results, err = GroupFulltextResults(ftsResults, enforceMinScore)
+	enforceMinScore := !q.PrefixNameQuery
+	docs, err := s.fulltextDocs(q, ask, highlights)
 	if err != nil {
-		return nil, 0, 0, fmt.Errorf("group fulltext results: %w", err)
+		return fulltextRoundResult{}, err
 	}
-	return results, len(ftsResults), MinDocScore(ftsResults), nil
+	if !highlights && enforceMinScore && len(docs) > 0 && MinDocScore(docs) < minFulltextScore {
+		if docs, err = s.fulltextDocs(q, ask, true); err != nil {
+			return fulltextRoundResult{}, err
+		}
+	}
+	round := fulltextRoundResult{exhausted: len(docs) < ask}
+	tied := false
+	if len(docs) > budget {
+		boundary := MinDocScore(docs[:budget])
+		if tied = docs[budget].Score >= boundary; tied {
+			for _, doc := range docs[:budget] {
+				if doc.Score <= boundary {
+					round.tiedDocs++
+				}
+			}
+		}
+		docs = docs[:budget]
+	}
+	results, err := GroupFulltextResults(docs, enforceMinScore)
+	if err != nil {
+		return fulltextRoundResult{}, fmt.Errorf("group fulltext results: %w", err)
+	}
+	if tied && budget < ftCandidatesHardLimit {
+		results = SettledFulltextResults(results, MinDocScore(docs))
+	}
+	round.results = results
+	return round, nil
+}
+
+// fulltextDocs runs the tantivy search of q for up to limit docs.
+func (s *dsObjectStore) fulltextDocs(q database.Query, limit int, highlights bool) ([]*ftsearch.DocumentMatch, error) {
+	if q.PrefixNameQuery {
+		docs, err := s.fts.NamePrefixSearch(q.SpaceId, q.TextQuery, limit)
+		if err != nil {
+			return nil, fmt.Errorf("fullText name prefix search: %w", err)
+		}
+		return docs, nil
+	}
+	docs, err := s.fts.Search(q.SpaceId, q.TextQuery, limit, highlights)
+	if err != nil {
+		return nil, fmt.Errorf("fullText search: %w", err)
+	}
+	return docs, nil
 }
 
 // MinDocScore returns the lowest score among the doc matches.
@@ -677,8 +728,8 @@ func MinDocScore(matches []*ftsearch.DocumentMatch) float64 {
 // its best doc in hand and no unseen rival before it; one tied at minScore
 // may have unseen rivals with smaller ids, which sort first. results are in
 // GroupFulltextResults order (score desc, id asc), so the settled ones are a
-// prefix. A caller drops the rest only while more docs exist: once the index
-// returned fewer docs than asked, every result is settled.
+// prefix. A caller drops the rest only when a lookahead doc showed that the
+// cut split a tie.
 func SettledFulltextResults(results []database.FulltextResult, minScore float64) []database.FulltextResult {
 	n := 0
 	for n < len(results) && results[n].Score > minScore {

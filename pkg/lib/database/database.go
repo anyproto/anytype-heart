@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"slices"
@@ -70,6 +71,9 @@ type SortRequest struct {
 	Id             string
 	EmptyPlacement model.BlockContentDataviewSortEmptyType
 	NoCollate      bool
+	// idTieBreak marks the raw-id sort WithIdTieBreak appends (IdTieBreak).
+	// It has no wire form: SortsFromProto never sets it, so no request can.
+	idTieBreak bool
 }
 
 type Query struct {
@@ -175,28 +179,49 @@ func InjectDefaultOrder(qry Query, sorts []SortRequest) []SortRequest {
 }
 
 // IdTieBreak is the sort WithIdTieBreak appends: the raw object id, compared
-// byte-wise. It is an id sort with NoCollate set. An app's own id sort orders
-// objects by their names (NewKeyOrder) and never sets NoCollate, and the flag
-// survives SortsToProto, so a cross-space search sent over RPC keeps it.
+// byte-wise. An id sort an app or a view sends orders objects by their names
+// (NewKeyOrder); only this sort, marked in a field no request can set,
+// compares the raw id.
 func IdTieBreak(direction model.BlockContentDataviewSortType) SortRequest {
-	return SortRequest{RelationKey: bundle.RelationKeyId, Type: direction, NoCollate: true}
+	return SortRequest{RelationKey: bundle.RelationKeyId, Type: direction, idTieBreak: true}
 }
 
 // IsIdTieBreak reports whether sort orders by the raw object id.
 func IsIdTieBreak(sort SortRequest) bool {
-	return sort.RelationKey == bundle.RelationKeyId && sort.NoCollate &&
-		(sort.Type == model.BlockContentDataviewSort_Asc || sort.Type == model.BlockContentDataviewSort_Desc)
+	return sort.idTieBreak
 }
 
 // HasIdTieBreak reports whether sorts hold the raw object id, so that the
 // order they give is total within one space.
 func HasIdTieBreak(sorts []SortRequest) bool {
-	for _, sort := range sorts {
-		if IsIdTieBreak(sort) {
-			return true
-		}
+	return slices.ContainsFunc(sorts, IsIdTieBreak)
+}
+
+type idTieBreakKey struct{}
+
+// ContextWithIdTieBreak marks ctx for an in-process cross-space search whose
+// sorts end on the id tie-break. Its request is proto, which has no form for
+// the mark: under this ctx the store restores it (RestoreIdTieBreak). A
+// request from outside the process never carries the mark.
+func ContextWithIdTieBreak(ctx context.Context) context.Context {
+	return context.WithValue(ctx, idTieBreakKey{}, true)
+}
+
+// RestoreIdTieBreak returns sorts with their last sort turned back into the
+// id tie-break when ctx was marked by ContextWithIdTieBreak and that sort is
+// an ascending or descending id sort; otherwise sorts as given.
+func RestoreIdTieBreak(ctx context.Context, sorts []SortRequest) []SortRequest {
+	if marked, _ := ctx.Value(idTieBreakKey{}).(bool); !marked || len(sorts) == 0 {
+		return sorts
 	}
-	return false
+	last := sorts[len(sorts)-1]
+	if last.RelationKey != bundle.RelationKeyId ||
+		(last.Type != model.BlockContentDataviewSort_Asc && last.Type != model.BlockContentDataviewSort_Desc) {
+		return sorts
+	}
+	out := slices.Clone(sorts)
+	out[len(out)-1] = IdTieBreak(last.Type)
+	return out
 }
 
 // WithIdTieBreak returns sorts with the raw object id appended (IdTieBreak),
@@ -231,13 +256,23 @@ func WithIdTieBreak(sorts []SortRequest) []SortRequest {
 
 // ImplyIncludeTime returns sorts with includeTime set on a lone date sort:
 // the precision the store implies for it (isSingleDateSort). A stored view's
-// sorts cannot tell an omitted precision from false; this keeps a view
+// sorts cannot tell an omitted precision from false, and a view's default
+// sort (lastModifiedDate) stores no format either: the format comes from
+// store, as the app fills it in before it runs the view. This keeps a view
 // ordered as the app shows it once WithIdTieBreak appends a sort.
-func ImplyIncludeTime(sorts []SortRequest) []SortRequest {
-	if !isSingleDateSort(sorts) || sorts[0].IncludeTime {
+func ImplyIncludeTime(store ObjectStore, sorts []SortRequest) []SortRequest {
+	if len(sorts) != 1 || sorts[0].IncludeTime {
+		return sorts
+	}
+	format := sorts[0].Format
+	if stored, err := store.GetRelationFormatByKey(sorts[0].RelationKey); err == nil {
+		format = stored
+	}
+	if format != model.RelationFormat_date {
 		return sorts
 	}
 	out := slices.Clone(sorts)
+	out[0].Format = model.RelationFormat_date
 	out[0].IncludeTime = true
 	return out
 }
