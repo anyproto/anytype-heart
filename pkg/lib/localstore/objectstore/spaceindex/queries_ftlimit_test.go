@@ -117,12 +117,12 @@ func TestFulltextNameMatchBudgetStable(t *testing.T) {
 	}
 
 	// small budget: only the name doc is in the candidate set
-	small, _, err := fx.performFulltextSearch(true, searchReturning(nameDoc))
+	small, _, _, err := fx.performFulltextSearch(true, searchReturning(nameDoc))
 	require.NoError(t, err)
 	require.Len(t, small, 1)
 
 	// bigger budget: the pluralName doc enters and becomes the representative
-	big, _, err := fx.performFulltextSearch(true, searchReturning(nameDoc, pluralDoc))
+	big, _, _, err := fx.performFulltextSearch(true, searchReturning(nameDoc, pluralDoc))
 	require.NoError(t, err)
 	require.Len(t, big, 1)
 

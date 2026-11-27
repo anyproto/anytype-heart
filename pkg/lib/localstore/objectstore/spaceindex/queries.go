@@ -592,8 +592,11 @@ func (s *dsObjectStore) performFulltextQuery(q database.Query, filters *database
 		needed = q.Offset + q.Limit
 	}
 	ftLimit := ftCandidatesLimit(q)
+	// a caller that asked for a total order (the id tie-break) pages by
+	// offset: its candidates must not depend on the budget
+	settle := database.HasIdTieBreak(q.Sorts)
 	for {
-		fulltextResults, ftDocs, err := s.performFulltextSearch(!q.PrefixNameQuery, func() ([]*ftsearch.DocumentMatch, error) {
+		fulltextResults, ftDocs, minScore, err := s.performFulltextSearch(!q.PrefixNameQuery, func() ([]*ftsearch.DocumentMatch, error) {
 			return search(ftLimit)
 		})
 		if err != nil {
@@ -605,6 +608,11 @@ func (s *dsObjectStore) performFulltextQuery(q database.Query, filters *database
 			return s.performFulltextFallback(q, filters)
 		}
 
+		indexExhausted := ftDocs < ftLimit
+		if settle && !indexExhausted && ftLimit < ftCandidatesHardLimit {
+			fulltextResults = SettledFulltextResults(fulltextResults, minScore)
+		}
+
 		records := s.queryFromFulltextRecords(fulltextResults, *filters, q.TextQuery, needed)
 
 		pageFilled := needed == 0 || len(records) >= needed
@@ -612,7 +620,6 @@ func (s *dsObjectStore) performFulltextQuery(q database.Query, filters *database
 		// offset pagination drifts: keep escalating until the full head pool
 		// is materialized (or the index has no more docs to offer)
 		headMaterialized := len(fulltextResults) >= ftRerankPoolSize
-		indexExhausted := ftDocs < ftLimit
 		if (pageFilled && headMaterialized) || indexExhausted || ftLimit >= ftCandidatesHardLimit {
 			if !pageFilled && !indexExhausted {
 				// the page stays underfilled although more matches exist:
@@ -634,20 +641,50 @@ func (s *dsObjectStore) performFulltextQuery(q database.Query, filters *database
 
 // performFulltextSearch groups raw doc matches per object and converts them to
 // fulltext results; ftDocs is the raw doc count, used by the caller to detect
-// whether the index was exhausted (ftDocs < requested budget). enforceMinScore
+// whether the index was exhausted (ftDocs < requested budget), and minScore
+// the lowest doc score returned (SettledFulltextResults). enforceMinScore
 // drops near-zero-score results without highlights — it must be disabled for
 // the prefix-name path, which runs without highlight generation and would lose
 // legitimate low-scoring prefix matches.
-func (s *dsObjectStore) performFulltextSearch(enforceMinScore bool, search func() (results []*ftsearch.DocumentMatch, err error)) ([]database.FulltextResult, int, error) {
+func (s *dsObjectStore) performFulltextSearch(enforceMinScore bool, search func() (results []*ftsearch.DocumentMatch, err error)) (results []database.FulltextResult, ftDocs int, minScore float64, err error) {
 	ftsResults, err := search()
 	if err != nil {
-		return nil, 0, fmt.Errorf("fullText search: %w", err)
+		return nil, 0, 0, fmt.Errorf("fullText search: %w", err)
 	}
-	results, err := GroupFulltextResults(ftsResults, enforceMinScore)
+	results, err = GroupFulltextResults(ftsResults, enforceMinScore)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, 0, fmt.Errorf("group fulltext results: %w", err)
 	}
-	return results, len(ftsResults), nil
+	return results, len(ftsResults), MinDocScore(ftsResults), nil
+}
+
+// MinDocScore returns the lowest score among the doc matches.
+func MinDocScore(matches []*ftsearch.DocumentMatch) float64 {
+	if len(matches) == 0 {
+		return 0
+	}
+	minScore := matches[0].Score
+	for _, match := range matches[1:] {
+		minScore = min(minScore, match.Score)
+	}
+	return minScore
+}
+
+// SettledFulltextResults keeps the results whose place a bigger candidate
+// budget cannot change. Tantivy returns its best docs and keeps tied docs in
+// an order of its own, so a doc it left out scores at most minScore, the
+// lowest score it returned. An object scoring above minScore therefore has
+// its best doc in hand and no unseen rival before it; one tied at minScore
+// may have unseen rivals with smaller ids, which sort first. results are in
+// GroupFulltextResults order (score desc, id asc), so the settled ones are a
+// prefix. A caller drops the rest only while more docs exist: once the index
+// returned fewer docs than asked, every result is settled.
+func SettledFulltextResults(results []database.FulltextResult, minScore float64) []database.FulltextResult {
+	n := 0
+	for n < len(results) && results[n].Score > minScore {
+		n++
+	}
+	return results[:n]
 }
 
 // GroupFulltextResults groups raw doc matches per object, selects each
@@ -693,7 +730,8 @@ func GroupFulltextResults(ftsResults []*ftsearch.DocumentMatch, enforceMinScore 
 	// select only the best block/relation result for each object
 	var objectResults = make([]*ftsearch.DocumentMatch, 0, len(resultsByObjectId))
 	bestDocByChosenId := make(map[string]string, len(resultsByObjectId))
-	for _, objectPerBlockResults := range resultsByObjectId {
+	objectIdByChosenId := make(map[string]string, len(resultsByObjectId))
+	for objectId, objectPerBlockResults := range resultsByObjectId {
 		if len(objectPerBlockResults) == 0 {
 			continue
 		}
@@ -709,16 +747,21 @@ func GroupFulltextResults(ftsResults []*ftsearch.DocumentMatch, enforceMinScore 
 		}
 		objectResults = append(objectResults, chosen)
 		bestDocByChosenId[chosen.ID] = objectPerBlockResults[0].ID
+		objectIdByChosenId[chosen.ID] = objectId
 	}
 
 	sort.Slice(objectResults, func(i, j int) bool {
 		// deterministic id tiebreak: the object order must be prefix-stable
 		// across requests with different candidate budgets, or offset
-		// pagination breaks at tie boundaries
-		if objectResults[i].Score == objectResults[j].Score {
-			return objectResults[i].ID < objectResults[j].ID
-		}
-		return objectResults[i].Score > objectResults[j].Score
+		// pagination breaks at tie boundaries. The OBJECT id decides, as the
+		// id tie-break of a sorted query does (database.WithIdTieBreak): a doc
+		// id appends a path to it, and "x.y/…" sorts before "x/…"
+		a, b := objectResults[i], objectResults[j]
+		return cmp.Or(
+			cmp.Compare(b.Score, a.Score),
+			strings.Compare(objectIdByChosenId[a.ID], objectIdByChosenId[b.ID]),
+			strings.Compare(a.ID, b.ID),
+		) < 0
 	})
 
 	var results = make([]database.FulltextResult, 0, len(objectResults))
