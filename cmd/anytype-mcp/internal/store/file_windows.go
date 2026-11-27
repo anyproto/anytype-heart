@@ -161,13 +161,33 @@ func checkGrants(dir string, strict bool) error {
 	return nil
 }
 
-// mkdir creates one missing folder. The items folder is created with its
-// private descriptor in the same call, never tightened afterwards.
-func (f *File) mkdir(dir string, kind int) error {
-	if kind != kindItems {
-		return os.Mkdir(dir, 0o700)
+// ownSD is the descriptor of .anytype and ai-connect when the store
+// creates them: a protected DACL for the user, SYSTEM and Administrators,
+// so the folder passes its own rule whatever the home folder would have
+// handed down (a home that Users may read).
+func ownSD() (*windows.SecurityAttributes, error) {
+	sid, err := userSID()
+	if err != nil {
+		return nil, err
 	}
+	sd, err := windows.SecurityDescriptorFromString("D:P(A;OICI;FA;;;" + sid.String() + ")(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)")
+	if err != nil {
+		return nil, err
+	}
+	return &windows.SecurityAttributes{
+		Length:             uint32(unsafe.Sizeof(windows.SecurityAttributes{})),
+		SecurityDescriptor: sd,
+	}, nil
+}
+
+// mkdir creates one missing folder with its descriptor in the same call,
+// never tightened afterwards: the items folder private to the user, the
+// folders above it for the user, SYSTEM and Administrators.
+func (f *File) mkdir(dir string, kind int) error {
 	sa, err := securityAttributes(true)
+	if kind != kindItems {
+		sa, err = ownSD()
+	}
 	if err != nil {
 		return err
 	}

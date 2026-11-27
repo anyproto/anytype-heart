@@ -120,3 +120,10 @@ func parseFilesec(buf []byte) (aclInfo, error) {
 	}
 	return info, nil
 }
+
+// ACLGrants counts the entries of an open file's or folder's ACL that
+// grant access (deny entries take nothing away from the owner's privacy).
+func ACLGrants(fh *os.File) (int, error) {
+	info, err := fileACL(fh)
+	return info.allow, err
+}

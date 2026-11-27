@@ -109,23 +109,16 @@ func TestWindowsFolderGrants(t *testing.T) {
 	t.Run("an inherit-only entry for others on .anytype does not apply to the folder itself", func(t *testing.T) {
 		f := newFile(t)
 		require.NoError(t, f.Write(ctx, "a", []byte("x")))
-		// for files only: ai-connect inherits it as inherit-only too. An
-		// entry that folders inherit (CI) would apply to ai-connect itself,
-		// and ai-connect is rightly refused then.
-		setDACL(t, filepath.Join(f.home, ".anytype"), trustedOnly+"(A;OIIO;FR;;;BU)", true)
+		// ai-connect, made by the store, has its own protected list and
+		// inherits nothing from it
+		setDACL(t, filepath.Join(f.home, ".anytype"), trustedOnly+"(A;OICIIO;FR;;;BU)", true)
 		_, err := f.Read(ctx, "a")
 		require.NoError(t, err)
-		setDACL(t, filepath.Join(f.home, ".anytype"), trustedOnly+"(A;OICIIO;FR;;;BU)", true)
-		_, err = f.Read(ctx, "a")
-		requireDenied(t, err, "Users inherited by ai-connect")
 	})
 
 	t.Run("a home others may read is fine; one where they may delete children is not", func(t *testing.T) {
 		f := newFile(t)
 		require.NoError(t, f.Write(ctx, "a", []byte("x")))
-		// .anytype keeps its own list: one that inherited the home's entry
-		// for Users would be refused by its own rule
-		setDACL(t, filepath.Join(f.home, ".anytype"), trustedOnly, true)
 		setDACL(t, f.home, trustedOnly+"(A;OICI;0x1200a9;;;BU)", true) // read and execute
 		_, err := f.Read(ctx, "a")
 		require.NoError(t, err)
@@ -133,6 +126,35 @@ func TestWindowsFolderGrants(t *testing.T) {
 		_, err = f.Read(ctx, "a")
 		requireDenied(t, err, "Users with full control of home")
 		setDACL(t, f.home, trustedOnly, true)
+	})
+}
+
+// N9: the folders the store creates carry their own protected list, so a
+// home that Users may read hands nothing down to them. A folder somebody
+// else made keeps the rule.
+func TestWindowsCreatedFoldersAreProtected(t *testing.T) {
+	user := me(t)
+	trustedOnly := "D:P(A;OICI;FA;;;" + user + ")(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)"
+	f := newFile(t)
+	setDACL(t, f.home, trustedOnly+"(A;OICI;0x1200a9;;;BU)", true) // Users may read and execute
+	require.NoError(t, f.Write(ctx, "a", []byte("x")), "a first write under a home others may read")
+	raw, err := f.Read(ctx, "a")
+	require.NoError(t, err)
+	assert.Equal(t, "x", string(raw))
+	want := canonical(t, trustedOnly)
+	for _, dir := range []string{filepath.Join(f.home, ".anytype"), filepath.Dir(f.Dir())} {
+		sd, err := windows.GetNamedSecurityInfo(dir, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION)
+		require.NoError(t, err)
+		assert.Equal(t, want, sd.String(), dir)
+	}
+
+	t.Run("an .anytype made by somebody else that inherited the entry is still refused, with the rule named", func(t *testing.T) {
+		g := newFile(t)
+		setDACL(t, g.home, trustedOnly+"(A;OICI;0x1200a9;;;BU)", true)
+		require.NoError(t, os.Mkdir(filepath.Join(g.home, ".anytype"), 0o700))
+		err := g.Write(ctx, "a", []byte("x"))
+		requireDenied(t, err, "inherited Users entry")
+		assert.Contains(t, err.Error(), "grants access to another account")
 	})
 }
 
