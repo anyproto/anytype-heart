@@ -32,6 +32,7 @@ const (
 	msgNoAnswer  = "Anytype did not answer this request."
 	msgNotInit   = "Send initialize first."
 	msgTooLarge  = "The message is larger than 8 MiB."
+	msgWithheld  = "Anytype's reply contained this connection's key and was withheld."
 )
 
 // Options configure one serve run.
@@ -42,11 +43,6 @@ type Options struct {
 	Out          io.Writer
 	Log          io.Writer
 
-	// PortOverride and TierOverride replace the item's values. Only the
-	// test build sets them.
-	PortOverride int
-	TierOverride string
-
 	// Zero values take the contract's numbers; tests shorten them.
 	RefreshAfter     time.Duration
 	ExchangeTimeout  time.Duration
@@ -55,9 +51,12 @@ type Options struct {
 	ErrorBodyWait    time.Duration
 	Now              func() time.Time
 
-	// httpClient replaces the loopback client; tests use it to drop idle
-	// connections at a known moment.
+	// Test hooks. httpClient replaces the loopback client, so a test can
+	// drop idle connections at a known moment; onServer hands out the
+	// running server; afterAdmit runs once a request has passed the gate.
 	httpClient *http.Client
+	onServer   func(*server)
+	afterAdmit func(*call)
 }
 
 func (o *Options) defaults() {
@@ -88,13 +87,30 @@ func (o *Options) defaults() {
 // spelling.
 const methodCancel = "notifications/cancelled" //nolint:misspell
 
-// call is one accepted message on its way through a worker.
+// writePiece is how much of a line goes to stdout per write call, so the
+// stall timer sees progress on a large reply.
+const writePiece = 64 << 10
+
+// call is one accepted message on its way through a worker. canceled and
+// committed are decided under server.mu: a request is either canceled
+// before the writer turns to its reply, or its reply is written.
 type call struct {
-	msg      *message
-	seq      uint64
-	ctx      context.Context
-	cancel   context.CancelFunc
-	canceled atomic.Bool
+	msg       *message
+	key       string // idKey of a request
+	seq       uint64
+	ctx       context.Context
+	cancel    context.CancelFunc
+	canceled  atomic.Bool
+	committed bool
+}
+
+// session is one curated-tier conversation with heart, owned by the
+// snapshot that opened it: its DELETE goes to that port with that key and
+// nowhere else. On the full tier id is empty and only version is used.
+type session struct {
+	id      string
+	version string
+	snap    snapshot
 }
 
 type server struct {
@@ -109,16 +125,22 @@ type server struct {
 	brokenOnce sync.Once
 	runCtx     context.Context
 	accepted   sync.WaitGroup
-	writeBegan atomic.Int64
+	// progress is when stdout last took a piece of the line being
+	// written; zero while the writer is idle
+	progress atomic.Int64
 
 	renewMu sync.Mutex
+
+	dropMu     sync.Mutex
+	drop       chan session
+	dropClosed bool
+	dropDone   chan struct{}
 
 	mu              sync.Mutex
 	live            map[string]*call
 	seq             uint64
 	initialized     bool
-	session         string
-	heartVersion    string
+	sess            session
 	initParams      json.RawMessage
 	resetPending    bool
 	resetClearedSeq uint64
@@ -127,29 +149,35 @@ type server struct {
 
 // Serve runs the forwarder until stdin ends, ctx is canceled (SIGINT,
 // SIGTERM) or stdout breaks, and returns the exit code. One deadline runs
-// from the trigger to the return: the drain, stdout and one DELETE of a
-// known session.
+// from the trigger to the return, whatever is still blocked: the drain,
+// stdout, the session DELETEs and the log. The caller's os.Exit ends any
+// goroutine that is still stuck.
 func Serve(ctx context.Context, o Options) int {
 	o.defaults()
-	log := &logger{w: o.Log}
+	log := newLogger(o.Log)
 	runCtx, stopRun := context.WithCancel(context.Background())
 	defer stopRun()
 	s := &server{
-		o:   o,
-		log: log,
-		conn: &connection{id: o.ConnectionID, st: o.Store, now: o.Now, maxAge: o.RefreshAfter,
-			portOver: o.PortOverride, tierOver: o.TierOverride, log: log},
-		up:     &upstream{client: o.httpClient, timeout: o.ExchangeTimeout, errBodyFor: o.ErrorBodyWait},
-		out:    make(chan *reply, contract.QueueSize),
-		queue:  make(chan *call, contract.QueueSize),
-		broken: make(chan struct{}),
-		runCtx: runCtx,
-		live:   map[string]*call{},
+		o:        o,
+		log:      log,
+		conn:     &connection{id: o.ConnectionID, st: o.Store, now: o.Now, maxAge: o.RefreshAfter, log: log},
+		up:       &upstream{client: o.httpClient, timeout: o.ExchangeTimeout, errBodyFor: o.ErrorBodyWait},
+		out:      make(chan *reply, contract.QueueSize),
+		queue:    make(chan *call, contract.QueueSize),
+		broken:   make(chan struct{}),
+		runCtx:   runCtx,
+		drop:     make(chan session, contract.QueueSize),
+		dropDone: make(chan struct{}),
+		live:     map[string]*call{},
+	}
+	if o.onServer != nil {
+		o.onServer(s)
 	}
 	s.conn.start(ctx)
 
 	go s.writer()
 	go s.watchStdout()
+	go s.cleaner() //nolint:gosec // its DELETEs must outlive the run context: shutdown waits for them
 	for i := 0; i < contract.Workers; i++ {
 		go s.worker()
 	}
@@ -173,9 +201,14 @@ func Serve(ctx context.Context, o Options) int {
 		}()
 		select {
 		case <-drained:
-			s.flush(deadline)
+			if !s.flush(deadline) {
+				// replies were lost: this is not a clean exit
+				code = 1
+			}
 		case <-deadline.Done():
+			// their replies are lost: this is not a clean exit
 			log.printf("shutdown: requests still running at the deadline")
+			code = 1
 		case <-ctx.Done():
 		case <-s.broken:
 			code = 1
@@ -189,14 +222,32 @@ func Serve(ctx context.Context, o Options) int {
 		code = 1
 	}
 	defer cancel()
-	stopRun()
-	s.endSession(deadline)
-	s.up.client.CloseIdleConnections()
+
+	// the rest may block on heart or on the store: it gets what is left of
+	// the deadline and is abandoned after it
+	finished := make(chan struct{})
+	go func() {
+		defer close(finished)
+		stopRun()
+		s.closeDrop()
+		select {
+		case <-s.dropDone:
+		case <-deadline.Done():
+			return
+		}
+		s.endSession(deadline)
+		s.up.client.CloseIdleConnections()
+	}()
+	select {
+	case <-finished:
+	case <-deadline.Done():
+	}
+	log.close(deadline)
 	return code
 }
 
-// send queues a line for stdout. It gives up only when stdout is broken or
-// the run has stopped.
+// send queues a line that answers no accepted request (a refusal from the
+// reader). It gives up only when stdout is broken or the run has stopped.
 func (s *server) send(r *reply) {
 	if r == nil {
 		return
@@ -208,22 +259,62 @@ func (s *server) send(r *reply) {
 	}
 }
 
-func (s *server) flush(ctx context.Context) {
+// sendFor queues the reply of an accepted request. A request canceled
+// while its reply waits for room gives up the wait.
+func (s *server) sendFor(c *call, r *reply) bool {
+	r.call = c
+	select {
+	case s.out <- r:
+		return true
+	case <-c.ctx.Done():
+	case <-s.broken:
+	case <-s.runCtx.Done():
+	}
+	return false
+}
+
+// flush waits until everything queued so far is on stdout. It reports
+// false when the deadline or a broken stdout got there first.
+func (s *server) flush(ctx context.Context) bool {
 	marker := &reply{flushed: make(chan struct{})}
-	s.send(marker)
+	select {
+	case s.out <- marker:
+	case <-ctx.Done():
+		return false
+	case <-s.broken:
+		return false
+	}
 	select {
 	case <-marker.flushed:
+		return true
 	case <-ctx.Done():
 	case <-s.broken:
 	}
+	return false
 }
 
 func (s *server) breakStdout() {
 	s.brokenOnce.Do(func() { close(s.broken) })
 }
 
+// commit decides, at the moment the writer turns to a reply, whether it
+// is written: not if its request was canceled before now; otherwise the
+// request can no longer be canceled.
+func (s *server) commit(c *call) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.live[c.key] == c {
+		delete(s.live, c.key)
+	}
+	if c.canceled.Load() {
+		return false
+	}
+	c.committed = true
+	return true
+}
+
 // writer is the only goroutine that writes stdout: complete lines, one at
-// a time.
+// a time, each in pieces so the stall timer measures progress.
 func (s *server) writer() {
 	for {
 		select {
@@ -232,15 +323,26 @@ func (s *server) writer() {
 				close(r.flushed)
 				continue
 			}
-			if r.before != nil {
-				r.before()
+			if r.call != nil {
+				ok := s.commit(r.call)
+				r.call.cancel()
+				if !ok {
+					continue
+				}
 			}
-			s.writeBegan.Store(s.o.Now().UnixNano())
-			_, err := s.o.Out.Write(r.line)
-			s.writeBegan.Store(0)
-			if err != nil {
-				s.breakStdout()
-				return
+			for line := r.line; len(line) > 0; {
+				n := min(len(line), writePiece)
+				s.progress.Store(s.o.Now().UnixNano())
+				if _, err := s.o.Out.Write(line[:n]); err != nil {
+					s.progress.Store(0)
+					s.breakStdout()
+					return
+				}
+				line = line[n:]
+			}
+			s.progress.Store(0)
+			if r.after != nil {
+				r.after()
 			}
 		case <-s.runCtx.Done():
 			return
@@ -260,8 +362,8 @@ func (s *server) watchStdout() {
 	for {
 		select {
 		case <-t.C:
-			began := s.writeBegan.Load()
-			if began != 0 && s.o.Now().Sub(time.Unix(0, began)) >= s.o.StdoutStall {
+			at := s.progress.Load()
+			if at != 0 && s.o.Now().Sub(time.Unix(0, at)) >= s.o.StdoutStall {
 				s.breakStdout()
 				return
 			}
@@ -350,13 +452,14 @@ func (s *server) enqueue(m *message) {
 	s.seq++
 	c.seq = s.seq
 	if m.kind == kindRequest {
-		if _, dup := s.live[string(m.id)]; dup {
+		c.key = idKey(m.id)
+		if _, dup := s.live[c.key]; dup {
 			s.mu.Unlock()
 			cancel()
 			s.send(errorReply(m.id, codeInvalidRequest, "a request with this id is still running"))
 			return
 		}
-		s.live[string(m.id)] = c
+		s.live[c.key] = c
 	}
 	s.mu.Unlock()
 
@@ -364,7 +467,8 @@ func (s *server) enqueue(m *message) {
 	select {
 	case s.queue <- c:
 	default:
-		s.release(c)
+		s.forget(c)
+		s.accepted.Done()
 		if m.kind == kindRequest {
 			s.send(errorReply(m.id, codeBusy, msgBusy))
 		} else {
@@ -380,32 +484,38 @@ func describeKind(m *message) string {
 	return "notification"
 }
 
-func (s *server) release(c *call) {
+// forget ends a call that will write nothing.
+func (s *server) forget(c *call) {
 	c.cancel()
-	if c.msg.kind == kindRequest {
-		s.mu.Lock()
-		if s.live[string(c.msg.id)] == c {
-			delete(s.live, string(c.msg.id))
-		}
-		s.mu.Unlock()
+	if c.msg.kind != kindRequest {
+		return
 	}
-	s.accepted.Done()
+	s.mu.Lock()
+	if s.live[c.key] == c {
+		delete(s.live, c.key)
+	}
+	s.mu.Unlock()
 }
 
-// cancelRequest serves the cancellation notification: the queued or running
-// request is canceled and its reply suppressed. It runs on the reader, so
-// it works with a full queue.
+// cancelRequest serves the cancellation notification: the queued or
+// running request is canceled and its reply suppressed, up to the moment
+// the writer turns to that reply. It runs on the reader, so it works with
+// a full queue.
 func (s *server) cancelRequest(params json.RawMessage) {
 	var p struct {
 		RequestID json.RawMessage `json:"requestId"`
 	}
-	if json.Unmarshal(params, &p) != nil || len(p.RequestID) == 0 {
+	if json.Unmarshal(params, &p) != nil {
+		return
+	}
+	key := idKey(p.RequestID)
+	if key == "" {
 		return
 	}
 	s.mu.Lock()
-	c := s.live[string(bytes.TrimSpace(p.RequestID))]
-	s.mu.Unlock()
-	if c == nil || c.msg.method == "initialize" {
+	defer s.mu.Unlock()
+	c := s.live[key]
+	if c == nil || c.committed || c.msg.method == "initialize" {
 		// initialize can't be canceled (MCP lifecycle)
 		return
 	}
@@ -425,30 +535,39 @@ func (s *server) worker() {
 }
 
 func (s *server) run(c *call) {
-	defer s.release(c)
+	defer s.accepted.Done()
 	if c.canceled.Load() {
+		s.forget(c)
 		return
 	}
 	if c.msg.kind != kindRequest {
 		s.forwardQuiet(c)
+		c.cancel()
 		return
 	}
 	r := s.handle(c)
-	if r == nil || c.canceled.Load() || s.runCtx.Err() != nil {
-		return
+	if r == nil || c.canceled.Load() || s.runCtx.Err() != nil || !s.sendFor(c, r) {
+		s.forget(c)
 	}
-	s.send(r)
 }
 
 // forwardQuiet passes a notification or a client response on. heart
-// answers 202; nothing is written to stdout whatever happens.
+// answers 202; nothing is written to stdout whatever happens. A refused
+// connection sent nothing, so the item is re-read and the message tried
+// once more.
 func (s *server) forwardQuiet(c *call) {
 	snap, err := s.conn.current(c.ctx)
 	if err != nil {
 		return
 	}
-	session, version := s.sessionState()
-	ex := s.up.do(c.ctx, http.MethodPost, snap, session, version, c.msg.raw)
+	sess := s.session()
+	ex := s.up.do(c.ctx, http.MethodPost, snap, sess.id, sess.version, c.msg.raw)
+	if ex.out == outRefused {
+		if snap, err = s.conn.refresh(c.ctx); err != nil {
+			return
+		}
+		ex = s.up.do(c.ctx, http.MethodPost, snap, sess.id, sess.version, c.msg.raw)
+	}
 	switch {
 	case ex.out != outReply:
 		s.log.printf("%s not delivered", describeKind(c.msg))
@@ -461,27 +580,33 @@ func (s *server) forwardQuiet(c *call) {
 	}
 }
 
-func (s *server) sessionState() (session, version string) {
+func (s *server) session() session {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.session, s.heartVersion
+	return s.sess
 }
 
-func (s *server) resetBlocks(seq uint64) bool {
+// admit is the one locked step that reads the reset gate and the session
+// together: a tools/call that passes the gate runs on the session it saw
+// here for its whole life, never on a later one.
+func (s *server) admit(c *call) (sess session, blocked bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.resetPending || seq <= s.resetClearedSeq
+	if c.msg.method == "tools/call" && (s.resetPending || c.seq <= s.resetClearedSeq) {
+		return session{}, true
+	}
+	return s.sess, false
 }
 
-// expiredReply is the session-reset error. The reset flag clears when
-// the writer turns to one of these lines; every tools/call received before
-// that moment gets the same error and does not run. The cut is taken
-// before the write, not after it: a client that has read the warning may
-// answer before the write call returns here, and that answer must run. If
-// the write then fails, stdout is broken and the process ends.
+// expiredReply is the session-reset error. The reset flag clears only
+// once one of these lines is on stdout: the cut is taken after the write
+// has returned, so every tools/call received before the client could have
+// read the warning gets the warning and does not run. A call the client
+// sends in the instant after reading it may get the warning once more;
+// the text says the call did not run, so that is safe.
 func (s *server) expiredReply(id json.RawMessage) *reply {
 	r := toolErrorReply(id, msgExpired)
-	r.before = func() {
+	r.after = func() {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		if s.resetPending {
@@ -509,8 +634,15 @@ func (s *server) handle(c *call) *reply {
 	m := c.msg
 	isTool := m.method == "tools/call"
 	isInit := m.method == "initialize"
-	if isTool && s.resetBlocks(c.seq) {
+	sess, blocked := s.admit(c)
+	if blocked {
 		return s.expiredReply(m.id)
+	}
+	if s.o.afterAdmit != nil {
+		s.o.afterAdmit(c)
+	}
+	if isInit {
+		sess = session{}
 	}
 	snap, err := s.conn.current(c.ctx)
 	if err != nil {
@@ -518,11 +650,7 @@ func (s *server) handle(c *call) *reply {
 	}
 	refused, renewed := false, false
 	for {
-		session, version := "", ""
-		if !isInit {
-			session, version = s.sessionState()
-		}
-		ex := s.up.do(c.ctx, http.MethodPost, snap, session, version, m.raw)
+		ex := s.up.do(c.ctx, http.MethodPost, snap, sess.id, sess.version, m.raw)
 		if c.canceled.Load() && !isInit {
 			return nil
 		}
@@ -560,19 +688,21 @@ func (s *server) handle(c *call) *reply {
 			}
 			return errorReply(m.id, codeNotConnected, msgForbidden)
 		case st == http.StatusNotFound:
-			if session == "" {
+			if sess.id == "" {
 				return errorReply(m.id, codeMethodNotFound, msgTooOld)
 			}
-			if err := s.renew(c.ctx, session); err != nil {
+			if err := s.renew(c.ctx, sess.id); err != nil {
 				return s.renewFailed(m, err)
 			}
 			if isTool {
+				// never replayed, and never on the new session
 				return s.expiredReply(m.id)
 			}
 			if renewed {
 				return errorReply(m.id, codeInternal, msgNoAnswer)
 			}
 			renewed = true
+			sess = s.session()
 			if snap, err = s.conn.current(c.ctx); err != nil {
 				return s.notConnected(m.id)
 			}
@@ -610,8 +740,35 @@ func (s *server) handle(c *call) *reply {
 	}
 }
 
+// carriesKey reports whether a body contains the key, as it is or in a
+// form JSON may spell it (with or without HTML characters escaped).
+func carriesKey(body []byte, key string) bool {
+	if key == "" {
+		return false
+	}
+	if bytes.Contains(body, []byte(key)) {
+		return true
+	}
+	if esc, err := json.Marshal(key); err == nil && len(esc) > 2 {
+		if bytes.Contains(body, esc[1:len(esc)-1]) {
+			return true
+		}
+	}
+	var plain bytes.Buffer
+	enc := json.NewEncoder(&plain)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(key); err == nil {
+		if b := bytes.TrimSpace(plain.Bytes()); len(b) > 2 && bytes.Contains(body, b[1:len(b)-1]) {
+			return true
+		}
+	}
+	return false
+}
+
 // relay turns a 200 into the reply. Only a JSON-RPC response carrying this
 // request's id is relayed; anything else leaves the outcome unconfirmed.
+// A body that contains the connection's key is never relayed: the reply
+// would end up in the AI app's transcript.
 func (s *server) relay(c *call, snap snapshot, ex exchange) *reply {
 	m := c.msg
 	isInit := m.method == "initialize"
@@ -619,15 +776,22 @@ func (s *server) relay(c *call, snap snapshot, ex exchange) *reply {
 	defer func() {
 		// a failed initialize ends any session id it received
 		if isInit && !adopted && ex.session != "" {
-			go s.dropSession(snap, ex.session, "")
+			s.dropSession(session{id: ex.session, snap: snap})
 		}
 	}()
 	if ex.bodyErr != nil || !ex.isJSON {
 		s.log.printf("%s: unreadable reply", m.method)
 		return unconfirmed(m)
 	}
+	if carriesKey(ex.body, snap.key) {
+		s.log.printf("%s: the reply contained the connection's key and was withheld", m.method)
+		if m.method == "tools/call" {
+			return toolErrorReply(m.id, msgWithheld)
+		}
+		return errorReply(m.id, codeInternal, msgWithheld)
+	}
 	rpc, ok := parseRPC(ex.body)
-	if !ok || !bytes.Equal(bytes.TrimSpace(rpc.ID), m.id) {
+	if !ok || idKey(rpc.ID) == "" || idKey(rpc.ID) != c.key {
 		s.log.printf("%s: reply is not this request's", m.method)
 		return unconfirmed(m)
 	}
@@ -708,29 +872,31 @@ func (s *server) adoptInitialize(m *message, snap snapshot, ex exchange, result 
 	}
 
 	s.mu.Lock()
-	old := s.session
-	s.session = ex.session
-	s.heartVersion = heartVersion
+	old := s.sess
+	s.sess = session{id: ex.session, version: heartVersion, snap: snap}
 	s.initParams = append(json.RawMessage(nil), m.params...)
 	s.initialized = true
 	s.resetPending = false
 	s.mu.Unlock()
-	if old != "" && old != ex.session {
+	if old.id != "" && old.id != ex.session {
 		// a replaced initialize ends the session it replaced
-		go s.dropSession(snap, old, heartVersion)
+		s.dropSession(old)
 	}
 	return rewritten, nil
 }
 
 var (
-	errRenewTooOld = errors.New("no /mcp route")
-	errRenewFailed = errors.New("renewal failed")
+	errRenewTooOld   = errors.New("no /mcp route")
+	errRenewFailed   = errors.New("renewal failed")
+	errRenewRejected = errors.New("key rejected")
 )
 
 func (s *server) renewFailed(m *message, err error) *reply {
 	switch {
 	case errors.Is(err, errNotConnected):
 		return s.notConnected(m.id)
+	case errors.Is(err, errRenewRejected):
+		return errorReply(m.id, codeNotConnected, msgRejected)
 	case errors.Is(err, errRenewTooOld):
 		return errorReply(m.id, codeMethodNotFound, msgTooOld)
 	case m.method == "tools/call":
@@ -741,12 +907,16 @@ func (s *server) renewFailed(m *message, err error) *reply {
 
 // renew opens a new session after heart answered 404 for stale. It is
 // shared: requests that hit the same 404 wait here and find the work done.
-// Both the initialize and notifications/initialized are awaited.
+// Both legs are awaited and checked like any other exchange: the
+// initialize must be answered in JSON under the id it was sent with, and
+// the notification with 202. The new session is installed only if stale
+// is still the current one; a client initialize that got in first keeps
+// its session, and the one opened here is ended.
 func (s *server) renew(ctx context.Context, stale string) error {
 	s.renewMu.Lock()
 	defer s.renewMu.Unlock()
 	s.mu.Lock()
-	current, params := s.session, s.initParams
+	current, params := s.sess.id, s.initParams
 	s.renewals++
 	n := s.renewals
 	s.mu.Unlock()
@@ -757,7 +927,11 @@ func (s *server) renew(ctx context.Context, stale string) error {
 	if err != nil {
 		return err
 	}
-	req := map[string]any{"jsonrpc": "2.0", "id": fmt.Sprintf("anytype-mcp-renew-%d", n), "method": "initialize"}
+	id, err := json.Marshal(fmt.Sprintf("anytype-mcp-renew-%d", n))
+	if err != nil {
+		return errRenewFailed
+	}
+	req := map[string]any{"jsonrpc": "2.0", "id": json.RawMessage(id), "method": "initialize"}
 	if len(params) > 0 {
 		req["params"] = params
 	}
@@ -769,65 +943,117 @@ func (s *server) renew(ctx context.Context, stale string) error {
 	if ex.out != outReply {
 		return errRenewFailed
 	}
-	fail := func(err error) error {
-		if ex.session != "" {
-			go s.dropSession(snap, ex.session, "")
+	opened := session{id: ex.session, snap: snap}
+	fail := func(status int, err error) error {
+		if opened.id != "" {
+			s.dropSession(opened)
 		}
-		s.log.printf("session renewal failed: HTTP %d", ex.status)
+		s.log.printf("session renewal failed: HTTP %d", status)
 		return err
+	}
+	rejected := func(status int) error {
+		if _, err := s.conn.refresh(ctx); err != nil {
+			return fail(status, err)
+		}
+		return fail(status, errRenewRejected)
 	}
 	switch {
 	case ex.status == http.StatusNotFound:
-		return fail(errRenewTooOld)
+		return fail(ex.status, errRenewTooOld)
 	case ex.status == http.StatusUnauthorized:
-		if _, err := s.conn.refresh(ctx); err != nil {
-			return fail(err)
-		}
-		return fail(errRenewFailed)
-	case ex.status != http.StatusOK || ex.bodyErr != nil || ex.session == "":
-		return fail(errRenewFailed)
+		return rejected(ex.status)
+	case ex.status != http.StatusOK || ex.bodyErr != nil || !ex.isJSON || ex.session == "":
+		return fail(ex.status, errRenewFailed)
 	}
 	rpc, ok := parseRPC(ex.body)
-	if !ok || rpc.Error != nil {
-		return fail(errRenewFailed)
+	if !ok || rpc.Error != nil || idKey(rpc.ID) != idKey(id) || carriesKey(ex.body, snap.key) {
+		return fail(ex.status, errRenewFailed)
 	}
 	var res struct {
 		ProtocolVersion string `json:"protocolVersion"`
 	}
 	if json.Unmarshal(rpc.Result, &res) != nil || res.ProtocolVersion == "" {
-		return fail(errRenewFailed)
+		return fail(ex.status, errRenewFailed)
 	}
+	opened.version = res.ProtocolVersion
 	note := []byte(`{"jsonrpc":"2.0","method":"notifications/initialized"}`)
-	if ack := s.up.do(ctx, http.MethodPost, snap, ex.session, res.ProtocolVersion, note); ack.out != outReply || ack.status >= 300 {
-		return fail(errRenewFailed)
+	ack := s.up.do(ctx, http.MethodPost, snap, opened.id, opened.version, note)
+	switch {
+	case ack.out != outReply:
+		return fail(0, errRenewFailed)
+	case ack.status == http.StatusUnauthorized:
+		return rejected(ack.status)
+	case ack.status != http.StatusAccepted:
+		return fail(ack.status, errRenewFailed)
 	}
 	s.mu.Lock()
-	s.session = ex.session
-	s.heartVersion = res.ProtocolVersion
+	if s.sess.id != stale {
+		// a client initialize installed its own session meanwhile
+		s.mu.Unlock()
+		s.dropSession(opened)
+		return nil
+	}
+	s.sess = opened
 	s.resetPending = true
 	s.mu.Unlock()
 	s.log.printf("session renewed")
 	return nil
 }
 
-// dropSession ends a session nobody will use again.
-func (s *server) dropSession(snap snapshot, session, version string) {
-	ctx, cancel := context.WithTimeout(s.runCtx, 5*time.Second)
-	defer cancel()
-	s.up.do(ctx, http.MethodDelete, snap, session, version, nil)
+// dropSession hands a session nobody will use again to the cleaner. It
+// never waits: a full queue leaves the session to heart's idle timeout.
+func (s *server) dropSession(sess session) {
+	if sess.id == "" {
+		return
+	}
+	s.dropMu.Lock()
+	defer s.dropMu.Unlock()
+	if s.dropClosed {
+		return
+	}
+	select {
+	case s.drop <- sess:
+	default:
+		s.log.printf("session cleanup queue full: left to expire")
+	}
 }
 
-// endSession makes the one DELETE attempt of shutdown.
+func (s *server) closeDrop() {
+	s.dropMu.Lock()
+	defer s.dropMu.Unlock()
+	if !s.dropClosed {
+		s.dropClosed = true
+		close(s.drop)
+	}
+}
+
+// cleaner ends dropped sessions one at a time, each with the snapshot that
+// opened it, so cleanup adds one call to the four workers and stays under
+// heart's limit per key. It outlives the run: shutdown closes the queue
+// and waits for it within the deadline.
+func (s *server) cleaner() {
+	defer close(s.dropDone)
+	for sess := range s.drop {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		s.up.do(ctx, http.MethodDelete, sess.snap, sess.id, sess.version, nil)
+		cancel()
+	}
+}
+
+// endSession makes the one DELETE attempt of shutdown, and only where the
+// session lives: the item is re-read if the last read is old, and the
+// DELETE is sent only if the item still names the port and key the session
+// was opened with. Otherwise heart's idle timeout ends it; the bearer is
+// never sent to a port Anytype has left.
 func (s *server) endSession(ctx context.Context) {
-	session, version := s.sessionState()
-	if session == "" {
+	sess := s.session()
+	if sess.id == "" {
 		return
 	}
-	s.conn.mu.Lock()
-	snap, dead := s.conn.snap, s.conn.dead
-	s.conn.mu.Unlock()
-	if dead != "" {
+	snap, err := s.conn.current(ctx)
+	if err != nil || snap.port != sess.snap.port || snap.key != sess.snap.key {
+		s.log.printf("shutdown: the session's Anytype has moved; left to expire")
 		return
 	}
-	s.up.do(ctx, http.MethodDelete, snap, session, version, nil)
+	s.up.do(ctx, http.MethodDelete, sess.snap, sess.id, sess.version, nil)
 }

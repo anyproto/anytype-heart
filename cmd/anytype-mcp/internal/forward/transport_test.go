@@ -111,8 +111,16 @@ func TestGateAndLifecycle(t *testing.T) {
 		h := start(t)
 		h.initialize()
 		h.send(`{"jsonrpc":"2.0","method":"notifications/roots/list_changed"}`)
-		h.send(`{"jsonrpc":"2.0","id":9,"result":{"roots":[]}}`)
+		h.send(`{"jsonrpc":"2.0","id":9,"result":{"roots":["marker-roots"]}}`)
 		require.Eventually(t, func() bool { return h.heart.count("notifications/roots/list_changed") == 1 }, 3*time.Second, 5*time.Millisecond)
+		require.Eventually(t, func() bool {
+			for _, r := range h.heart.requests() {
+				if strings.Contains(r.Body, "marker-roots") {
+					return r.Session == "session-1"
+				}
+			}
+			return false
+		}, 3*time.Second, 5*time.Millisecond, "the client response reaches heart too")
 		h.silent()
 	})
 
@@ -329,6 +337,7 @@ func TestSessions(t *testing.T) {
 		assert.Contains(t, g.text(), "session expired")
 		assert.Equal(t, 0, h.heart.count("tools/call"), "the call did not run")
 
+		h.warned()
 		g = h.call(toolCall(3))
 		assert.False(t, g.isError(), g.raw)
 		assert.Equal(t, 1, h.heart.count("tools/call"))
@@ -342,6 +351,7 @@ func TestSessions(t *testing.T) {
 		assert.True(t, g.isError(), g.raw)
 		assert.Contains(t, g.text(), "session expired")
 		assert.Equal(t, 1, h.heart.count("tools/call"), "only the refused attempt")
+		h.warned()
 		assert.False(t, h.call(toolCall(2)).isError())
 	})
 
@@ -393,6 +403,7 @@ func TestSessions(t *testing.T) {
 		g := h.call(toolCall(1))
 		assert.True(t, g.isError(), g.raw)
 		assert.Contains(t, g.text(), "session expired")
+		h.warned()
 		assert.False(t, h.call(toolCall(2)).isError())
 	})
 }
@@ -569,17 +580,28 @@ func TestShutdown(t *testing.T) {
 }
 
 // gateWriter passes writes through until it is stalled; a stalled write
-// blocks until the writer is closed.
+// blocks until the gate is opened again (the write then goes through) or
+// closed (it fails).
 type gateWriter struct {
 	w       io.Writer
 	stalled atomic.Bool
 	closed  chan struct{}
+	reopen  chan struct{}
+	once    sync.Once
 }
 
 func (g *gateWriter) Write(p []byte) (int, error) {
+	g.once.Do(func() {
+		if g.reopen == nil {
+			g.reopen = make(chan struct{}, 1)
+		}
+	})
 	if g.stalled.Load() {
-		<-g.closed
-		return 0, io.ErrClosedPipe
+		select {
+		case <-g.closed:
+			return 0, io.ErrClosedPipe
+		case <-g.reopen:
+		}
 	}
 	return g.w.Write(p)
 }

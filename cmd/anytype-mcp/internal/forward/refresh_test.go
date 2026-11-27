@@ -1,6 +1,8 @@
 package forward
 
 import (
+	"context"
+	"errors"
 	"net"
 	"net/http"
 	"testing"
@@ -13,7 +15,7 @@ import (
 )
 
 func (h *harness) item() store.Item {
-	raw, err := h.st.Read(nil, testConn, false) //nolint:staticcheck // Mem ignores the context
+	raw, err := h.st.Read(context.Background(), testConn)
 	require.NoError(h.t, err)
 	it, err := store.DecodeItem(raw)
 	require.NoError(h.t, err)
@@ -48,8 +50,8 @@ func TestStartAndPinning(t *testing.T) {
 		assert.Equal(t, 1, h.st.ReadCount(), "one read at start, never again")
 	})
 
-	t.Run("a start with a locked store is final too", func(t *testing.T) {
-		h := start(t, func(h *harness) { h.st.SetFail(store.Temporary(store.ReasonLocked, nil)) })
+	t.Run("a start with a store that fails a check is final too", func(t *testing.T) {
+		h := start(t, func(h *harness) { h.st.SetFail(store.Temporary(store.ReasonDenied, errors.New("a rule"))) })
 		notConnected(t, h)
 		h.st.SetFail(nil)
 		h.clock.advance(time.Minute)
@@ -59,7 +61,7 @@ func TestStartAndPinning(t *testing.T) {
 
 	t.Run("an invalid item is no item", func(t *testing.T) {
 		h := start(t, func(h *harness) {
-			require.NoError(t, h.st.Write(nil, testConn, []byte(`{"v":1,"key":"x"}`), false)) //nolint:staticcheck
+			h.st.PutRaw(testConn, []byte(`{"v":1,"key":"x"}`))
 		})
 		notConnected(t, h)
 	})
@@ -100,11 +102,28 @@ func TestStartAndPinning(t *testing.T) {
 	})
 
 	t.Run("a store that can't answer on a re-read keeps the last snapshot", func(t *testing.T) {
+		for name, fail := range map[string]error{
+			"denied":      store.Temporary(store.ReasonDenied, errors.New("a rule")),
+			"unreachable": store.Temporary(store.ReasonUnreachable, errors.New("EIO")),
+			"a raw error": errors.New("input/output error"),
+		} {
+			h := start(t)
+			h.initialize()
+			h.st.SetReadFail(fail)
+			h.clock.advance(6 * time.Second)
+			g := h.call(toolCall(1))
+			assert.Nil(t, g.Error, name)
+			assert.False(t, g.isError(), name)
+			assert.Contains(t, h.log.String(), "keeping the last snapshot")
+		}
+	})
+
+	t.Run("an item that became invalid ends the connection", func(t *testing.T) {
 		h := start(t)
 		h.initialize()
-		h.st.SetFail(store.Temporary(store.ReasonLocked, nil))
+		h.st.PutRaw(testConn, []byte(`garbage`))
 		h.clock.advance(6 * time.Second)
-		assert.False(t, h.call(toolCall(1)).isError())
+		assert.Equal(t, codeNotConnected, h.call(toolCall(1)).Error.Code)
 	})
 
 	t.Run("the item is re-read only when the last read is older than 5 s", func(t *testing.T) {

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"regexp"
 	"strings"
 )
@@ -14,9 +15,12 @@ import (
 // ItemVersion is the item format this binary writes and reads.
 const ItemVersion = 1
 
-// MaxKeyBytes bounds the key so the whole item fits a Windows credential
-// blob (2560 bytes).
-const MaxKeyBytes = 1024
+// MaxKeyBytes bounds the key, and MaxItemBytes the whole stored item: a
+// longer file is not an item.
+const (
+	MaxKeyBytes  = 1024
+	MaxItemBytes = 4 << 10
+)
 
 var (
 	connectionRe = regexp.MustCompile(`^[a-z0-9-]{1,64}$`)
@@ -29,7 +33,7 @@ func ValidConnectionID(id string) bool { return connectionRe.MatchString(id) }
 // ValidTier reports whether t is a tier heart serves.
 func ValidTier(t string) bool { return t == "small" || t == "large" || t == "full" }
 
-// Item is the connection: everything serve needs, in one keychain item.
+// Item is the connection: everything serve needs, in one file.
 type Item struct {
 	V       int    `json:"v"`
 	Rev     int64  `json:"rev"`
@@ -81,12 +85,19 @@ func (it Item) Encode() ([]byte, error) {
 	return json.Marshal(it)
 }
 
-// DecodeItem parses a stored value. Anything that is not a valid item is
-// ErrInvalidItem; the message never carries the value.
+// DecodeItem parses a stored value: exactly one valid item and nothing
+// after it. Anything else is ErrInvalidItem; the message never carries the
+// value.
 func DecodeItem(raw []byte) (Item, error) {
 	var it Item
+	if len(raw) > MaxItemBytes {
+		return Item{}, ErrInvalidItem
+	}
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	if err := dec.Decode(&it); err != nil {
+		return Item{}, ErrInvalidItem
+	}
+	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
 		return Item{}, ErrInvalidItem
 	}
 	if err := it.Validate(); err != nil {

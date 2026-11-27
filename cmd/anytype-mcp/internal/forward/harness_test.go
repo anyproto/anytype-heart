@@ -229,6 +229,7 @@ type harness struct {
 	exit   chan int
 	cancel context.CancelFunc
 	opts   Options
+	srv    *server
 }
 
 type hopt func(*harness)
@@ -257,6 +258,7 @@ func start(t *testing.T, opts ...hopt) *harness {
 	for _, o := range opts {
 		o(h)
 	}
+	h.opts.onServer = func(s *server) { h.srv = s }
 	ctx, cancel := context.WithCancel(context.Background())
 	h.cancel = cancel
 	go func() {
@@ -365,6 +367,28 @@ func (h *harness) initialize() string {
 	h.send(`{"jsonrpc":"2.0","method":"notifications/initialized"}`)
 	require.Eventually(h.t, func() bool { return h.heart.count("notifications/initialized") >= 1 }, 3*time.Second, 5*time.Millisecond)
 	return r.ProtocolVersion
+}
+
+// warned waits until the reset warning's line is fully on stdout and the
+// gate is open again. A client that answers the warning in the same
+// instant may get it once more; tests wait instead.
+func (h *harness) warned() {
+	h.t.Helper()
+	require.Eventually(h.t, func() bool {
+		h.srv.mu.Lock()
+		defer h.srv.mu.Unlock()
+		return !h.srv.resetPending
+	}, 3*time.Second, time.Millisecond)
+}
+
+func (h *harness) deletes(session string) int {
+	n := 0
+	for _, r := range h.heart.requests() {
+		if r.Method == http.MethodDelete && (session == "" || r.Session == session) {
+			n++
+		}
+	}
+	return n
 }
 
 func (h *harness) waitExit() int {

@@ -22,13 +22,11 @@ type snapshot struct {
 // a readable item has no owner to pin and stays not connected for its
 // whole life. Later reads only move the port and the key.
 type connection struct {
-	id       string
-	st       store.Store
-	now      func() time.Time
-	maxAge   time.Duration
-	portOver int
-	tierOver string
-	log      *logger
+	id     string
+	st     store.Store
+	now    func() time.Time
+	maxAge time.Duration
+	log    *logger
 
 	gone    atomic.Bool // set with dead
 	mu      sync.Mutex
@@ -43,21 +41,11 @@ type connection struct {
 var errNotConnected = errors.New("not connected")
 
 func (c *connection) read(ctx context.Context) (store.Item, error) {
-	raw, err := c.st.Read(ctx, c.id, false)
+	raw, err := c.st.Read(ctx, c.id)
 	if err != nil {
 		return store.Item{}, err
 	}
-	it, err := store.DecodeItem(raw)
-	if err != nil {
-		return store.Item{}, err
-	}
-	if c.portOver != 0 {
-		it.Port = c.portOver
-	}
-	if c.tierOver != "" {
-		it.Tier = c.tierOver
-	}
-	return it, nil
+	return store.DecodeItem(raw)
 }
 
 func describe(err error) string {
@@ -65,14 +53,16 @@ func describe(err error) string {
 	switch {
 	case errors.Is(err, store.ErrNotFound):
 		return "no item"
-	case errors.Is(err, store.ErrNoStore):
-		return "no key store"
 	case errors.Is(err, store.ErrInvalidItem):
 		return "invalid item"
 	case errors.As(err, &t):
-		return "key store " + t.Reason
+		if t.Reason == store.ReasonDenied && t.Err != nil {
+			// the rule that failed; never a value
+			return "item store denied: " + t.Err.Error()
+		}
+		return "item store " + t.Reason
 	}
-	return "key store error"
+	return "item store error"
 }
 
 // start makes the one read that decides this process's fate.
@@ -133,20 +123,21 @@ func (c *connection) refresh(ctx context.Context) (snapshot, error) {
 	return c.snap, nil
 }
 
-// refreshLocked compares the whole new snapshot. Another account, another
-// tier or no item ends the connection until restart. A store that can't
-// answer right now proves nothing: the last snapshot stays, and heart
-// still refuses a revoked key.
+// refreshLocked compares the whole new snapshot. Only what is confirmed
+// ends the connection until restart: no item, an item that is not valid,
+// another account, another tier. A store that can't answer right now
+// proves nothing: the last snapshot stays, and heart still refuses a
+// revoked key.
 func (c *connection) refreshLocked(ctx context.Context) {
 	it, err := c.read(ctx)
 	c.readAt = c.now()
 	switch {
 	case err == nil:
-	case store.IsTemporary(err):
-		c.log.printf("item re-read failed (%s); keeping the last snapshot", describe(err))
+	case errors.Is(err, store.ErrNotFound), errors.Is(err, store.ErrInvalidItem):
+		c.kill(describe(err), "not connected until restart: %s")
 		return
 	default:
-		c.kill(describe(err), "not connected until restart: %s")
+		c.log.printf("item re-read failed (%s); keeping the last snapshot", describe(err))
 		return
 	}
 	if it.Account != c.account {

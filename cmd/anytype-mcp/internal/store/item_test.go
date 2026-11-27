@@ -1,7 +1,6 @@
 package store
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -19,17 +18,17 @@ func TestItem(t *testing.T) {
 		back, err := DecodeItem(raw)
 		require.NoError(t, err)
 		assert.Equal(t, good, back)
-		assert.Less(t, len(raw), 2560, "fits a Windows credential blob")
+		assert.Less(t, len(raw), MaxItemBytes)
 	})
 
-	t.Run("the largest item still fits a Windows credential blob", func(t *testing.T) {
+	t.Run("the largest item fits the size an item may have", func(t *testing.T) {
 		big := good
 		big.Key = strings.Repeat("k", MaxKeyBytes)
 		big.Account = strings.Repeat("a", 256)
 		big.Rev = 1 << 60
 		raw, err := big.Encode()
 		require.NoError(t, err)
-		assert.Less(t, len(raw), 2560)
+		assert.Less(t, len(raw), MaxItemBytes)
 	})
 
 	t.Run("the fingerprint is the registry's: the first 16 hex of sha256(key)", func(t *testing.T) {
@@ -76,26 +75,20 @@ func TestItem(t *testing.T) {
 }
 
 func TestNamespaces(t *testing.T) {
-	assert.Equal(t, "Anytype MCP", ServiceName(NamespaceRelease))
-	assert.Equal(t, "Anytype MCP Dev", ServiceName(NamespaceDev))
-	assert.Equal(t, "Anytype MCP Dev", ServiceName(""), "development is the default")
-	assert.Equal(t, "Anytype MCP Dev", ServiceName("Release"))
-	assert.Equal(t, "anytype-mcp", SecretServiceName(NamespaceRelease))
-	assert.Equal(t, "anytype-mcp-dev", SecretServiceName("x"))
-	assert.False(t, TestBuild)
+	assert.Equal(t, "items", FolderName(NamespaceRelease))
+	assert.Equal(t, "items-dev", FolderName(NamespaceDev))
+	assert.Equal(t, "items-dev", FolderName(""), "development is the default")
+	assert.Equal(t, "items-dev", FolderName("Release"))
 }
 
-func TestFileStore(t *testing.T) {
-	ctx := context.Background()
-	f := &File{Dir: t.TempDir()}
-	_, err := f.Read(ctx, "a", false)
-	require.ErrorIs(t, err, ErrNotFound)
-	require.ErrorIs(t, f.Delete(ctx, "a"), ErrNotFound)
-	require.NoError(t, f.Write(ctx, "a", []byte("one"), false))
-	require.NoError(t, f.Write(ctx, "a", []byte("two"), false))
-	raw, err := f.Read(ctx, "a", false)
+func TestDecodeItemTakesExactlyOneItem(t *testing.T) {
+	good := `{"v":1,"rev":1,"key":"k","account":"a","port":1,"tier":"full"}`
+	_, err := DecodeItem([]byte(good + "\n"))
 	require.NoError(t, err)
-	assert.Equal(t, "two", string(raw))
-	require.NoError(t, f.Delete(ctx, "a"))
-	require.NoError(t, f.Probe(ctx))
+	for _, tail := range []string{"x", "{}", good, " 1"} {
+		_, err := DecodeItem([]byte(good + tail))
+		require.ErrorIs(t, err, ErrInvalidItem, tail)
+	}
+	_, err = DecodeItem([]byte(good + strings.Repeat(" ", MaxItemBytes)))
+	require.ErrorIs(t, err, ErrInvalidItem, "longer than an item can be")
 }

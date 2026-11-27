@@ -1,17 +1,21 @@
 // Command anytype-mcp is the stdio side of an AI app's connection to
 // Anytype: it forwards MCP messages from stdin to the local Anytype's
-// /mcp/<tier> endpoint and owns the one OS keychain item that holds the
+// /mcp/<tier> endpoint and owns the one private file that holds the
 // connection's key.
 //
 //	anytype-mcp serve    --connection <id>
-//	anytype-mcp key set      --connection <id> --expect absent|<fp>@<rev> [--interactive]   # payload on stdin
+//	anytype-mcp key set      --connection <id> --expect absent|<fp>@<rev>   # payload on stdin
 //	anytype-mcp key retarget --connection <id> --expect <fp>@<rev> --account <id> --port N --tier T
 //	anytype-mcp key delete   --connection <id> --expect <fp>@<rev> --account <id>
 //	anytype-mcp key check    --connection <id>
 //	anytype-mcp version [--json]
 //
-// The key never appears in arguments, the environment or logs. The binary
-// imports nothing from heart beyond its own packages.
+// The item is one private file per connection under the user's home
+// (internal/store); the forwarder runs as its caller and reads only what
+// its caller could. The key never appears in arguments, the environment or
+// logs. Nothing but the home directory steers the binary: there are no
+// override flags and no test build. It imports nothing from heart beyond
+// its own packages.
 package main
 
 import (
@@ -29,19 +33,20 @@ import (
 
 // Exit codes. They are a contract with the desktop app.
 const (
-	exitOK           = 0
-	exitInternal     = 1
-	exitUsage        = 2
-	exitNoItem       = 3
-	exitNoStore      = 4
+	exitOK       = 0
+	exitInternal = 1
+	exitUsage    = 2
+	exitNoItem   = 3
+	// 4 is reserved (it once meant "no key store") and never returned.
 	exitPrecondition = 5
 	exitInvalidInput = 6
-	exitTemporary    = 7
+	// exitTemporary: nothing was read or written; try again.
+	exitTemporary = 7
 )
 
 const usage = `usage:
   anytype-mcp serve    --connection <id>
-  anytype-mcp key set      --connection <id> --expect absent|<fp>@<rev> [--interactive]   (payload on stdin)
+  anytype-mcp key set      --connection <id> --expect absent|<fp>@<rev>   (payload on stdin)
   anytype-mcp key retarget --connection <id> --expect <fp>@<rev> --account <id> --port N --tier T
   anytype-mcp key delete   --connection <id> --expect <fp>@<rev> --account <id>
   anytype-mcp key check    --connection <id>
@@ -87,16 +92,11 @@ func usageError(stderr io.Writer, msg string) int {
 func serveCmd(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	fs := newFlags("serve", stderr)
 	connection := fs.String("connection", "", "connection id")
-	var over overrides
-	over.register(fs, true)
 	if err := fs.Parse(args); err != nil || fs.NArg() != 0 {
 		return exitUsage
 	}
 	if !store.ValidConnectionID(*connection) {
 		return usageError(stderr, "--connection must match ^[a-z0-9-]{1,64}$")
-	}
-	if over.tier != "" && !store.ValidTier(over.tier) {
-		return usageError(stderr, "--tier must be small, large or full")
 	}
 
 	// a closed stdout must arrive as a write error, not as a signal
@@ -105,11 +105,9 @@ func serveCmd(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	defer stop()
 	return forward.Serve(ctx, forward.Options{
 		ConnectionID: *connection,
-		Store:        store.Open(namespace, over.storeDir),
+		Store:        store.Open(namespace),
 		In:           stdin,
 		Out:          stdout,
 		Log:          stderr,
-		PortOverride: over.port,
-		TierOverride: over.tier,
 	})
 }

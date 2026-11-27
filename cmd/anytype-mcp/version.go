@@ -13,17 +13,18 @@ import (
 // Rev is the forwarder's revision: one integer, bumped by hand in any
 // change to the forwarder's code, its dependencies or its Go toolchain.
 // The desktop app never replaces a stable copy with a lower Rev, and the
-// Claude bundle's version is 2.<Rev>.0. rev_test.go fails when the sources
-// change without a bump.
-const Rev = 1
+// Claude bundle's version is 2.<Rev>.0. guard_test.go fails when the
+// sources or a dependency version change without a bump.
+const Rev = 2
 
 // Set at link time (-ldflags -X main.…).
 //
 // linkNamespace is the whole marker, so the namespace of any build, for any
 // OS, can be read off the file: "anytype-mcp-namespace:release" is linked
-// only into the binary that release and nightly desktop builds pick. Every
-// other build is the development namespace and can't see a production
-// item. There is no flag and no environment variable.
+// only into the binary that release and nightly desktop builds pick. The
+// namespace picks the items folder (items or items-dev), so every other
+// build can't see a production item. There is no flag and no environment
+// variable.
 var (
 	linkNamespace = namespaceMarker + store.NamespaceDev
 	version       = "dev"
@@ -40,11 +41,10 @@ type versionInfo struct {
 	Rev       int    `json:"rev"`
 	Namespace string `json:"namespace"`
 	Impl      string `json:"impl"`
-	TestBuild bool   `json:"testBuild,omitempty"`
 }
 
 func currentVersion() versionInfo {
-	info := versionInfo{Version: version, Rev: Rev, Namespace: store.NormalizeNamespace(namespace), Impl: "go", TestBuild: store.TestBuild}
+	info := versionInfo{Version: version, Rev: Rev, Namespace: store.NormalizeNamespace(namespace), Impl: "go"}
 	if bi, ok := debug.ReadBuildInfo(); ok {
 		for _, s := range bi.Settings {
 			if s.Key == "vcs.revision" {

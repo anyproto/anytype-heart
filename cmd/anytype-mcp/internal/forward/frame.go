@@ -52,13 +52,38 @@ type rpcError struct {
 	Message string `json:"message"`
 }
 
-// reply is one outbound line. before runs when the writer turns to the
-// line, just before it is written. A reply with only flushed set is a
-// marker: the writer closes it when every line before it has been written.
+// reply is one outbound line. call is the request it answers, when it
+// answers one: the writer drops the reply of a request canceled before the
+// writer turned to it. after runs once the whole line is on stdout. A
+// reply with only flushed set is a marker: the writer closes it when every
+// line before it has been written.
 type reply struct {
 	line    []byte
-	before  func()
+	call    *call
+	after   func()
 	flushed chan struct{}
+}
+
+// idKey is the identity of a request id: a JSON string by its decoded
+// value, a number by its raw digits (so no precision is lost). Two
+// spellings of one string ("a&b" and "a\u0026b") are the same id; heart
+// echoes ids with HTML characters escaped. Empty means not a usable id.
+func idKey(raw json.RawMessage) string {
+	t := bytes.TrimSpace(raw)
+	if len(t) == 0 {
+		return ""
+	}
+	if t[0] == '"' {
+		var v string
+		if json.Unmarshal(t, &v) != nil {
+			return ""
+		}
+		return "s:" + v
+	}
+	if !validID(t) {
+		return ""
+	}
+	return "n:" + string(t)
 }
 
 type wireReply struct {
@@ -68,18 +93,21 @@ type wireReply struct {
 	Error   json.RawMessage `json:"error,omitempty"`
 }
 
-// encode builds the line. Marshal validates and compacts the raw members,
-// so a reply is always one complete line of valid JSON.
+// encode builds the line: one complete line of valid JSON. The encoder
+// validates and compacts the raw members and leaves their spelling alone
+// (no HTML escaping), so the client gets its id back byte for byte.
 func encode(w wireReply) (*reply, error) {
 	w.JSONRPC = "2.0"
 	if len(w.ID) == 0 {
 		w.ID = nullID
 	}
-	line, err := json.Marshal(w)
-	if err != nil {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(w); err != nil {
 		return nil, err
 	}
-	return &reply{line: append(line, '\n')}, nil
+	return &reply{line: buf.Bytes()}, nil
 }
 
 // internalLine is the last resort when a reply can't be encoded.

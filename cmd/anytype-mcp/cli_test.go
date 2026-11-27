@@ -3,7 +3,9 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -33,6 +35,8 @@ var (
 	buildOnce sync.Once
 	buildDir  string
 	buildErr  error
+	// goEnv is what the go tool needs once HOME points at a scratch folder
+	goEnv []string
 )
 
 func exe(name string) string {
@@ -42,9 +46,50 @@ func exe(name string) string {
 	return name
 }
 
-// binaries builds the forwarder three ways, once: the test build (file
-// store, overrides), the default build and the release-namespace build.
-func binaries(t *testing.T) (test, dev, release string) {
+// TestMain is the scratch guard: before any test runs, HOME and
+// USERPROFILE point at a fresh temp folder, so a test that forgets to give
+// a child its own home still can't reach the developer's. The go tool's
+// own folders are pinned first, because they default to the home.
+func TestMain(m *testing.M) {
+	os.Exit(guarded(m))
+}
+
+func guarded(m *testing.M) int {
+	if goBin, err := exec.LookPath("go"); err == nil {
+		for _, name := range []string{"GOCACHE", "GOMODCACHE", "GOPATH", "GOROOT", "GOFLAGS", "GOPROXY", "GOPRIVATE", "GOTOOLCHAIN"} {
+			out, err := exec.Command(goBin, "env", name).Output()
+			if err == nil {
+				value := strings.TrimSpace(string(out))
+				goEnv = append(goEnv, name+"="+value)
+				_ = os.Setenv(name, value)
+			}
+		}
+	}
+	scratch, err := os.MkdirTemp("", "anytype-mcp-home-")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "scratch home:", err)
+		return 1
+	}
+	defer os.RemoveAll(scratch)
+	_ = os.Setenv("HOME", scratch)
+	_ = os.Setenv("USERPROFILE", scratch)
+	code := m.Run()
+	if buildDir != "" {
+		_ = os.RemoveAll(buildDir)
+	}
+	return code
+}
+
+func TestScratchGuard(t *testing.T) {
+	home, err := os.UserHomeDir()
+	require.NoError(t, err)
+	assert.Contains(t, home, "anytype-mcp-home-", "the tests' own home is a scratch folder")
+	assert.Contains(t, store.Open("dev").Dir(), "anytype-mcp-home-")
+}
+
+// binaries builds the two shipped variants, once: the default build and
+// the release-namespace build. There is no test build.
+func binaries(t *testing.T) (dev, release string) {
 	t.Helper()
 	if _, err := exec.LookPath("go"); err != nil {
 		t.Skip("no go toolchain on PATH")
@@ -55,7 +100,6 @@ func binaries(t *testing.T) (test, dev, release string) {
 			return
 		}
 		for _, b := range [][]string{
-			{"test", "-tags", "teststore"},
 			{"dev"},
 			{"release", "-ldflags", "-X main.linkNamespace=anytype-mcp-namespace:release -X main.version=1.2.3"},
 		} {
@@ -67,15 +111,7 @@ func binaries(t *testing.T) (test, dev, release string) {
 		}
 	})
 	require.NoError(t, buildErr)
-	return filepath.Join(buildDir, exe("test")), filepath.Join(buildDir, exe("dev")), filepath.Join(buildDir, exe("release"))
-}
-
-func TestMain(m *testing.M) {
-	code := m.Run()
-	if buildDir != "" {
-		_ = os.RemoveAll(buildDir)
-	}
-	os.Exit(code)
+	return filepath.Join(buildDir, exe("dev")), filepath.Join(buildDir, exe("release"))
 }
 
 type result struct {
@@ -91,35 +127,35 @@ func (r result) json(t *testing.T) map[string]any {
 	return m
 }
 
-// env is one scratch connection store.
+// env is one scratch home with its own item store.
 type env struct {
-	t   *testing.T
-	bin string
-	dir string
+	t    *testing.T
+	bin  string
+	home string
 }
 
 func newEnv(t *testing.T) *env {
-	bin, _, _ := binaries(t)
-	return &env{t: t, bin: bin, dir: t.TempDir()}
+	dev, _ := binaries(t)
+	return &env{t: t, bin: dev, home: t.TempDir()}
 }
 
-func (e *env) dirs() []string { return []string{"--store-dir", e.dir, "--lock-dir", e.dir} }
+// childEnv is the whole environment of a child: built from scratch, never
+// from os.Environ.
+func childEnv(home string) []string {
+	return []string{"HOME=" + home, "USERPROFILE=" + home}
+}
+
+func (e *env) items() string { return filepath.Join(e.home, ".anytype", "ai-connect", "items-dev") }
 
 func (e *env) run(stdin string, args ...string) result {
 	e.t.Helper()
-	return runBin(e.t, e.bin, stdin, args...)
+	return runIn(e.t, e.home, e.bin, stdin, args...)
 }
 
-func runBin(t *testing.T, bin, stdin string, args ...string) result {
+func runIn(t *testing.T, home, bin, stdin string, args ...string) result {
 	t.Helper()
 	cmd := exec.Command(bin, args...)
-	// nothing from the test's environment may steer the binary
-	cmd.Env = []string{"HOME=" + t.TempDir()}
-	return runCmd(t, cmd, stdin)
-}
-
-func runCmd(t *testing.T, cmd *exec.Cmd, stdin string) result {
-	t.Helper()
+	cmd.Env = childEnv(home)
 	cmd.Stdin = strings.NewReader(stdin)
 	var out, errb bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errb
@@ -145,12 +181,17 @@ func payload(key, account string, port int, tier string) string {
 }
 
 func (e *env) set(expect, key, account string, port int, tier string) result {
-	args := append([]string{"key", "set", "--connection", "conn-a", "--expect", expect}, e.dirs()...)
-	return e.run(payload(key, account, port, tier), args...)
+	return e.run(payload(key, account, port, tier), "key", "set", "--connection", "conn-a", "--expect", expect)
 }
 
-func (e *env) check() result {
-	return e.run("", append([]string{"key", "check", "--connection", "conn-a"}, e.dirs()...)...)
+func (e *env) check() result { return e.run("", "key", "check", "--connection", "conn-a") }
+
+func (e *env) retarget(expect, account, port, tier string) result {
+	return e.run("", "key", "retarget", "--connection", "conn-a", "--expect", expect, "--account", account, "--port", port, "--tier", tier)
+}
+
+func (e *env) del(expect, account string) result {
+	return e.run("", "key", "delete", "--connection", "conn-a", "--expect", expect, "--account", account)
 }
 
 func stamp(r map[string]any) string {
@@ -158,33 +199,47 @@ func stamp(r map[string]any) string {
 }
 
 func TestVersionAndNamespaces(t *testing.T) {
-	test, dev, release := binaries(t)
+	dev, release := binaries(t)
+	home := t.TempDir()
 	for _, tc := range []struct {
 		bin, namespace, version string
-	}{{dev, "dev", "dev"}, {release, "release", "1.2.3"}, {test, "dev", "dev"}} {
-		r := runBin(t, tc.bin, "", "version", "--json")
+	}{{dev, "dev", "dev"}, {release, "release", "1.2.3"}} {
+		r := runIn(t, home, tc.bin, "", "version", "--json")
 		require.Equal(t, 0, r.code)
 		m := r.json(t)
 		assert.Equal(t, tc.namespace, m["namespace"])
 		assert.Equal(t, tc.version, m["version"])
 		assert.Equal(t, "go", m["impl"])
 		assert.EqualValues(t, Rev, m["rev"])
+		assert.Len(t, m, 5, "version, commit, rev, namespace, impl and nothing else")
 	}
-	assert.Equal(t, true, runBin(t, test, "", "version", "--json").json(t)["testBuild"])
-	assert.Nil(t, runBin(t, release, "", "version", "--json").json(t)["testBuild"])
-	assert.Contains(t, runBin(t, dev, "", "version").stdout, "dev namespace")
+	assert.Contains(t, runIn(t, home, dev, "", "version").stdout, "dev namespace")
 
-	// the namespaces can never name the same item
-	assert.Equal(t, "Anytype MCP", store.ServiceName("release"))
-	assert.Equal(t, "Anytype MCP Dev", store.ServiceName("dev"))
-	assert.Equal(t, "Anytype MCP Dev", store.ServiceName("anything-else"))
+	t.Run("dev and release write to different folders and can't see each other's item", func(t *testing.T) {
+		set := func(bin, key string) result {
+			return runIn(t, home, bin, payload(key, "A", 1, "small"), "key", "set", "--connection", "conn-a", "--expect", "absent")
+		}
+		check := func(bin string) result { return runIn(t, home, bin, "", "key", "check", "--connection", "conn-a") }
+		require.Equal(t, exitOK, set(dev, canary).code)
+		assert.Equal(t, exitNoItem, check(release).code)
+		require.Equal(t, exitOK, set(release, canary+"r").code)
+		assert.Equal(t, "release", check(release).json(t)["namespace"])
+		assert.NotEqual(t, check(dev).json(t)["fingerprint"], check(release).json(t)["fingerprint"])
+		base := filepath.Join(home, ".anytype", "ai-connect")
+		for _, p := range []string{filepath.Join(base, "items-dev", "conn-a.item"), filepath.Join(base, "items", "conn-a.item")} {
+			_, err := os.Stat(p)
+			require.NoError(t, err, p)
+		}
+	})
 
-	t.Run("shipped builds have no overrides", func(t *testing.T) {
+	t.Run("there are no override flags and no interactive mode", func(t *testing.T) {
 		for _, bin := range []string{dev, release} {
 			for _, flag := range []string{"--port", "--tier", "--store-dir", "--lock-dir"} {
-				r := runBin(t, bin, "", "serve", "--connection", "x", flag, "1")
-				assert.Equal(t, exitUsage, r.code, flag)
+				assert.Equal(t, exitUsage, runIn(t, home, bin, "", "serve", "--connection", "x", flag, "1").code, flag)
+				assert.Equal(t, exitUsage, runIn(t, home, bin, "", "key", "check", "--connection", "x", flag, "1").code, flag)
 			}
+			r := runIn(t, home, bin, payload("k", "A", 1, "small"), "key", "set", "--connection", "x", "--expect", "absent", "--interactive")
+			assert.Equal(t, exitUsage, r.code)
 		}
 	})
 }
@@ -196,6 +251,7 @@ func TestKeyVerbs(t *testing.T) {
 		assert.Equal(t, exitNoItem, r.code)
 		assert.Equal(t, false, r.json(t)["present"])
 		assert.Equal(t, "ok", r.json(t)["store"])
+		assert.Equal(t, "file", r.json(t)["kind"])
 
 		r = e.set("absent", canary, "AccountOne", 31009, "full")
 		require.Equal(t, exitOK, r.code, r.stderr)
@@ -214,8 +270,7 @@ func TestKeyVerbs(t *testing.T) {
 		assert.Equal(t, "dev", c["namespace"])
 		assert.Equal(t, stamp(first), stamp(c))
 
-		args := append([]string{"key", "retarget", "--connection", "conn-a", "--expect", stamp(first), "--account", "AccountOne", "--port", "40000", "--tier", "full"}, e.dirs()...)
-		r = e.run("", args...)
+		r = e.retarget(stamp(first), "AccountOne", "40000", "full")
 		require.Equal(t, exitOK, r.code, r.stderr)
 		second := r.json(t)
 		assert.EqualValues(t, 2, second["rev"])
@@ -223,7 +278,7 @@ func TestKeyVerbs(t *testing.T) {
 		assert.EqualValues(t, 40000, e.check().json(t)["port"])
 
 		// the same retarget again: its precondition is stale
-		assert.Equal(t, exitPrecondition, e.run("", args...).code)
+		assert.Equal(t, exitPrecondition, e.retarget(stamp(first), "AccountOne", "40000", "full").code)
 
 		// rotation
 		r = e.set(stamp(second), canary+"2", "AccountOne", 40000, "full")
@@ -232,17 +287,14 @@ func TestKeyVerbs(t *testing.T) {
 		assert.EqualValues(t, 3, third["rev"])
 		assert.NotEqual(t, second["fingerprint"], third["fingerprint"])
 
-		del := func(expect, account string) result {
-			return e.run("", append([]string{"key", "delete", "--connection", "conn-a", "--expect", expect, "--account", account}, e.dirs()...)...)
-		}
-		assert.Equal(t, exitPrecondition, del(stamp(second), "AccountOne").code, "stale state")
-		assert.Equal(t, exitPrecondition, del(stamp(third), "AccountTwo").code, "not the owner")
+		assert.Equal(t, exitPrecondition, e.del(stamp(second), "AccountOne").code, "stale state")
+		assert.Equal(t, exitPrecondition, e.del(stamp(third), "AccountTwo").code, "not the owner")
 		assert.Equal(t, exitOK, e.check().code, "a refused delete changes nothing")
-		r = del(stamp(third), "AccountOne")
+		r = e.del(stamp(third), "AccountOne")
 		assert.Equal(t, exitOK, r.code)
 		assert.Equal(t, true, r.json(t)["ok"])
 		assert.Equal(t, exitNoItem, e.check().code)
-		assert.Equal(t, exitNoItem, del(stamp(third), "AccountOne").code, "an absent item is exit 3")
+		assert.Equal(t, exitNoItem, e.del(stamp(third), "AccountOne").code, "an absent item is exit 3")
 	})
 
 	t.Run("preconditions", func(t *testing.T) {
@@ -252,8 +304,7 @@ func TestKeyVerbs(t *testing.T) {
 		assert.Equal(t, exitPrecondition, e.set("absent", canary, "A", 1, "small").code, "expected none, found one")
 		assert.Equal(t, exitPrecondition, e.set(store.Fingerprint(canary)+"@2", canary, "A", 1, "small").code, "wrong rev")
 		assert.Equal(t, exitPrecondition, e.set(store.Fingerprint("other")+"@1", canary, "A", 1, "small").code, "wrong fingerprint")
-		retarget := e.run("", append([]string{"key", "retarget", "--connection", "conn-a", "--expect", store.Fingerprint(canary) + "@1", "--account", "B", "--port", "2", "--tier", "small"}, e.dirs()...)...)
-		assert.Equal(t, exitPrecondition, retarget.code, "not the owner")
+		assert.Equal(t, exitPrecondition, e.retarget(store.Fingerprint(canary)+"@1", "B", "2", "small").code, "not the owner")
 		assert.EqualValues(t, 1, e.check().json(t)["rev"], "nothing changed")
 	})
 
@@ -266,6 +317,7 @@ func TestKeyVerbs(t *testing.T) {
 			{"key", "frobnicate"},
 			{"key", "check"},
 			{"key", "check", "--connection", "Bad_ID"},
+			{"key", "check", "--connection", "../x"},
 			{"key", "set", "--connection", "conn-a"},
 			{"key", "set", "--connection", "conn-a", "--expect", "whatever"},
 			{"key", "retarget", "--connection", "conn-a", "--expect", "absent", "--account", "A", "--port", "1", "--tier", "small"},
@@ -279,79 +331,262 @@ func TestKeyVerbs(t *testing.T) {
 		} {
 			assert.Equal(t, exitUsage, e.run("", args...).code, "%v", args)
 		}
+		good := strings.TrimSuffix(payload(canary, "A", 1, "small"), "\n")
 		for name, in := range map[string]string{
-			"empty":              "",
-			"not JSON":           "hello\n",
-			"unknown field":      `{"key":"k","account":"A","port":1,"tier":"small","extra":1}` + "\n",
-			"no key":             payload("", "A", 1, "small"),
-			"bad tier":           payload("k", "A", 1, "medium"),
-			"bad port":           payload("k", "A", 0, "small"),
-			"no account":         payload("k", "", 1, "small"),
-			"key with a newline": `{"key":"a\nb","account":"A","port":1,"tier":"small"}` + "\n",
+			"empty":                 "",
+			"not JSON":              "hello\n",
+			"unknown field":         `{"key":"k","account":"A","port":1,"tier":"small","extra":1}` + "\n",
+			"no key":                payload("", "A", 1, "small"),
+			"bad tier":              payload("k", "A", 1, "medium"),
+			"bad port":              payload("k", "A", 0, "small"),
+			"no account":            payload("k", "", 1, "small"),
+			"key with a newline":    `{"key":"a\nb","account":"A","port":1,"tier":"small"}` + "\n",
+			"followed by x":         good + "x\n",
+			"followed by an object": good + "\n" + good + "\n",
+			"one byte too long":     good + strings.Repeat(" ", maxPayload+1-len(good)),
+			"cut at the limit":      `{"key":"` + strings.Repeat("k", maxPayload),
 		} {
-			r := e.run(in, append([]string{"key", "set", "--connection", "conn-a", "--expect", "absent"}, e.dirs()...)...)
+			r := e.run(in, "key", "set", "--connection", "conn-a", "--expect", "absent")
 			assert.Equal(t, exitInvalidInput, r.code, name)
+			assert.NotContains(t, r.stdout+r.stderr, canary, name)
 		}
 		assert.Equal(t, exitNoItem, e.check().code, "nothing was written")
-	})
-
-	t.Run("no store is exit 4; a locked or denying store is exit 7 and never destructive", func(t *testing.T) {
-		e := newEnv(t)
-		require.Equal(t, exitOK, e.set("absent", canary, "A", 1, "small").code)
-		st := stamp(e.check().json(t))
-		state := filepath.Join(e.dir, ".state")
-		all := func() []result {
-			return []result{
-				e.check(),
-				e.set(st, canary+"x", "A", 1, "small"),
-				e.run("", append([]string{"key", "retarget", "--connection", "conn-a", "--expect", st, "--account", "A", "--port", "2", "--tier", "small"}, e.dirs()...)...),
-				e.run("", append([]string{"key", "delete", "--connection", "conn-a", "--expect", st, "--account", "A"}, e.dirs()...)...),
-			}
-		}
-		for _, s := range []string{"locked", "denied"} {
-			require.NoError(t, os.WriteFile(state, []byte(s), 0o600))
-			for i, r := range all() {
-				assert.Equal(t, exitTemporary, r.code, "%s verb %d", s, i)
-				assert.Equal(t, s, r.json(t)["store"])
-			}
-		}
-		require.NoError(t, os.WriteFile(state, []byte("nostore"), 0o600))
-		for i, r := range all() {
-			assert.Equal(t, exitNoStore, r.code, "verb %d", i)
-			assert.Equal(t, "none", r.json(t)["store"])
-		}
-		require.NoError(t, os.Remove(state))
-		assert.Equal(t, st, stamp(e.check().json(t)), "the item is untouched")
+		_, err := os.Stat(filepath.Join(e.home, ".anytype"))
+		assert.ErrorIs(t, err, os.ErrNotExist, "a refused payload creates nothing")
+		r := e.run(good+"  \n\n", "key", "set", "--connection", "conn-a", "--expect", "absent")
+		assert.Equal(t, exitOK, r.code, "trailing white space is fine")
 	})
 
 	t.Run("an invalid stored value counts as absent and is replaced by key set", func(t *testing.T) {
 		e := newEnv(t)
-		require.NoError(t, os.WriteFile(filepath.Join(e.dir, "conn-a.item"), []byte("garbage"), 0o600))
-		r := e.check()
-		assert.Equal(t, exitNoItem, r.code)
-		assert.Equal(t, true, r.json(t)["invalid"])
-		assert.Equal(t, exitOK, e.set("absent", canary, "A", 1, "small").code)
+		require.Equal(t, exitOK, e.run(payload("k", "A", 1, "small"), "key", "set", "--connection", "other", "--expect", "absent").code)
+		good := strings.TrimSuffix(payload(canary, "A", 1, "small"), "\n")
+		for _, bad := range []string{"garbage", `{"v":1,"rev":1,"key":"k","account":"A","port":1,"tier":"small"}x`, good, strings.Repeat("x", 5000)} {
+			require.NoError(t, os.WriteFile(filepath.Join(e.items(), "conn-a.item"), []byte(bad), 0o600))
+			r := e.check()
+			assert.Equal(t, exitNoItem, r.code)
+			assert.Equal(t, true, r.json(t)["invalid"])
+			assert.Equal(t, false, r.json(t)["present"])
+			r = e.set("absent", canary, "A", 1, "small")
+			require.Equal(t, exitOK, r.code, r.stderr)
+			assert.EqualValues(t, 1, r.json(t)["rev"])
+		}
 	})
 
-	t.Run("the key is in no output", func(t *testing.T) {
+	t.Run("the key is in no output and in no file but its own item", func(t *testing.T) {
 		e := newEnv(t)
 		outputs := []result{
 			e.set("absent", canary, "A", 1, "small"),
 			e.check(),
 			e.set("absent", canary, "A", 1, "small"),
-			e.run(`{"key":"`+canary+`","oops":1}`+"\n", append([]string{"key", "set", "--connection", "conn-a", "--expect", "absent"}, e.dirs()...)...),
+			e.run(`{"key":"`+canary+`","oops":1}`+"\n", "key", "set", "--connection", "conn-a", "--expect", "absent"),
+			e.retarget(store.Fingerprint(canary)+"@1", "A", "2", "small"),
 		}
 		for _, r := range outputs {
 			assert.NotContains(t, r.stdout, canary)
 			assert.NotContains(t, r.stderr, canary)
 		}
+		var holders []string
+		require.NoError(t, filepath.WalkDir(e.home, func(path string, d os.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				return err
+			}
+			raw, err := os.ReadFile(path)
+			if err == nil && bytes.Contains(raw, []byte(canary)) {
+				holders = append(holders, path)
+			}
+			return nil
+		}))
+		assert.Equal(t, []string{filepath.Join(e.items(), "conn-a.item")}, holders)
 	})
+}
+
+// TestStoreRulesThroughTheVerbs: a folder or an item that fails a safety
+// rule is exit 7 for every verb, changes nothing, and names the rule on
+// stderr; serve starts not connected.
+func TestStoreRulesThroughTheVerbs(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("modes are a Unix rule; the Windows descriptors are tested in the store package")
+	}
+	all := func(e *env, st string) []result {
+		return []result{
+			e.check(),
+			e.set(st, canary+"x", "A", 1, "small"),
+			e.retarget(st, "A", "2", "small"),
+			e.del(st, "A"),
+		}
+	}
+	seeded := func(t *testing.T) (*env, string, []byte) {
+		e := newEnv(t)
+		require.Equal(t, exitOK, e.set("absent", canary, "A", 1, "small").code)
+		raw, err := os.ReadFile(filepath.Join(e.items(), "conn-a.item"))
+		require.NoError(t, err)
+		return e, stamp(e.check().json(t)), raw
+	}
+	untouched := func(t *testing.T, e *env, before []byte) {
+		t.Helper()
+		raw, err := os.ReadFile(filepath.Join(e.items(), "conn-a.item"))
+		require.NoError(t, err)
+		assert.Equal(t, before, raw, "the item is untouched")
+	}
+	serveNotConnected := func(t *testing.T, e *env) {
+		t.Helper()
+		r := e.run(initLine+"\n", "serve", "--connection", "conn-a")
+		assert.Equal(t, exitOK, r.code)
+		assert.Contains(t, r.stdout, `"code":-32001`)
+	}
+
+	for name, breakIt := range map[string]func(t *testing.T, e *env) (restore func()){
+		"the items folder at 0755": func(t *testing.T, e *env) func() {
+			require.NoError(t, os.Chmod(e.items(), 0o755))
+			return func() { _ = os.Chmod(e.items(), 0o700) }
+		},
+		"a group-writable ancestor": func(t *testing.T, e *env) func() {
+			dot := filepath.Join(e.home, ".anytype")
+			require.NoError(t, os.Chmod(dot, 0o775))
+			return func() { _ = os.Chmod(dot, 0o700) }
+		},
+		"the item at 0644": func(t *testing.T, e *env) func() {
+			item := filepath.Join(e.items(), "conn-a.item")
+			require.NoError(t, os.Chmod(item, 0o644))
+			return func() { _ = os.Chmod(item, 0o600) }
+		},
+	} {
+		t.Run(name+": denied", func(t *testing.T) {
+			e, st, before := seeded(t)
+			restore := breakIt(t, e)
+			for i, r := range all(e, st) {
+				assert.Equal(t, exitTemporary, r.code, "verb %d", i)
+				assert.Equal(t, "denied", r.json(t)["store"], "verb %d", i)
+				assert.Contains(t, r.stderr, "denied", "the rule is named on stderr")
+				assert.NotContains(t, r.stdout+r.stderr, canary)
+			}
+			assert.Nil(t, e.check().json(t)["present"], "present is null: the store could not say")
+			serveNotConnected(t, e)
+			restore()
+			untouched(t, e, before)
+			assert.Equal(t, st, stamp(e.check().json(t)))
+		})
+	}
+
+	t.Run("the items folder at 000: unreachable", func(t *testing.T) {
+		if os.Geteuid() == 0 {
+			t.Skip("root reads everything")
+		}
+		e, st, before := seeded(t)
+		// 000 fails the "exactly 0700" rule before anything is opened
+		require.NoError(t, os.Chmod(e.items(), 0o000))
+		for i, r := range all(e, st) {
+			assert.Equal(t, exitTemporary, r.code, "verb %d", i)
+			assert.Contains(t, []any{"denied", "unreachable"}, r.json(t)["store"], "verb %d", i)
+		}
+		serveNotConnected(t, e)
+		require.NoError(t, os.Chmod(e.items(), 0o700))
+		untouched(t, e, before)
+	})
+
+	t.Run("an item symlink is refused and its target is not read", func(t *testing.T) {
+		e, st, _ := seeded(t)
+		item := filepath.Join(e.items(), "conn-a.item")
+		target := filepath.Join(e.home, "elsewhere.item")
+		require.NoError(t, os.Rename(item, target))
+		require.NoError(t, os.Symlink(target, item))
+		for i, r := range all(e, st) {
+			assert.Equal(t, exitTemporary, r.code, "verb %d", i)
+		}
+		raw, err := os.ReadFile(target)
+		require.NoError(t, err)
+		assert.Contains(t, string(raw), canary, "the target is untouched")
+		serveNotConnected(t, e)
+	})
+}
+
+// readBackFails is a store whose reads fail once a write has gone through.
+type readBackFails struct {
+	*store.Mem
+	wrote bool
+}
+
+func (s *readBackFails) Write(ctx context.Context, id string, value []byte) error {
+	s.wrote = true
+	return s.Mem.Write(ctx, id, value)
+}
+
+func (s *readBackFails) Read(ctx context.Context, id string) ([]byte, error) {
+	if s.wrote {
+		return nil, store.Temporary(store.ReasonUnreachable, errors.New("read-back failed"))
+	}
+	return s.Mem.Read(ctx, id)
+}
+
+// takenThenFails is a store that reports a write it took as unconfirmed.
+type takenThenFails struct{ *store.Mem }
+
+func (s *takenThenFails) Write(ctx context.Context, id string, value []byte) error {
+	if err := s.Mem.Write(ctx, id, value); err != nil {
+		return err
+	}
+	return &store.UnconfirmedError{Err: errors.New("folder sync failed")}
+}
+
+// TestExitSevenMeansNothingWasWritten: once the store has taken a write,
+// a failure is "unconfirmed" with exit 1, never "try again".
+func TestExitSevenMeansNothingWasWritten(t *testing.T) {
+	next := store.Item{V: 1, Rev: 1, Key: canary, Account: "A", Port: 1, Tier: "small"}
+	for name, st := range map[string]store.Store{
+		"the read-back fails":           &readBackFails{Mem: store.NewMem()},
+		"the store could not confirm":   &takenThenFails{Mem: store.NewMem()},
+		"the read-back shows something": &writesElse{Mem: store.NewMem()},
+	} {
+		t.Run(name, func(t *testing.T) {
+			var out, errb bytes.Buffer
+			e := &keyEnv{st: st, stdout: &out, stderr: &errb}
+			code := e.set(context.Background(), keyFlags{connection: "c", expect: "absent"},
+				setPayload{Key: next.Key, Account: next.Account, Port: next.Port, Tier: next.Tier})
+			assert.Equal(t, exitInternal, code)
+			var line map[string]any
+			require.NoError(t, json.Unmarshal(out.Bytes(), &line))
+			assert.Equal(t, false, line["ok"])
+			assert.Equal(t, true, line["unconfirmed"])
+			assert.NotContains(t, out.String()+errb.String(), canary)
+		})
+	}
+
+	t.Run("the item holds the new key", func(t *testing.T) {
+		st := &readBackFails{Mem: store.NewMem()}
+		var out, errb bytes.Buffer
+		e := &keyEnv{st: st, stdout: &out, stderr: &errb}
+		require.Equal(t, exitInternal, e.commit(context.Background(), "c", next))
+		raw, err := st.Mem.Read(context.Background(), "c")
+		require.NoError(t, err)
+		got, err := store.DecodeItem(raw)
+		require.NoError(t, err)
+		assert.Equal(t, next, got)
+	})
+
+	t.Run("a write the store refused is exit 7 and nothing changed", func(t *testing.T) {
+		st := store.NewMem()
+		st.SetFail(store.Temporary(store.ReasonUnreachable, errors.New("disk")))
+		var out, errb bytes.Buffer
+		e := &keyEnv{st: st, stdout: &out, stderr: &errb}
+		assert.Equal(t, exitTemporary, e.commit(context.Background(), "c", next))
+		assert.NotContains(t, out.String(), "unconfirmed")
+	})
+}
+
+// writesElse stores something other than what it was given.
+type writesElse struct{ *store.Mem }
+
+func (s *writesElse) Write(ctx context.Context, id string, _ []byte) error {
+	other := store.Item{V: 1, Rev: 9, Key: "someone-else", Account: "B", Port: 2, Tier: "full"}
+	raw, _ := other.Encode()
+	return s.Mem.Write(ctx, id, raw)
 }
 
 // TestTwoProcessesOneConnection races real processes on one item: the
 // lock and the fp@rev precondition let exactly one of each pair win.
 func TestTwoProcessesOneConnection(t *testing.T) {
-	race := func(t *testing.T, a, b func() result) (result, result) {
+	race := func(a, b func() result) (result, result) {
 		var ra, rb result
 		var wg sync.WaitGroup
 		wg.Add(2)
@@ -363,23 +598,19 @@ func TestTwoProcessesOneConnection(t *testing.T) {
 	for round := 0; round < 5; round++ {
 		t.Run("set against set from absent", func(t *testing.T) {
 			e := newEnv(t)
-			ra, rb := race(t,
+			ra, rb := race(
 				func() result { return e.set("absent", canary+"a", "A", 1, "small") },
 				func() result { return e.set("absent", canary+"b", "B", 2, "small") })
-			codes := []int{ra.code, rb.code}
-			assert.ElementsMatch(t, []int{exitOK, exitPrecondition}, codes)
+			assert.ElementsMatch(t, []int{exitOK, exitPrecondition}, []int{ra.code, rb.code})
 			assert.EqualValues(t, 1, e.check().json(t)["rev"])
 		})
 		t.Run("two retargets from the same rev", func(t *testing.T) {
 			e := newEnv(t)
 			require.Equal(t, exitOK, e.set("absent", canary, "A", 1, "small").code)
 			st := stamp(e.check().json(t))
-			re := func(port string) func() result {
-				return func() result {
-					return e.run("", append([]string{"key", "retarget", "--connection", "conn-a", "--expect", st, "--account", "A", "--port", port, "--tier", "small"}, e.dirs()...)...)
-				}
-			}
-			ra, rb := race(t, re("1001"), re("1002"))
+			ra, rb := race(
+				func() result { return e.retarget(st, "A", "1001", "small") },
+				func() result { return e.retarget(st, "A", "1002", "small") })
 			assert.ElementsMatch(t, []int{exitOK, exitPrecondition}, []int{ra.code, rb.code})
 			c := e.check().json(t)
 			assert.EqualValues(t, 2, c["rev"])
@@ -393,11 +624,9 @@ func TestTwoProcessesOneConnection(t *testing.T) {
 			e := newEnv(t)
 			require.Equal(t, exitOK, e.set("absent", canary, "A", 1, "small").code)
 			st := stamp(e.check().json(t))
-			ra, rb := race(t,
+			ra, rb := race(
 				func() result { return e.set(st, canary+"2", "A", 1, "small") },
-				func() result {
-					return e.run("", append([]string{"key", "delete", "--connection", "conn-a", "--expect", st, "--account", "A"}, e.dirs()...)...)
-				})
+				func() result { return e.del(st, "A") })
 			assert.ElementsMatch(t, []int{exitOK, exitPrecondition}, []int{ra.code, rb.code})
 			if ra.code == exitOK {
 				assert.EqualValues(t, 2, e.check().json(t)["rev"])
@@ -477,9 +706,8 @@ type child struct {
 }
 
 func (e *env) serve(extra ...string) *child {
-	args := append([]string{"serve", "--connection", "conn-a"}, e.dirs()...)
-	cmd := exec.Command(e.bin, append(args, extra...)...)
-	cmd.Env = []string{"HOME=" + e.t.TempDir()}
+	cmd := exec.Command(e.bin, append([]string{"serve", "--connection", "conn-a"}, extra...)...)
+	cmd.Env = childEnv(e.home)
 	stdin, err := cmd.StdinPipe()
 	require.NoError(e.t, err)
 	outR, outW, err := os.Pipe()
@@ -581,25 +809,20 @@ func TestServeProcess(t *testing.T) {
 		assert.NotZero(t, heart.hits.Load())
 	})
 
-	t.Run("a locked store at start is final too", func(t *testing.T) {
+	t.Run("a running serve follows a retarget to another port without a restart", func(t *testing.T) {
 		e := newEnv(t)
-		heart := newHeartStub(t)
-		require.Equal(t, exitOK, e.set("absent", canary, "A", heart.port(), "full").code)
-		state := filepath.Join(e.dir, ".state")
-		require.NoError(t, os.WriteFile(state, []byte("locked"), 0o600))
+		first, second := newHeartStub(t), newHeartStub(t)
+		r := e.set("absent", canary, "A", first.port(), "full")
+		require.Equal(t, exitOK, r.code)
 		c := e.serve()
-		assert.Equal(t, -32001, errCode(c.call(initLine)))
-		require.NoError(t, os.Remove(state))
-		assert.Equal(t, -32001, errCode(c.call(initLine)))
-		assert.Zero(t, heart.hits.Load())
-	})
-
-	t.Run("the test build's overrides replace the item's port and tier", func(t *testing.T) {
-		e := newEnv(t)
-		heart := newHeartStub(t)
-		require.Equal(t, exitOK, e.set("absent", canary, "A", 1, "small").code)
-		c := e.serve("--port", strconv.Itoa(heart.port()), "--tier", "full")
-		assert.Zero(t, errCode(c.call(initLine)))
+		require.Zero(t, errCode(c.call(initLine)))
+		first.srv.Close()
+		require.Equal(t, exitOK, e.retarget(stamp(r.json(t)), "A", strconv.Itoa(second.port()), "full").code)
+		// the first port now refuses; the item is re-read and the request retried
+		require.Eventually(t, func() bool {
+			return errCode(c.call(`{"jsonrpc":"2.0","id":2,"method":"tools/list"}`)) == 0
+		}, 10*time.Second, 100*time.Millisecond)
+		assert.NotZero(t, second.hits.Load())
 	})
 
 	if runtime.GOOS == "windows" {

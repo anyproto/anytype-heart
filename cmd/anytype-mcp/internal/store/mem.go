@@ -6,12 +6,13 @@ import (
 )
 
 // Mem is an in-memory Store for tests. Fail, when set, is returned by
-// every call (ErrNoStore, a TemporaryError …).
+// every call; ReadFail only by reads.
 type Mem struct {
-	mu    sync.Mutex
-	items map[string][]byte
-	Fail  error
-	Reads int
+	mu       sync.Mutex
+	items    map[string][]byte
+	Fail     error
+	ReadFail error
+	Reads    int
 }
 
 // NewMem returns an empty Mem.
@@ -24,6 +25,13 @@ func (m *Mem) SetFail(err error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.Fail = err
+}
+
+// SetReadFail swaps the failure reads return.
+func (m *Mem) SetReadFail(err error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.ReadFail = err
 }
 
 // ReadCount is how many reads were made.
@@ -39,12 +47,15 @@ func (m *Mem) Probe(context.Context) error {
 	return m.Fail
 }
 
-func (m *Mem) Read(_ context.Context, id string, _ bool) ([]byte, error) {
+func (m *Mem) Read(_ context.Context, id string) ([]byte, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.Reads++
 	if m.Fail != nil {
 		return nil, m.Fail
+	}
+	if m.ReadFail != nil {
+		return nil, m.ReadFail
 	}
 	v, ok := m.items[id]
 	if !ok {
@@ -53,7 +64,7 @@ func (m *Mem) Read(_ context.Context, id string, _ bool) ([]byte, error) {
 	return append([]byte(nil), v...), nil
 }
 
-func (m *Mem) Write(_ context.Context, id string, value []byte, _ bool) error {
+func (m *Mem) Write(_ context.Context, id string, value []byte) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Fail != nil {
@@ -76,12 +87,21 @@ func (m *Mem) Delete(_ context.Context, id string) error {
 	return nil
 }
 
+func (m *Mem) Lock(context.Context, string) (func(), error) { return func() {}, nil }
+
 // Put stores an item directly, for test setup.
 func (m *Mem) Put(id string, it Item) {
 	raw, err := it.Encode()
 	if err != nil {
 		panic(err)
 	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.items[id] = raw
+}
+
+// PutRaw stores bytes directly, for test setup.
+func (m *Mem) PutRaw(id string, raw []byte) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.items[id] = raw
