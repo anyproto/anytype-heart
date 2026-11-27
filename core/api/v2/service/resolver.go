@@ -17,6 +17,7 @@ package v2service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 	"sort"
@@ -78,6 +79,11 @@ type creatingResolvers struct {
 	// patch is the PATCH's once-read view of the object (newPatchContext),
 	// nil on every other write
 	patch *patchContext
+	// locked is set while a committing PATCH's set_properties decodes under
+	// the object lock: every option it may need was minted by the prewarm,
+	// so a miss there means the object moved since the plan (errPlanDrift)
+	// and nothing is minted outside the counted limit
+	locked bool
 	// mintedSlugs are the slugs THIS request already minted (doc key by
 	// slug): the live snapshot predates them, so without this a document
 	// declaring two spellings of one key minted both (review cause 4)
@@ -325,6 +331,12 @@ func (r *creatingResolvers) OptionId(key domain.RelationKey, name string) (strin
 	// said, so a caller got a green dry run and a refusal on the very same
 	// body. A dry run that disagrees with the real run is worse than none,
 	// because an agent dry-runs first precisely to avoid the refusal.
+	if r.locked {
+		if len(r.errs) == 0 || !errors.Is(r.errs[len(r.errs)-1], errPlanDrift) {
+			r.errs = append(r.errs, errPlanDrift)
+		}
+		return "", false
+	}
 	if !r.createMissingOptions {
 		// A2 backstop. The pre-lock guard (guardCreateMissing) is what a PATCH
 		// caller actually hits, and it refuses with the whole pending list;
@@ -562,6 +574,12 @@ func (s *Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creatin
 		}
 	}
 }
+
+// errPlanDrift is a committing PATCH finding the object moved between the
+// read its plan was made from and the lock: another target, another type,
+// or an option the prewarm did not mint. The caller retries against the
+// object as it is now (PatchObject answers with the etag mismatch).
+var errPlanDrift = errors.New("the object changed after this request read it")
 
 // prewarmTypes is the live type set the prewarm follows a set_type with.
 // Lenient: an unread set keeps the scope it had, and the apply reads the

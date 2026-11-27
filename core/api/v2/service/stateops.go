@@ -1091,6 +1091,12 @@ func (a *v2StateApplier) checkedPropertyValue(key, spelling, field string, raw a
 }
 
 func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) error {
+	if !a.simulate && a.resolvers.patch != nil {
+		// a committing PATCH consumes the options its prewarm minted, and
+		// mints none under the lock (creatingResolvers.locked)
+		a.resolvers.locked = true
+		defer func() { a.resolvers.locked = false }()
+	}
 	if len(op.Set) == 0 && len(op.Unset) == 0 && len(op.Add) == 0 && len(op.Remove) == 0 {
 		return v2model.ValidationFailed("set_properties needs at least one of set, unset, add, remove",
 			v2model.Issue{Path: opPath, Message: "set, unset, add and remove are all empty"})
@@ -2849,10 +2855,10 @@ type liveTypeHit struct {
 	found bool
 }
 
-// loadTarget sets this pass's starting scope from the state it edits. The
-// plan (patchContext) was read before the lock; a template retargeted since
-// is re-resolved here, so its names and warnings follow the target the
-// object has now. Only a PATCH has a plan, and only a template is re-read.
+// loadTarget sets this pass's starting scope from the plan (patchContext),
+// read before the lock, after checking the state it edits still has the
+// type and the template target the plan was made for. Only a PATCH has a
+// plan.
 func (a *v2StateApplier) loadTarget() error {
 	if a.resolvers == nil || a.resolvers.patch == nil {
 		return nil
@@ -2860,6 +2866,12 @@ func (a *v2StateApplier) loadTarget() error {
 	pc := a.resolvers.patch
 	a.resolvers.scope = pc.objectScope
 	a.template = isTemplateObject(a.sbType)
+	// the plan's scopes and prewarmed options were made for the type and the
+	// target the read saw; a lock that finds others refuses, and the caller
+	// retries against the object as it is now
+	if !slices.Equal(a.st.ObjectTypeKeys(), pc.typeKeys) {
+		return errPlanDrift
+	}
 	if !a.template {
 		return nil
 	}
@@ -2868,11 +2880,8 @@ func (a *v2StateApplier) loadTarget() error {
 		return err
 	}
 	a.target = target
-	if target == pc.target {
-		return nil
-	}
-	if a.resolvers.scope, err = a.s.templateScope(a.spaceId, target); err != nil {
-		return err
+	if target != pc.target {
+		return errPlanDrift
 	}
 	return nil
 }

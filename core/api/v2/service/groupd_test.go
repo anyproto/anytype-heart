@@ -1257,6 +1257,40 @@ func TestV2PatchScopesFollowTheirSource(t *testing.T) {
 		assert.Equal(t, []string{"opt-ready"}, details.GetStringList(domain.RelationKey(stagePipelineKey)))
 	})
 
+	t.Run("a retarget before the lock refuses a select write instead of minting under the lock", func(t *testing.T) {
+		// given: the plan reads sprint, whose Stage holds Ready; the lock
+		// finds backlog, whose Stage does not; the strict mock fails any
+		// option create
+		fx := setup(t, stageSprintKey)
+		read := templateRead(t, `{"formatVersion":"2.0","id":"obj1","kind":"template","type":"template","properties":{"name":"Weekly"}}`)
+		read.Snapshot.ObjectTypes = []string{"ot-template", "ot-backlog"}
+		read.Snapshot.Details.Fields[bundle.RelationKeyTargetObjectType.String()] = pbtypes.String("type-sprint")
+		fx.expectMutateState(read, func(st *state.State) {
+			st.SetDetail(bundle.RelationKeyTargetObjectType, domain.String("type-backlog"))
+		})
+
+		// when
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(`{"op":"set_properties","set":{"Stage":"Ready"}}`), "", false, true)
+
+		// then
+		assert.Equal(t, v2model.CodeEtagMismatch, v2Err(t, err).Code)
+	})
+
+	t.Run("a set_type before the lock refuses a select write on the old type's property", func(t *testing.T) {
+		// given: the plan reads a backlog object, whose Stage holds Ready;
+		// the lock finds it already a sprint
+		fx := setup(t, stageBacklogKey)
+		fx.expectMutateState(backlogRead(t), func(st *state.State) {
+			st.SetObjectTypeKeys([]domain.TypeKey{"sprint"})
+		})
+
+		// when
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(`{"op":"set_properties","set":{"Stage":"Ready"}}`), "", false, true)
+
+		// then
+		assert.Equal(t, v2model.CodeEtagMismatch, v2Err(t, err).Code)
+	})
+
 	t.Run("set_properties after set_type writes the new type's property", func(t *testing.T) {
 		// given
 		fx := setup(t, stageSprintKey)
@@ -1436,23 +1470,20 @@ func TestV2TemplateTargetFollowsTheObject(t *testing.T) {
 		assert.Equal(t, "hours", committedEffort(t, *captured))
 	})
 
-	t.Run("a retarget that lands before the lock moves the scope", func(t *testing.T) {
+	t.Run("a retarget that lands before the lock refuses the PATCH so the caller retries", func(t *testing.T) {
 		// given: the plan reads sprint; by the time the lock is taken the
 		// object has been retargeted to backlog
 		fx := setup(t)
-		committed := fx.expectMutateState(stored(t, model.SmartBlockType_Template, sprint, "ot-template", "ot-backlog"), func(st *state.State) {
+		fx.expectMutateState(stored(t, model.SmartBlockType_Template, sprint, "ot-template", "ot-backlog"), func(st *state.State) {
 			st.SetDetail(bundle.RelationKeyTargetObjectType, domain.String("type-backlog"))
 		}, "headB")
 
 		// when
-		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_properties","set":{"Effort":"3","effort_points":"4"}}`), "", false, true)
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"set_properties","set":{"Effort":"3"}}`), "", false, true)
 
-		// then: the name binds backlog's property, and the off-target one warns naming backlog
-		require.NoError(t, err)
-		assert.Equal(t, "3", (*committed).CombinedDetails().GetString(domain.RelationKey(effortHoursKey)))
-		require.Len(t, result.Warnings, 1, "%v", result.Warnings)
-		assert.Contains(t, result.Warnings[0].Message, `is not on type "backlog"`)
+		// then
+		assert.Equal(t, v2model.CodeEtagMismatch, v2Err(t, err).Code)
 	})
 
 	t.Run("a read keeps a type key past the target slot, so the codec still reports it", func(t *testing.T) {

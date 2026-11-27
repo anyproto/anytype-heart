@@ -235,6 +235,9 @@ func (s *Service) PatchObject(ctx context.Context, spaceId, objectId string, bod
 	var favorite *bool
 	run := func(edit apicore.ObjectEdit) error {
 		res, applier, err := s.applyPatchOps(ctx, spaceId, objectId, ops, ifMatch, edit, resolvers, dryRun)
+		if errors.Is(err, errPlanDrift) {
+			return v2model.EtagMismatch(ComputeEtag(edit.Heads))
+		}
 		if err != nil {
 			return err
 		}
