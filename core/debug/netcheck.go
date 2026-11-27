@@ -109,7 +109,9 @@ func probeYamux(ctx context.Context, a *app.App, addr string) (string, error) {
 
 	sb.WriteString("start handshake\n")
 	hst := time.Now()
-	cctx, err := ss.SecureOutbound(ctx, conn)
+	// send the dialed host as SNI, as the any-sync yamux transport does
+	host, _, _ := net.SplitHostPort(addr)
+	cctx, err := ss.SecureOutbound(ctx, conn, host)
 	if err != nil {
 		return "", fmt.Errorf("handshake error: %w, dur: %s", err, time.Since(hst))
 	} else {
