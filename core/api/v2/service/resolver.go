@@ -472,15 +472,13 @@ func (s *Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creatin
 		if probe.Op == "set_type" {
 			if !typeEntriesLoaded {
 				typeEntriesLoaded = true
-				var err error
-				if typeEntries, err = s.liveTypes(resolvers.spaceId); err != nil {
-					// the prewarm is lenient (an unread type keeps the scope
-					// it had); the apply reads the types again and fails
-					// closed on the same error
-					typeEntries = nil
-				}
+				typeEntries = s.prewarmTypes(resolvers.spaceId)
 			}
-			if scope, ok := s.setTypeScope(resolvers.spaceId, probe.Type, typeEntries); ok {
+			props, err := resolvers.liveProps()
+			if err != nil {
+				props = nil
+			}
+			if scope, ok := s.setTypeScope(resolvers.spaceId, probe.Type, typeEntries, props); ok {
 				resolvers.scope = scope
 			}
 			continue
@@ -537,11 +535,63 @@ func (s *Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creatin
 			}
 		}
 		// a retarget moves the scope of the ops after this one, as the
-		// apply's does (v2StateApplier.retarget)
+		// apply's does (v2StateApplier.retarget), and a new query source
+		// moves the scope of the view ops after it (v2StateApplier.viewScope
+		// reads the state as it stands)
 		if scope, ok := s.retargetScope(resolvers, probe.Set, probe.Unset); ok {
 			resolvers.scope = scope
 		}
+		if ids, touched := opDetailIds(resolvers, probe.Set, probe.Unset, bundle.RelationKeySetOf.String()); touched {
+			viewScope = nil
+			if len(ids) == 1 {
+				viewScope = s.typePropertyScope(resolvers.spaceId, ids[0])
+			}
+		}
 	}
+}
+
+// prewarmTypes is the live type set the prewarm follows a set_type with.
+// Lenient: an unread set keeps the scope it had, and the apply reads the
+// types again and fails closed on the same error.
+func (s *Service) prewarmTypes(spaceId string) []typeEntry {
+	entries, err := s.liveTypes(spaceId)
+	if err != nil {
+		return nil
+	}
+	return entries
+}
+
+// opDetailIds reads what a set_properties op does to one object-reference
+// property: touched when the op sets or unsets it, with the ids it sets (nil
+// for an unset). Lenient like the rest of the prewarm: a value it cannot
+// read sets no ids.
+func opDetailIds(resolvers *creatingResolvers, set map[string]json.RawMessage, unset []string, key string) (ids []string, touched bool) {
+	for _, rawKey := range unset {
+		if resolvers.canonicalPropertyKey(rawKey) == key {
+			touched = true
+		}
+	}
+	for rawKey, rawValue := range set {
+		if resolvers.canonicalPropertyKey(rawKey) != key {
+			continue
+		}
+		touched = true
+		var value any
+		if err := json.Unmarshal(rawValue, &value); err != nil {
+			return nil, true
+		}
+		switch v := value.(type) {
+		case string:
+			ids = []string{v}
+		case []any:
+			for _, entry := range v {
+				if id, ok := entry.(string); ok {
+					ids = append(ids, id)
+				}
+			}
+		}
+	}
+	return ids, touched
 }
 
 // retargetScope is the scope a template takes on once a set_properties op
@@ -555,37 +605,13 @@ func (s *Service) retargetScope(resolvers *creatingResolvers, set map[string]jso
 		return nil, false
 	}
 	targetKey := bundle.RelationKeyTargetObjectType.String()
-	var details *types.Struct
-	retargets := false
-	for _, rawKey := range unset {
-		if resolvers.canonicalPropertyKey(rawKey) == targetKey {
-			retargets = true
-		}
-	}
-	for rawKey, rawValue := range set {
-		if resolvers.canonicalPropertyKey(rawKey) != targetKey {
-			continue
-		}
-		retargets = true
-		var value any
-		if err := json.Unmarshal(rawValue, &value); err != nil {
-			return nil, false
-		}
-		var ids []string
-		switch v := value.(type) {
-		case string:
-			ids = []string{v}
-		case []any:
-			for _, entry := range v {
-				if id, ok := entry.(string); ok {
-					ids = append(ids, id)
-				}
-			}
-		}
-		details = &types.Struct{Fields: map[string]*types.Value{targetKey: pbtypes.StringList(ids)}}
-	}
+	ids, retargets := opDetailIds(resolvers, set, unset, targetKey)
 	if !retargets {
 		return nil, false
+	}
+	var details *types.Struct
+	if len(ids) > 0 {
+		details = &types.Struct{Fields: map[string]*types.Value{targetKey: pbtypes.StringList(ids)}}
 	}
 	target, err := s.templateTargetOf(resolvers.spaceId, details, pc.typeKeys)
 	if err != nil {

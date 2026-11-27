@@ -1054,6 +1054,80 @@ func TestV2PatchScopesFollowTheirSource(t *testing.T) {
 		assert.Equal(t, []string{"opt-ready"}, (*captured).CombinedDetails().GetStringList(domain.RelationKey(stageBacklogKey)))
 	})
 
+	// statusPair adds the installed built-in status and the space's own
+	// Pipeline status, which also serves the slug `status`
+	const ownStatusKey = "6a8f2c1d9e4b7a3f5c2d8ea4"
+	statusPair := func(t *testing.T, fx *v2Fixture) {
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("rel-status"),
+			bundle.RelationKeyRelationKey:    domain.String("status"),
+			bundle.RelationKeyName:           domain.String("Status"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_status)),
+		})
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("rel-own-status"),
+			bundle.RelationKeyRelationKey:    domain.String(ownStatusKey),
+			bundle.RelationKeyApiObjectKey:   domain.String("status"),
+			bundle.RelationKeyName:           domain.String("Pipeline status"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_status)),
+		})
+	}
+
+	t.Run("an option after set_type to a type the batch installs resolves on its property, creating nothing", func(t *testing.T) {
+		// given: backlog lists the space's own status, the never-installed
+		// task lists the built-in one, and only the built-in holds Ready
+		fx := setup(t, "status")
+		statusPair(t, fx)
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:                   domain.String("type-backlog"),
+			bundle.RelationKeyUniqueKey:            domain.String("ot-backlog"),
+			bundle.RelationKeyName:                 domain.String("Backlog"),
+			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-own-status"}),
+		})
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(backlogRead(t), nil).Maybe()
+
+		// when: a dry run, so nothing installs task
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"set_type","type":"task"}`, `{"op":"set_properties","set":{"status":"Ready"}}`), "", true, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Empty(t, createdOptions(result.Created))
+	})
+
+	t.Run("a view filter after a query source change resolves in the new source, creating nothing", func(t *testing.T) {
+		// given: the template's view starts over sprint (the built-in
+		// status) and moves to pipeline (the space's own); only the own one
+		// holds Ready
+		fx := setup(t, ownStatusKey)
+		statusPair(t, fx)
+		fx.addSprintType(t, objectstore.TestObject{
+			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-effort-points", "rel-status"}),
+		})
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:                   domain.String("type-pipeline"),
+			bundle.RelationKeyUniqueKey:            domain.String("ot-pipeline"),
+			bundle.RelationKeyName:                 domain.String("Pipeline"),
+			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-own-status"}),
+		})
+		read := viewTemplate(t)
+		read.Snapshot.Details.Fields[bundle.RelationKeySetOf.String()] = pbtypes.StringList([]string{"type-sprint"})
+		committed := fx.expectMutateState(read, nil)
+
+		// when
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(
+			`{"op":"set_properties","set":{"setOf":["type-pipeline"]}}`,
+			`{"op":"update_view","set":{"filters":[{"property":"status","condition":"equal","value":["Ready"]}]}}`), "", false, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Empty(t, createdOptions(result.Created))
+		dv := (*committed).Pick(state.DataviewBlockID).Model().GetDataview()
+		require.Len(t, dv.Views, 1)
+		require.Len(t, dv.Views[0].Filters, 1)
+		assert.Equal(t, ownStatusKey, dv.Views[0].Filters[0].RelationKey)
+	})
+
 	t.Run("set_properties after set_type writes the new type's property", func(t *testing.T) {
 		// given
 		fx := setup(t, stageSprintKey)

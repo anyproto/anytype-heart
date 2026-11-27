@@ -22,6 +22,7 @@ import (
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -108,33 +109,80 @@ func (a *v2StateApplier) applySetType(op opSetType, opPath string) error {
 	a.typeChanged.To = a.spellType([]domain.TypeKey{key})
 	// the batch's later ops address the properties of the type the object
 	// has now, as the prewarm assumed (prewarmCreateMissing)
-	if a.resolvers != nil {
-		live, found, err := a.s.liveTypeByKey(a.spaceId, string(key))
-		if err != nil {
-			return err
-		}
-		a.resolvers.scope = nil
-		if found {
-			if a.resolvers.scope, err = a.s.typePropertyScopeOf(a.spaceId, live.Id); err != nil {
-				return err
-			}
+	if a.resolvers == nil {
+		return nil
+	}
+	scope, err := a.typeScope(key)
+	if err != nil {
+		return err
+	}
+	a.resolvers.scope = scope
+	return nil
+}
+
+// typeScope is the property scope of the type key names: its live row's
+// list, or, before the install a dry run or the create-missing probe never
+// performs, the list the install will write (pendingTypeScope).
+func (a *v2StateApplier) typeScope(key domain.TypeKey) (map[string]bool, error) {
+	live, found, err := a.s.liveTypeByKey(a.spaceId, string(key))
+	if err != nil {
+		return nil, err
+	}
+	if found {
+		return a.s.typePropertyScopeOf(a.spaceId, live.Id)
+	}
+	entries, err := a.propEntries()
+	if err != nil {
+		return nil, nil // the key checks that need the entries fail closed on the same error
+	}
+	return pendingTypeScope(string(key), entries), nil
+}
+
+// pendingTypeScope is the scope a built-in type will have once installed,
+// for one this space has not installed yet: the live ids of the properties
+// its bundled definition recommends, the default featured ones included, as
+// the install lists them (relationutils.FillRecommendedRelations). The
+// prewarm, the probe and a dry run then read the property the commit will.
+func pendingTypeScope(typeKey string, entries []propertyEntry) map[string]bool {
+	bundled, err := bundle.GetType(domain.TypeKey(typeKey))
+	if err != nil {
+		return nil
+	}
+	keys := map[string]bool{}
+	for _, link := range bundled.GetRelationLinks() {
+		keys[link.Key] = true
+	}
+	for _, key := range relationutils.DefaultFeaturedRelationKeys(domain.TypeKey(typeKey)) {
+		keys[key.String()] = true
+	}
+	scope := map[string]bool{}
+	for _, entry := range entries {
+		if entry.Id != "" && keys[entry.Key] {
+			scope[entry.Id] = true
 		}
 	}
-	return nil
+	return scope
 }
 
 // setTypeScope is the property scope an object takes on with a set_type to
 // term: the list of the live type the term resolves to, by the op's own
-// resolution. ok=false leaves the scope as it was: a term that resolves to
-// no live type is the apply's to refuse, or names a built-in the batch
-// installs, whose row the prewarm cannot read yet.
-func (s *Service) setTypeScope(spaceId, term string, entries []typeEntry) (map[string]bool, bool) {
+// resolution, or for a built-in the batch installs the list its install
+// will write (pendingTypeScope). ok=false leaves the scope as it was: a term
+// that resolves to nothing is the apply's to refuse.
+func (s *Service) setTypeScope(spaceId, term string, entries []typeEntry, props []propertyEntry) (map[string]bool, bool) {
 	if term == "" || entries == nil {
 		return nil, false
 	}
 	entry, ok, ambiguous, err := s.resolveTypeInput(spaceId, term, entries)
-	if err != nil || !ok || len(ambiguous) > 0 || entry.Id == "" {
+	if err != nil || !ok || len(ambiguous) > 0 {
 		return nil, false
+	}
+	if entry.Id == "" {
+		// a built-in the batch installs: the list its install will write
+		if !bundle.HasObjectTypeByKey(domain.TypeKey(entry.Key)) || props == nil {
+			return nil, false
+		}
+		return pendingTypeScope(entry.Key, props), true
 	}
 	scope, err := s.typePropertyScopeOf(spaceId, entry.Id)
 	if err != nil {

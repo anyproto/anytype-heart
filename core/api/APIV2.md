@@ -349,8 +349,10 @@ a template-owned property (`Template's Type` is `targetObjectType`); the
 exact stored key still addresses that one. A template whose target is
 unknown, or has no live row in the space, keeps its own type
 (`core/api/v2/service/refs.go:665`). A view filter or sort key is settled by
-the type the view's query source names instead, and after a `set_type` the
-batch's later ops are settled by the new type. The create-missing pre-pass
+the type the view's query source names instead, as it stands at that op
+(a `setOf` edit earlier in the batch moves it), and after a `set_type` the
+batch's later ops are settled by the new type: for a built-in the batch
+installs, by the list its install writes. The create-missing pre-pass
 uses the same scopes in the same op order as the apply, so it never creates
 an option on another property (`core/api/v2/service/resolver.go:446`). The chain is wired
 into route params, search and set type scopes, document creates,
