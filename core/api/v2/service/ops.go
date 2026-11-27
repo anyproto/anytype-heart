@@ -306,12 +306,16 @@ func (d *v2EditDoc) localIds() []string {
 func (d *v2EditDoc) localBlockIds() map[string]bool {
 	ids := map[string]bool{}
 	for i, b := range d.blocks {
-		_ = walkPayloadIdSlots(b, fmt.Sprintf("blocks[%d]", i), func(slot payloadIdSlot) error {
+		// the visitor never fails, so a walk error leaves this block's ids
+		// out and nothing else
+		if err := walkPayloadIdSlots(b, fmt.Sprintf("blocks[%d]", i), func(slot payloadIdSlot) error {
 			if id := blockId(slot.m); id != "" && !slot.view {
 				ids[id] = true
 			}
 			return nil
-		})
+		}); err != nil {
+			continue
+		}
 	}
 	return ids
 }
