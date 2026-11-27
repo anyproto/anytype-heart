@@ -1203,6 +1203,60 @@ func TestV2PatchScopesFollowTheirSource(t *testing.T) {
 		assert.Equal(t, ownStatusKey, dv.Views[0].Filters[0].RelationKey)
 	})
 
+	t.Run("an option after a remove of the target resolves on the target left behind", func(t *testing.T) {
+		// given: sprint by the detail, backlog by the second key; only
+		// backlog's Stage holds Ready
+		fx := setup(t, stageBacklogKey)
+		read := templateRead(t, `{"formatVersion":"2.0","id":"obj1","kind":"template","type":"template","properties":{"name":"Weekly"}}`)
+		read.Snapshot.ObjectTypes = []string{"ot-template", "ot-backlog"}
+		read.Snapshot.Details.Fields[bundle.RelationKeyTargetObjectType.String()] = pbtypes.String("type-sprint")
+		captured := fx.expectMutate(read, "headB")
+
+		// when: remove, not unset, takes the detail away
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(
+			`{"op":"set_properties","remove":{"targetObjectType":["type-sprint"]}}`,
+			`{"op":"set_properties","set":{"Stage":"Ready"}}`), "", false, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Empty(t, createdOptions(result.Created))
+		assert.Equal(t, []string{"opt-ready"}, (*captured).CombinedDetails().GetStringList(domain.RelationKey(stageBacklogKey)))
+	})
+
+	t.Run("an option after a retarget by folded reference resolves on the type it names", func(t *testing.T) {
+		// given: funnel's row id is not type-funnel, the spelling the op
+		// folds it to; the template type lists backlog's Stage, funnel the
+		// pipeline Stage, and only the latter holds Ready
+		fx := setup(t, stagePipelineKey)
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:                   domain.String("fn-1"),
+			bundle.RelationKeyUniqueKey:            domain.String("ot-funnel"),
+			bundle.RelationKeyName:                 domain.String("Funnel"),
+			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-stage-pipeline"}),
+		})
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:                   domain.String(testTemplateTypeId),
+			bundle.RelationKeyName:                 domain.String("Template"),
+			bundle.RelationKeyUniqueKey:            domain.String(bundle.TypeKeyTemplate.URL()),
+			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-stage-backlog"}),
+		})
+		read := templateRead(t, `{"formatVersion":"2.0","id":"obj1","kind":"template","type":"template","properties":{"name":"Weekly"}}`)
+		read.Snapshot.ObjectTypes = []string{"ot-template"}
+		captured := fx.expectMutate(read, "headB")
+
+		// when
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(
+			`{"op":"set_properties","set":{"targetObjectType":["type-funnel"]}}`,
+			`{"op":"set_properties","set":{"Stage":"Ready"}}`), "", false, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Empty(t, createdOptions(result.Created))
+		details := (*captured).CombinedDetails()
+		assert.Equal(t, "fn-1", details.GetString(bundle.RelationKeyTargetObjectType))
+		assert.Equal(t, []string{"opt-ready"}, details.GetStringList(domain.RelationKey(stagePipelineKey)))
+	})
+
 	t.Run("set_properties after set_type writes the new type's property", func(t *testing.T) {
 		// given
 		fx := setup(t, stageSprintKey)
@@ -1301,6 +1355,55 @@ func TestV2TemplateTargetFollowsTheObject(t *testing.T) {
 		require.NoError(t, err)
 		got := (*captured).Details().Get(bundle.RelationKeyTargetObjectType)
 		assert.Equal(t, domain.String("type-sprint"), got)
+	})
+
+	t.Run("a template is for one type: a second target id is refused, by set and by add", func(t *testing.T) {
+		for name, op := range map[string]string{
+			"set": `{"op":"set_properties","set":{"targetObjectType":["type-sprint","type-backlog"]}}`,
+			"add": `{"op":"set_properties","add":{"targetObjectType":["type-backlog"]}}`,
+		} {
+			t.Run(name, func(t *testing.T) {
+				// given
+				fx := setup(t)
+				fx.expectMutate(stored(t, model.SmartBlockType_Template, sprint, "ot-template", "ot-sprint"), "headB")
+
+				// when
+				_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(op), "", false, true)
+
+				// then
+				issue := issueAt(t, err, "ops[0].targetObjectType")
+				assert.Contains(t, issue.Message, "a template is for one type")
+			})
+		}
+	})
+
+	t.Run("a remove that takes nothing away keeps the target one id", func(t *testing.T) {
+		// given
+		fx := setup(t)
+		captured := fx.expectMutate(stored(t, model.SmartBlockType_Template, sprint, "ot-template", "ot-sprint"), "headB")
+
+		// when
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"set_properties","remove":{"targetObjectType":["type-backlog"]}}`), "", false, true)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, domain.String("type-sprint"), (*captured).Details().Get(bundle.RelationKeyTargetObjectType))
+	})
+
+	t.Run("a property set beside a retarget is judged against the new target", func(t *testing.T) {
+		// given: a template for backlog, which lists the hours Effort
+		fx := setup(t)
+		fx.expectMutate(stored(t, model.SmartBlockType_Template, nil, "ot-template", "ot-backlog"), "headB")
+
+		// when: one op retargets to sprint and sets the hours Effort
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"set_properties","set":{"targetObjectType":["type-sprint"],"effort_hours":"3"}}`), "", false, true)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, result.Warnings, 1, "%v", result.Warnings)
+		assert.Contains(t, result.Warnings[0].Message, `is not on type "sprint"`)
 	})
 
 	t.Run("a target stored as a one-element list is the target, for a read and for a write", func(t *testing.T) {

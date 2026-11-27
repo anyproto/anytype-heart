@@ -1267,9 +1267,6 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	for key := range addEntries {
 		offTypeFields[key] = "add"
 	}
-	if err := a.warnOffTypeKeys(doc, opPath, offTypeFields, spelledAs); err != nil {
-		return err
-	}
 	for _, key := range setKeys {
 		var raw any
 		if err := decodeJSONUseNumber(op.Set[key], &raw); err != nil {
@@ -1297,11 +1294,6 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 		value, err := a.checkedPropertyValue(key, spelledAs(key), opPath+".set.", raw, a.resolvers.Options())
 		if err != nil {
 			return err
-		}
-		if ids := value.WrapToStringList(); key == bundle.RelationKeyTargetObjectType.String() && len(ids) == 1 {
-			// heart reads a template's target as one id (templateimpl
-			// updateTypeKey); the object channel writes references as lists
-			value = domain.String(ids[0])
 		}
 		a.st.SetDetail(domain.RelationKey(key), value)
 		// a key new to the object needs its relation link, or the detail value
@@ -1390,12 +1382,43 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 		}
 	}
 	a.mutated()
-	// a retarget moves the scope of the ops after this one
 	target := bundle.RelationKeyTargetObjectType.String()
 	_, inAdd := addEntries[target]
 	_, inRemove := removeEntries[target]
-	if a.template && (slices.Contains(setKeys, target) || unset[target] || inAdd || inRemove) {
-		return a.retarget()
+	if slices.Contains(setKeys, target) || unset[target] || inAdd || inRemove {
+		if err := a.oneTarget(opPath); err != nil {
+			return err
+		}
+		// a retarget moves the scope of the ops after this one
+		if a.template {
+			if err := a.retarget(); err != nil {
+				return err
+			}
+		}
+	}
+	// judged against the type the object has after this op, a target it set
+	// alongside included
+	return a.warnOffTypeKeys(doc, opPath, offTypeFields, spelledAs)
+}
+
+// oneTarget keeps targetObjectType the one id heart reads
+// (templateimpl updateTypeKey reads a scalar): a list of one is stored as
+// that id, an empty one clears the detail, and a second distinct id is
+// refused, since a template is for one type.
+func (a *v2StateApplier) oneTarget(opPath string) error {
+	key := bundle.RelationKeyTargetObjectType
+	ids := slices.Compact(slices.Sorted(slices.Values(a.st.Details().WrapToStringList(key))))
+	switch len(ids) {
+	case 0:
+		a.st.RemoveDetail(key)
+	case 1:
+		a.st.SetDetail(key, domain.String(ids[0]))
+	default:
+		return v2model.ValidationFailed("set_properties rejected", v2model.Issue{
+			Path:    opPath + ".targetObjectType",
+			Message: fmt.Sprintf("a template is for one type, and this op leaves %d in targetObjectType", len(ids)),
+			Hint:    "set it to the one type id the template is for",
+		})
 	}
 	return nil
 }

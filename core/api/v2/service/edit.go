@@ -34,6 +34,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+
+	"github.com/gogo/protobuf/types"
 )
 
 // v2MaxOpsPerPatch bounds one PATCH batch. Each op re-renders the document
@@ -633,7 +635,10 @@ type patchContext struct {
 	target   templateTarget
 	// typeKeys are the object's stored type keys, the second-key fallback a
 	// retarget in the batch resolves against (prewarmCreateMissing)
-	typeKeys    []domain.TypeKey
+	typeKeys []domain.TypeKey
+	// details are the object's details as read, the starting point of the
+	// references the prewarm follows through the batch
+	details     *types.Struct
 	objectScope map[string]bool
 	// viewScope settles a view filter or sort key: the list of the type the
 	// object's query source names (v2StateApplier.viewScope, read off the
@@ -655,6 +660,7 @@ func (s *Service) newPatchContext(spaceId string, cur apicore.ObjectRead) (*patc
 		pc.viewScope = s.typePropertyScope(spaceId, setOf[0])
 	}
 	pc.typeKeys = readTypeKeys(cur.Snapshot.GetObjectTypes())
+	pc.details = cur.Snapshot.GetDetails()
 	pc.template = isTemplateObject(cur.SbType)
 	if pc.template {
 		target, err := s.templateTargetOf(spaceId, cur.Snapshot.GetDetails(), pc.typeKeys)

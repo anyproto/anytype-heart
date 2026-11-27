@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -455,6 +456,13 @@ func (s *Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creatin
 	}
 	var typeEntries []typeEntry
 	typeEntriesLoaded := false
+	// the two references that move a scope, followed through the batch
+	targetKey, setOfKey := bundle.RelationKeyTargetObjectType.String(), bundle.RelationKeySetOf.String()
+	var targetIds, setOfIds []string
+	if resolvers.patch != nil {
+		targetIds = pbtypes.GetStringList(resolvers.patch.details, targetKey)
+		setOfIds = pbtypes.GetStringList(resolvers.patch.details, setOfKey)
+	}
 	for _, raw := range ops {
 		var probe struct {
 			Op   string                     `json:"op"`
@@ -463,8 +471,9 @@ func (s *Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creatin
 			// add resolves option names with the same create-missing
 			// semantics as set (v0.3.5), so it prewarms too — otherwise
 			// option creation moves back inside the object lock
-			Add   map[string]json.RawMessage `json:"add"`
-			Unset []string                   `json:"unset"`
+			Add    map[string]json.RawMessage `json:"add"`
+			Remove map[string]json.RawMessage `json:"remove"`
+			Unset  []string                   `json:"unset"`
 		}
 		if err := json.Unmarshal(raw, &probe); err != nil {
 			continue
@@ -538,10 +547,14 @@ func (s *Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creatin
 		// apply's does (v2StateApplier.retarget), and a new query source
 		// moves the scope of the view ops after it (v2StateApplier.viewScope
 		// reads the state as it stands)
-		if scope, ok := s.retargetScope(resolvers, probe.Set, probe.Unset); ok {
-			resolvers.scope = scope
+		if ids, touched := detailEdit(resolvers, targetKey, targetIds, probe.Set, probe.Add, probe.Remove, probe.Unset); touched {
+			targetIds = ids
+			if scope, ok := s.retargetScope(resolvers, ids); ok {
+				resolvers.scope = scope
+			}
 		}
-		if ids, touched := opDetailIds(resolvers, probe.Set, probe.Unset, bundle.RelationKeySetOf.String()); touched {
+		if ids, touched := detailEdit(resolvers, setOfKey, setOfIds, probe.Set, probe.Add, probe.Remove, probe.Unset); touched {
+			setOfIds = ids
 			viewScope = nil
 			if len(ids) == 1 {
 				viewScope = s.typePropertyScope(resolvers.spaceId, ids[0])
@@ -561,57 +574,19 @@ func (s *Service) prewarmTypes(spaceId string) []typeEntry {
 	return entries
 }
 
-// opDetailIds reads what a set_properties op does to one object-reference
-// property: touched when the op sets or unsets it, with the ids it sets (nil
-// for an unset). Lenient like the rest of the prewarm: a value it cannot
-// read sets no ids.
-func opDetailIds(resolvers *creatingResolvers, set map[string]json.RawMessage, unset []string, key string) (ids []string, touched bool) {
-	for _, rawKey := range unset {
-		if resolvers.canonicalPropertyKey(rawKey) == key {
-			touched = true
-		}
-	}
-	for rawKey, rawValue := range set {
-		if resolvers.canonicalPropertyKey(rawKey) != key {
-			continue
-		}
-		touched = true
-		var value any
-		if err := json.Unmarshal(rawValue, &value); err != nil {
-			return nil, true
-		}
-		switch v := value.(type) {
-		case string:
-			ids = []string{v}
-		case []any:
-			for _, entry := range v {
-				if id, ok := entry.(string); ok {
-					ids = append(ids, id)
-				}
-			}
-		}
-	}
-	return ids, touched
-}
-
 // retargetScope is the scope a template takes on once a set_properties op
-// sets or unsets its targetObjectType: the new target's, resolved as
-// templateTargetOf resolves a stored one. ok=false: the op does not
-// retarget, or the object is not a template, or the target cannot be read
-// here (the apply reads it again and fails closed).
-func (s *Service) retargetScope(resolvers *creatingResolvers, set map[string]json.RawMessage, unset []string) (map[string]bool, bool) {
+// leaves ids in its targetObjectType: the new target's, resolved as
+// templateTargetOf resolves a stored one. ok=false: the object is not a
+// template, or the target cannot be read here (the apply reads it again and
+// fails closed).
+func (s *Service) retargetScope(resolvers *creatingResolvers, ids []string) (map[string]bool, bool) {
 	pc := resolvers.patch
 	if pc == nil || !pc.template {
 		return nil, false
 	}
-	targetKey := bundle.RelationKeyTargetObjectType.String()
-	ids, retargets := opDetailIds(resolvers, set, unset, targetKey)
-	if !retargets {
-		return nil, false
-	}
 	var details *types.Struct
 	if len(ids) > 0 {
-		details = &types.Struct{Fields: map[string]*types.Value{targetKey: pbtypes.StringList(ids)}}
+		details = &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyTargetObjectType.String(): pbtypes.StringList(ids)}}
 	}
 	target, err := s.templateTargetOf(resolvers.spaceId, details, pc.typeKeys)
 	if err != nil {
@@ -622,6 +597,56 @@ func (s *Service) retargetScope(resolvers *creatingResolvers, set map[string]jso
 		return nil, false
 	}
 	return scope, true
+}
+
+// detailEdit is what one set_properties op leaves in an object-reference
+// detail that held current: its four channels in the order the apply runs
+// them (set, unset, add, remove), each value decoded as the apply decodes
+// it, so a folded reference counts as the id it stands for. touched: the op
+// edits the detail at all. Lenient like the rest of the prewarm: a value it
+// cannot decode contributes no ids.
+func detailEdit(resolvers *creatingResolvers, key string, current []string, set, add, remove map[string]json.RawMessage, unset []string) (ids []string, touched bool) {
+	decode := func(raw json.RawMessage) []string {
+		var value any
+		if err := json.Unmarshal(raw, &value); err != nil {
+			return nil
+		}
+		decoded, err := anyblockjson.UnmarshalPropertyValueChecked(key, value, resolvers.Options())
+		if err != nil || decoded == nil {
+			return nil
+		}
+		return pbtypes.GetStringListValue(decoded)
+	}
+	edits := func(rawKey string) bool { return resolvers.canonicalPropertyKey(rawKey) == key }
+	ids = current
+	for rawKey, raw := range set {
+		if edits(rawKey) {
+			ids, touched = decode(raw), true
+		}
+	}
+	for _, rawKey := range unset {
+		if edits(rawKey) {
+			ids, touched = nil, true
+		}
+	}
+	for rawKey, raw := range add {
+		if edits(rawKey) {
+			for _, id := range decode(raw) {
+				if !slices.Contains(ids, id) {
+					ids = append(slices.Clone(ids), id)
+				}
+			}
+			touched = true
+		}
+	}
+	for rawKey, raw := range remove {
+		if edits(rawKey) {
+			drop := decode(raw)
+			ids = slices.DeleteFunc(slices.Clone(ids), func(id string) bool { return slices.Contains(drop, id) })
+			touched = true
+		}
+	}
+	return ids, touched
 }
 
 // viewFilterProbe decodes a §6.2 filter tree just deep enough to reach the

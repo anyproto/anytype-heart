@@ -384,6 +384,9 @@ func (s *Service) inspectTemplate(ctx context.Context, spaceId, templateId, type
 // read; GET names that target, and a create or a listing must agree.
 func (s *Service) templateRowTargetId(ctx context.Context, spaceId string, row *domain.Details) (string, error) {
 	if ids := row.WrapToStringList(bundle.RelationKeyTargetObjectType); len(ids) > 0 {
+		if len(ids) > 1 {
+			return "", nil // a template is for one type; several is unresolved
+		}
 		return ids[0], nil
 	}
 	templateId := row.GetString(bundle.RelationKeyId)
