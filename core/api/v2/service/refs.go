@@ -608,21 +608,34 @@ func (s *Service) offTypeJudgedType(spaceId, kind, typeKey, templateFor string) 
 	return judged, forTemplate, found, nil
 }
 
-// listedKeysOf is the stored key set one live type lists. readable=false: the
-// list could not be read, which is not a type listing nothing, so no warning
-// may rest on it.
-func (s *Service) listedKeysOf(spaceId, typeId string) (keys map[string]bool, readable bool) {
+// listedKeysOf is the stored key set one live type lists: the keys of the
+// live properties whose ids its lists carry, compared by id, so no
+// property definition has to be read to decide membership. readable=false:
+// the type's row or the live properties could not be read, which is not a
+// type listing nothing, so no warning may rest on it.
+func (s *Service) listedKeysOf(spaceId, typeId string, props interface {
+	liveProps() ([]propertyEntry, error)
+}) (keys map[string]bool, readable bool) {
 	if typeId == "" {
 		return nil, false
 	}
-	listed, err := s.typePropertyKeysOf(spaceId, typeId)
+	ids, err := s.typePropertyScopeOf(spaceId, typeId)
+	if err == nil && ids == nil {
+		err = fmt.Errorf("type %s has no row", typeId)
+	}
+	var entries []propertyEntry
+	if err == nil {
+		entries, err = props.liveProps()
+	}
 	if err != nil {
 		log.Warnf("api v2: read the property list of type %s in space %s: %v", typeId, spaceId, err)
 		return nil, false
 	}
 	keys = map[string]bool{}
-	for _, key := range listed {
-		keys[key] = true
+	for _, entry := range entries {
+		if entry.Id != "" && ids[entry.Id] {
+			keys[entry.Key] = true
+		}
 	}
 	return keys, true
 }

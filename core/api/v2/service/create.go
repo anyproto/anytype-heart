@@ -788,6 +788,14 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 		}
 	}
 
+	// 2b. the type F16 judges the properties against (step 3a), resolved
+	// before the import below can mint an option: a lookup failure after it
+	// would fail a create whose options already exist
+	judged, forTemplate, found, err := s.offTypeJudgedType(spaceId, envelope.Kind, envelope.Type, envelope.TemplateFor)
+	if err != nil {
+		return nil, err
+	}
+
 	// 3. Unmarshal with create-missing resolvers (SPEC §3/§2a); on a dry run
 	// the resolvers only record would-be creations
 	resolvers := s.newCreatingResolvers(ctx, spaceId, opts.dryRun, opts.createMissingOptions)
@@ -828,11 +836,7 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	// F16: a value on a property the type does not list, said at create as
 	// on set_properties (the object takes the key here for the first time).
 	// A template is judged against template_for, never against `template`.
-	judged, forTemplate, found, err := s.offTypeJudgedType(spaceId, envelope.Kind, envelope.Type, envelope.TemplateFor)
-	if err != nil {
-		return nil, err
-	}
-	if typeKeys, readable := s.listedKeysOf(spaceId, judged.Id); found && readable {
+	if typeKeys, readable := s.listedKeysOf(spaceId, judged.Id, resolvers); found && readable {
 		typeWord := ""
 		for _, key := range sortedKeys(envelope.Properties) {
 			if typeKeys[key] || !offTypeCandidate(key) {

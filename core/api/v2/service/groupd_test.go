@@ -3,6 +3,7 @@ package v2service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -20,9 +21,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -1396,6 +1399,82 @@ func TestV2TemplateTargetFromTheSecondTypeKey(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, want, rows)
 		assert.Equal(t, 1, total)
+	})
+}
+
+// errStoreFault is the failure faultyStore injects.
+var errStoreFault = errors.New("injected store fault")
+
+// faultyStore fails chosen reads of the space index, for the paths that must
+// hold when a store read fails: a unique-key lookup, and the two relation
+// reads behind a property definition (ListAllRelations, GetRelationById).
+type faultyStore struct {
+	objectstore.ObjectStore
+	failUniqueKey     string
+	failRelationReads bool
+}
+
+func (f *faultyStore) SpaceIndex(spaceId string) spaceindex.Store {
+	return &faultyIndex{Store: f.ObjectStore.SpaceIndex(spaceId), f: f}
+}
+
+type faultyIndex struct {
+	spaceindex.Store
+	f *faultyStore
+}
+
+func (i *faultyIndex) GetObjectByUniqueKey(uk domain.UniqueKey) (*domain.Details, error) {
+	if i.f.failUniqueKey != "" && uk.Marshal() == i.f.failUniqueKey {
+		return nil, errStoreFault
+	}
+	return i.Store.GetObjectByUniqueKey(uk)
+}
+
+func (i *faultyIndex) ListAllRelations() (relationutils.Relations, error) {
+	if i.f.failRelationReads {
+		return nil, errStoreFault
+	}
+	return i.Store.ListAllRelations()
+}
+
+func (i *faultyIndex) GetRelationById(id string) (*model.Relation, error) {
+	if i.f.failRelationReads {
+		return nil, errStoreFault
+	}
+	return i.Store.GetRelationById(id)
+}
+
+// GO-7614 round two: what a store failure may and may not do to a create.
+func TestV2CreateUnderStoreFaults(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("a failed type lookup refuses the create before any option is minted", func(t *testing.T) {
+		// given: chore's row cannot be read; Blocker is a new severity
+		// option, and the strict mock fails any option create
+		fx := newOffTypeFixture(t)
+		fx.store = &faultyStore{ObjectStore: fx.objectStore, failUniqueKey: "ot-chore"}
+
+		// when
+		_, err := fx.CreateObject(ctx, testSpaceId,
+			[]byte(`{"formatVersion":"2.0","type":"chore","template":"none","properties":{"name":"X","severity":["Blocker"]}}`), false, true)
+
+		// then
+		require.ErrorIs(t, err, errStoreFault)
+	})
+
+	t.Run("a property definition that cannot be read draws no off-type warning", func(t *testing.T) {
+		// given: chore lists severity; the definition reads fail, the
+		// live property listing does not
+		fx := newOffTypeFixture(t)
+		fx.store = &faultyStore{ObjectStore: fx.objectStore, failRelationReads: true}
+
+		// when
+		result, err := fx.CreateObject(ctx, testSpaceId,
+			[]byte(`{"formatVersion":"2.0","type":"chore","properties":{"name":"X","severity":["High"]}}`), true, true)
+
+		// then
+		require.NoError(t, err)
+		assert.Empty(t, result.Warnings)
 	})
 }
 

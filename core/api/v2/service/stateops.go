@@ -2809,10 +2809,16 @@ func (a *v2StateApplier) listedKeys(typeId string) (map[string]bool, bool) {
 	if a.typeKeysCache == nil {
 		a.typeKeysCache = map[string]map[string]bool{}
 	}
-	keys, readable := a.s.listedKeysOf(a.spaceId, typeId)
+	keys, readable := a.s.listedKeysOf(a.spaceId, typeId, applierProps{a})
 	a.typeKeysCache[typeId] = keys
 	return keys, readable
 }
+
+// applierProps is the applier's once-per-PATCH live property snapshot in
+// the shape listedKeysOf reads.
+type applierProps struct{ a *v2StateApplier }
+
+func (p applierProps) liveProps() ([]propertyEntry, error) { return p.a.propEntries() }
 
 // liveTypeHit is one memoized liveTypeByKey answer.
 type liveTypeHit struct {
