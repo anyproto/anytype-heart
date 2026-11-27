@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/contract"
+	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/internal/files"
 	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/internal/store"
 )
 
@@ -43,6 +44,10 @@ type Options struct {
 	In           io.Reader
 	Out          io.Writer
 	Log          io.Writer
+	// Files is the folder of the full tier's local file tools, already
+	// opened (serve --files-dir). Without it a full-tier connection gets a
+	// private temporary folder of its own. Serve closes it.
+	Files *files.Dir
 
 	// Zero values take the contract's numbers; tests shorten them.
 	RefreshAfter     time.Duration
@@ -51,6 +56,7 @@ type Options struct {
 	StdoutStall      time.Duration
 	ErrorBodyWait    time.Duration
 	StoreTimeout     time.Duration
+	TransferTimeout  time.Duration
 	Now              func() time.Time
 
 	// Test hooks. httpClient replaces the loopback client, so a test can
@@ -79,6 +85,9 @@ func (o *Options) defaults() {
 	}
 	if o.StoreTimeout == 0 {
 		o.StoreTimeout = contract.StoreReadTimeout
+	}
+	if o.TransferTimeout == 0 {
+		o.TransferTimeout = contract.TransferTimeout
 	}
 	if o.Now == nil {
 		o.Now = time.Now
@@ -123,6 +132,9 @@ type server struct {
 	log  *logger
 	conn *connection
 	up   *upstream
+	// local is the full tier's file tools; nil on a curated tier, without
+	// a connection, and when no folder could be made
+	local *localTools
 
 	out        chan *reply
 	queue      chan *call
@@ -201,6 +213,7 @@ func Serve(ctx context.Context, o Options) int {
 		return 0
 	}
 
+	defer s.openFiles()()
 	go s.writer()
 	go s.watchStdout()
 	go s.cleaner() //nolint:gosec // its DELETEs must outlive the run context: shutdown waits for them
@@ -286,6 +299,37 @@ func Serve(ctx context.Context, o Options) int {
 	}
 	log.close(deadline)
 	return code
+}
+
+// openFiles fixes the folder of the local file tools for the life of the
+// process, on a full-tier connection only: the one the caller opened, else
+// a new private temporary folder. It returns what releases it.
+func (s *server) openFiles() func() {
+	dir := s.o.Files
+	release := func() {
+		if dir != nil {
+			_ = dir.Close()
+		}
+	}
+	if s.conn.pinnedTier() != "full" {
+		return release
+	}
+	if dir == nil {
+		var err error
+		if dir, err = files.Temp(); err != nil {
+			s.log.printf("file tools are off: %v", err)
+			dir = nil
+			return release
+		}
+	}
+	local, err := newLocalTools(s, dir, s.o.TransferTimeout)
+	if err != nil {
+		s.log.printf("file tools are off: %v", err)
+		return release
+	}
+	s.local = local
+	s.log.printf("file tools: folder %s", dir.Path())
+	return release
 }
 
 // send queues a line that answers no accepted request (a refusal from the
@@ -689,6 +733,12 @@ func (s *server) handle(c *call) *reply {
 	if isInit {
 		sess = session{}
 	}
+	if isTool && s.local != nil {
+		// heart wins a name it serves itself; the rest never reaches it
+		if name, args, ok := s.local.claims(m.params); ok {
+			return s.local.call(c, name, args)
+		}
+	}
 	snap, err := s.conn.current(c.ctx)
 	if err != nil {
 		return s.notConnected(m.id)
@@ -864,6 +914,9 @@ func (s *server) relay(c *call, snap snapshot, ex exchange) *reply {
 		}
 		adopted = true
 		result = rewritten
+	}
+	if m.method == "tools/list" && s.local != nil {
+		result = s.local.extend(m.params, result)
 	}
 	r, err := resultReply(m.id, result)
 	if err != nil {

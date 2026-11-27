@@ -3,7 +3,7 @@
 // /mcp/<tier> endpoint and owns the one private file that holds the
 // connection's key.
 //
-//	anytype-mcp serve    --connection <id>
+//	anytype-mcp serve    --connection <id> [--files-dir DIR]
 //	anytype-mcp key set      --connection <id> --expect absent|<fp>@<rev>   # payload on stdin
 //	anytype-mcp key retarget --connection <id> --expect <fp>@<rev> --account <id> --port N --tier T
 //	anytype-mcp key delete   --connection <id> --expect <fp>@<rev> --account <id>
@@ -14,7 +14,9 @@
 // (internal/store); the forwarder runs as its caller and reads only what
 // its caller could. The key never appears in arguments, the environment or
 // logs. Nothing but the home directory steers the binary: there are no
-// override flags and no test build. It imports nothing from heart beyond
+// override flags and no test build. serve --files-dir names the one local
+// folder the full tier's file tools may touch; without it they get a new
+// private temporary folder per process. It imports nothing from heart beyond
 // its own packages.
 package main
 
@@ -26,8 +28,10 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
+	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/internal/files"
 	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/internal/forward"
 	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/internal/store"
 )
@@ -46,7 +50,7 @@ const (
 )
 
 const usage = `usage:
-  anytype-mcp serve    --connection <id>
+  anytype-mcp serve    --connection <id> [--files-dir DIR]
   anytype-mcp key set      --connection <id> --expect absent|<fp>@<rev>   (payload on stdin)
   anytype-mcp key retarget --connection <id> --expect <fp>@<rev> --account <id> --port N --tier T
   anytype-mcp key delete   --connection <id> --expect <fp>@<rev> --account <id>
@@ -93,11 +97,26 @@ func usageError(stderr io.Writer, msg string) int {
 func serveCmd(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	fs := newFlags("serve", stderr)
 	connection := fs.String("connection", "", "connection id")
+	filesDir := fs.String("files-dir", "", "absolute path of the folder for the full tier's file tools")
 	if err := fs.Parse(args); err != nil || fs.NArg() != 0 {
 		return exitUsage
 	}
 	if !store.ValidConnectionID(*connection) {
 		return usageError(stderr, "--connection must match ^[a-z0-9-]{1,64}$")
+	}
+	// the folder is fixed here, before anything is read from stdin
+	var dir *files.Dir
+	given := false
+	fs.Visit(func(f *flag.Flag) { given = given || f.Name == "files-dir" })
+	if given {
+		if !filepath.IsAbs(*filesDir) {
+			return usageError(stderr, "--files-dir must be an absolute path")
+		}
+		var err error
+		if dir, err = files.Open(*filesDir); err != nil {
+			fmt.Fprintf(stderr, "anytype-mcp: --files-dir: %v\n", err)
+			return exitInvalidInput
+		}
 	}
 
 	// a closed stdout must arrive as a write error, not as a signal
@@ -111,6 +130,7 @@ func serveCmd(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	return forward.Serve(ctx, forward.Options{
 		ConnectionID: *connection,
 		Store:        store.Open(namespace),
+		Files:        dir,
 		In:           stdin,
 		Out:          stdout,
 		Log:          stderr,

@@ -34,6 +34,8 @@ const (
 	StoreReadTimeout = 5 * time.Second
 	// ExchangeTimeout bounds one upstream exchange including its body.
 	ExchangeTimeout = 120 * time.Second
+	// TransferTimeout bounds one local file transfer, body included.
+	TransferTimeout = 10 * time.Minute
 	// ShutdownDeadline bounds everything between the shutdown trigger and
 	// exit: the drain, stdout and one DELETE of a known session.
 	ShutdownDeadline = 10 * time.Second

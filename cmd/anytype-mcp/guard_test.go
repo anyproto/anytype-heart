@@ -24,7 +24,7 @@ const (
 	// included. core/api/wrapper alone would bring 447 packages.
 	maxDeps = 260
 	// maxNonStdDeps bounds what is not the standard library: this
-	// command's four packages, the lock library and x/sys.
+	// command's five packages, the lock library and x/sys.
 	maxNonStdDeps = 8
 )
 

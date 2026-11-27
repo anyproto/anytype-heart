@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -20,6 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/contract"
+	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/internal/files"
 	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/internal/store"
 )
 
@@ -37,6 +39,16 @@ type recorded struct {
 	Auth    string
 	Body    string
 	RPC     string // JSON-RPC method of the body
+	Query   string
+	Header  http.Header
+}
+
+// fakeFile is a file object heart holds: name is its stem and extension
+// joined, as the object's properties split them.
+type fakeFile struct {
+	name      string
+	mediaType string
+	bytes     []byte
 }
 
 // fakeHeart mimics core/api/server/mcp.go closely enough for the
@@ -50,6 +62,8 @@ type fakeHeart struct {
 	key      string
 	sessions map[string]bool
 	opened   int
+	tools    []any
+	files    map[string]fakeFile
 	reqs     []recorded
 	// hook may take a request over; it returns true when it answered.
 	hook func(w http.ResponseWriter, r *http.Request, rec recorded) bool
@@ -118,7 +132,8 @@ func (h *fakeHeart) serve(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = json.Unmarshal(body, &msg)
 	rec := recorded{Method: r.Method, Path: r.URL.Path, Session: r.Header.Get(contract.SessionHeader),
-		Version: r.Header.Get(contract.ProtocolHeader), Auth: r.Header.Get("Authorization"), Body: string(body), RPC: msg.Method}
+		Version: r.Header.Get(contract.ProtocolHeader), Auth: r.Header.Get("Authorization"), Body: string(body), RPC: msg.Method,
+		Query: r.URL.RawQuery, Header: r.Header.Clone()}
 	h.mu.Lock()
 	h.reqs = append(h.reqs, rec)
 	hook, key := h.hook, h.key
@@ -128,6 +143,10 @@ func (h *fakeHeart) serve(w http.ResponseWriter, r *http.Request) {
 	}
 	if rec.Auth != "Bearer "+key {
 		rest(w, http.StatusUnauthorized, "invalid api key")
+		return
+	}
+	if strings.HasPrefix(r.URL.Path, "/v2/") {
+		h.serveREST(w, r)
 		return
 	}
 	tier := strings.TrimPrefix(r.URL.Path, "/mcp/")
@@ -184,12 +203,62 @@ func (h *fakeHeart) serve(w http.ResponseWriter, r *http.Request) {
 	case "ping":
 		rpcResult(w, msg.ID, map[string]any{})
 	case "tools/list":
-		rpcResult(w, msg.ID, map[string]any{"tools": []any{}})
+		h.mu.Lock()
+		tools := append([]any{}, h.tools...)
+		h.mu.Unlock()
+		rpcResult(w, msg.ID, map[string]any{"tools": tools})
 	case "tools/call":
 		rpcResult(w, msg.ID, map[string]any{"content": []map[string]string{{"type": "text", "text": "done"}}})
 	default:
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"jsonrpc": "2.0", "id": msg.ID, "error": map[string]any{"code": -32601, "message": "unknown method"}})
+	}
+}
+
+func envelope(w http.ResponseWriter, status int, code, msg string) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(map[string]any{"status": status, "code": code, "message": msg})
+}
+
+// serveREST mimics the three /v2 routes the local file tools use.
+func (h *fakeHeart) serveREST(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/v2/spaces/"), "/")
+	h.mu.Lock()
+	files := h.files
+	h.mu.Unlock()
+	switch {
+	case r.Method == http.MethodGet && len(parts) == 3 && parts[1] == "objects":
+		f, ok := files[parts[2]]
+		if !ok {
+			envelope(w, http.StatusNotFound, "not_found", "object not found")
+			return
+		}
+		stem, ext := f.name, ""
+		if i := strings.LastIndex(f.name, "."); i > 0 {
+			stem, ext = f.name[:i], f.name[i+1:]
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"object": "object", "id": parts[2],
+			"properties": map[string]any{"name": stem, "file_ext": ext}})
+	case r.Method == http.MethodGet && len(parts) == 4 && parts[1] == "files" && parts[3] == "content":
+		f, ok := files[parts[2]]
+		if !ok {
+			envelope(w, http.StatusNotFound, "not_found", "file not found")
+			return
+		}
+		w.Header().Set("Content-Type", f.mediaType)
+		_, _ = w.Write(f.bytes)
+	case r.Method == http.MethodPost && len(parts) == 2 && parts[1] == "files":
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Query().Get("dry_run") == "true" {
+			_, _ = io.WriteString(w, `{"dry_run":true}`)
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+		_, _ = io.WriteString(w, `{"object":"file","id":"uploaded-file-id"}`)
+	default:
+		envelope(w, http.StatusNotFound, "not_found", "no such route")
 	}
 }
 
@@ -217,19 +286,24 @@ func (c *clock) now() time.Time          { return time.Now().Add(time.Duration(c
 func (c *clock) advance(d time.Duration) { c.offset.Add(int64(d)) }
 
 type harness struct {
-	t      *testing.T
-	st     *store.Mem
-	heart  *fakeHeart
-	clock  *clock
-	in     *io.PipeWriter
-	outR   *io.PipeReader
-	lines  chan string
-	all    *syncBuffer // everything written to stdout
-	log    *syncBuffer
-	exit   chan int
-	cancel context.CancelFunc
-	opts   Options
-	srv    *server
+	t     *testing.T
+	st    *store.Mem
+	heart *fakeHeart
+	clock *clock
+	in    *io.PipeWriter
+	outR  *io.PipeReader
+	lines chan string
+	all   *syncBuffer // everything written to stdout
+	log   *syncBuffer
+	exit  chan int
+	done  chan struct{} // closed when Serve has returned
+	// root is the folder of the local file tools; empty with tempFiles,
+	// where a full-tier Serve makes its own
+	root      string
+	tempFiles bool
+	cancel    context.CancelFunc
+	opts      Options
+	srv       *server
 }
 
 type hopt func(*harness)
@@ -242,13 +316,16 @@ func withTier(tier string) hopt {
 
 func withoutItem() hopt { return func(h *harness) { h.st.Remove(testConn) } }
 
+// withTempFiles leaves the folder of the file tools to Serve.
+func withTempFiles() hopt { return func(h *harness) { h.tempFiles = true } }
+
 func withOptions(f func(*Options)) hopt { return func(h *harness) { f(&h.opts) } }
 
 // start runs Serve over pipes against a fake heart; the item is a small
 // tier connection unless an option says otherwise.
 func start(t *testing.T, opts ...hopt) *harness {
 	h := &harness{t: t, st: store.NewMem(), heart: newFakeHeart(t), clock: &clock{},
-		all: &syncBuffer{}, log: &syncBuffer{}, exit: make(chan int, 1), lines: make(chan string, 256)}
+		all: &syncBuffer{}, log: &syncBuffer{}, exit: make(chan int, 1), done: make(chan struct{}), lines: make(chan string, 256)}
 	withTier("small")(h)
 	inR, inW := io.Pipe()
 	outR, outW := io.Pipe()
@@ -257,6 +334,13 @@ func start(t *testing.T, opts ...hopt) *harness {
 		ShutdownDeadline: 2 * time.Second, httpClient: newHTTPClient()}
 	for _, o := range opts {
 		o(h)
+	}
+	if h.opts.Files == nil && !h.tempFiles {
+		// never the system's temporary folder by accident
+		h.root = filepath.Join(t.TempDir(), "files")
+		dir, err := files.Open(h.root)
+		require.NoError(t, err)
+		h.opts.Files = dir
 	}
 	h.opts.onServer = func(s *server) { h.srv = s }
 	ctx, cancel := context.WithCancel(context.Background())
@@ -269,11 +353,20 @@ func start(t *testing.T, opts ...hopt) *harness {
 		}
 		close(h.lines)
 	}()
-	go func() { h.exit <- Serve(ctx, h.opts) }()
+	go func() {
+		code := Serve(ctx, h.opts)
+		close(h.done)
+		h.exit <- code
+	}()
 	t.Cleanup(func() {
 		cancel()
 		_ = inW.Close()
 		_ = outR.Close()
+		// the folder is released before the test's own folders go
+		select {
+		case <-h.done:
+		case <-time.After(5 * time.Second):
+		}
 	})
 	return h
 }

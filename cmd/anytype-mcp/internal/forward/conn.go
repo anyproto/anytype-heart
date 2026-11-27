@@ -129,6 +129,16 @@ func (c *connection) start(ctx context.Context) {
 	c.log.printf("connected: tier %s, item rev %d", it.Tier, it.Rev)
 }
 
+// pinnedTier is the tier the start read pinned; empty without a connection.
+func (c *connection) pinnedTier() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.dead != "" {
+		return ""
+	}
+	return c.tier
+}
+
 // connected is read by the stdin reader, which must not wait behind a
 // slow store read: it looks at a flag, not at the lock.
 func (c *connection) connected() bool { return !c.gone.Load() }

@@ -140,9 +140,10 @@ func newEnv(t *testing.T) *env {
 }
 
 // childEnv is the whole environment of a child: built from scratch, never
-// from os.Environ.
+// from os.Environ. The system's temporary folder is the scratch home too:
+// a full-tier serve without --files-dir makes its files folder there.
 func childEnv(home string) []string {
-	return []string{"HOME=" + home, "USERPROFILE=" + home}
+	return []string{"HOME=" + home, "USERPROFILE=" + home, "TMPDIR=" + home, "TMP=" + home, "TEMP=" + home}
 }
 
 // holders lists every file under the home whose bytes contain the canary.
@@ -763,6 +764,10 @@ type heartStub struct {
 	srv  *httptest.Server
 	hits atomic.Int32
 	auth atomic.Value
+	// tools makes tools/list answer a list; session makes initialize open
+	// a session, as a curated tier does
+	tools   atomic.Bool
+	session atomic.Bool
 }
 
 func newHeartStub(t *testing.T) *heartStub {
@@ -784,6 +789,12 @@ func newHeartStub(t *testing.T) *heartStub {
 		result := map[string]any{}
 		if msg.Method == "initialize" {
 			result["protocolVersion"] = "2025-11-25"
+			if h.session.Load() {
+				w.Header().Set("Mcp-Session-Id", "stub-session")
+			}
+		}
+		if msg.Method == "tools/list" && h.tools.Load() {
+			result["tools"] = []any{map[string]any{"name": "list_spaces"}}
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{"jsonrpc": "2.0", "id": msg.ID, "result": result})
 	}))
