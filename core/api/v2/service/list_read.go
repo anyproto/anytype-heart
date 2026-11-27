@@ -681,7 +681,7 @@ func (s *Service) danglingFilterWarnings(ctx context.Context, spaceId string, vi
 	if len(unavailable) == 0 {
 		return nil
 	}
-	var vocab anyblockjson.KeyVocabulary = storeresolver.New(s.store.SpaceIndex(spaceId)).Options().Keys
+	vocab := storeresolver.New(s.store.SpaceIndex(spaceId)).Options().Keys
 	if !nameKeysRequested(ctx) {
 		vocab = s.apiKeys(spaceId, vocab)
 	}
