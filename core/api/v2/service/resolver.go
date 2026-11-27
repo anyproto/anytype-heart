@@ -480,6 +480,17 @@ func optionConsentErrorAs(spaceId, spelling, servedKey, name, path string) error
 			v2model.RefListPropertyOptions(spaceId, servedKey), v2model.Resend("create_missing_options", "true")))
 }
 
+// optionConsentErrorPending is the refusal for options declared on a
+// property this request would create: there is no options route to check
+// against yet, so the one repair offered is the consent resend.
+func optionConsentErrorPending(spelling, name, path string) error {
+	return v2model.ValidationFailed("option does not exist",
+		v2model.Issue{
+			Path:    path,
+			Message: fmt.Sprintf("property %q has no option named %q, and this request did not ask to create one", spelling, name),
+		}.Hintf("resend with %s to create it", v2model.Resend("create_missing_options", "true")))
+}
+
 // optionErrorSite is the request member an option refusal is addressed to,
 // and the spelling the caller gave its property there.
 type optionErrorSite struct{ path, spelling string }

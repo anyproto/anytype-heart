@@ -680,20 +680,26 @@ func (a *v2StateApplier) applyViewFilterString(raw json.RawMessage, edited, view
 			Message: fmt.Sprintf("%d characters — the cap is %d (the advertised maxLength)", length, maxV2FilterLength)})
 		return nil
 	}
-	refKeys := appendMissing(a.s.knownPropertyKeys(a.spaceId, a.v), "name")
-	refKeys = appendMissing(refKeys, v2SystemQueryKeys...)
+	// accepted: every spelling the channel resolves; advertised: the served
+	// ones, which the compact grammar can spell (bare keys), so a refusal
+	// never lists createdDate beside created_date
+	refKeys := appendMissing(a.s.knownPropertyKeys(a.spaceId, errKeys{}), "name")
+	refKeys = appendMissing(refKeys, servedBundledSpellings(v2SystemQueryKeys, errKeys{})...)
 	for key := range dataviewMembership(edited) {
 		refKeys = appendMissing(refKeys, key)
 	}
 	sort.Strings(refKeys)
-	parsed, err := filterstring.Parse(s, filterstring.Options{
-		KnownKeys: refKeys,
+	acceptKeys := appendMissing(append([]string(nil), refKeys...), a.s.knownPropertyKeys(a.spaceId, a.v)...)
+	acceptKeys = appendMissing(acceptKeys, v2SystemQueryKeys...)
+	sort.Strings(acceptKeys)
+	parsed, err := parseSearchFilter(s, filterstring.Options{
+		KnownKeys: acceptKeys,
 		// the SAME spellings KnownKeys accepts: a served slug must reach the
 		// parser's date conversion too, or `last_modified_date >= "2026-07-01"`
 		// parses to a string and the stored view compares it against int64
 		// (round-six review, the compact half of R6-1)
 		ResolveFormat: a.viewFormatName(),
-	})
+	}, refKeys)
 	if err != nil {
 		fsErr := filterStringError(a.spaceId, err)
 		var v2Err *v2model.Error

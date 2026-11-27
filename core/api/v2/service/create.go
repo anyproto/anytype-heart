@@ -1110,7 +1110,7 @@ func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, enve
 		if !s.typeKeyExists(spaceId, envelope.Type) {
 			return s.unknownTypeKeyError(spaceId, envelope.Type, "/type", v)
 		}
-		if err := rejectRestrictedType(envelope.Type); err != nil {
+		if err := rejectRestrictedType(envelope.Type, sentType); err != nil {
 			return err
 		}
 		// the bundled table answers for a type key forever, so existence alone
@@ -1197,7 +1197,7 @@ func (s *Service) refuseRemovedType(ctx context.Context, spaceId, typeKey, spell
 	}
 	if isRemoved {
 		v := errKeysFor(ctx)
-		return v2model.ValidationFailed(fmt.Sprintf("removed %s", v.typeWord()), removedTypeIssue(spaceId, typeKey, path, v))
+		return v2model.ValidationFailed(fmt.Sprintf("removed %s", v.typeWord()), removedTypeIssueAs(spaceId, spelledAs, path))
 	}
 	return nil
 }
@@ -1314,16 +1314,18 @@ func (s *Service) validatePropertyKeys(ctx context.Context, spaceId string, prop
 
 // rejectRestrictedType blocks creation of system-managed types through the
 // generic object path (mirrors createObjectInSpace's guards).
-func rejectRestrictedType(typeKey string) error {
+// The decision is made on the canonical typeKey; the refusal quotes sent,
+// the term the caller wrote ("IMAGE", not "image").
+func rejectRestrictedType(typeKey, sent string) error {
 	key := domain.TypeKey(typeKey)
 	if t, err := bundle.GetType(key); err == nil && t.RestrictObjectCreation {
 		return v2model.ValidationFailed("this type cannot be created through the API",
-			v2model.Issue{Path: "/type", Message: fmt.Sprintf("creation of %q objects is restricted", typeKey)})
+			v2model.Issue{Path: "/type", Message: fmt.Sprintf("creation of %q objects is restricted", sent)})
 	}
 	switch key {
 	case bundle.TypeKeyFile, bundle.TypeKeyImage, bundle.TypeKeyAudio, bundle.TypeKeyVideo:
 		return v2model.ValidationFailed("file objects are created by upload",
-			v2model.Issue{Path: "/type", Message: fmt.Sprintf("%q objects come from file uploads", typeKey)}.Hintf("upload one with %s", v2model.NewRef(v2model.OpUploadFile)))
+			v2model.Issue{Path: "/type", Message: fmt.Sprintf("%q objects come from file uploads", sent)}.Hintf("upload one with %s", v2model.NewRef(v2model.OpUploadFile)))
 	}
 	return nil
 }

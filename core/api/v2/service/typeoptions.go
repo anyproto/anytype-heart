@@ -112,7 +112,7 @@ func (s *Service) applyDeclaredOptionsAt(defs []anyblockjson.TypeProperty, resol
 			// exists to end, and the opposite of the refusal
 			// PropertyStoredKey's own comment promises.
 			if !resolvers.CreateMissingConsent() {
-				return optionConsentErrorAt(resolvers.spaceId, docKey, def.Options[0].Name, defPath)
+				return optionConsentErrorPending(docKey, def.Options[0].Name, defPath)
 			}
 			for _, opt := range def.Options {
 				if opt.Name != "" {
@@ -251,8 +251,8 @@ func (s *Service) guardDeclaredOptionsAt(spaceId string, defs []anyblockjson.Typ
 			}
 		}
 		// the options route takes the served key, a valid path segment
-		// whatever the caller spelled
-		routeKey := spelling
+		// whatever the caller spelled; a pending property has no route yet
+		routeKey := ""
 		if exists {
 			routeKey = servedKeyIn(entry, properties)
 		}
@@ -280,7 +280,7 @@ func (s *Service) guardDeclaredOptionsAt(spaceId string, defs []anyblockjson.Typ
 		// a property this request mints holds no options at all, so every
 		// name declared against it is one the request would create
 		if !exists {
-			return optionConsentErrorAs(spaceId, spelling, routeKey, def.Options[0].Name, defPath)
+			return optionConsentErrorPending(spelling, def.Options[0].Name, defPath)
 		}
 		held := map[string]bool{}
 		options, err := s.store.SpaceIndex(spaceId).ListRelationOptions(domain.RelationKey(entry.Key))

@@ -358,6 +358,13 @@ func removedTypeIssue(spaceId, key, path string, v errKeys) v2model.Issue {
 			spelling = t.Name
 		}
 	}
+	return removedTypeIssueAs(spaceId, spelling, path)
+}
+
+// removedTypeIssueAs is removedTypeIssue quoting the spelling the caller
+// sent, when there is one: the decision is made on the canonical key, the
+// refusal is addressed to the term as written ("Task", not "task").
+func removedTypeIssueAs(spaceId, spelling, path string) v2model.Issue {
 	return v2model.Issue{
 		Path:    path,
 		Message: fmt.Sprintf("type %q was removed from this space — nothing new is created in a removed type", spelling),

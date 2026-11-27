@@ -236,22 +236,25 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 			return nil, err
 		}
 		if taken {
+			// the refusal quotes the key as submitted (meetingNote); the slug it
+			// normalizes to (meeting_note) is what the update route takes
+			submitted := orDefault(apiKey, slug)
 			if holder.Kind == "bundled type" {
 				return nil, v2model.ValidationFailed("type key is reserved",
 					v2model.Issue{Path: keyPath,
-						Message: fmt.Sprintf("key %q is taken by bundled type %q — it already exists", slug, holder.Name)})
+						Message: fmt.Sprintf("key %q is taken by bundled type %q — it already exists", submitted, holder.Name)})
 			}
 			if holder.Kind == "types" {
 				// several types answer to this slug already: an update by
 				// that slug would be refused as ambiguous, so it is not offered
 				return nil, v2model.ValidationFailed("type key already exists",
 					v2model.Issue{Path: keyPath,
-						Message: fmt.Sprintf("key %q is answered by several types in space %s: %s", slug, spaceId, holder.Name),
+						Message: fmt.Sprintf("key %q is answered by several types in space %s: %s", submitted, spaceId, holder.Name),
 					}.WithHint(v2model.Plain("pick a different key"+holderRenameNote(holder))))
 			}
 			return nil, v2model.ValidationFailed("type key already exists",
 				v2model.Issue{Path: keyPath,
-					Message: fmt.Sprintf("key %q is taken by %s %q in space %s", slug, holder.Kind, holder.Name, spaceId),
+					Message: fmt.Sprintf("key %q is taken by %s %q in space %s", submitted, holder.Kind, holder.Name, spaceId),
 				}.Hintf("update it with %s, or pick a different key", v2model.RefUpdateType(spaceId, holder.Served)))
 		}
 	}
@@ -292,6 +295,14 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 		if err := json.Unmarshal(body, &envelope); err != nil {
 			return nil, v2model.ValidationFailed("decode document envelope: " + err.Error())
 		}
+	}
+
+	// two spellings of one property in the type's properties map: the codec
+	// would refuse them by the stored key both resolve to, a bson id the
+	// caller never wrote. The object channel refuses them by what was sent
+	// (canonicalizeDocumentKeys); so does this one.
+	if err := s.refuseTwoSpellingsOfOneProperty(spaceId, envelope.Properties); err != nil {
+		return nil, err
 	}
 
 	// Unmarshal rebuilds the four recommended-relation lists from
@@ -1349,7 +1360,7 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, req v2mode
 				// update by that slug nor "use the existing property" can be
 				// followed — both would be refused as ambiguous — so the only
 				// repair is a key of the caller's own, whichever slot they wrote
-				hint = v2model.Plain(fmt.Sprintf("several properties answer to %q (%s) — pass an explicit different key", slug, holder.Name) + holderRenameNote(holder))
+				hint = v2model.Plain(fmt.Sprintf("several properties answer to %q (%s) — pass an explicit different key", orDefault(req.Key, slug), holder.Name) + holderRenameNote(holder))
 			}
 			if _, bundled := bundle.PickRelation(domain.RelationKey(holder.Key)); bundled == nil || holder.Kind == "bundled property" {
 				// a built-in property, installed or not: an update by its key
@@ -1359,7 +1370,8 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, req v2mode
 			}
 			return nil, s.dryRunLoadingNote(ctx, spaceId, dryRun, v2model.ValidationFailed("property key already exists",
 				v2model.Issue{Path: path,
-					Message: fmt.Sprintf("key %q is taken by %s %q", slug, holder.Kind, holder.Name),
+					// the key as submitted (dueDate2), not the slug it normalizes to
+					Message: fmt.Sprintf("key %q is taken by %s %q", orDefault(req.Key, slug), holder.Kind, holder.Name),
 				}.WithHint(hint)))
 		}
 	}

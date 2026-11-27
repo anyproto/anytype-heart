@@ -183,11 +183,13 @@ func TestV2CompactFilterTypoListsServedKeys(t *testing.T) {
 			Name: "Errands", Type: "errand", Filter: `manual_propertyy = "x"`,
 		}, false, true)
 
-		// then
+		// then: the exact list — manual_property is a substring of the typo,
+		// so a Contains on it would prove nothing
 		apiErr := v2Err(t, err)
 		require.Len(t, apiErr.Issues, 1)
-		assert.Contains(t, apiErr.Issues[0].Message, `unknown property key "manual_propertyy"`)
-		assert.Contains(t, apiErr.Issues[0].Message, "manual_property", "the slug is listed")
+		assert.Equal(t, `parse error at offset 0 near "manual_propertyy": unknown property key "manual_propertyy" — `+
+			`known property keys: created_date, creator, last_modified_date, last_opened_date, manual_property, name, type`,
+			apiErr.Issues[0].Message)
 		assertNoStoredKey(t, apiErr)
 	})
 }

@@ -84,7 +84,9 @@ func TestV2PropertyMintCollisionCheck(t *testing.T) {
 
 		apiErr := v2ErrWithIssue(t, err)
 		require.NotEmpty(t, apiErr.Issues)
-		assert.Contains(t, apiErr.Issues[0].Message, `"due_date_2"`)
+		// the key as submitted, and the slug both normalize to in the route
+		assert.Contains(t, apiErr.Issues[0].Message, `"dueDate2"`)
+		assert.Contains(t, apiErr.Issues[0].Hint, "/properties/due_date_2")
 
 		// the snake spelling of the same key is the same refusal
 		_, err = fx.CreateProperty(context.Background(), testSpaceId,
@@ -196,7 +198,8 @@ func TestV2PropertyMintCollisionCheck(t *testing.T) {
 
 		apiErr := v2ErrWithIssue(t, err)
 		require.NotEmpty(t, apiErr.Issues)
-		assert.Contains(t, apiErr.Issues[0].Message, `"priority_level"`)
+		assert.Contains(t, apiErr.Issues[0].Message, `"priorityLevel"`)
+		assert.Contains(t, apiErr.Issues[0].Hint, "/properties/priority_level")
 	})
 
 	t.Run("propertyKeyExists is corpse-blind and live-sighted", func(t *testing.T) {
@@ -280,7 +283,8 @@ func TestV2TypeMintCollisionCheck(t *testing.T) {
 
 		apiErr := v2ErrWithIssue(t, err)
 		require.NotEmpty(t, apiErr.Issues)
-		assert.Contains(t, apiErr.Issues[0].Message, `"meeting_note"`)
+		assert.Contains(t, apiErr.Issues[0].Message, `"meetingNote"`)
+		assert.Contains(t, apiErr.Issues[0].Hint, "/types/meeting_note")
 	})
 }
 

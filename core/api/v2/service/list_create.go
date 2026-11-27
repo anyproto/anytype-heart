@@ -133,13 +133,13 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 		// example (`type IN (…)`) parses to a targeted error below instead of
 		// an unknown-key message that cannot explain itself
 		typeKeys := s.typePropertyKeys(spaceId, typeId)
-		acceptKeys := appendMissing(append(kc.withServedSpellings(typeKeys), "name", "type"), v2SystemQueryKeys...)
+		acceptKeys := appendMissing(append(kc.withServedSpellings(typeKeys), "name", "type"), kc.withServedSpellings(v2SystemQueryKeys)...)
 		// a refusal is worded over the served spellings: acceptance keeps
 		// every stored key, and a space-minted property's stored key is a
 		// bson id no listing serves (served, not the request's vocabulary —
 		// the compact grammar spells bare keys only). The hidden counters
 		// parse, but are not listed.
-		refKeys := appendMissing(append(kc.servedSpellings(typeKeys), "name", "type"), v2SystemQueryKeys...)
+		refKeys := appendMissing(append(kc.servedSpellings(typeKeys), "name", "type"), servedBundledSpellings(v2SystemQueryKeys, errKeys{})...)
 		sort.Strings(refKeys)
 		acceptKeys = appendMissing(acceptKeys, kc.withServedSpellings(v2BundledQueryKeys)...)
 		sort.Strings(acceptKeys)
@@ -514,7 +514,9 @@ func (s *Service) validateViewKeys(ctx context.Context, spaceId, typeId, typeKey
 	entries, entriesErr := s.liveProperties(spaceId)
 	if entriesErr == nil {
 		kc := &keyCanon{s: s, spaceId: spaceId, entries: entries}
-		typeKeys = kc.servedSpellings(typeKeys)
+		// structured input can carry any spelling, so the list speaks the
+		// request's vocabulary (names under ?keys=name)
+		typeKeys = kc.referenceSpellings(typeKeys, v)
 	}
 	// the bundled-removal set, primed lazily and only when an allowed key is
 	// not live-installed (§7.5a-2)

@@ -882,6 +882,34 @@ func propertiesPointer(name string) string {
 	return "/properties/" + v2model.PointerToken(name)
 }
 
+// refuseTwoSpellingsOfOneProperty refuses a properties map carrying one
+// property under two spellings (its slug and its name, say), naming both
+// spellings as sent — the same refusal canonicalizeDocumentKeys makes on the
+// object channel, for a body that is not canonicalized before import.
+func (s *Service) refuseTwoSpellingsOfOneProperty(spaceId string, props map[string]json.RawMessage) error {
+	if len(props) < 2 {
+		return nil
+	}
+	entries, err := s.liveProperties(spaceId)
+	if err != nil {
+		return fmt.Errorf("load properties of space %s: %w", spaceId, err)
+	}
+	spelledBy := make(map[string]string, len(props))
+	for _, key := range sortedKeys(props) {
+		canonical := key
+		if entry, ok, ambiguous := s.resolvePropertyInput(key, entries); ok && len(ambiguous) == 0 {
+			canonical = entry.Key
+		}
+		if first, dup := spelledBy[canonical]; dup {
+			return v2model.ValidationFailed("duplicate property key",
+				v2model.Issue{Path: propertiesPointer(key),
+					Message: fmt.Sprintf("%q and %q both address one property — keep one", first, key)})
+		}
+		spelledBy[canonical] = key
+	}
+	return nil
+}
+
 // slugHolder names the existing holder of a proposed api key — the material
 // for the loud refusal the union collision check owes the caller.
 type slugHolder struct {
