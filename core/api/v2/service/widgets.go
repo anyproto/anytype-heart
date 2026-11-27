@@ -305,7 +305,7 @@ func (s *Service) ensureWidgetWritable(ctx context.Context, spaceId string, scop
 }
 
 // resolveWidgetTarget answers what a create may point a widget at.
-func (s *Service) resolveWidgetTarget(spaceId, target string) (widgetTarget, error) {
+func (s *Service) resolveWidgetTarget(spaceId, target string, dryRun bool) (widgetTarget, error) {
 	if target == "" {
 		return widgetTarget{}, v2model.ValidationFailed("target is required",
 			v2model.Issue{Path: "/target", Message: "the id of the object the widget points at"}.
@@ -356,7 +356,12 @@ func (s *Service) resolveWidgetTarget(spaceId, target string) (widgetTarget, err
 			// the restore op refuses schema objects; the app's Bin restores them
 			issue = issue.WithHint(v2model.Plain("restore it from the Bin in the Anytype app first"))
 		default:
-			issue = issue.Hintf("restore it with %s first", v2model.RefRestoreObject(spaceId, target))
+			// a preview's restore carries dry_run itself
+			restore := v2model.RefRestoreObject(spaceId, target)
+			if dryRun {
+				restore = restore.With("dry_run", "true")
+			}
+			issue = issue.Hintf("restore it with %s first", restore)
 		}
 		return widgetTarget{}, v2model.ValidationFailed(fmt.Sprintf("object %q is in the bin", target), issue)
 	}
@@ -665,7 +670,7 @@ func widgetIdList(entries []apicore.WidgetEntry) string {
 // resolveWidget finds the widget a path segment names, across the roots a
 // scope filter selects: by widget id first, then by target. A target
 // present in both roots needs the scope said.
-func (s *Service) resolveWidget(ctx context.Context, spaceId, ref, scopeFilter string) (apicore.WidgetEntry, []apicore.WidgetEntry, error) {
+func (s *Service) resolveWidget(ctx context.Context, spaceId, ref, scopeFilter string, dryRun bool) (apicore.WidgetEntry, []apicore.WidgetEntry, error) {
 	scopes, err := widgetScopesOf(scopeFilter)
 	if err != nil {
 		return apicore.WidgetEntry{}, nil, err
@@ -690,7 +695,13 @@ func (s *Service) resolveWidget(ctx context.Context, spaceId, ref, scopeFilter s
 		issue := v2model.Issue{Path: "widget_id", Message: "use the widget id: " + widgetIdList(matches)}
 		if matches[0].Scope != matches[len(matches)-1].Scope {
 			issue.Message = "say which with the scope parameter, or use the widget id: " + widgetIdList(matches)
-			issue = issue.Hintf("resend with %s or %s", v2model.Resend("scope", v2model.WidgetScopeSpace), v2model.Resend("scope", v2model.WidgetScopePersonal))
+			// a preview's resends carry dry_run themselves: copied in place of
+			// the request's query, a bare ?scope= would perform the write
+			space, personal := v2model.Resend("scope", v2model.WidgetScopeSpace), v2model.Resend("scope", v2model.WidgetScopePersonal)
+			if dryRun {
+				space, personal = space.With("dry_run", "true"), personal.With("dry_run", "true")
+			}
+			issue = issue.Hintf("resend with %s or %s", space, personal)
 			return apicore.WidgetEntry{}, nil, v2model.AmbiguousInput(fmt.Sprintf("%q names a widget in both scopes", ref), issue)
 		}
 		return apicore.WidgetEntry{}, nil, v2model.AmbiguousInput(fmt.Sprintf("%q names more than one widget in the %s sidebar", ref, matches[0].Scope),
@@ -720,7 +731,7 @@ func (s *Service) CreateWidget(ctx context.Context, spaceId string, req v2model.
 	if err := s.ensureWidgetWritable(ctx, spaceId, scope); err != nil {
 		return nil, err
 	}
-	target, err := s.resolveWidgetTarget(spaceId, req.Target)
+	target, err := s.resolveWidgetTarget(spaceId, req.Target, dryRun)
 	if err != nil {
 		return nil, err
 	}
@@ -799,7 +810,7 @@ func (s *Service) UpdateWidget(ctx context.Context, spaceId, ref, scopeFilter st
 	if err := s.ensureSpaceLoaded(ctx, spaceId); err != nil {
 		return nil, err
 	}
-	entry, siblings, err := s.resolveWidget(ctx, spaceId, ref, scopeFilter)
+	entry, siblings, err := s.resolveWidget(ctx, spaceId, ref, scopeFilter, dryRun)
 	if err != nil {
 		return nil, err
 	}
@@ -940,7 +951,7 @@ func (s *Service) DeleteWidget(ctx context.Context, spaceId, ref, scopeFilter st
 	if err := s.ensureWidgets(); err != nil {
 		return nil, err
 	}
-	entry, _, err := s.resolveWidget(ctx, spaceId, ref, scopeFilter)
+	entry, _, err := s.resolveWidget(ctx, spaceId, ref, scopeFilter, dryRun)
 	if err != nil {
 		return nil, err
 	}

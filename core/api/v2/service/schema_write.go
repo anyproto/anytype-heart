@@ -1211,7 +1211,8 @@ func (s *Service) DeleteType(ctx context.Context, spaceId, typeKey string, dryRu
 	if slices.Contains(bundle.SystemTypes, domain.TypeKey(entry.Key)) {
 		return nil, systemSchemaRefusal("type", "type", typeKey)
 	}
-	if err := s.refuseSchemaInBin(ctx, spaceId, entry.Id, "type", "type", typeKey, dryRun); err != nil {
+	loadingWarnings, err := s.refuseSchemaInBin(ctx, spaceId, entry.Id, "type", "type", typeKey, dryRun)
+	if err != nil {
 		return nil, err
 	}
 	typeId := entry.Id
@@ -1223,8 +1224,9 @@ func (s *Service) DeleteType(ctx context.Context, spaceId, typeKey string, dryRu
 	if dryRun {
 		result.DryRun = true
 		// a dry run did not wait for the load: what it found in the index
-		// of a space still loading can be incomplete, and it says so
-		result.Warnings = append(result.Warnings, s.LoadingSpaceWarnings(ctx, spaceId)...)
+		// of a space still loading can be incomplete, and it says so, from
+		// the decision that left the Bin unopened
+		result.Warnings = append(result.Warnings, loadingWarnings...)
 		return result, nil
 	}
 	if err := s.archiveSchemaObject(ctx, typeId, fmt.Sprintf("type %q", typeKey)); err != nil {
@@ -1251,21 +1253,29 @@ func systemSchemaRefusal(kind, param, spelling string) error {
 // that resolved it as live trails the archive, so a delete repeated before
 // the index catches up would otherwise archive it again and claim another
 // move. A dry run of a space still loading leaves the Bin unopened, since
-// opening it would wait for the load: it answers from the index, and its
-// loading warning says the answer can be incomplete.
-func (s *Service) refuseSchemaInBin(ctx context.Context, spaceId, id, kind, param, spelling string, dryRun bool) error {
-	if dryRun && len(s.LoadingSpaceWarnings(ctx, spaceId)) > 0 {
-		return nil
+// opening it would wait for the load: it answers from the index, and the
+// warning returned, made by that same decision, says the answer can be
+// incomplete. The space view saying loading decides it, or else the load
+// itself, probed without waiting: a space rebuilding on restart can still
+// publish its previous Ok.
+func (s *Service) refuseSchemaInBin(ctx context.Context, spaceId, id, kind, param, spelling string, dryRun bool) ([]v2model.Issue, error) {
+	if dryRun {
+		if warnings := s.LoadingSpaceWarnings(ctx, spaceId); len(warnings) > 0 {
+			return warnings, nil
+		}
+		if !s.spaceLoadedNow(ctx, spaceId) {
+			return []v2model.Issue{spaceLoadingWarning(s.servedSpaceRef(ctx, spaceId))}, nil
+		}
 	}
 	inBin, err := s.reader.InBin(ctx, spaceId, id)
 	if err != nil {
-		return fmt.Errorf("read the Bin state of %s %q: %w", kind, spelling, err)
+		return nil, fmt.Errorf("read the Bin state of %s %q: %w", kind, spelling, err)
 	}
 	if inBin {
-		return v2model.NotFound(fmt.Sprintf("%s %q is already deleted: it is in the Bin", kind, spelling),
+		return nil, v2model.NotFound(fmt.Sprintf("%s %q is already deleted: it is in the Bin", kind, spelling),
 			v2model.Issue{Path: param, Message: "restore it from the Bin in the Anytype app to use it again"})
 	}
-	return nil
+	return nil, nil
 }
 
 // archiveSchemaObject moves a type or property to the Bin. It is not read
@@ -1593,7 +1603,8 @@ func (s *Service) DeleteProperty(ctx context.Context, spaceId, propertyKey strin
 	if bundle.IsSystemRelation(domain.RelationKey(entry.Key)) {
 		return nil, systemSchemaRefusal("property", "key", propertyKey)
 	}
-	if err := s.refuseSchemaInBin(ctx, spaceId, entry.Id, "property", "key", propertyKey, dryRun); err != nil {
+	loadingWarnings, err := s.refuseSchemaInBin(ctx, spaceId, entry.Id, "property", "key", propertyKey, dryRun)
+	if err != nil {
 		return nil, err
 	}
 	result := &v2model.CreateResult{Id: entry.Id, Key: propertyKey}
@@ -1605,8 +1616,9 @@ func (s *Service) DeleteProperty(ctx context.Context, spaceId, propertyKey strin
 	if dryRun {
 		result.DryRun = true
 		// a dry run did not wait for the load: what it found in the index
-		// of a space still loading can be incomplete, and it says so
-		result.Warnings = append(result.Warnings, s.LoadingSpaceWarnings(ctx, spaceId)...)
+		// of a space still loading can be incomplete, and it says so, from
+		// the decision that left the Bin unopened
+		result.Warnings = append(result.Warnings, loadingWarnings...)
 		return result, nil
 	}
 	if err := s.archiveSchemaObject(ctx, entry.Id, fmt.Sprintf("property %q", propertyKey)); err != nil {

@@ -875,9 +875,10 @@ error: the upload itself succeeded (`core/api/v2/service/syncstatus.go`,
   tree's signed root is this account AND the first content change carries
   this account's identity together with the caller's app name, compared
   EXACTLY as raw text. Details are never consulted. It **fails closed** — no
-  recorded app name, a nameless caller, a provenance read error or a
-  missing provenance dependency all refuse with 403
-  `not_created_by_this_key` — so objects created in the app, by import, by
+  recorded app name or a nameless caller refuse with 403
+  `not_created_by_this_key`, and a provenance read error or a missing
+  provenance dependency refuse with 500 `internal_error`, which a retry can
+  clear — so objects created in the app, by import, by
   another member, or before provenance existed can only be archived through
   the API. More rules keep a hard delete from destroying another member's
   work or breaking other objects: a change signed by another space member

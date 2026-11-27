@@ -22,6 +22,7 @@ package v2model
 
 import (
 	"fmt"
+	"net/url"
 	"regexp"
 	"sort"
 	"strings"
@@ -250,7 +251,7 @@ func (r Ref) String() string {
 	// rendering does not depend on map iteration order
 	path := placeholder.ReplaceAllStringFunc(o.path, func(m string) string {
 		if value, ok := r.Params[m[1:len(m)-1]]; ok {
-			return value
+			return escapeBound(value, url.PathEscape)
 		}
 		return m
 	})
@@ -259,6 +260,21 @@ func (r Ref) String() string {
 
 // placeholder matches one `{name}` path parameter in an operation's path.
 var placeholder = regexp.MustCompile(`\{[a-z_]+\}`)
+
+// fillIn matches a value the caller is to fill in, such as <order_id>. It
+// renders as written: escaping it would hide what to put there.
+var fillIn = regexp.MustCompile(`^<[a-z_]+>$`)
+
+// escapeBound escapes a bound value for its slot, the way url.Values
+// encodes a query: a value is data (an id can arrive decoded from the very
+// request being answered), so a delimiter in it never changes the path or
+// the query a rendered reference addresses.
+func escapeBound(value string, escape func(string) string) string {
+	if fillIn.MatchString(value) {
+		return value
+	}
+	return escape(value)
+}
 
 // queryString renders the query parameters, keys sorted, or "".
 func (r Ref) queryString() string {
@@ -272,7 +288,7 @@ func (r Ref) queryString() string {
 	sort.Strings(keys)
 	parts := make([]string, len(keys))
 	for i, k := range keys {
-		parts[i] = k + "=" + r.Query[k]
+		parts[i] = url.QueryEscape(k) + "=" + escapeBound(r.Query[k], url.QueryEscape)
 	}
 	return "?" + strings.Join(parts, "&")
 }

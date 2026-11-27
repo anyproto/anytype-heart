@@ -2392,23 +2392,35 @@ func TestPatchObject(t *testing.T) {
 		assert.Contains(t, apiErr.Issues[0].Hint, "create_missing_options=true")
 	})
 
-	t.Run("an unmatched option's resend keeps a dry run a dry run", func(t *testing.T) {
-		// given
-		fx := newV2Fixture(t)
-		fx.addSelectProperty(t)
-		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").
-			Return(editRead(t, editBaseDoc), nil).Maybe()
+	t.Run("an unmatched option's refusal is worded for the caller's run, not the probe's", func(t *testing.T) {
+		// the pre-lock probe always resolves dry, so it never writes; the
+		// refusal it raises still speaks for the request: a real PATCH gets
+		// the real resend, a preview the preview's
+		options := v2model.RefListPropertyOptions(testSpaceId, "severity")
+		for _, tc := range []struct {
+			dryRun bool
+			want   v2model.Issue
+		}{
+			{want: v2model.Issue{Path: "/properties/severity", Message: `property "severity" has no option named "Critical", and this request did not ask to create one`}.
+				Hintf("check the spelling against %s, or resend with %s to create it", options, v2model.Resend("create_missing_options", "true"))},
+			{dryRun: true, want: v2model.Issue{Path: "/properties/severity", Message: `property "severity" has no option named "Critical", and this request did not ask to create one`}.
+				Hintf("check the spelling against %s, or resend with %s to preview creating it", options, v2model.Resend("create_missing_options", "true").With("dry_run", "true"))},
+		} {
+			// given
+			fx := newV2Fixture(t)
+			fx.addSelectProperty(t)
+			fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").
+				Return(editRead(t, editBaseDoc), nil).Maybe()
 
-		// when
-		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_properties","set":{"severity":["Critical"]}}`), "", true, false)
+			// when
+			_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+				patchBody(`{"op":"set_properties","set":{"severity":["Critical"]}}`), "", tc.dryRun, false)
 
-		// then
-		apiErr := v2ErrWithIssue(t, err)
-		require.NotEmpty(t, apiErr.Issues)
-		assert.Equal(t, []v2model.Ref{v2model.RefListPropertyOptions(testSpaceId, "severity"),
-			v2model.Resend("create_missing_options", "true").With("dry_run", "true")}, apiErr.Issues[0].SeeAlso)
-		assert.Contains(t, apiErr.Issues[0].Hint, "to preview creating it")
+			// then
+			apiErr := v2ErrWithIssue(t, err)
+			require.Len(t, apiErr.Issues, 1, "dryRun=%v", tc.dryRun)
+			assert.Equal(t, tc.want, apiErr.Issues[0], "dryRun=%v", tc.dryRun)
+		}
 	})
 
 	t.Run("an EXISTING option name needs no consent", func(t *testing.T) {

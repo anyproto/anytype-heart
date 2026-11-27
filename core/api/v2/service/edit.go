@@ -194,7 +194,7 @@ func (s *Service) PatchObject(ctx context.Context, spaceId, objectId string, bod
 	// detail, not the Bin membership: the restrictions are computed from
 	// the detail, and this check exists to name THEIR refusal.
 	if isArchivedRead(cur) {
-		return nil, v2model.ObjectArchived(spaceId, objectId, deletableSbType(cur.SbType))
+		return nil, v2model.ObjectArchived(spaceId, objectId, deletableSbType(cur.SbType), dryRun)
 	}
 	resolvers.scope = s.objectPropertyScope(spaceId, cur)
 	// the object's own restrictions, from the same read — so a dry run reaches
@@ -313,6 +313,8 @@ func (s *Service) guardCreateMissing(ctx context.Context, spaceId, objectId stri
 	// preview what that run would create, and a probe with a different answer
 	// previews a different request
 	probe := s.newCreatingResolvers(ctx, spaceId, true, createMissingOptions)
+	// the probe never writes, but its refusals speak for this request
+	probe.previewing = dryRun
 	probe.scope = s.objectPropertyScope(spaceId, cur)
 	s.prewarmCreateMissing(ops, probe)
 	if err := probe.err(); err != nil {

@@ -59,6 +59,10 @@ type creatingResolvers struct {
 	// per resolver in Options().
 	keys   *apiKeyVocab
 	dryRun bool
+	// previewing is the request's own mode, which words a refusal. It is
+	// dryRun except for the pre-lock probe, which resolves dry for every
+	// request and must still speak for a real one.
+	previewing bool
 	// createMissingOptions is the caller's explicit ?create_missing_options=true consent.
 	// Without it an unmatched select NAME is a refusal, not a mint (A2).
 	createMissingOptions bool
@@ -137,6 +141,7 @@ func (s *Service) newCreatingResolvers(ctx context.Context, spaceId string, dryR
 		spaceId:              spaceId,
 		reads:                storeresolver.New(s.store.SpaceIndex(spaceId)),
 		dryRun:               dryRun,
+		previewing:           dryRun,
 		createMissingOptions: createMissingOptions,
 		createdOptions:       map[optionRef]string{},
 		declaredColors:       map[optionRef]string{},
@@ -329,7 +334,7 @@ func (r *creatingResolvers) OptionId(key domain.RelationKey, name string) (strin
 		// caller. Refusing beats returning "unresolved": that would store the
 		// NAME where an option id belongs — a value matching nothing that
 		// reads as if it matched.
-		r.errs = append(r.errs, optionConsentError(r.spaceId, r.keys.PropertySlug(string(key)), name, r.dryRun))
+		r.errs = append(r.errs, optionConsentError(r.spaceId, r.keys.PropertySlug(string(key)), name, r.previewing))
 		return "", false
 	}
 	if r.dryRun {

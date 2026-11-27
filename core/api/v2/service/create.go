@@ -766,9 +766,14 @@ func (s *Service) labelShapedIdWarnings(ctx context.Context, spaceId string, bod
 	for _, block := range read.Snapshot.Blocks {
 		held[block.GetId()] = true
 	}
+	// the merge renames block ids only: a view id is never reminted
+	blockIds := map[string]bool{}
+	if parsed, perr := parseEditDoc(body); perr == nil {
+		blockIds = parsed.localBlockIds()
+	}
 	var kept, reminted []string
 	for _, id := range labels {
-		if held[id] {
+		if held[id] && blockIds[id] {
 			reminted = append(reminted, id)
 		} else {
 			kept = append(kept, id)

@@ -112,7 +112,7 @@ func (s *Service) applyDeclaredOptionsAt(defs []anyblockjson.TypeProperty, resol
 			// exists to end, and the opposite of the refusal
 			// PropertyStoredKey's own comment promises.
 			if !resolvers.CreateMissingConsent() {
-				return optionConsentErrorAt(resolvers.spaceId, docKey, def.Options[0].Name, defPath, resolvers.dryRun)
+				return optionConsentErrorAt(resolvers.spaceId, docKey, def.Options[0].Name, defPath, resolvers.previewing)
 			}
 			for _, opt := range def.Options {
 				if opt.Name != "" {

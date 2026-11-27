@@ -722,8 +722,10 @@ variants, each naming what IS recorded:
   space member. Ask them, or archive it in the app if your role permits.`
 
 Each carries `issues: [{path: "object_id", hint: "probe without writing by
-resending with ?dry_run=true; a read of the object shows who created it;
-without permanent, DELETE moves the object to the Bin instead"}]`, and the
+resending with ?dry_run=true&permanent=true; a read of the object shows who
+created it; without permanent, DELETE moves the object to the Bin"}]`; the
+probe binds permanent too, so copied in place of the query it tests the
+delete it refused rather than previewing an archive. The
 standard `WWW-Authenticate: Bearer error="insufficient_scope"` channel stays
 untouched (this is not a scope failure). A refused dry run already was the
 probe, so its hint drops the advice to resend with `?dry_run=true`, and its

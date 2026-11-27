@@ -47,7 +47,7 @@ func (s *Service) CreateDiscussion(ctx context.Context, spaceId, objectId string
 		if row.GetBool(bundle.RelationKeyIsArchived) {
 			return nil, v2model.ValidationFailed(fmt.Sprintf("object %q is archived", objectId),
 				v2model.Issue{Path: "object_id", Message: "an archived object cannot start a discussion"}.
-					Hintf("restore it with %s first", v2model.RefRestoreObject(spaceId, objectId)))
+					Hintf("restore it with %s first", restoreRefFor(spaceId, objectId, dryRun)))
 		}
 	}
 	if err := discussionTargetRefusal(spaceId, objectId, read.SbType); err != nil {
@@ -103,4 +103,14 @@ func discussionIdOf(snapshot *model.SmartBlockSnapshotBase) string {
 		return ""
 	}
 	return pbtypes.GetString(snapshot.Details, bundle.RelationKeyDiscussionId.String())
+}
+
+// restoreRefFor is the restore a refusal of an archived target names: a
+// preview's carries dry_run itself, so following it restores nothing.
+func restoreRefFor(spaceId, objectId string, dryRun bool) v2model.Ref {
+	ref := v2model.RefRestoreObject(spaceId, objectId)
+	if dryRun {
+		ref = ref.With("dry_run", "true")
+	}
+	return ref
 }

@@ -239,9 +239,10 @@ func (s *Service) updateTypeOps(ctx context.Context, spaceId string, typeObject 
 	// the lists first, the views second: the type's own open-time reconcile
 	// only ever ADDS a column for a property the type recommends, so pruning
 	// before the lists were written invites it straight back
-	if len(prune.Pruned) > 0 {
-		// the receipt reports the plan applied under the lock: another edit
-		// may have started arranging a view by the property since the read
+	if len(plan.removedKeys()) > 0 {
+		// the receipt reports the plan applied under the lock, which runs
+		// whatever the read planned: another edit may have started, or
+		// stopped, arranging a view by the property since the read
 		applied, err := s.pruneTypeDataviewColumns(ctx, spaceId, typeObject.Id, plan.removedKeys())
 		if err != nil {
 			return nil, err

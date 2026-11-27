@@ -1347,9 +1347,21 @@ func TestUpdateWidget(t *testing.T) {
 		require.Len(t, e.Issues, 1)
 		assert.Contains(t, e.Issues[0].Message, "w1 (space), p1 (personal)")
 		require.Len(t, e.Issues[0].SeeAlso, 2)
-		assert.Equal(t, map[string]string{"scope": "space"}, e.Issues[0].SeeAlso[0].Query)
-		assert.Equal(t, map[string]string{"scope": "personal"}, e.Issues[0].SeeAlso[1].Query)
+		// a preview's resends carry dry_run themselves: copied in place of the
+		// request's query, a bare ?scope= would perform the write
+		assert.Equal(t, map[string]string{"scope": "space", "dry_run": "true"}, e.Issues[0].SeeAlso[0].Query)
+		assert.Equal(t, map[string]string{"scope": "personal", "dry_run": "true"}, e.Issues[0].SeeAlso[1].Query)
 		assert.Empty(t, e.Issues[0].SeeAlso[0].Op, "a resend names no operation")
+		for _, dryRun := range []bool{false, true} {
+			_, err = fx.DeleteWidget(context.Background(), testSpaceId, "page1", "", dryRun)
+			e = v2Err(t, err)
+			require.Len(t, e.Issues[0].SeeAlso, 2)
+			want := map[string]string{"scope": "space"}
+			if dryRun {
+				want["dry_run"] = "true"
+			}
+			assert.Equal(t, want, e.Issues[0].SeeAlso[0].Query, "delete, dryRun=%v", dryRun)
+		}
 
 		// and with the scope said, it resolves — as a dry run
 		got, err := fx.UpdateWidget(context.Background(), testSpaceId, "page1", "personal", v2model.UpdateWidgetRequest{Limit: intPtr(10)}, true)
@@ -1557,4 +1569,28 @@ func TestWidgetNormalizerWarningsClaimNoWrite(t *testing.T) {
 		assert.Equal(t, int32(4), limit)
 		assert.Equal(t, want, warnings)
 	})
+}
+
+// An archived target's repair is a restore; a preview's carries dry_run, so
+// following it from a dry run restores nothing.
+func TestWidgetArchivedTargetRepairKeepsThePreview(t *testing.T) {
+	for _, dryRun := range []bool{false, true} {
+		// given
+		fx := newV2Fixture(t)
+		fx.addWidgetTarget(t, "bin1", model.ObjectType_basic, objectstore.TestObject{bundle.RelationKeyIsArchived: domain.Bool(true)})
+		fx.allowWidgets(apicore.WidgetScopeSpace, true)
+		fx.holdWidgets(apicore.WidgetScopeSpace)
+		want := v2model.RefRestoreObject(testSpaceId, "bin1")
+		if dryRun {
+			want = want.With("dry_run", "true")
+		}
+
+		// when
+		_, err := fx.CreateWidget(context.Background(), testSpaceId, v2model.CreateWidgetRequest{Target: "bin1", Scope: "space"}, dryRun)
+
+		// then
+		e := v2Err(t, err)
+		require.Len(t, e.Issues, 1)
+		assert.Equal(t, []v2model.Ref{want}, e.Issues[0].SeeAlso, "dryRun=%v", dryRun)
+	}
 }

@@ -680,6 +680,26 @@ func TestV2TypeOpsRemovePrunesEveryView(t *testing.T) {
 		assert.Equal(t, []v2model.Issue{kept}, result.Warnings)
 	})
 
+	t.Run("a real prune runs under the lock even when the read saw nothing to drop", func(t *testing.T) {
+		// given: the planning read sees a view sorted by the property, so it
+		// plans no prune; by the time the lock is taken, another edit has
+		// cleared the sort, and the column goes
+		sorted := viewWithColumns("v-a", "All", "name", "sun_needs")
+		sorted.Sorts = []*model.BlockContentDataviewSort{{RelationKey: "sun_needs"}}
+		fx := newTypeOpsFixture(t)
+		fx.captureTypeDetails()
+		committed := fx.expectTypeViewEditFrom(typeReadWithViews(sorted), typeReadWithViews(viewWithColumns("v-a", "All", "name", "sun_needs")))
+
+		// when
+		result, err := fx.UpdateType(context.Background(), testSpaceId, "plant",
+			"", opsBody(`{"op":"remove_property","property":"sun_needs"}`), false, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"name"}, viewColumnKeys(t, *committed, "v-a"))
+		assert.Equal(t, []v2model.Issue{{Path: "/ops", Message: `columns dropped: sun_needs from "All"`}}, result.Warnings)
+	})
+
 	t.Run("a real list replacement reports the plan applied under the lock too", func(t *testing.T) {
 		// given
 		hint := v2model.Issue{}.Hintf("change those views with update_view through %s", v2model.NewRef(v2model.OpPatchObject))

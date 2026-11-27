@@ -758,3 +758,61 @@ func TestV2ObjectReadServesTheDiscussionMember(t *testing.T) {
 
 // treeUnknownErr is the reader's answer for an id no tree has.
 func treeUnknownErr() error { return treestorage.ErrUnknownTreeId }
+
+// The write references a discussion or chat preview hands out stay previews:
+// the archived object's restore and the steer to an object's thread.
+func TestV2DiscussionPreviewRefsStayPreviews(t *testing.T) {
+	ctx := context.Background()
+	t.Run("an archived object's restore", func(t *testing.T) {
+		for _, dryRun := range []bool{false, true} {
+			// given
+			fx := newV2Fixture(t)
+			fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "page1").Return(pageRead(model.SmartBlockType_Page, ""), nil).Maybe()
+			fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+				bundle.RelationKeyId:             domain.String("page1"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+				bundle.RelationKeyIsArchived:     domain.Bool(true),
+			}})
+			want := v2model.RefRestoreObject(testSpaceId, "page1")
+			if dryRun {
+				want = want.With("dry_run", "true")
+			}
+
+			// when
+			_, err := fx.CreateDiscussion(ctx, testSpaceId, "page1", dryRun)
+
+			// then
+			e := v2Err(t, err)
+			require.Len(t, e.Issues, 1)
+			assert.Equal(t, []v2model.Ref{want}, e.Issues[0].SeeAlso, "dryRun=%v", dryRun)
+		}
+	})
+
+	t.Run("a page id sent as chat_id is steered to its thread, and a preview to a preview", func(t *testing.T) {
+		for _, tc := range []struct {
+			dryRun bool
+			want   v2model.Issue
+		}{
+			{want: v2model.Issue{Path: "chat_id", Message: `its layout is "basic"`}.
+				Hintf("chat ids come from %s; for this object's comment thread, use the id from %s as chat_id",
+					v2model.RefListChats(testSpaceId), v2model.RefCreateDiscussion(testSpaceId, "page1"))},
+			{dryRun: true, want: v2model.Issue{Path: "chat_id", Message: `its layout is "basic"`}.
+				Hintf("chat ids come from %s; for this object's comment thread, use the discussion member of %s as chat_id, or preview starting one with %s",
+					v2model.RefListChats(testSpaceId), v2model.RefGetObject(testSpaceId, "page1"), v2model.RefCreateDiscussion(testSpaceId, "page1").With("dry_run", "true"))},
+		} {
+			// given
+			fx := newV2Fixture(t)
+			fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+				bundle.RelationKeyId:             domain.String("page1"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			}})
+
+			// when
+			_, err := fx.AddChatMessage(ctx, testSpaceId, "page1", v2model.AddChatMessageRequest{Text: "hi"}, tc.dryRun)
+
+			// then
+			e := v2Err(t, err)
+			assert.Equal(t, []v2model.Issue{tc.want}, e.Issues, "dryRun=%v", tc.dryRun)
+		}
+	})
+}

@@ -28,6 +28,7 @@ import (
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
+	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -233,7 +234,7 @@ func TestDeleteObjectArchives(t *testing.T) {
 			{dryRun: false, want: v2model.Issue{Path: "object_id", Message: "moved to the Bin"}.
 				Hintf("restore it with %s", restore)},
 			{dryRun: true, want: v2model.Issue{Path: "object_id", Message: "a real request moves this object to the Bin"}.
-				Hintf("once it is in the Bin, restore it with %s", restore)},
+				Hintf("once it is in the Bin, restore it with %s", restore.With("dry_run", "true"))},
 		}
 		for _, tc := range cases {
 			// given
@@ -432,6 +433,8 @@ func TestDeleteObjectArchives(t *testing.T) {
 		// a preview's resend carries dry_run itself: copied as a REST query in
 		// place of the request's, a bare permanent=true deletes for good
 		previewPermanent := v2model.Resend("permanent", "true").With("dry_run", "true")
+		// and so does its restore: following it from a preview restores nothing
+		previewRestore := restore.With("dry_run", "true")
 		cases := []struct {
 			name    string
 			read    apicore.ObjectRead
@@ -446,7 +449,7 @@ func TestDeleteObjectArchives(t *testing.T) {
 				prov:   ownProvenance(),
 				dryRun: true,
 				want: v2model.Issue{Path: "object_id", Message: "a real request moves this object to the Bin"}.
-					Hintf("once it is in the Bin, restore it with %s; this key created it, so resending with %s previews deleting it for good", restore, previewPermanent),
+					Hintf("once it is in the Bin, restore it with %s; this key created it, so resending with %s previews deleting it for good", previewRestore, previewPermanent),
 			},
 			{
 				name:   "dry run of another key's object",
@@ -454,7 +457,7 @@ func TestDeleteObjectArchives(t *testing.T) {
 				prov:   other,
 				dryRun: true,
 				want: v2model.Issue{Path: "object_id", Message: "a real request moves this object to the Bin"}.
-					Hintf("once it is in the Bin, restore it with %s; only objects this key created can be deleted permanently", restore),
+					Hintf("once it is in the Bin, restore it with %s; only objects this key created can be deleted permanently", previewRestore),
 			},
 			{
 				name:   "dry run of an own object already in the Bin",
@@ -462,7 +465,7 @@ func TestDeleteObjectArchives(t *testing.T) {
 				prov:   ownProvenance(),
 				dryRun: true,
 				want: v2model.Issue{Path: "object_id", Message: "already archived"}.
-					Hintf("restore it with %s; this key created it, so resending with %s previews deleting it for good", restore, previewPermanent),
+					Hintf("restore it with %s; this key created it, so resending with %s previews deleting it for good", previewRestore, previewPermanent),
 			},
 			{
 				name:    "real delete of an own object keeps its wording",
@@ -553,7 +556,7 @@ func TestDeleteObjectArchives(t *testing.T) {
 			bundle.RelationKeySpaceUxType:    domain.Int64(int64(model.SpaceUxType_OneToOne)),
 		}})
 		want := v2model.Issue{Path: "object_id", Message: "a real request moves this file to the Bin if this account added it: in a one-to-one space only the member who added a file can delete it"}.
-			Hintf("once it is in the Bin, restore it with %s; only objects this key created can be deleted permanently", restore)
+			Hintf("once it is in the Bin, restore it with %s; only objects this key created can be deleted permanently", restore.With("dry_run", "true"))
 
 		// when
 		got, err := fx.DeleteObject(callerCtx(), testSpaceId, deleteObjId, true, false)
@@ -561,6 +564,23 @@ func TestDeleteObjectArchives(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, want, binWarning(t, got))
+	})
+
+	t.Run("an archive preview the object's restrictions refuse is refused as the real archive is", func(t *testing.T) {
+		// a regular member previewing the archive of another member's page:
+		// the member policy forbids deleting it (LockForeignDelete), and the
+		// live read carries that verdict, so the preview refuses as the real
+		// archive RPC does instead of promising a move
+		read := deleteRead(model.SmartBlockType_Page)
+		read.DeleteRefused = restriction.ErrRestricted
+		fx := newDeleteFixtureRead(t, read, apicore.Provenance{AccountMatch: true, IntegrationName: "Linear"})
+		want := restrictionForbidden(deleteObjId, restriction.ErrRestricted)
+
+		// when
+		_, err := fx.DeleteObject(callerCtx(), testSpaceId, deleteObjId, true, false)
+
+		// then
+		assert.Equal(t, want, v2Err(t, err))
 	})
 
 	t.Run("the grant conjunction fires first", func(t *testing.T) {
@@ -923,7 +943,7 @@ func TestDeleteObjectPermanently(t *testing.T) {
 			{
 				name: "a real request",
 				want: refusal(issue.Hintf("probe without writing by resending with %s; a read of the object shows who created it; without permanent, DELETE moves the object to the Bin",
-					v2model.Resend("dry_run", "true"))),
+					v2model.Resend("dry_run", "true").With("permanent", "true"))),
 			},
 			{
 				name:   "a dry run",
@@ -934,7 +954,7 @@ func TestDeleteObjectPermanently(t *testing.T) {
 				name:     "a real request for an object in the Bin",
 				archived: true,
 				want: refusal(issue.Hintf("probe without writing by resending with %s; a read of the object shows who created it; the object is already in the Bin",
-					v2model.Resend("dry_run", "true"))),
+					v2model.Resend("dry_run", "true").With("permanent", "true"))),
 			},
 			{
 				name:     "a dry run for an object in the Bin",
@@ -1030,9 +1050,9 @@ func TestDeleteObjectPermanently(t *testing.T) {
 					}
 					return deleteRead(model.SmartBlockType_FileObject)
 				},
-				real:     "remove the file from those objects, or delete them first, then resend this request; without permanent, DELETE moves the file to the Bin",
-				dryRun:   "remove the file from those objects, or delete them first, then resend this request; without permanent, the dry run previews moving the file to the Bin",
-				archived: "remove the file from those objects, or delete them first, then resend this request; the file is already in the Bin",
+				real:     "detach the file from those objects (a user in the Bin counts too), then resend this request; without permanent, DELETE moves the file to the Bin",
+				dryRun:   "detach the file from those objects (a user in the Bin counts too), then resend this request; without permanent, the dry run previews moving the file to the Bin",
+				archived: "detach the file from those objects (a user in the Bin counts too), then resend this request; the file is already in the Bin",
 			},
 		}
 		for _, tc := range cases {
@@ -1058,6 +1078,59 @@ func TestDeleteObjectPermanently(t *testing.T) {
 				assert.NotContains(t, got.Message, "Without permanent", "the alternative is the hint's alone")
 			}
 		}
+	})
+
+	t.Run("the ownership probe's query reaches the same refusal", func(t *testing.T) {
+		// given: copied in place of the request's query, the probe must test
+		// the permanent delete it refused, not preview an archive
+		fx := newDeleteFixture(t, apicore.Provenance{AccountMatch: true, IntegrationName: "Linear"})
+		_, err := fx.DeleteObject(callerCtx(), testSpaceId, deleteObjId, false, true)
+		refused := requireNotCreatedByThisKey(t, err)
+		probe := refused.Issues[0].SeeAlso[0]
+
+		// when
+		_, err = fx.DeleteObject(callerCtx(), testSpaceId, deleteObjId, probe.Query["dry_run"] == "true", probe.Query["permanent"] == "true")
+
+		// then
+		again := v2Err(t, err)
+		assert.Equal(t, refused.Code, again.Code)
+		assert.Equal(t, refused.Message, again.Message)
+	})
+
+	t.Run("a refusal's archive alternative says when the archive is refused too, or holds only for the file's owner", func(t *testing.T) {
+		issue := v2model.Issue{Path: "object_id", Message: "this key may permanently delete only objects it created"}
+		probe := v2model.Resend("dry_run", "true").With("permanent", "true")
+		t.Run("restrictions forbid deleting it", func(t *testing.T) {
+			// given
+			read := deleteRead(model.SmartBlockType_Page)
+			read.DeleteRefused = restriction.ErrRestricted
+			fx := newDeleteFixtureRead(t, read, apicore.Provenance{AccountMatch: true, IntegrationName: "Linear"})
+			want := issue.Hintf("probe without writing by resending with %s; a read of the object shows who created it; the object cannot be moved to the Bin either: its restrictions forbid deleting it", probe)
+
+			// when
+			_, err := fx.DeleteObject(callerCtx(), testSpaceId, deleteObjId, false, true)
+
+			// then
+			assert.Equal(t, []v2model.Issue{want}, v2Err(t, err).Issues)
+		})
+		t.Run("a file in a one-to-one space", func(t *testing.T) {
+			// given: only the member who added a file can delete it there,
+			// which the archive RPC checks and a read cannot
+			fx := newDeleteFixtureOf(t, model.SmartBlockType_FileObject, apicore.Provenance{AccountMatch: true, IntegrationName: "Linear"})
+			fx.objectStore.AddObjects(t, objectstore.TestTechSpaceId, []objectstore.TestObject{{
+				bundle.RelationKeyId:             domain.String("spaceView_" + testSpaceId),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_spaceView)),
+				bundle.RelationKeyTargetSpaceId:  domain.String(testSpaceId),
+				bundle.RelationKeySpaceUxType:    domain.Int64(int64(model.SpaceUxType_OneToOne)),
+			}})
+			want := issue.Hintf("probe without writing by resending with %s; a read of the object shows who created it; without permanent, DELETE moves the object to the Bin if this account added it", probe)
+
+			// when
+			_, err := fx.DeleteObject(callerCtx(), testSpaceId, deleteObjId, false, true)
+
+			// then
+			assert.Equal(t, []v2model.Issue{want}, v2Err(t, err).Issues)
+		})
 	})
 
 	t.Run("the delete RPC's permanent refusals map to a 403", func(t *testing.T) {
@@ -1288,6 +1361,14 @@ func TestPatchArchivedObject(t *testing.T) {
 		assert.Equal(t, v2model.CodeObjectArchived, v2Err.Code)
 		require.Len(t, v2Err.Issues, 1)
 		requireOps(t, v2Err.Issues[0], v2model.RefRestoreObject(testSpaceId, deleteObjId))
+
+		// and a preview's: following it from a dry run restores nothing
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, deleteObjId).Return(archivedRead(model.SmartBlockType_Page), nil).Once()
+		_, err = fx.PatchObject(callerCtx(), testSpaceId, deleteObjId,
+			patchBody(`{"op":"set_properties","set":{"name":"Renamed"}}`), "", true, false)
+		require.ErrorAs(t, err, &v2Err)
+		require.Len(t, v2Err.Issues, 1)
+		requireOps(t, v2Err.Issues[0], v2model.RefRestoreObject(testSpaceId, deleteObjId).With("dry_run", "true"))
 	})
 
 	t.Run("an archived type's object names the app, not a restore that refuses it", func(t *testing.T) {

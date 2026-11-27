@@ -391,6 +391,24 @@ func TestV2CreateObjectDocument(t *testing.T) {
 		}
 	})
 
+	t.Run("a label-shaped view id is never reported reminted: the merge renames blocks only", func(t *testing.T) {
+		// given: the template holds a block whose id the request uses for a
+		// VIEW, which the merge leaves alone
+		labelHint := v2model.Issue{}.Hintf("to clone with the source's real ids, read it with %s; to mint fresh ids, omit them", v2model.NewRef(v2model.OpGetObject).With("ids", "full"))
+		fx := newV2Fixture(t)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "tpl-weekly").Return(apicore.ObjectRead{
+			Snapshot: &model.SmartBlockSnapshotBase{Blocks: []*model.Block{{Id: "tpl-weekly", ChildrenIds: []string{"cccc3"}}, {Id: "cccc3"}}},
+		}, nil).Once()
+		body := []byte(`{"formatVersion":"2.0","type":"set","blocks":[{"id":"dataview","type":"dataview","views":[{"id":"cccc3","name":"All"}]}]}`)
+		want := []v2model.Issue{{Path: "/blocks", Message: `ids "cccc3" look like compact labels from a default read and would become this object's real ids`, Hint: labelHint.Hint, SeeAlso: labelHint.SeeAlso}}
+
+		// when
+		got := fx.labelShapedIdWarnings(context.Background(), testSpaceId, body, "tpl-weekly", true)
+
+		// then
+		assert.Equal(t, want, got)
+	})
+
 	t.Run("the title notice says what a dry run would do and what a create did", func(t *testing.T) {
 		for _, tc := range []struct {
 			name, body, dry, real string

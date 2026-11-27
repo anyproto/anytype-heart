@@ -226,6 +226,19 @@ func (s *Service) ensureSpaceLoadedForWrite(ctx context.Context, spaceId string,
 	return s.ensureSpaceLoaded(ctx, spaceId)
 }
 
+// spaceLoadedNow reports whether the space is loaded on this device without
+// waiting for a load in progress: asked with a context that is already done,
+// the port answers at once. A space rebuilding on restart can still publish
+// its previous Ok status, so the space view is not this answer.
+func (s *Service) spaceLoadedNow(ctx context.Context, spaceId string) bool {
+	if s.spaceLoads == nil {
+		return true
+	}
+	probe, cancel := context.WithCancel(ctx)
+	cancel()
+	return s.spaceLoads.WaitLoaded(probe, spaceId) == nil
+}
+
 // ensureSpaceRead is ensureSpace for the reads that need the LOADED space —
 // a live object, its deletion mark, a widget root — as opposed to the store
 // reads, which answer from the index and never wait.

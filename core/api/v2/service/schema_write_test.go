@@ -1093,3 +1093,39 @@ func TestV2SchemaDeleteReadsTheBinFirst(t *testing.T) {
 		})
 	}
 }
+
+// A space rebuilding on restart can still publish its previous Ok, so a
+// schema dry run decides from the load itself, without waiting for it: it
+// leaves the Bin unopened (opening it would wait for the load) and says the
+// index it answered from can be incomplete, from that same decision.
+func TestV2SchemaDeleteDryRunOfALoadingSpaceWhoseViewSaysOk(t *testing.T) {
+	ctx := context.Background()
+	for _, tc := range []struct {
+		name string
+		call func(fx *v2Fixture) (*v2model.CreateResult, error)
+	}{
+		{"type", func(fx *v2Fixture) (*v2model.CreateResult, error) {
+			return fx.DeleteType(ctx, testSpaceId, "chore", true)
+		}},
+		{"property", func(fx *v2Fixture) (*v2model.CreateResult, error) {
+			return fx.DeleteProperty(ctx, testSpaceId, "severity", true)
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given: no Bin read expectation, so opening the Bin fails the test
+			fx := newSchemaDeleteFixture(t)
+			loads := fx.withLoadingSpace(testSpaceId)
+			require.Empty(t, fx.LoadingSpaceWarnings(ctx, testSpaceId), "the view says Ok")
+			loading := spaceLoadingWarning(fx.servedSpaceRef(ctx, testSpaceId))
+
+			// when
+			result, err := tc.call(fx)
+
+			// then
+			require.NoError(t, err)
+			assert.True(t, result.DryRun)
+			assert.Contains(t, result.Warnings, loading)
+			assert.Empty(t, loads.waitedFor(), "the readiness probe does not wait")
+		})
+	}
+}
