@@ -774,9 +774,16 @@ func TestV2TypeOpsRemovePrunesEveryView(t *testing.T) {
 				_, err := fx.UpdateType(context.Background(), testSpaceId, "plant",
 					"", opsBody(`{"op":"remove_property","property":"sun_needs"}`), false, false)
 
-				// then: nothing was committed at all, the view being the only one
+				// then: the locked prune ran, as it does whenever a property
+				// is removed (the view may have changed since the planning
+				// read), and left the view arranged by the property as it is
 				require.NoError(t, err)
-				assert.Nil(t, *committed, "a view arranged by the property must not be rewritten")
+				require.NotNil(t, *committed, "the prune re-plans under the lock")
+				assert.Equal(t, []string{"name", "sun_needs"}, viewColumnKeys(t, *committed, "viewOne"),
+					"a view arranged by the property must not be rewritten")
+				dv := (*committed).Pick(state.DataviewBlockID).Model().GetDataview()
+				assert.Equal(t, view.Sorts, dv.Views[0].Sorts)
+				assert.Equal(t, view.Filters, dv.Views[0].Filters)
 			})
 		}
 	})
