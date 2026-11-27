@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -63,7 +64,9 @@ type client struct {
 
 // childEnv is a child's whole environment: a scratch home and nothing
 // from this process.
-func childEnv(home string) []string { return []string{"HOME=" + home, "USERPROFILE=" + home} }
+func childEnv(home string) []string {
+	return []string{"HOME=" + home, "USERPROFILE=" + home, "TMPDIR=" + home, "TMP=" + home, "TEMP=" + home}
+}
 
 // TestMain is the scratch guard: HOME points at a fresh temp folder before
 // any test runs, so nothing here can reach the developer's item store.
@@ -86,8 +89,8 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func startForwarder(t *testing.T, bin, home, connection string) *client {
-	cmd := exec.Command(bin, "serve", "--connection", connection)
+func startForwarder(t *testing.T, bin, home, connection string, extra ...string) *client {
+	cmd := exec.Command(bin, append([]string{"serve", "--connection", connection}, extra...)...)
 	cmd.Env = childEnv(home)
 	stdin, err := cmd.StdinPipe()
 	require.NoError(t, err)
@@ -314,7 +317,13 @@ func TestForwarderAgainstHeart(t *testing.T) {
 	var outputs []*client
 	for _, tier := range []string{"small", "large", "full"} {
 		t.Run(tier, func(t *testing.T) {
-			c := startForwarder(t, bin, store, "it-"+tier)
+			// the full tier's file tools get a folder of the test's own
+			var extra []string
+			filesDir := filepath.Join(t.TempDir(), "files")
+			if tier == "full" {
+				extra = []string{"--files-dir", filesDir}
+			}
+			c := startForwarder(t, bin, store, "it-"+tier, extra...)
 			outputs = append(outputs, c)
 
 			init := c.request("initialize", initParams)
@@ -333,7 +342,8 @@ func TestForwarderAgainstHeart(t *testing.T) {
 			list := c.request("tools/list", nil)
 			require.Nil(t, list.Error, "%+v", list.Error)
 
-			// parity: the forwarder adds and hides nothing
+			// parity: the forwarder hides nothing, and adds only the full
+			// tier's two file tools, after heart's own
 			d := &direct{t: t, url: heart.APIURL + "/mcp/" + tier, key: heart.APIKey}
 			_, status := d.post("initialize", initParams, 1)
 			require.Equal(t, http.StatusOK, status)
@@ -342,8 +352,6 @@ func TestForwarderAgainstHeart(t *testing.T) {
 			require.Equal(t, http.StatusAccepted, status)
 			want, status := d.post("tools/list", nil, 2)
 			require.Equal(t, http.StatusOK, status)
-			assert.JSONEq(t, string(want), string(list.Result), "tools/list parity with heart")
-
 			var tools struct {
 				Tools []struct {
 					Name string `json:"name"`
@@ -354,10 +362,31 @@ func TestForwarderAgainstHeart(t *testing.T) {
 			for _, tl := range tools.Tools {
 				names[tl.Name] = true
 			}
+			if tier == "full" {
+				var heartList, ours struct {
+					Tools []json.RawMessage `json:"tools"`
+				}
+				require.NoError(t, json.Unmarshal(want, &heartList))
+				require.NoError(t, json.Unmarshal(list.Result, &ours))
+				n := len(heartList.Tools)
+				require.Len(t, tools.Tools, n+2)
+				heartOwn, _ := json.Marshal(heartList.Tools)
+				relayed, _ := json.Marshal(ours.Tools[:n])
+				assert.JSONEq(t, string(heartOwn), string(relayed), "heart's tools, unchanged and first")
+				assert.Equal(t, "download_file", tools.Tools[n].Name)
+				assert.Equal(t, "upload_local_file", tools.Tools[n+1].Name)
+				assert.Contains(t, string(ours.Tools[n+1]), filesDir, "the description names the folder")
+			} else {
+				assert.JSONEq(t, string(want), string(list.Result), "tools/list parity with heart")
+				assert.False(t, names["download_file"] || names["upload_local_file"], "file tools are the full tier's")
+			}
 			require.NotEmpty(t, names)
 			t.Logf("%s tier: %d tools", tier, len(names))
 
-			readAndWrite(t, c, tier, names)
+			space := readAndWrite(t, c, tier, names)
+			if tier == "full" {
+				fileRoundTrip(t, c, space, filesDir)
+			}
 
 			assert.Equal(t, 0, c.close(), "stdin EOF is a clean exit")
 		})
@@ -441,7 +470,7 @@ var (
 
 // readAndWrite makes one read and one write through the tier's own tools
 // and reads the write back.
-func readAndWrite(t *testing.T, c *client, tier string, names map[string]bool) {
+func readAndWrite(t *testing.T, c *client, tier string, names map[string]bool) (space string) {
 	name := "anytype-mcp integration " + tier
 	listSpaces, create, list := "spaces", "create", "find"
 	if tier == "full" {
@@ -459,7 +488,7 @@ func readAndWrite(t *testing.T, c *client, tier string, names map[string]bool) {
 	}
 	m := re.FindStringSubmatch(spaces.text())
 	require.Len(t, m, 2, "no space id in: %s", spaces.text())
-	space := m[1]
+	space = m[1]
 
 	// the write, then a listing (not a full-text search: its index lags)
 	args, listArgs := map[string]any{"space": space, "type": "page", "name": name, "markdown": "written through the forwarder"},
@@ -474,6 +503,74 @@ func readAndWrite(t *testing.T, c *client, tier string, names map[string]bool) {
 		found := c.tool(list, listArgs)
 		return !found.IsError && strings.Contains(found.text(), name)
 	}, 30*time.Second, 500*time.Millisecond, "the write is readable")
+	return space
+}
+
+// fileRoundTrip uploads a file from the forwarder's folder through
+// upload_local_file, downloads it back through download_file and compares
+// the bytes. A path that leaves the folder never reaches heart.
+func fileRoundTrip(t *testing.T, c *client, space, filesDir string) {
+	content := make([]byte, 3<<20+11)
+	_, err := rand.Read(content)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(filesDir, "round trip.bin"), content, 0o600))
+	secret := filepath.Join(filepath.Dir(filesDir), "secret.txt")
+	require.NoError(t, os.WriteFile(secret, []byte("not yours"), 0o600))
+
+	for _, path := range []string{secret, "../secret.txt"} {
+		refused := c.tool("upload_local_file", map[string]any{"space_id": space, "path": path})
+		require.True(t, refused.IsError, refused.text())
+		assert.Contains(t, refused.text(), filesDir)
+	}
+
+	dry := c.tool("upload_local_file", map[string]any{"space_id": space, "path": "round trip.bin", "dry_run": true})
+	require.False(t, dry.IsError, dry.text())
+	var dryReceipt struct {
+		DryRun bool   `json:"dry_run"`
+		ID     string `json:"id"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(dry.text()), &dryReceipt))
+	assert.True(t, dryReceipt.DryRun)
+	assert.Empty(t, dryReceipt.ID, "a dry run stores nothing")
+
+	up := c.tool("upload_local_file", map[string]any{"space_id": space, "path": "round trip.bin"})
+	require.False(t, up.IsError, up.text())
+	var stored struct {
+		ID string `json:"id"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(up.text()), &stored))
+	require.NotEmpty(t, stored.ID, up.text())
+
+	var receipt struct {
+		Path      string `json:"path"`
+		Filename  string `json:"filename"`
+		MediaType string `json:"media_type"`
+		Size      int64  `json:"size"`
+	}
+	require.Eventually(t, func() bool {
+		down := c.tool("download_file", map[string]any{"space_id": space, "file_id": stored.ID})
+		if down.IsError {
+			t.Logf("download_file: %s", down.text())
+			return false
+		}
+		return json.Unmarshal([]byte(down.text()), &receipt) == nil
+	}, 60*time.Second, time.Second, "the upload can be downloaded")
+	t.Logf("downloaded as %s (%s, %d bytes)", receipt.Filename, receipt.MediaType, receipt.Size)
+	assert.Equal(t, filepath.Join(filesDir, receipt.Filename), receipt.Path)
+	assert.NotEqual(t, "round trip.bin", receipt.Filename, "the upload's own file is not replaced")
+	assert.Equal(t, int64(len(content)), receipt.Size)
+	got, err := os.ReadFile(receipt.Path)
+	require.NoError(t, err)
+	assert.True(t, bytes.Equal(content, got), "the bytes that went up came back")
+	kept, err := os.ReadFile(filepath.Join(filesDir, "round trip.bin"))
+	require.NoError(t, err)
+	assert.True(t, bytes.Equal(content, kept))
+
+	missing := c.tool("download_file", map[string]any{"space_id": space, "file_id": "bafyreinosuchfile"})
+	assert.True(t, missing.IsError, missing.text())
+	list, err := os.ReadDir(filesDir)
+	require.NoError(t, err)
+	assert.Len(t, list, 2, "no part file is left")
 }
 
 // relay is a loopback TCP relay to heart: a port a test can close.
