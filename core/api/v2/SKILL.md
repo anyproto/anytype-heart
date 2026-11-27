@@ -245,7 +245,7 @@ read: no `Idempotency-Key`, `dry_run` ignored.
 - `type` is also a filter pseudo-key for multi-type: `type IN ("task",
   "bug")`. **File rows appear only when a file type is named** in the type
   channel (`type = "image"`, `type IN (… "file")`) — `size > 5` alone
-  matches nothing; compose `type = "image" AND size > 5`. `mimeType` and
+  returns no file rows (files are left out unless a file type is named); compose `type = "image" AND size > 5`. `mimeType` and
   `size` work in fields/filters/sorts.
 - `due_date < …` (and `<=`, `>`, `>=`) against a date or a preset never
   matches objects with **no** date, so they are left out. To include them,
@@ -442,7 +442,7 @@ read: no `Idempotency-Key`, `dry_run` ignored.
   replacement become real formatting — escape with `\`.
 - Deleting a parent block without `recursive: true`, or moving a block
   into its own subtree — rejected with the reason; read the error.
-- Filtering on file metadata without naming a file type — zero rows.
+- Filtering on file metadata without naming a file type — file rows are left out.
 
 ## Not in v2 (yet)
 

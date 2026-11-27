@@ -472,12 +472,12 @@ func TestUpdateViewOp(t *testing.T) {
 			patchBody(`{"op":"update_view","set":{"filters":[{"property":"dueDate","condition":"empty","date_preset":"today"}]}}`), "", false, true)
 
 		require.NoError(t, err)
-		require.Len(t, result.Warnings, 1)
-		assert.Equal(t, "ops[0].set.filters[0]", result.Warnings[0].Path)
-		assert.Contains(t, result.Warnings[0].Message, `date_preset "today" is ignored under condition "empty"`)
+		assert.Equal(t, []v2model.Issue{{Path: "ops[0].set.filters[0]", Message: ignoredPresetWarning}}, result.Warnings)
 		view := viewsOf(t, dataviewOf(t, *captured, "dataview"))[0]
 		filters, _ := view["filters"].([]any)
 		require.Len(t, filters, 1, "the filter is stored despite the warning")
+		wantFilter := map[string]any{"property": "due_date", "condition": "empty", "date_preset": "today"}
+		assert.Equal(t, wantFilter, filters[0])
 	})
 
 	t.Run("the compact filter string parses into stored filters", func(t *testing.T) {

@@ -1376,14 +1376,13 @@ Secondary example — programmatic composition (the structured array):
   for good. Presence predicates and counting presets keep their values
   untouched (`core/api/v2/service/search.go:790`).
 - **The structured `filters` array is shape-validated before it reaches the
-  store**, because three malformed shapes otherwise degrade silently into
-  MATCH EVERYTHING: a node carrying both the group and the leaf arms, a group
-  with an empty `filters` array, and a leaf with no `condition` (which a
-  misspelled key also produces). Each is a path-addressed 400 whose hint
-  states that the shape matches every object. The gate runs on the query path
-  AND on `POST /queries` and on a view op's `set.filters`, because a persisted
-  match-everything filter is a saved query that quietly contains the whole
-  space. The served schema matches the enforcement: the leaf arm requires
+  store**, because three malformed shapes otherwise degrade silently: a node
+  carrying both the group and the leaf arms, a group with an empty `filters`
+  array, and a leaf with no `condition` (which a misspelled key also
+  produces). Each is a path-addressed 400 whose hint names the repair. The
+  gate runs on the query path AND on `POST /queries` and on a view op's
+  `set.filters`, because a persisted malformed filter is a saved query that
+  quietly filters less than it says. The served schema matches the enforcement: the leaf arm requires
   `condition` and the group arm's `filters` carries `minItems: 1`. The shared
   document codec is deliberately untouched and keeps accepting condition-less
   leaves, since stored dataviews legitimately carry them
@@ -1415,9 +1414,11 @@ Secondary example — programmatic composition (the structured array):
      structured form accepts) compared against a date or a date preset never
      match an object with no value for the property (any-store v2 compares
      only values of one type), so `dueDate < today()` lists dated objects
-     only. A `less_or_equal` with no value compares against null and a
-     `valueFromRelation` operand compares encoded bytes; both can match a
-     missing value. To include the
+     only. The exception needs `include_time: true` and no preset: a
+     `less_or_equal` with no value then compares against null and a
+     `valueFromRelation` operand compares encoded bytes, and either can match
+     a missing value. With the default `include_time: false` the operand
+     becomes an end-of-day bound and the undated stay out. To include the
      undated, OR an `empty` leaf in. Neither import nor search warns about
      this.
   6. **`type` is a filterable pseudo-key.** The top-level `type` stays a
@@ -1476,8 +1477,10 @@ Secondary example — programmatic composition (the structured array):
   the global path (`core/api/v2/service/search.go:178`).
 - **Stored-view execution (`?view=`) substitutes dynamic placeholders.**
   SPEC §6.2's `_filter_template_<n>_` values are client-substituted and opaque
-  to the middleware — a query evaluated server-side compares against the literal
-  string. The handler substitutes `_filter_template_2_` → the
+  to the middleware. Stored-view execution substitutes into every
+  string-valued leaf, whatever the property's format; direct search
+  (`POST .../search`) compares the literal token, and warns when it sits on
+  a property that is not an object or file. The handler substitutes `_filter_template_2_` → the
   caller's participant id (`_participant_<space>_<account>`) and
   `_filter_template_1_` → the hosting object id before building the store
   query; any other placeholder degrades to a C6 warning, never a silent

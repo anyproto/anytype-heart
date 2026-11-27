@@ -41,6 +41,9 @@ func TestV1ProtosMatchAnyBlockCanonicalSources(t *testing.T) {
 		{"pb/protos/events.proto", "format/v1/proto/events.proto"},
 		{"pb/protos/changes.proto", "format/v1/proto/changes.proto"},
 		{"pb/protos/snapshot.proto", "format/v1/proto/snapshot.proto"},
+		// models.proto imports it, so a field drifting here changes Export
+		// notifications; the check strips the import from models.proto, not the file
+		{"pkg/lib/pb/model/protos/export_report.proto", "format/v1/proto/export_report.proto"},
 	}
 
 	for _, file := range files {

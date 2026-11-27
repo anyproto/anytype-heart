@@ -392,7 +392,7 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 	if len(filtersJSON) > 0 {
 		// canonicalize every property leaf to its stored spelling BEFORE
 		// validation and the store query — a served slug in a filter would
-		// otherwise bind a RelationKey the store never matches, silently
+		// otherwise bind a RelationKey no relation owns, silently
 		canonical, err := kc.canonicalizeRawChannel(filtersJSON, "filters", filterFieldPath(fromString))
 		if err != nil {
 			return nil, err
@@ -786,9 +786,9 @@ func (n searchFilterNode) hasLeafFields() bool {
 // validateFilterStructure enforces the SHAPE of the §6.2 filter tree — the
 // structure the served `filters` schema already describes as a two-armed
 // oneOf, which nothing enforced (surface review M3). Every violation below
-// used to degrade into MATCH EVERYTHING, silently and with no warning, which
-// inverts the surface's central promise ("unresolved → did-you-mean, never a
-// silent no-match") in the most damaging possible direction:
+// used to degrade silently and with no warning into a filter that did not
+// filter, which breaks the surface's central promise ("unresolved →
+// did-you-mean, never a silent no-match"):
 //
 //   - a node carrying both arms, e.g. {"operator":"and","property":"severity",
 //     "condition":"equal","value":"High"} — both the codec and the semantic
@@ -804,7 +804,7 @@ func (n searchFilterNode) hasLeafFields() bool {
 // exception, the tree being recursive), so it is exactly where a small model
 // is most likely to emit these shapes. It runs on the query path AND on
 // POST /queries, where a malformed filter would otherwise be persisted into
-// the query's dataview and match everything for good.
+// the query's dataview for good.
 func validateFilterStructure(nodes []searchFilterNode, path string) []v2model.Issue {
 	var issues []v2model.Issue
 	for i, node := range nodes {
@@ -815,13 +815,13 @@ func validateFilterStructure(nodes []searchFilterNode, path string) []v2model.Is
 				Path:    nodePath,
 				Message: "a filter node is either a group (operator + filters) or a leaf (property + condition), not both",
 				Hint: `to combine conditions write {"operator":"and","filters":[{"property":"…","condition":"…","value":…}]}; ` +
-					`a node with both is read as an empty group, which matches everything`,
+					`a node with both is rejected`,
 			})
 		case node.isGroup() && len(node.Filters) == 0:
 			issues = append(issues, v2model.Issue{
 				Path:    nodePath + "/filters",
 				Message: fmt.Sprintf("group %q has no filters", node.Operator),
-				Hint:    "an empty group matches every object — remove it, or give it at least one leaf",
+				Hint:    "an empty group has nothing to evaluate — remove it, or give it at least one leaf",
 			})
 		case node.isGroup():
 			issues = append(issues, validateFilterStructure(node.Filters, nodePath+"/filters")...)
@@ -833,7 +833,7 @@ func validateFilterStructure(nodes []searchFilterNode, path string) []v2model.Is
 					Path:    nodePath + "/condition",
 					Message: fmt.Sprintf("filter on %q has no condition", node.Property),
 				}.Hintf("a leaf needs a condition (equal, not_equal, contains, in, empty, …); "+
-					"without one the filter is dropped and every object matches — the node shape is on %s", v2model.RefGetSchema("filters")))
+					"without one the filter is dropped — the node shape is on %s", v2model.RefGetSchema("filters")))
 			}
 		}
 	}
@@ -904,7 +904,7 @@ func (s *Service) validateStructuredFilters(spaceId string, raw json.RawMessage,
 					} else {
 						issue.Message = fmt.Sprintf("property %q is a date — the structured form takes unix seconds, and %q is not a date", node.Property, value)
 					}
-					issue.Hint = dateValueRepair(node.Property, value, sec, isDate)
+					issue.Hint = dateValueRepair(node.Property, node.Condition, value, sec, isDate)
 					issues = append(issues, issue)
 				}
 			}
@@ -941,15 +941,26 @@ func (s *Service) validateStructuredFilters(spaceId string, raw json.RawMessage,
 // costs a whole round trip to find out about, which is worse than no example.
 // Everything offered carries the caller's own spelling, so the repair is
 // written in the vocabulary the request was.
-func dateValueRepair(spelling, value string, sec int64, isDate bool) string {
+func dateValueRepair(spelling, condition, value string, sec int64, isDate bool) string {
+	// the compact example keeps the caller's own operator: a different one
+	// selects other rows (`!=` keeps the undated objects, `>` drops them)
+	op, hasOp := compactDateOperators[strings.ToLower(strings.ReplaceAll(condition, "_", ""))]
 	switch {
-	case isDate && filterstring.IsBareKey(spelling):
-		return fmt.Sprintf(`RFC 3339 dates belong to the compact filter string, e.g. "filter": "%s > \"%s\"" — or use a datePreset`, spelling, value)
+	case isDate && hasOp && filterstring.IsBareKey(spelling):
+		return fmt.Sprintf(`RFC 3339 dates belong to the compact filter string, e.g. "filter": "%s %s \"%s\"" — or use a datePreset`, spelling, op, value)
 	case isDate:
 		return fmt.Sprintf(`the structured form takes unix seconds — send "value": %d for %q, or use a datePreset`, sec, spelling)
 	default:
 		return fmt.Sprintf("the structured form takes unix seconds for %q — or use a datePreset for a named window", spelling)
 	}
+}
+
+// compactDateOperators maps the structured conditions that have a one-operator
+// compact spelling to it, keyed lower-cased without underscores.
+var compactDateOperators = map[string]string{
+	"equal": "=", "notequal": "!=",
+	"less": "<", "lessorequal": "<=",
+	"greater": ">", "greaterorequal": ">=",
 }
 
 // stringValues extracts the string entries of a filter value (bare string or

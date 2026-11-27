@@ -366,8 +366,8 @@ func (a *v2StateApplier) applyViewSet(set map[string]json.RawMessage, edited, vi
 // DOCUMENT uses. The view ops merge into exported
 // JSON, which spells slugs, so a key that arrives as a stored key — or as a
 // folded spelling, or as a bundled slug — has to be translated once, on the
-// way in, or it addresses a column that is not there and writes a filter the
-// store can never match.
+// way in, or it addresses a column that is not there and writes a filter on a key
+// no relation owns.
 //
 // This closes the §8.22/§8.23 deferral ("key slots inside view-op set
 // channels accept stored keys only"): every spelling the rest of the API
@@ -593,7 +593,7 @@ func (a *v2StateApplier) applyViewSorts(raw json.RawMessage, view map[string]any
 
 // applyViewFilters validates a §6.2 structured filters array — the M3 shape
 // gate first (a set PERSISTS its filter, so a malformed shape is not a bad
-// query but a view that quietly matches everything, for good), then the
+// query but a view that quietly filters nothing, for good), then the
 // codec's vocabulary and date-semantics checks — and replaces the view's
 // filters. A codec finding such as an ignored date preset rides the C11 warnings
 // channel, exactly as on document import.

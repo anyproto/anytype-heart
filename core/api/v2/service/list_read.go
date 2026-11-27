@@ -336,7 +336,7 @@ func (s *Service) listObjects(ctx context.Context, spaceId, listId string, want 
 	// then would fire on every ordinary read whose filter keys the live set
 	// happens not to list.
 	if total == 0 && defaultedView != nil {
-		warnings = append(warnings, s.danglingFilterWarnings(spaceId, defaultedView)...)
+		warnings = append(warnings, s.danglingFilterWarnings(ctx, spaceId, defaultedView, len(target.dataview.Views) > 1)...)
 	}
 	return rows, total, offset+len(records) < total, warnings, nil
 }
@@ -624,27 +624,16 @@ func (b *byPrecomputedKey) Swap(i, j int) {
 	b.keys[i], b.keys[j] = b.keys[j], b.keys[i]
 }
 
-// substitutePlaceholders resolves the SPEC §6.2 dynamic placeholders in a
-// stored view's filters before execution: `_filter_template_2_` → the
-// caller's participant id, `_filter_template_1_` → the hosting object id.
-// Any other placeholder — or the user placeholder when no account identity
-// is wired — drops its leaf and degrades to a C6 warning: evaluated
-// literally it would match nothing, v1's silent-empty-result bug. The
-// snapshot is a per-read copy, so substitution never touches live state.
 // danglingFilterWarnings reports the view filters keyed on a property the
-// space no longer holds. A missing property reads as no value, so what such a
-// filter does depends on its condition (`=` fails, `!=` holds), and the read
-// can still come back empty — since a stored view now applies by default, that
-// empty page is what an ordinary caller sees, with no signal that the view is
-// the reason. The warning reports the absence and does not blame the property
-// for the empty page.
-// This file's contract is that an unresolvable filter degrades to a warning
-// and never to a silent no-match, which substitutePlaceholders already honours
-// for placeholders; a deleted property is the same failure through a different
-// door.
+// space does not hold. The page is empty and a stored view now applies by
+// default, so without this the caller sees no rows and no reason. The warning
+// names the unavailable properties and does not say what the filters do: a
+// missing property reads as no value, so `=` fails and `!=` holds.
 //
-// The store is consulted only when a view actually carries filters.
-func (s *Service) danglingFilterWarnings(spaceId string, view *model.BlockContentDataviewView) []v2model.Issue {
+// Keys that query creation accepts without a relation row (name, the system
+// keys, the discussion counters) are not unavailable and are never named. The
+// store is consulted only when a view actually carries filters.
+func (s *Service) danglingFilterWarnings(ctx context.Context, spaceId string, view *model.BlockContentDataviewView, otherViews bool) []v2model.Issue {
 	if len(view.Filters) == 0 {
 		return nil
 	}
@@ -662,6 +651,9 @@ func (s *Service) danglingFilterWarnings(spaceId string, view *model.BlockConten
 		}
 	}
 	walk(view.Filters)
+	for _, key := range append(append([]string{"name"}, v2SystemQueryKeys...), v2BundledQueryKeys...) {
+		delete(keys, key)
+	}
 	if len(keys) == 0 {
 		return nil
 	}
@@ -675,25 +667,46 @@ func (s *Service) danglingFilterWarnings(spaceId string, view *model.BlockConten
 	if len(keys) == 0 {
 		return nil
 	}
+	// spelled the way the request's own reads spell it: the served slug (a
+	// live holder of the spelling keeps it) or, under ?keys=name, the name
+	keyTaken, slugHolders := servedPropertyKeySets(entries)
+	removed, _ := s.removedProperties(spaceId)
+	removedByKey := map[string]propertyEntry{}
+	for _, entry := range removed {
+		removedByKey[entry.Key] = entry
+	}
+	v := errKeysFor(ctx)
 	missing := make([]string, 0, len(keys))
 	for key := range keys {
-		if bundle.HasRelation(domain.RelationKey(key)) {
-			key = bundle.ApiSlug(key) // the spelling the API serves; a removed space-minted key has no other
+		entry := removedByKey[key]
+		name := entry.Name
+		if rel, err := bundle.GetRelation(domain.RelationKey(key)); err == nil && rel.Name != "" {
+			name = rel.Name
 		}
-		missing = append(missing, strconv.Quote(key))
+		spelling := v.spell(servedKey(key, entry.Slug, keyTaken, slugHolders), name)
+		missing = append(missing, strconv.Quote(spelling))
 	}
 	sort.Strings(missing)
-	noun := "a property"
-	if len(missing) > 1 {
-		noun = "properties"
-	}
-	return []v2model.Issue{v2model.Issue{
+	issue := v2model.Issue{
 		Path: "view",
-		Message: fmt.Sprintf("the view %s returned no rows and filters on %s no property in this space answers to (%s)",
-			describeView(view), noun, strings.Join(missing, ", ")),
-	}.Hintf("the property was probably deleted, so those filters may no longer mean what they did; edit the view's filters, or pass %s to read through another view", v2model.Resend("view", "<view_id>"))}
+		Message: fmt.Sprintf("view %s returned no rows. Its filters reference unavailable properties (%s)",
+			describeView(view), strings.Join(missing, ", ")),
+	}
+	if otherViews {
+		return []v2model.Issue{issue.Hintf("edit the view's filters, or pass %s to read through another view", v2model.Resend("view", "<view_id>"))}
+	}
+	return []v2model.Issue{issue.Hintf("the properties were probably deleted; edit the view's filters")}
 }
 
+// substitutePlaceholders resolves the SPEC §6.2 dynamic placeholders in a
+// stored view's filters before execution: `_filter_template_2_` → the
+// caller's participant id, `_filter_template_1_` → the hosting object id. It
+// substitutes into every string-valued leaf, whatever the property's format
+// (direct search compares the token as a literal instead).
+// Any other placeholder — or the user placeholder when no account identity
+// is wired — drops its leaf and degrades to a C6 warning, never a silent
+// comparison against the literal token (v1's silent-empty-result bug). The
+// snapshot is a per-read copy, so substitution never touches live state.
 func (s *Service) substitutePlaceholders(spaceId, hostId string, filters []*model.BlockContentDataviewFilter) ([]*model.BlockContentDataviewFilter, []v2model.Issue) {
 	var warnings []v2model.Issue
 	substitute := func(value string) (string, bool) {

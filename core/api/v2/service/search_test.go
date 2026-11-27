@@ -26,7 +26,7 @@ import (
 // chore2 has none and a newer one.
 // ignoredPresetWarning is the codec warning the structured `empty` + `date_preset` probe raises.
 // placeholderWarning is the codec warning a dynamic placeholder on a text property raises.
-const placeholderWarning = `"_filter_template_2_" resolves to an object id, which a "text" property cannot hold; the placeholder is substituted only on object- or file-valued properties and is compared as a literal string elsewhere`
+const placeholderWarning = `"_filter_template_2_" is intended for object or file properties, and this one is "text"`
 
 const ignoredPresetWarning = `date_preset "today" is ignored under condition "empty"; a preset's range is applied on equal · greater · greater_or_equal · in · less · less_or_equal`
 
@@ -182,7 +182,7 @@ func TestV2SearchObjects(t *testing.T) {
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
 		assert.Equal(t, "/filters/0/filters", apiErr.Issues[0].Path)
-		assert.Contains(t, apiErr.Issues[0].Hint, "matches every object")
+		assert.Contains(t, apiErr.Issues[0].Hint, "nothing to evaluate")
 	})
 
 	t.Run("M3: nested groups are still accepted and still narrow", func(t *testing.T) {
@@ -383,7 +383,7 @@ func TestV2SearchObjects(t *testing.T) {
 
 	t.Run("a date less filter leaves undated objects out and warns about nothing (GO-7613)", func(t *testing.T) {
 		// given: chore3 has no lastModifiedDate; the store never matches an
-		// ordering condition against a missing value
+		// ordering condition against a date or a preset on a missing value
 		fx := searchSetup(t)
 		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
 			bundle.RelationKeyId:             domain.String("chore3"),
@@ -408,6 +408,38 @@ func TestV2SearchObjects(t *testing.T) {
 				// then
 				require.NoError(t, err)
 				assert.Empty(t, warnings)
+				assert.ElementsMatch(t, tc.want, rowIds(rows))
+			})
+		}
+	})
+
+	t.Run("a value-less less_or_equal reaches undated objects only with include_time (GO-7613)", func(t *testing.T) {
+		// given: the one operand that is compared against null. With the
+		// default include_time:false the engine turns the operand into an
+		// end-of-day bound first, so the undated stay out.
+		fx := searchSetup(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("chore3"),
+			bundle.RelationKeyName:           domain.String("Undated"),
+			bundle.RelationKeyType:           domain.String("type-chore"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+		}})
+		for _, tc := range []struct {
+			name   string
+			filter string
+			want   []string
+		}{
+			{"include_time false", `[{"property":"lastModifiedDate","condition":"less_or_equal"}]`, []string{"chore1", "chore2"}},
+			{"include_time true", `[{"property":"lastModifiedDate","condition":"less_or_equal","include_time":true}]`, []string{"chore3"}},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				req := v2model.SearchRequest{Type: "chore", Filters: json.RawMessage(tc.filter)}
+
+				// when
+				rows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
+
+				// then
+				require.NoError(t, err)
 				assert.ElementsMatch(t, tc.want, rowIds(rows))
 			})
 		}
