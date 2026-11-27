@@ -283,6 +283,13 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 	// documents still emit them); candidate lists speak the served spelling
 	// only (never advertise what a channel rejects)
 	acceptKeys := kc.withServedSpellings(refKeys)
+	// the filter string's unknown-key refusal is worded over the served
+	// spellings: acceptance keeps every stored key, and a space-minted
+	// property's stored key is a bson id no listing serves. Served, not the
+	// request's vocabulary: the compact grammar can only spell bare keys,
+	// and a display name is rarely one
+	advertisedKeys := appendMissing(kc.servedSpellings(refKeys), servedBundledSpellings(v2SystemQueryKeys, errKeys{})...)
+	advertisedKeys = appendMissing(advertisedKeys, "type")
 	// the reference list a refusal shows speaks the request's vocabulary
 	// (?keys — §4.3); acceptance stays vocabulary-wide (D3) either way
 	refKeys = kc.referenceSpellings(refKeys, v)
@@ -296,7 +303,6 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 	// the hidden counters are accepted, never advertised: refKeys (what a
 	// refusal lists and suggests from) stays without them, and so does the
 	// set the filter string's refusals are worded over
-	advertisedKeys := append([]string(nil), acceptKeys...)
 	acceptKeys = appendMissing(acceptKeys, kc.withServedSpellings(v2BundledQueryKeys)...)
 	// The file aliases join the reference set when active (no real
 	// live property claims the spelling): mimeType/size are live in EVERY

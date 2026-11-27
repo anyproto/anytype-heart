@@ -737,6 +737,14 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	// envelope's type/templateFor and in the properties map resolve to
 	// their stored spellings before validation and import; the spelling map
 	// keeps refusal paths addressed to the request as sent
+	// the type terms as the caller wrote them, before canonicalization
+	// replaces a custom type's slug with its stored key (a bson id)
+	var sent sentTypeTerms
+	if err := json.Unmarshal(body, &sent); err != nil {
+		// a slot that is not a string: the validators below refuse it, and a
+		// refusal meanwhile quotes the canonical term
+		sent = sentTypeTerms{}
+	}
 	body, spellings, err := s.canonicalizeDocumentKeys(spaceId, body)
 	if err != nil {
 		return nil, err
@@ -768,7 +776,7 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	}
 
 	// 2. referential validation (R9) — reject before anything is created
-	if err := s.validateDocumentRefs(ctx, spaceId, &envelope, opts, spellings); err != nil {
+	if err := s.validateDocumentRefs(ctx, spaceId, &envelope, opts, spellings, sent); err != nil {
 		return nil, err
 	}
 
@@ -1048,9 +1056,12 @@ var documentCreateKinds = map[string]bool{"": true, "page": true, "template": tr
 // POST /properties). spellings maps canonicalized keys back to the caller's
 // own spelling (canonicalizeDocumentKeys), so refusals address the request
 // that was actually sent.
-func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, envelope *docEnvelope, opts docCreateOptions, spellings map[string]string) error {
+func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, envelope *docEnvelope, opts docCreateOptions, spellings map[string]string, sent sentTypeTerms) error {
 	// the refusals below speak the request's key vocabulary (?keys — §4.3)
 	v := errKeysFor(ctx)
+	// a refusal quotes the type term as sent: by here a custom type's slug is
+	// its stored key, a bson id the caller never wrote
+	sentType := orDefault(sent.Type, envelope.Type)
 	switch {
 	case documentCreateKinds[envelope.Kind]:
 	case envelope.Kind == "object_type":
@@ -1071,7 +1082,7 @@ func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, enve
 		}
 		if envelope.Type != string(bundle.TypeKeyTemplate) {
 			return v2model.ValidationFailed("not a template document",
-				v2model.Issue{Path: "/type", Message: fmt.Sprintf("expected type \"template\", got %q", envelope.Type)})
+				v2model.Issue{Path: "/type", Message: fmt.Sprintf("expected type \"template\", got %q", sentType)})
 		}
 	}
 	// a template must name its target type — the editor derives the layout
@@ -1097,7 +1108,7 @@ func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, enve
 		// create landed a new object in a type whose route 404s, and a
 		// reinstall lit it back up (§8.41; the type twin of the property
 		// refusal below)
-		if err := s.refuseRemovedType(ctx, spaceId, envelope.Type, docSpelling(spellings, envelope.Type), "/type"); err != nil {
+		if err := s.refuseRemovedType(ctx, spaceId, envelope.Type, sentType, "/type"); err != nil {
 			return err
 		}
 	}
@@ -1105,7 +1116,7 @@ func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, enve
 		if !s.typeKeyExists(spaceId, envelope.TemplateFor) {
 			return s.unknownTypeKeyError(spaceId, envelope.TemplateFor, "/template_for", v)
 		}
-		if err := s.refuseRemovedType(ctx, spaceId, envelope.TemplateFor, docSpelling(spellings, envelope.TemplateFor), "/template_for"); err != nil {
+		if err := s.refuseRemovedType(ctx, spaceId, envelope.TemplateFor, orDefault(sent.TemplateFor, envelope.TemplateFor), "/template_for"); err != nil {
 			return err
 		}
 	}
@@ -1113,11 +1124,26 @@ func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, enve
 	// SPEC §2: collection_items requires a collection document.
 	if len(envelope.Items) > 0 && envelope.Type != string(bundle.TypeKeyCollection) {
 		return v2model.ValidationFailed("items on a non-collection document",
-			v2model.Issue{Path: "/collection_items", Message: fmt.Sprintf("collection_items requires type \"collection\", got %q", envelope.Type)}.Hintf("create a collection with %s", v2model.RefCreateCollection(spaceId)))
+			v2model.Issue{Path: "/collection_items", Message: fmt.Sprintf("collection_items requires type \"collection\", got %q", sentType)}.Hintf("create a collection with %s", v2model.RefCreateCollection(spaceId)))
 	}
 
 	// property keys must exist — did-you-mean, never silent create (R9)
 	return s.validatePropertyKeys(ctx, spaceId, envelope.Properties, spellings)
+}
+
+// sentTypeTerms are a create body's type slots exactly as the caller wrote
+// them.
+type sentTypeTerms struct {
+	Type        string `json:"type"`
+	TemplateFor string `json:"template_for"`
+}
+
+// orDefault is value, or fallback when value is empty.
+func orDefault(value, fallback string) string {
+	if value != "" {
+		return value
+	}
+	return fallback
 }
 
 // refuseRemovedType is the type-namespace removal gate for one canonicalized
@@ -1286,13 +1312,4 @@ func sortedKeys[V any](m map[string]V) []string {
 	}
 	sort.Strings(keys)
 	return keys
-}
-
-// docSpelling is the caller's original spelling of a canonicalized key, the
-// key itself when canonicalization left it alone.
-func docSpelling(spellings map[string]string, key string) string {
-	if original, ok := spellings[key]; ok {
-		return original
-	}
-	return key
 }

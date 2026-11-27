@@ -796,8 +796,12 @@ func jsonPointerToken(name string) string {
 // for the loud refusal the union collision check owes the caller.
 type slugHolder struct {
 	Kind string // "bundled property", "property", "bundled type", "type"
-	Key  string // the holder's public key (bundled slug or stored key/slug)
-	Name string
+	Key  string // the holder's key: the bundled slug, or a live holder's STORED key
+	// Served is the spelling a caller addresses a live holder by — the
+	// collision-checked served key. A repair the refusal offers names this,
+	// never Key, which for a space-minted holder is a bson id.
+	Served string
+	Name   string
 	// Format is a bundled holder's, for the refusal to say what the
 	// built-in property would hold
 	Format model.RelationFormat
@@ -825,7 +829,8 @@ func (s *Service) propertySlugConflict(slug string, entries []propertyEntry) (sl
 		}
 		return slugHolder{Kind: "bundled property", Key: bundle.ApiSlug(entry.Key), Name: entry.Name, Format: entry.Format}, true
 	}
-	return slugHolder{Kind: "property", Key: entry.Key, Name: entry.Name}, true
+	keyTaken, slugHolders := servedPropertyKeySets(entries)
+	return slugHolder{Kind: "property", Key: entry.Key, Served: servedKey(entry.Key, entry.Slug, keyTaken, slugHolders), Name: entry.Name}, true
 }
 
 // typeSlugConflict is propertySlugConflict for the type namespace.
@@ -843,7 +848,8 @@ func (s *Service) typeSlugConflict(spaceId, slug string, entries []typeEntry) (s
 	if entry.Id == "" {
 		return slugHolder{Kind: "bundled type", Key: bundle.TypeApiSlug(entry.Key), Name: entry.Name}, true, nil
 	}
-	return slugHolder{Kind: "type", Key: entry.Key, Name: entry.Name}, true, nil
+	keyTaken, slugHolders := servedTypeKeySets(entries)
+	return slugHolder{Kind: "type", Key: entry.Key, Served: servedTypeKeyOf(entry.Key, entry.Slug, keyTaken, slugHolders), Name: entry.Name}, true, nil
 }
 
 // There is exactly ONE authority for the wire spelling of a key: servedKeyOf

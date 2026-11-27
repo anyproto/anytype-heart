@@ -199,7 +199,7 @@ func declaredOptionKey(def anyblockjson.TypeProperty) string {
 // present on an existing property creates nothing, so it needs no consent and
 // is not reported here.
 func (s *Service) guardDeclaredOptions(spaceId string, defs []anyblockjson.TypeProperty, path string, createMissingOptions bool) error {
-	return s.guardDeclaredOptionsAt(spaceId, defs, indexedOptionsPath(path), createMissingOptions)
+	return s.guardDeclaredOptionsAt(spaceId, defs, indexedOptionsPath(path), nil, createMissingOptions)
 }
 
 // indexedOptionsPath is the pointer a definition LIST gives its entries.
@@ -208,8 +208,11 @@ func indexedOptionsPath(path string) func(int) string {
 }
 
 // guardDeclaredOptionsAt is guardDeclaredOptions with caller-supplied
-// pointers — see applyDeclaredOptionsAt.
-func (s *Service) guardDeclaredOptionsAt(spaceId string, defs []anyblockjson.TypeProperty, pathAt func(int) string, createMissingOptions bool) error {
+// pointers — see applyDeclaredOptionsAt — and, when spellAt is non-nil, the
+// caller's own spelling of each entry's property. A definition document's
+// property IS the caller's spelling; an op batch resolves its entries to
+// stored keys first, and a refusal must not quote those.
+func (s *Service) guardDeclaredOptionsAt(spaceId string, defs []anyblockjson.TypeProperty, pathAt func(int) string, spellAt func(int) string, createMissingOptions bool) error {
 	var declaring bool
 	for _, def := range defs {
 		if len(def.Options) > 0 {
@@ -241,6 +244,18 @@ func (s *Service) guardDeclaredOptionsAt(spaceId string, defs []anyblockjson.Typ
 		defPath := pathAt(i)
 		docKey := declaredOptionKey(def)
 		entry, exists := find(docKey)
+		spelling := docKey
+		if spellAt != nil {
+			if sent := spellAt(i); sent != "" {
+				spelling = sent
+			}
+		}
+		// the options route takes the served key, a valid path segment
+		// whatever the caller spelled
+		routeKey := spelling
+		if exists {
+			routeKey = servedKeyIn(entry, properties)
+		}
 
 		// options need a select format, the rule POST /properties states at
 		// its own /options and the format layer enforces on a create-time
@@ -254,7 +269,7 @@ func (s *Service) guardDeclaredOptionsAt(spaceId string, defs []anyblockjson.Typ
 			return v2model.ValidationFailed("options need a select format",
 				v2model.Issue{
 					Path:    defPath,
-					Message: fmt.Sprintf("options apply to select and multi_select properties, and %q is %s", docKey, declaredFormat),
+					Message: fmt.Sprintf("options apply to select and multi_select properties, and %q is %s", spelling, declaredFormat),
 				})
 		}
 
@@ -265,7 +280,7 @@ func (s *Service) guardDeclaredOptionsAt(spaceId string, defs []anyblockjson.Typ
 		// a property this request mints holds no options at all, so every
 		// name declared against it is one the request would create
 		if !exists {
-			return optionConsentErrorAt(spaceId, docKey, def.Options[0].Name, defPath)
+			return optionConsentErrorAs(spaceId, spelling, routeKey, def.Options[0].Name, defPath)
 		}
 		held := map[string]bool{}
 		options, err := s.store.SpaceIndex(spaceId).ListRelationOptions(domain.RelationKey(entry.Key))
@@ -279,7 +294,7 @@ func (s *Service) guardDeclaredOptionsAt(spaceId string, defs []anyblockjson.Typ
 		}
 		for _, opt := range def.Options {
 			if opt.Name != "" && !held[opt.Name] {
-				return optionConsentErrorAt(spaceId, docKey, opt.Name, defPath)
+				return optionConsentErrorAs(spaceId, spelling, routeKey, opt.Name, defPath)
 			}
 		}
 	}

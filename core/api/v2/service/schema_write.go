@@ -252,7 +252,7 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 			return nil, v2model.ValidationFailed("type key already exists",
 				v2model.Issue{Path: keyPath,
 					Message: fmt.Sprintf("key %q is taken by %s %q in space %s", slug, holder.Kind, holder.Name, spaceId),
-				}.Hintf("update it with %s, or pick a different key", v2model.RefUpdateType(spaceId, holder.Key)))
+				}.Hintf("update it with %s, or pick a different key", v2model.RefUpdateType(spaceId, holder.Served)))
 		}
 	}
 
@@ -1339,10 +1339,10 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, req v2mode
 	}
 	if slug != "" {
 		if holder, taken := s.propertySlugConflict(slug, propEntries); taken {
-			path, hint := "/key", v2model.Hintf("update it with %s, or pick a different key", v2model.RefUpdateProperty(spaceId, holder.Key))
+			path, hint := "/key", v2model.Hintf("update it with %s, or pick a different key", v2model.RefUpdateProperty(spaceId, holder.Served))
 			if req.Key == "" {
 				path = "/name"
-				hint = v2model.Plain(fmt.Sprintf("use the existing property %q, or pass an explicit different key", holder.Key))
+				hint = v2model.Plain(fmt.Sprintf("use the existing property %q, or pass an explicit different key", holder.Served))
 			}
 			if holder.Kind == "properties" {
 				// several properties answer to this slug already: neither an

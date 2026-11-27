@@ -138,6 +138,10 @@ type typeOpsPlan struct {
 	// wrote rather than at a position in a list they never sent.
 	optionDefs  []anyblockjson.TypeProperty
 	optionPaths []string
+	// optionSpellings is what each op wrote for its property: optionDefs
+	// carry the lookup identity, which for a property that already exists is
+	// its stored key — a bson id the caller was never served
+	optionSpellings []string
 	// removed names the entries remove_property took out, in op order.
 	removed []typeListEntry
 	// addedByOp are the entries an add_property op named, whether it appended
@@ -183,12 +187,13 @@ func (s *Service) updateTypeOps(ctx context.Context, spaceId string, typeObject 
 	// has not written anything yet, which is the whole reason the plan above
 	// resolves without creating: a refused batch that had already minted a
 	// property leaves it behind as a relation nothing points at.
-	optionDefs, optionPaths := plan.activeOptionDefs()
+	optionDefs, optionPaths, optionSpellings := plan.activeOptionDefs()
 	if err := typeOpsOptionBudget(optionDefs, optionPaths); err != nil {
 		return nil, err
 	}
 	if err := s.guardDeclaredOptionsAt(spaceId, optionDefs,
-		func(i int) string { return optionPaths[i] + ".options" }, createMissingOptions); err != nil {
+		func(i int) string { return optionPaths[i] + ".options" },
+		func(i int) string { return optionSpellings[i] }, createMissingOptions); err != nil {
 		return nil, err
 	}
 
@@ -484,6 +489,7 @@ func (s *Service) planAddProperty(plan *typeOpsPlan, raw json.RawMessage, opPath
 			Property: identity, Format: optionFormat, Options: op.Options,
 		})
 		plan.optionPaths = append(plan.optionPaths, opPath)
+		plan.optionSpellings = append(plan.optionSpellings, op.Property)
 	}
 
 	if target == nil {
@@ -861,17 +867,19 @@ func (p *typeOpsPlan) drop(target *typeListEntry) {
 // still lists. A vocabulary declared on an entry a later op removed has
 // nothing to attach to, and creating its options anyway is the same orphan
 // class as the cancelled mint above.
-func (p *typeOpsPlan) activeOptionDefs() ([]anyblockjson.TypeProperty, []string) {
+func (p *typeOpsPlan) activeOptionDefs() ([]anyblockjson.TypeProperty, []string, []string) {
 	defs := make([]anyblockjson.TypeProperty, 0, len(p.optionDefs))
 	paths := make([]string, 0, len(p.optionPaths))
+	spellings := make([]string, 0, len(p.optionSpellings))
 	for i, def := range p.optionDefs {
 		if p.findBySpelling(def.Property) == nil {
 			continue
 		}
 		defs = append(defs, def)
 		paths = append(paths, p.optionPaths[i])
+		spellings = append(spellings, p.optionSpellings[i])
 	}
-	return defs, paths
+	return defs, paths, spellings
 }
 
 // place moves one member to the destination the op names. after and before

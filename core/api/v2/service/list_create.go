@@ -129,10 +129,17 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 		// "type" joins the reference set only so the discovery-served grammar
 		// example (`type IN (…)`) parses to a targeted error below instead of
 		// an unknown-key message that cannot explain itself
-		refKeys := appendMissing(append(kc.withServedSpellings(s.typePropertyKeys(spaceId, typeId)), "name", "type"), v2SystemQueryKeys...)
+		typeKeys := s.typePropertyKeys(spaceId, typeId)
+		acceptKeys := appendMissing(append(kc.withServedSpellings(typeKeys), "name", "type"), v2SystemQueryKeys...)
+		// a refusal is worded over the served spellings: acceptance keeps
+		// every stored key, and a space-minted property's stored key is a
+		// bson id no listing serves (served, not the request's vocabulary —
+		// the compact grammar spells bare keys only). The hidden counters
+		// parse, but are not listed.
+		refKeys := appendMissing(append(kc.servedSpellings(typeKeys), "name", "type"), v2SystemQueryKeys...)
 		sort.Strings(refKeys)
-		// the hidden counters parse, but a refusal is worded without them
-		acceptKeys := appendMissing(append([]string(nil), refKeys...), kc.withServedSpellings(v2BundledQueryKeys)...)
+		acceptKeys = appendMissing(acceptKeys, kc.withServedSpellings(v2BundledQueryKeys)...)
+		sort.Strings(acceptKeys)
 		parsed, err := parseSearchFilter(req.Filter, filterstring.Options{
 			KnownKeys:     acceptKeys,
 			ResolveFormat: canonFormatName(s.formatNameResolver(spaceId), kc),
