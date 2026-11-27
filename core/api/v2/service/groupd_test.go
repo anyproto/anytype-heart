@@ -1684,6 +1684,161 @@ func TestV2CreateUnderStoreFaults(t *testing.T) {
 	})
 }
 
+// GO-7614 round three: a template is known by its object's kind, not the
+// first type key the index carries, and it names its target however many
+// type keys it stored. One fixture of each shape, through GET, the listing
+// and a create.
+func TestV2TemplateKindDecides(t *testing.T) {
+	ctx := context.Background()
+	type shape struct {
+		id      string
+		sbType  model.SmartBlockType
+		keys    []string
+		detail  *types.Value
+		rowType string // the index row's type: the object's first key
+		rowFor  *types.Value
+	}
+	setup := func(t *testing.T, shapes ...shape) *v2Fixture {
+		fx := newEffortFixture(t)
+		fx.addSprintType(t)
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:        domain.String("type-backlog"),
+			bundle.RelationKeyUniqueKey: domain.String("ot-backlog"),
+			bundle.RelationKeyName:      domain.String("Backlog"),
+		})
+		for i, sh := range shapes {
+			row := objectstore.TestObject{
+				bundle.RelationKeyId:               domain.String(sh.id),
+				bundle.RelationKeyName:             domain.String(sh.id),
+				bundle.RelationKeyType:             domain.String(sh.rowType),
+				bundle.RelationKeyResolvedLayout:   domain.Int64(int64(model.ObjectType_basic)),
+				bundle.RelationKeyLastModifiedDate: domain.Int64(int64(100 - i)),
+			}
+			if sh.rowFor != nil {
+				row[bundle.RelationKeyTargetObjectType] = domain.ValueFromProto(sh.rowFor)
+			}
+			fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{row})
+			read := editRead(t, `{"formatVersion":"2.0","id":"`+sh.id+`","kind":"template","type":"template","properties":{"name":"`+sh.id+`"}}`)
+			read.SbType, read.Snapshot.ObjectTypes = sh.sbType, sh.keys
+			if sh.detail != nil {
+				read.Snapshot.Details.Fields[bundle.RelationKeyTargetObjectType.String()] = sh.detail
+			}
+			fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, sh.id).Return(read, nil).Maybe()
+		}
+		return fx
+	}
+	getFields := func(t *testing.T, fx *v2Fixture, id string) map[string]json.RawMessage {
+		t.Helper()
+		body, _, err := fx.GetObject(ctx, testSpaceId, id, ObjectQuery{})
+		require.NoError(t, err)
+		fields, err := parseEnvelope(body)
+		require.NoError(t, err)
+		return fields
+	}
+	listed := func(t *testing.T, fx *v2Fixture, typeTerm string) []string {
+		t.Helper()
+		rows, _, _, err := fx.ListTemplates(ctx, testSpaceId, typeTerm, 0, 10)
+		require.NoError(t, err)
+		ids := []string{}
+		for _, row := range rows {
+			ids = append(ids, row.Id)
+		}
+		return ids
+	}
+	sprint := pbtypes.String("type-sprint")
+
+	t.Run("a template whose first type key is another type is a template of its target everywhere", func(t *testing.T) {
+		// given
+		fx := setup(t, shape{id: "tpl-odd", sbType: model.SmartBlockType_Template, keys: []string{"ot-backlog", "ot-sprint"},
+			detail: sprint, rowType: "type-backlog", rowFor: sprint})
+		applied := fx.expectCreateWithTemplate("newObj")
+		fx.expectEtagRead("newObj")
+
+		// when
+		fields := getFields(t, fx, "tpl-odd")
+		_, err := fx.CreateObject(ctx, testSpaceId, []byte(`{"type":"sprint","name":"Monday","template":"tpl-odd"}`), false, false)
+
+		// then
+		assert.Equal(t, "template", envelopeString(fields, "type"))
+		assert.Equal(t, "sprint", envelopeString(fields, "template_for"))
+		assert.Equal(t, []string{"tpl-odd"}, listed(t, fx, "sprint"))
+		require.NoError(t, err)
+		assert.Equal(t, "tpl-odd", *applied)
+	})
+
+	t.Run("a page whose first type key is template is never a template", func(t *testing.T) {
+		// given
+		fx := setup(t, shape{id: "page-odd", sbType: model.SmartBlockType_Page, keys: []string{"ot-template"}, rowType: testTemplateTypeId})
+
+		// when
+		_, err := fx.CreateObject(ctx, testSpaceId, []byte(`{"type":"sprint","name":"Monday","template":"page-odd"}`), false, false)
+
+		// then
+		assert.Empty(t, listed(t, fx, ""))
+		assert.Contains(t, issueAt(t, err, "/template").Message, "is not a template")
+	})
+
+	t.Run("a template for a built-in this space has not installed is listed and applies", func(t *testing.T) {
+		// given: the target rides only in the second type key, and task has
+		// no row; its id is derivable
+		fx := setup(t, shape{id: "tpl-task", sbType: model.SmartBlockType_Template, keys: []string{"ot-template", "ot-task"}, rowType: testTemplateTypeId})
+		applied := fx.expectCreateWithTemplate("newObj")
+		fx.expectEtagRead("newObj")
+
+		// when
+		_, err := fx.CreateObject(ctx, testSpaceId, []byte(`{"type":"task","name":"Monday","template":"tpl-task"}`), false, false)
+
+		// then
+		assert.Equal(t, []string{"tpl-task"}, listed(t, fx, "task"))
+		require.NoError(t, err)
+		assert.Equal(t, "tpl-task", *applied)
+	})
+
+	t.Run("a template stored with two target ids is a template of neither", func(t *testing.T) {
+		// given
+		two := pbtypes.StringList([]string{"type-sprint", "type-backlog"})
+		fx := setup(t, shape{id: "tpl-two", sbType: model.SmartBlockType_Template, keys: []string{"ot-template", "ot-sprint"},
+			detail: two, rowType: testTemplateTypeId, rowFor: two})
+
+		// when, then
+		assert.Empty(t, listed(t, fx, "sprint"))
+		assert.Empty(t, envelopeString(getFields(t, fx, "tpl-two"), "template_for"))
+	})
+
+	t.Run("a template stored with no type key still serves the target its detail names", func(t *testing.T) {
+		// given
+		fx := setup(t, shape{id: "tpl-bare", sbType: model.SmartBlockType_Template, keys: nil, detail: sprint, rowType: testTemplateTypeId, rowFor: sprint})
+
+		// when
+		fields := getFields(t, fx, "tpl-bare")
+
+		// then
+		assert.Equal(t, "sprint", envelopeString(fields, "template_for"))
+	})
+
+	t.Run("three type keys beside an unresolved target serve no stale slot and report the dropped key", func(t *testing.T) {
+		// given
+		ghost := pbtypes.String("type-ghost")
+		fx := setup(t, shape{id: "tpl-three", sbType: model.SmartBlockType_Template, keys: []string{"ot-template", "ot-backlog", "ot-sprint"},
+			detail: ghost, rowType: testTemplateTypeId, rowFor: ghost})
+
+		// when
+		fields := getFields(t, fx, "tpl-three")
+		_, patchErr := fx.PatchObject(ctx, testSpaceId, "tpl-three", patchBody(`{"op":"set_properties","set":{"name":"Renamed"}}`), "", true, true)
+
+		// then
+		assert.Empty(t, envelopeString(fields, "template_for"))
+		var warnings []v2model.Issue
+		require.NoError(t, json.Unmarshal(fields["warnings"], &warnings))
+		paths := []string{}
+		for _, w := range warnings {
+			paths = append(paths, w.Path)
+		}
+		assert.Contains(t, paths, "/type")
+		assert.Equal(t, http.StatusUnprocessableEntity, v2Err(t, patchErr).Status)
+	})
+}
+
 func TestV2TemplateKindNeedsTemplateType(t *testing.T) {
 	ctx := context.Background()
 	setup := func(t *testing.T) *v2Fixture {

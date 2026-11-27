@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"strings"
 
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -284,22 +285,23 @@ func (s *Service) templateTargetOf(spaceId string, details *types.Struct, typeKe
 // withTemplateTarget is a template snapshot whose type keys say what its
 // document serves: `template` as its own type, and the target
 // templateTargetOf resolved in the second slot, the one the format reads
-// template_for from. Only those two slots change, so a key past them still
-// reaches the codec and its loss warning. A target the detail moved out of
-// this space's sight leaves no stale slot behind to serve.
+// template_for from, however many slots the object stored. Keys past the
+// target still reach the codec and its loss warning, except beside a target
+// the detail moved out of this space's sight: no stale slot is served then,
+// and templateRenderLoss reports the keys that go with it.
 func withTemplateTarget(snapshot *model.SmartBlockSnapshotBase, target templateTarget) *model.SmartBlockSnapshotBase {
-	if snapshot == nil || len(snapshot.ObjectTypes) == 0 {
+	if snapshot == nil {
 		return snapshot
 	}
-	objectTypes := append([]string(nil), snapshot.ObjectTypes...)
-	objectTypes[0] = bundle.TypeKeyTemplate.URL()
+	objectTypes := []string{bundle.TypeKeyTemplate.URL()}
 	switch {
-	case target.Key != "" && len(objectTypes) > 1:
-		objectTypes[1] = domain.TypeKey(target.Key).URL()
 	case target.Key != "":
 		objectTypes = append(objectTypes, domain.TypeKey(target.Key).URL())
-	case target.DetailUnresolved && len(objectTypes) == 2:
-		objectTypes = objectTypes[:1]
+		if len(snapshot.ObjectTypes) > 2 {
+			objectTypes = append(objectTypes, snapshot.ObjectTypes[2:]...)
+		}
+	case !target.DetailUnresolved && len(snapshot.ObjectTypes) > 1:
+		objectTypes = append(objectTypes, snapshot.ObjectTypes[1:]...)
 	}
 	if slices.Equal(objectTypes, snapshot.ObjectTypes) {
 		return snapshot
@@ -307,6 +309,21 @@ func withTemplateTarget(snapshot *model.SmartBlockSnapshotBase, target templateT
 	out := *snapshot
 	out.ObjectTypes = objectTypes
 	return &out
+}
+
+// templateRenderLoss is the loss withTemplateTarget cannot leave to the
+// codec: type keys past the target slot of a template whose target is
+// unresolved, which its document does not carry. A read reports it, and a
+// PATCH refuses as for any other loss (C11).
+func templateRenderLoss(snapshot *model.SmartBlockSnapshotBase, target templateTarget) []v2model.Issue {
+	if snapshot == nil || !target.DetailUnresolved || len(snapshot.ObjectTypes) <= 2 {
+		return nil
+	}
+	return []v2model.Issue{{
+		Path: "/type",
+		Message: fmt.Sprintf("object types %s are dropped: this template's target cannot be resolved, so its document carries no template_for and no key past it",
+			strings.Join(snapshot.ObjectTypes[2:], ", ")),
+	}}
 }
 
 // templateScope is the property scope of a template's own keys: its live
@@ -354,19 +371,19 @@ func (s *Service) inspectTemplate(ctx context.Context, spaceId, templateId, type
 	if row.GetBool(bundle.RelationKeyIsDeleted) || row.GetBool(bundle.RelationKeyIsArchived) || row.GetBool(bundle.RelationKeyIsUninstalled) {
 		return name, fmt.Sprintf("template %q is deleted", templateId), nil
 	}
-	templateTypeId, ok, err := s.liveTypeIdInSpace(spaceId, string(bundle.TypeKeyTemplate))
+	templateTypeId, _, err := s.liveTypeIdInSpace(spaceId, string(bundle.TypeKeyTemplate))
 	if err != nil {
 		return name, "", err
 	}
-	if !ok || row.GetString(bundle.RelationKeyType) != templateTypeId {
+	target, isTemplate, err := s.templateRowTargetId(ctx, spaceId, row, templateTypeId)
+	if err != nil {
+		return "", "", err
+	}
+	if !isTemplate {
 		return name, fmt.Sprintf("object %q is not a template", templateId), nil
 	}
 	if typeId == "" {
 		return name, "", nil
-	}
-	target, err := s.templateRowTargetId(ctx, spaceId, row)
-	if err != nil {
-		return "", "", err
 	}
 	if target != typeId {
 		if targetKey := s.servedTypeKeyById(spaceId, target); targetKey != "" {
@@ -377,31 +394,50 @@ func (s *Service) inspectTemplate(ctx context.Context, spaceId, templateId, type
 	return name, "", nil
 }
 
-// templateRowTargetId is the type id a template's index row is for: its
-// targetObjectType when the row carries one, and otherwise the live target
-// its object resolves to (templateTargetOf). The second type key lives only
-// in the object, so a template that names its target there alone costs one
-// read; GET names that target, and a create or a listing must agree.
-func (s *Service) templateRowTargetId(ctx context.Context, spaceId string, row *domain.Details) (string, error) {
-	if ids := row.WrapToStringList(bundle.RelationKeyTargetObjectType); len(ids) > 0 {
-		if len(ids) > 1 {
-			return "", nil // a template is for one type; several is unresolved
-		}
-		return ids[0], nil
+// templateRowTargetId answers, for an index row, whether its object is a
+// template and which type id it is for. The index carries an object's first
+// type key, not its kind, so the usual shape is read off the row: a row of
+// the template type that names one target is one, and a row that is neither
+// of the template type nor names a target is not. Any other row is answered
+// by its object: its smartblock type decides, and its target is the one GET
+// serves (templateTargetOf). A target this space has not installed yet is
+// its derivable id, the one a create of that type compares against.
+func (s *Service) templateRowTargetId(ctx context.Context, spaceId string, row *domain.Details, templateTypeId string) (targetId string, isTemplate bool, err error) {
+	ids := row.WrapToStringList(bundle.RelationKeyTargetObjectType)
+	ofTemplateType := templateTypeId != "" && row.GetString(bundle.RelationKeyType) == templateTypeId
+	switch {
+	case ofTemplateType && len(ids) > 1:
+		return "", true, nil // a template is for one type; several is unresolved
+	case ofTemplateType && len(ids) == 1:
+		return ids[0], true, nil
+	case !ofTemplateType && len(ids) == 0:
+		// neither the template type nor a target: no path finds it as a
+		// template, and nothing reads its object to say otherwise
+		return "", false, nil
 	}
 	templateId := row.GetString(bundle.RelationKeyId)
 	read, err := s.reader.ReadObject(ctx, spaceId, templateId)
 	if err != nil {
-		return "", fmt.Errorf("read template %s: %w", templateId, err)
+		return "", false, fmt.Errorf("read template %s: %w", templateId, err)
 	}
-	if read.Snapshot == nil {
-		return "", nil
+	if read.Snapshot == nil || !isTemplateObject(read.SbType) {
+		return "", false, nil
 	}
 	target, err := s.templateTargetOf(spaceId, read.Snapshot.GetDetails(), readTypeKeys(read.Snapshot.GetObjectTypes()))
 	if err != nil {
-		return "", err
+		return "", true, err
 	}
-	return target.Live.Id, nil
+	switch {
+	case target.IsLive:
+		return target.Live.Id, true, nil
+	case target.Key != "" && bundle.HasObjectTypeByKey(domain.TypeKey(target.Key)):
+		derived, err := s.creator.TypeIdByKey(ctx, spaceId, domain.TypeKey(target.Key))
+		if err != nil {
+			return "", true, fmt.Errorf("derive type id for %s: %w", target.Key, err)
+		}
+		return derived, true, nil
+	}
+	return "", true, nil
 }
 
 // typeDefaultTemplate reads a type's default_template.
@@ -534,61 +570,45 @@ func (s *Service) ListTemplates(ctx context.Context, spaceId, typeTerm string, o
 		Type:        model.BlockContentDataviewSort_Desc,
 		IncludeTime: true,
 	}}
-	// a template naming its target only in its second type key has no
-	// targetObjectType for the index to filter on (templateRowTargetId)
-	var detailless []database.Record
-	if listedFor != "" {
-		rows, err := s.store.SpaceIndex(spaceId).Query(database.Query{Filters: append(slices.Clone(filters), database.FilterRequest{
-			RelationKey: bundle.RelationKeyTargetObjectType,
-			Condition:   model.BlockContentDataviewFilter_Empty,
-		})})
-		if err != nil {
-			return nil, 0, false, fmt.Errorf("query templates in space %s: %w", spaceId, err)
-		}
-		for _, row := range rows {
-			target, err := s.templateRowTargetId(ctx, spaceId, row.Details)
-			if err != nil {
-				return nil, 0, false, err
-			}
-			if target == listedFor {
-				detailless = append(detailless, row)
-			}
-		}
-		filters = append(filters, database.FilterRequest{
-			RelationKey: bundle.RelationKeyTargetObjectType,
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       domain.String(listedFor),
-		})
+	// the index carries an object's first type key, not its kind: the rows
+	// of the template type and the rows elsewhere that name a target are the
+	// candidates, each answered by templateRowTargetId, and the page is cut
+	// here (templates are few)
+	templateTypeId, _, err := s.liveTypeIdInSpace(spaceId, string(bundle.TypeKeyTemplate))
+	if err != nil {
+		return nil, 0, false, err
 	}
-	var (
-		records []database.Record
-		total   int
-	)
-	if len(detailless) == 0 {
-		records, total, err = s.store.SpaceIndex(spaceId).QueryAndCount(database.Query{
-			Filters: filters,
-			Sorts:   byDate,
-			Offset:  offset,
-			Limit:   limit + 1, // one extra record detects has_more without a second scan
-		})
+	ofTemplateType, err := s.store.SpaceIndex(spaceId).Query(database.Query{Filters: filters, Sorts: byDate})
+	if err != nil {
+		return nil, 0, false, fmt.Errorf("query templates in space %s: %w", spaceId, err)
+	}
+	elsewhere, err := s.store.SpaceIndex(spaceId).Query(database.Query{Filters: append([]database.FilterRequest{
+		{RelationKey: "type.uniqueKey", Condition: model.BlockContentDataviewFilter_NotEqual, Value: domain.String(bundle.TypeKeyTemplate.URL())},
+		{RelationKey: bundle.RelationKeyTargetObjectType, Condition: model.BlockContentDataviewFilter_NotEmpty},
+	}, filters[1:]...), Sorts: byDate})
+	if err != nil {
+		return nil, 0, false, fmt.Errorf("query templates in space %s: %w", spaceId, err)
+	}
+	targetOf := map[string]string{}
+	var all []database.Record
+	for _, row := range append(ofTemplateType, elsewhere...) {
+		target, isTemplate, err := s.templateRowTargetId(ctx, spaceId, row.Details, templateTypeId)
 		if err != nil {
-			return nil, 0, false, fmt.Errorf("query templates in space %s: %w", spaceId, err)
+			return nil, 0, false, err
 		}
-	} else {
-		// the rare page that holds both kinds is assembled here, in the
-		// store's own order
-		all, err := s.store.SpaceIndex(spaceId).Query(database.Query{Filters: filters, Sorts: byDate})
-		if err != nil {
-			return nil, 0, false, fmt.Errorf("query templates in space %s: %w", spaceId, err)
+		if !isTemplate || (listedFor != "" && target != listedFor) {
+			continue
 		}
-		all = append(all, detailless...)
-		sort.SliceStable(all, func(i, j int) bool {
-			return all[i].Details.GetInt64(bundle.RelationKeyLastModifiedDate) > all[j].Details.GetInt64(bundle.RelationKeyLastModifiedDate)
-		})
-		total = len(all)
-		if offset < len(all) {
-			records = all[offset:min(len(all), offset+limit+1)]
-		}
+		targetOf[row.Details.GetString(bundle.RelationKeyId)] = target
+		all = append(all, row)
+	}
+	sort.SliceStable(all, func(i, j int) bool {
+		return all[i].Details.GetInt64(bundle.RelationKeyLastModifiedDate) > all[j].Details.GetInt64(bundle.RelationKeyLastModifiedDate)
+	})
+	total := len(all)
+	var records []database.Record
+	if offset < len(all) {
+		records = all[offset:min(len(all), offset+limit+1)]
 	}
 	hasMore := len(records) > limit
 	if hasMore {
@@ -605,10 +625,7 @@ func (s *Service) ListTemplates(ctx context.Context, spaceId, typeTerm string, o
 	defaults := map[string]string{}
 	rows := make([]v2model.TemplateRow, 0, len(records))
 	for _, record := range records {
-		targetId, err := s.templateRowTargetId(ctx, spaceId, record.Details)
-		if err != nil {
-			return nil, 0, false, err
-		}
+		targetId := targetOf[record.Details.GetString(bundle.RelationKeyId)]
 		if _, seen := defaults[targetId]; !seen && targetId != "" {
 			defaultId, err := s.typeDefaultTemplate(spaceId, targetId)
 			if err != nil {

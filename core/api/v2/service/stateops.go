@@ -267,6 +267,9 @@ func (a *v2StateApplier) begin() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	if a.template {
+		warnings = append(warnings, templateRenderLoss(snapshotFromState(a.st), a.target)...)
+	}
 	if len(warnings) > 0 {
 		return nil, v2model.NewError(http.StatusUnprocessableEntity, v2model.CodeValidationFailed,
 			"this object contains content the AnyBlock format cannot fully represent — a PATCH would drop it; edit it in the app",
