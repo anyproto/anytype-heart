@@ -169,6 +169,29 @@ func TestV2SlugAddressedDocuments(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
 		assert.Contains(t, apiErr.Message, "duplicate property key")
 	})
+
+	t.Run("two spellings of one property are refused by the spellings sent, never the stored key", func(t *testing.T) {
+		// given: the slug and the display name of one BSON-keyed property —
+		// the stored key is an id the caller was never served (GO-7615)
+		fx := slugSpaceFixture(t)
+		want := v2model.Issue{
+			Path:    "/properties/manual_property",
+			Message: `"Manual property" and "manual_property" both address one property — keep one`,
+		}
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId, []byte(`{
+			"formatVersion":"2.0","type":"meeting_note",
+			"properties":{"manual_property":"a","Manual property":"b"}}`), false, true)
+
+		// then
+		apiErr := v2Err(t, err)
+		assert.Equal(t, "duplicate property key", apiErr.Message)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, want, apiErr.Issues[0])
+		assert.NotContains(t, apiErr.Issues[0].Message, slugPropKey)
+		assert.NotRegexp(t, `[0-9a-f]{24}`, apiErr.Issues[0].Message, "a stored bson key reached the caller")
+	})
 }
 
 func TestV2SlugAddressedOps(t *testing.T) {

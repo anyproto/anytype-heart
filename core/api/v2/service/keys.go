@@ -1358,6 +1358,10 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 			}
 			if len(renames) > 0 {
 				rewritten := make(map[string]json.RawMessage, len(props))
+				// the refusal names both spellings the caller sent; the
+				// canonical one is the stored key, a bson id for a
+				// space-minted property
+				spelledBy := make(map[string]string, len(props))
 				// deterministic order, so a duplicate-spelling refusal
 				// names the same path on every run
 				for _, key := range sortedKeys(props) {
@@ -1366,11 +1370,12 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 						canonical = to
 						spellings[canonical] = key
 					}
-					if _, dup := rewritten[canonical]; dup {
+					if first, dup := spelledBy[canonical]; dup {
 						return nil, nil, v2model.ValidationFailed("duplicate property key",
 							v2model.Issue{Path: "/properties/" + key,
-								Message: fmt.Sprintf("%q and another spelling both address property %q — keep one", key, canonical)})
+								Message: fmt.Sprintf("%q and %q both address one property — keep one", first, key)})
 					}
+					spelledBy[canonical] = key
 					rewritten[canonical] = props[key]
 				}
 				if fields["properties"], err = rawJSON(rewritten); err != nil {
