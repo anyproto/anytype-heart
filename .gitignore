@@ -33,3 +33,10 @@ doc/dependency_decisions.yml
 /anyblockconvert
 /anyblockvalidate
 /apiv2eval
+
+# anytype-mcp build outputs (make cross-compile-mcp, make pack-server, go build ./cmd/anytype-mcp)
+/anytype-mcp
+/*-mcp-dev
+/*-mcp-release
+/server-*.sha256
+/.pack/
