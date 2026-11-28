@@ -1080,8 +1080,8 @@ with no positional/index/offset addressing anywhere (§3.1–3.2). It is:
   payload position — `ops[3].blocks[0] → "b1a2…"`), `created_views` (its twin
   for server-minted view ids, keyed by the same exact nested payload path),
   `diff_stats`, and `warnings` — the same warning-grade C6 channel reads use,
-  so hazards an edit introduces (for example an unguarded date comparison
-  that also matches undated objects) surface instead of passing silently. A
+  so hazards an edit introduces (for example a date preset its condition
+  ignores) surface instead of passing silently. A
   client-supplied payload id resolves an existing block and preserves that
   identity, so it is absent from both maps. Both receipts follow `?ids=`:
   compact labels by default, full ids with `ids=full`
@@ -1427,14 +1427,13 @@ Secondary example — programmatic composition (the structured array):
   for good. Presence predicates and counting presets keep their values
   untouched (`core/api/v2/service/search.go:790`).
 - **The structured `filters` array is shape-validated before it reaches the
-  store**, because three malformed shapes otherwise degrade silently into
-  MATCH EVERYTHING: a node carrying both the group and the leaf arms, a group
-  with an empty `filters` array, and a leaf with no `condition` (which a
-  misspelled key also produces). Each is a path-addressed 400 whose hint
-  states that the shape matches every object. The gate runs on the query path
-  AND on `POST /queries` and on a view op's `set.filters`, because a persisted
-  match-everything filter is a saved query that quietly contains the whole
-  space. The served schema matches the enforcement: the leaf arm requires
+  store**, because three malformed shapes otherwise degrade silently: a node
+  carrying both the group and the leaf arms, a group with an empty `filters`
+  array, and a leaf with no `condition` (which a misspelled key also
+  produces). Each is a path-addressed 400 whose hint names the repair. The
+  gate runs on the query path AND on `POST /queries` and on a view op's
+  `set.filters`, because a persisted malformed filter is a saved query that
+  quietly filters less than it says. The served schema matches the enforcement: the leaf arm requires
   `condition` and the group arm's `filters` carries `minItems: 1`. The shared
   document codec is deliberately untouched and keeps accepting condition-less
   leaves, since stored dataviews legitimately carry them
@@ -1461,10 +1460,20 @@ Secondary example — programmatic composition (the structured array):
      and sorts. The result includes one lookahead row: `total` is a lower
      bound when clipped, and `has_more` reports whether another page is
      available.
-  5. **Empty-date hazard surfaces.** SPEC §6.2: an unguarded `less`/
-     `lessOrEqual` date comparison matches undated objects. Document import
-     warns; the search path does too — the same warning text rides the C6
-     `warnings` channel.
+  5. **Ordering conditions skip undated objects.** SPEC §6.2: `less`,
+     `less_or_equal`, `greater` and `greater_or_equal` (the spellings the
+     structured form accepts) compared against a date or a date preset never
+     match an object with no value for the property (any-store v2 compares
+     only values of one type), so `dueDate < today()` lists dated objects
+     only. The exception needs `include_time: true` and no preset: a
+     `less_or_equal` or `greater_or_equal` with no value then compares against
+     null and a `valueFromRelation` operand compares encoded bytes, and either
+     can match a missing value. With the default `include_time: false` the
+     operand becomes a day bound (an absent one reads as the epoch day): `>=`
+     and `<` use the start of the day, `>` and `<=` its end, and the undated
+     stay out. To include the
+     undated, OR an `empty` leaf in. Neither import nor search warns about
+     this.
   6. **`type` is a filterable pseudo-key.** The top-level `type` stays a
      single type key (the small-model form, C2). Multi-type queries use the
      filter channel: `type IN ("task", "bug")` — resolved key→id server-side
@@ -1520,9 +1529,13 @@ Secondary example — programmatic composition (the structured array):
   total. Unknown filter and sort keys keep the skip-with-warning behaviour on
   the global path (`core/api/v2/service/search.go:178`).
 - **Stored-view execution (`?view=`) substitutes dynamic placeholders.**
-  SPEC §6.2's `_filter_template_<n>_` values are client-substituted and opaque
-  to the middleware — a query evaluated server-side against the literal string
-  matches nothing. The handler substitutes `_filter_template_2_` → the
+  SPEC §6.2's `_filter_template_<n>_` values are client-substituted; the
+  codec leaves them verbatim. Stored-view execution substitutes into every
+  string-valued leaf, whatever the property's format. Direct search
+  (`POST .../search`) does not substitute: it applies ordinary value
+  validation, so a placeholder in a date leaf or an unknown select option is a
+  400, and on a text leaf it compares the literal token with a warning. The
+  handler substitutes `_filter_template_2_` → the
   caller's participant id (`_participant_<space>_<account>`) and
   `_filter_template_1_` → the hosting object id before building the store
   query; any other placeholder degrades to a C6 warning, never a silent
