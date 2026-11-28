@@ -121,7 +121,7 @@ func typeShortcutDocument(fields map[string]json.RawMessage) (map[string]json.Ra
 				v2model.Issue{
 					Path:    v2model.MemberPointer(key),
 					Message: fmt.Sprintf("unknown key %q", key),
-					Hint:    "the flat body takes name, plural_name, icon, layout, layout_width_percent, api_key, default_view, default_template, property_definitions — or send the type document with type_settings",
+					Hint:    "the flat body takes name, plural_name, icon, layout, layout_width_percent, api_key, default_view, default_template, property_definitions — or send a full AnyBlock document with type_settings",
 				})
 		}
 	}
