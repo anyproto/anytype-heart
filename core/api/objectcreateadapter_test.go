@@ -454,10 +454,11 @@ func TestMergeDocumentIntoTemplateRootAttributes(t *testing.T) {
 		// given
 		base := templateState(t, "tplRoot", "intro")
 		base.Get("tplRoot").Model().BackgroundColor = "grey"
+		base.Get("tplRoot").Model().Fields = &types.Struct{Fields: map[string]*types.Value{"width": pbtypes.Float64(0.75)}}
 		doc := docState(t, "docRoot", "p1")
 		docRoot := doc.Get("docRoot").Model()
 		docRoot.BackgroundColor = "red"
-		docRoot.Fields = &types.Struct{Fields: map[string]*types.Value{"width": pbtypes.Float64(0.5)}}
+		docRoot.Fields = &types.Struct{Fields: map[string]*types.Value{"width": pbtypes.Float64(0)}}
 
 		// when
 		mergeDocumentIntoTemplate(base, doc)
@@ -465,17 +466,20 @@ func TestMergeDocumentIntoTemplateRootAttributes(t *testing.T) {
 		// then
 		root := base.Pick(base.RootId()).Model()
 		assert.Equal(t, "red", root.BackgroundColor, "the caller said something; the template's value was a default")
-		assert.Equal(t, 0.5, pbtypes.GetFloat64(root.Fields, "width"))
+		require.Contains(t, root.Fields.GetFields(), "width")
+		assert.Equal(t, 0.0, pbtypes.GetFloat64(root.Fields, "width"))
 	})
 
 	t.Run("a document that sets nothing leaves the template's root alone", func(t *testing.T) {
 		base := templateState(t, "tplRoot", "intro")
 		base.Get("tplRoot").Model().BackgroundColor = "grey"
+		base.Get("tplRoot").Model().Fields = &types.Struct{Fields: map[string]*types.Value{"width": pbtypes.Float64(0.75)}}
 		doc := docState(t, "docRoot", "p1")
 
 		mergeDocumentIntoTemplate(base, doc)
 
 		assert.Equal(t, "grey", base.Pick(base.RootId()).Model().BackgroundColor)
+		assert.Equal(t, 0.75, pbtypes.GetFloat64(base.Pick(base.RootId()).Model().Fields, "width"))
 	})
 }
 

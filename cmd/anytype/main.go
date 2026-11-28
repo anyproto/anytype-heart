@@ -19,6 +19,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -172,7 +173,21 @@ func parseVerbFlags(tool wrapper.Tool, argv []string, errW io.Writer) (map[strin
 		if !flagWasSet(fs, name) {
 			continue
 		}
-		if a, _ := toolArg(tool, name); a.Type == wrapper.ArgObject {
+		a, _ := toolArg(tool, name)
+		if a.Type == wrapper.ArgNumber {
+			raw := strings.TrimSpace(*v)
+			if a.Nullable && raw == "null" {
+				args[name] = nil
+				continue
+			}
+			n := json.Number(raw)
+			if _, err := json.Marshal(n); err != nil || raw == "" {
+				return nil, nil, fmt.Errorf("--%s needs a JSON number", name)
+			}
+			args[name] = n
+			continue
+		}
+		if a.Type == wrapper.ArgObject {
 			obj, err := wrapper.ParseObjectFlag(*v)
 			if err != nil {
 				return nil, nil, fmt.Errorf("--%s: %w", name, err)

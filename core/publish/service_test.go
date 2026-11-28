@@ -20,6 +20,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree/mock_objecttree"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/anytype-publish-server/publishclient/publishapi"
+	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -80,6 +81,7 @@ type mockPublishClient struct {
 	expectedInvite  string
 	expectedObject  string
 	expectedPbFiles map[string]struct{}
+	published       *PublishingUberSnapshot
 	expectedResult  []*publishapi.Publish
 }
 
@@ -134,7 +136,8 @@ func (m *mockPublishClient) checkIndexFile(path string, info os.FileInfo) {
 	assert.NoError(m.t, err)
 	uberSnapshot := &PublishingUberSnapshot{}
 	err = json.Unmarshal(fileContent, uberSnapshot)
-	assert.NoError(m.t, err)
+	require.NoError(m.t, err)
+	m.published = uberSnapshot
 	assert.Equal(m.t, m.expectedInvite, uberSnapshot.Meta.InviteLink)
 	assert.Equal(m.t, m.expectedSpace, uberSnapshot.Meta.SpaceId)
 	assert.Equal(m.t, m.expectedObject, uberSnapshot.Meta.RootPageId)
@@ -201,6 +204,15 @@ func TestPublish(t *testing.T) {
 		assert.Equal(t, objectId, publishClient.expectedRequest.ObjectId)
 		assert.Equal(t, spaceId, publishClient.expectedRequest.SpaceId)
 		assert.Equal(t, expectedUri, publishClient.expectedRequest.Uri)
+
+		page, typ := &pb.SnapshotWithType{}, &pb.SnapshotWithType{}
+		require.NoError(t, jsonpb.UnmarshalString(publishClient.published.PbFiles["objects/"+objectId+".pb"], page))
+		require.NoError(t, jsonpb.UnmarshalString(publishClient.published.PbFiles["types/"+objectTypeId+".pb"], typ))
+		require.NotEmpty(t, page.Snapshot.Data.Blocks)
+		fields := page.Snapshot.Data.Blocks[0].GetFields().GetFields()
+		require.Contains(t, fields, "width")
+		assert.Equal(t, 0.0, fields["width"].GetNumberValue())
+		assert.Equal(t, 0.75, pbtypes.GetFloat64(typ.Snapshot.Data.Details, bundle.RelationKeyLayoutWidth.String()))
 	})
 	t.Run("success with space sharing", func(t *testing.T) {
 		// given
@@ -814,11 +826,16 @@ func prepareExporter(t *testing.T, objectTypeId string, spaceService *mock_space
 		Format: model.RelationFormat_longtext,
 	})
 	smartBlockTest.Doc = doc
+	smartBlockTest.AddBlock(simple.New(&model.Block{
+		Id: objectId, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}},
+		Fields: &types.Struct{Fields: map[string]*types.Value{"width": pbtypes.Float64(0)}},
+	}))
 
 	objectType := smarttest.New(objectTypeId)
 	objectTypeDoc := objectType.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-		bundle.RelationKeyId:   domain.String(objectTypeId),
-		bundle.RelationKeyType: domain.String(objectTypeId),
+		bundle.RelationKeyId:          domain.String(objectTypeId),
+		bundle.RelationKeyType:        domain.String(objectTypeId),
+		bundle.RelationKeyLayoutWidth: domain.Float64(0.75),
 	}))
 	objectTypeDoc.AddRelationLinks(&model.RelationLink{
 		Key:    bundle.RelationKeyId.String(),

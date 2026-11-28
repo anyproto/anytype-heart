@@ -54,8 +54,8 @@ func TestOpenAPIBodiesAcceptTheServedExamples(t *testing.T) {
 			`{"name":"All","type":"task","filter":"","filters":[]}`, `{"name":"All","type":"task","views":[{"name":"All"}],"filter":""}`,
 			`{"name":"Open","type":"task","filters":[{"property":"severity","condition":"in","value":["High"]},{"operator":"or","filters":[{"property":"done","condition":"equal","value":false}]}]}`}},
 		{v2model.OpCreateCollection, []string{v2SchemaKinds["collection"].example}},
-		{v2model.OpCreateType, []string{v2SchemaKinds["type"].example, v2SchemaKinds["type_document"].example}},
-		{v2model.OpUpdateType, []string{`{"name":"Plants"}`, `{"properties":{"description":"Updated"}}`, `{"properties":{"name":"Plant","description":null}}`, `{"type_settings":{"layout":"todo","property_definitions":[{"name":"Location","format":"select"}]}}`, `{"icon":{"format":"emoji","emoji":"🌱"}}`,
+		{v2model.OpCreateType, []string{v2SchemaKinds["type"].example, v2SchemaKinds["type_document"].example, `{"name":"Article","layout_width_percent":175}`}},
+		{v2model.OpUpdateType, []string{`{"layout_width_percent":null}`, `{"type_settings":{"layout_width_percent":null}}`, `{"name":"Plants"}`, `{"properties":{"description":"Updated"}}`, `{"properties":{"name":"Plant","description":null}}`, `{"type_settings":{"layout":"todo","property_definitions":[{"name":"Location","format":"select"}]}}`, `{"icon":{"format":"emoji","emoji":"🌱"}}`,
 			`{"ops":[` + v2OpSchemas["add_property"].example + `]}`, `{"ops":[` + v2OpSchemas["insert_view"].example + `]}`}},
 		{v2model.OpCreateObject, []string{v2SchemaKinds["shortcut"].example, v2SchemaKinds["object"].example}},
 		{v2model.OpCreateTemplate, []string{v2SchemaKinds["template"].example}},
@@ -131,6 +131,8 @@ func TestOpenAPIBodiesRefuseTheWrongShape(t *testing.T) {
 		// a bare op object instead of the envelope
 		{v2model.OpPatchObject, `{"op":"set_properties","set":{"name":"x"}}`},
 		{v2model.OpUpdateProperty, `{"format":"text"}`},
+		{v2model.OpCreateType, `{"name":"Article","layout_width_percent":null}`},
+		{v2model.OpCreateType, `{"kind":"object_type","type_settings":{"layout_width_percent":null}}`},
 		// the slug is identity: create-only
 		{v2model.OpUpdateType, `{"api_key":"changed"}`},
 		{v2model.OpUpdateType, `{"type_settings":{"api_key":"changed"}}`},

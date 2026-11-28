@@ -146,6 +146,34 @@ spaces. Its `total` is a lower bound when results are clipped; use `has_more`
 to continue paging. Warnings indicate when stores are still loading or
 unavailable, so retry later for a complete view.
 
+## Page width
+
+Set a type's default width beside its layout in `type_settings`. For example,
+this type uses the basic layout and gives its pages a width of 175%.
+
+```json
+{"type_settings": {"layout": "basic", "layout_width_percent": 175}}
+```
+
+On an existing type, send `{"type_settings":{"layout_width_percent":175}}`
+to `PATCH /v2/spaces/{space_id}/types/{type}`. Send `null` in the same field
+to clear the default. A type with no width setting uses 100%.
+
+On a page or template, set `"layout_width_percent": 175` at the top level.
+Object creation accepts it in the document and shortcut forms. Omission uses
+the applied template's override, if present, then the type default. Set
+`100` explicitly to keep a page at standard width on a wider type.
+To change an existing page, send
+`{"ops":[{"op":"set_layout_width","layout_width_percent":175}]}` to its PATCH
+endpoint. Use `null` in the op to restore inheritance.
+
+The native Model Context Protocol tools take `layout_width_percent` on
+`create_type`, `create`, and `set_properties`. Both defaults and overrides
+use 100–200 inclusive, including decimals. Values outside the range clamp
+to the nearest endpoint with a warning. A value strictly between 0 and 1
+also produces a percentage hint. For example, write `175` to express the
+width that older AnyBlock documents stored as `0.75`.
+
 ## Edit with a batch of operations
 
 Send an `ops` array to the object's `PATCH` endpoint. For example, this body

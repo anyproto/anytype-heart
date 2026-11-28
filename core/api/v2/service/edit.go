@@ -468,6 +468,10 @@ func (s *Service) applyPatchOps(ctx context.Context, spaceId, objectId string, o
 	if err := checkPatchRenderWork(ops, applier.view.blocks); err != nil {
 		return nil, nil, err
 	}
+	var typeWidthBefore domain.Value
+	if typeWidthKind(edit.SbType) {
+		typeWidthBefore = edit.State.Details().Get(bundle.RelationKeyLayoutWidth)
+	}
 	for i, raw := range ops {
 		// the loop runs under the object lock: honour cancellation so an
 		// abandoned request stops holding it (review A′2)
@@ -506,6 +510,10 @@ func (s *Service) applyPatchOps(ctx context.Context, spaceId, objectId string, o
 		return nil, nil, err
 	}
 	stats.ItemsAdded, stats.ItemsRemoved = applier.itemsDiff()
+	if typeWidthKind(edit.SbType) {
+		// Legacy widths can export under a space-specific property spelling.
+		stats.LayoutWidthChanged = !typeWidthBefore.Equal(edit.State.Details().Get(bundle.RelationKeyLayoutWidth))
+	}
 	result := &v2model.EditResult{Created: resolvers.created(), DiffStats: stats, TypeChanged: applier.typeChanged}
 	if len(applier.createdBlocks) > 0 {
 		result.CreatedBlocks = applier.createdBlocks
@@ -534,13 +542,14 @@ func parsePatchRequest(body []byte) ([]json.RawMessage, error) {
 // v2BodyKeyOps maps the members a caller writes at the PATCH body root,
 // having guessed the create body's shape, to the op that carries them.
 var v2BodyKeyOps = map[string]string{
-	"properties":       "set_properties",
-	"name":             "set_properties",
-	"blocks":           "insert_blocks",
-	"markdown":         "insert_blocks",
-	"views":            "insert_view",
-	"items":            "add_items",
-	"collection_items": "add_items",
+	"properties":           "set_properties",
+	"layout_width_percent": "set_layout_width",
+	"name":                 "set_properties",
+	"blocks":               "insert_blocks",
+	"markdown":             "insert_blocks",
+	"views":                "insert_view",
+	"items":                "add_items",
+	"collection_items":     "add_items",
 }
 
 // objectPatchUnknownKeyHint is the repair for a key beside ops on the object

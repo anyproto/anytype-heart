@@ -54,8 +54,9 @@ type (
 )
 
 var (
-	DetectFormat = codec.DetectFormat
-	SchemaJSON   = codec.SchemaJSON
+	DecodeLayoutWidthPercent = codec.DecodeLayoutWidthPercent
+	DetectFormat             = codec.DetectFormat
+	SchemaJSON               = codec.SchemaJSON
 	// The authoring subset (the format's §2g): the same format at the same
 	// version, narrowed to what an author composes from nothing. The API's
 	// create endpoints serve and enforce THIS, not the full backup grammar,
@@ -259,6 +260,12 @@ func ExternalOptions(opts Options) codec.Options {
 // Validate checks a document with the external codec's zero options.
 func Validate(data []byte) error {
 	return codec.Validate(data, codec.Options{})
+}
+
+// ValidateBeforeBinding checks a document before Heart resolves property names
+// in its destination space. Unmarshal completes the identity-dependent checks.
+func ValidateBeforeBinding(data []byte) error {
+	return codec.ValidateBeforeBinding(data, codec.Options{}, false)
 }
 
 // ValidateWarn checks a document and reports warning-grade issues through

@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -225,6 +226,24 @@ func TestMutateObject(t *testing.T) {
 		assert.False(t, called)
 	})
 
+	t.Run("an archived page returns its kind before the details restriction", func(t *testing.T) {
+		sb := newSb()
+		sb.SetType(coresb.SmartBlockTypePage)
+		sb.Doc.(*state.State).SetLocalDetail(bundle.RelationKeyIsArchived, domain.Bool(true))
+		sb.TestRestrictions = restriction.GetRestrictions(sb)
+		require.ErrorIs(t, sb.Restrictions().Object.Check(model.Restrictions_Details), restriction.ErrRestricted)
+		adapter := newObjectMutateAdapter(fakeGetter{sb: sb})
+
+		_, err := adapter.MutateObject(ctx, "space1", "obj1", apicore.EditNeeds{Details: true}, func(apicore.ObjectEdit) error {
+			t.Fatal("archived page reached the mutation")
+			return nil
+		})
+
+		var archived *apicore.ObjectArchivedError
+		require.ErrorAs(t, err, &archived)
+		require.Equal(t, model.SmartBlockType_Page, archived.SbType)
+	})
+
 	t.Run("a revision downgrade is refused", func(t *testing.T) {
 		sb := newSb()
 		sb.Doc.(*state.State).SetDetail(bundle.RelationKeyRevision, domain.Int64(3))
@@ -238,4 +257,52 @@ func TestMutateObject(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "never downgraded")
 	})
+}
+
+type typeDetailEditor struct {
+	*smarttest.SmartTest
+	key    domain.UniqueKey
+	update func(session.Context, []domain.Detail, bool) error
+}
+
+func (e *typeDetailEditor) Type() coresb.SmartBlockType { return coresb.SmartBlockTypeObjectType }
+func (e *typeDetailEditor) UniqueKey() domain.UniqueKey { return e.key }
+func (e *typeDetailEditor) SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) error {
+	return e.update(ctx, details, showEvent)
+}
+
+func TestSetTypeDetails(t *testing.T) {
+	ctx := domain.CtxWithIntegrationName(context.Background(), "Width editor")
+	key, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, bundle.TypeKeyPage.String())
+	require.NoError(t, err)
+	editor := &typeDetailEditor{SmartTest: smarttest.New("type1"), key: key}
+	adapter := newObjectMutateAdapter(fakeGetter{sb: editor})
+	updates := []domain.Detail{{Key: bundle.RelationKeyLayoutWidth, Value: domain.Float64(.75)}}
+	var calls int
+	editor.update = func(sctx session.Context, got []domain.Detail, showEvent bool) error {
+		calls++
+		require.True(t, session.IsAttributionOnly(sctx))
+		require.Equal(t, "Width editor", sctx.IntegrationName())
+		require.True(t, showEvent)
+		require.Equal(t, updates, got)
+		return nil
+	}
+	checkHeads := func(heads []string) error {
+		require.Equal(t, []string{"type1"}, heads)
+		return nil
+	}
+	require.NoError(t, adapter.SetTypeDetails(ctx, "space1", "type1", updates, checkHeads))
+	require.Equal(t, 1, calls)
+	require.ErrorIs(t, adapter.SetTypeDetails(ctx, "space1", "type1", updates, func([]string) error { return assert.AnError }), assert.AnError)
+	editor.TestMemberPolicy = restriction.MemberPolicy{LockSpaceConfig: true}
+	require.NoError(t, editor.Restrictions().Object.Check(model.Restrictions_Details)) // stale table from before demotion
+	require.ErrorIs(t, readLiveState(editor).DetailsRefused, restriction.ErrRestricted)
+	require.ErrorIs(t, adapter.SetTypeDetails(ctx, "space1", "type1", updates, checkHeads), restriction.ErrRestricted)
+	require.Equal(t, 1, calls)
+	editor.TestRestrictions = restriction.GetRestrictions(editor)
+	editor.TestMemberPolicy = restriction.MemberPolicy{}
+	require.ErrorIs(t, editor.Restrictions().Object.Check(model.Restrictions_Details), restriction.ErrRestricted)
+	require.NoError(t, readLiveState(editor).DetailsRefused)
+	require.NoError(t, adapter.SetTypeDetails(ctx, "space1", "type1", updates, checkHeads))
+	require.Equal(t, 2, calls)
 }

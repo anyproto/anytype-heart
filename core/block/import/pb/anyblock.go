@@ -135,11 +135,13 @@ func (p *Pb) anyBlockDocument(data []byte) (*common.SnapshotModel, bool, error) 
 	if err := json.Unmarshal(data, &header); err != nil {
 		return nil, false, nil
 	}
-	if _, found := header["formatVersion"]; !found {
+	// Older AnyBlock documents used a numeric version marker. Native v1
+	// protobuf JSON carries its data under snapshot and keeps its own reader.
+	if header["formatVersion"] == nil && (header["version"] == nil || header["snapshot"] != nil) {
 		return nil, false, nil
 	}
 	var referenceErr error
-	kind, snapshot, err := anyblockjson.Unmarshal(data, anyblockjson.Options{
+	opts := anyblockjson.Options{
 		SpaceId: p.spaceID,
 		OnWarning: func(issue anyblockjson.Issue) {
 			anyBlockLog.Warnf("%s", issue)
@@ -148,15 +150,55 @@ func (p *Pb) anyBlockDocument(data []byte) (*common.SnapshotModel, bool, error) 
 				referenceErr = fmt.Errorf("unresolved AnyBlock reference: %s", issue)
 			}
 		},
-	})
+	}
+	// A standalone file declares its own type ID. The native import pipeline
+	// relinks that ID and references to it together when it installs the type.
+	var localType standaloneTypeReferences
+	if p.spaceID != "" && json.Unmarshal(header["id"], &localType.id) == nil && strings.HasPrefix(localType.id, "type-") {
+		// The codec validates that the kind and internal_key own this reserved ID.
+		opts.ResolveProperties = &localType
+	}
+	kind, snapshot, err := anyblockjson.Unmarshal(data, opts)
 	if err != nil {
 		return nil, true, err
 	}
 	if referenceErr != nil {
 		return nil, true, referenceErr
 	}
+	if localType.missing != "" {
+		return nil, true, fmt.Errorf("unresolved AnyBlock reference: %s is outside this standalone type file", localType.missing)
+	}
 	result, err := common.NewSnapshotModelFromProto(&pb.SnapshotWithType{SbType: kind, Snapshot: &pb.ChangeSnapshot{Data: snapshot}})
 	return result, true, err
+}
+
+// A single type file has no property dictionary or external type definitions.
+type standaloneTypeReferences struct {
+	id      string
+	missing string
+}
+
+func (r *standaloneTypeReferences) TypeIdByKey(key string) (string, bool) {
+	if r.id == "type-"+key {
+		return r.id, true
+	}
+	r.missing = "type-" + key
+	return "", false
+}
+
+func (r *standaloneTypeReferences) TypeKeyById(id string) (string, bool) {
+	if id != r.id {
+		return "", false
+	}
+	return strings.TrimPrefix(id, "type-"), true
+}
+
+func (*standaloneTypeReferences) PropertyById(string) (anyblockjson.PropertyDefinition, bool) {
+	return anyblockjson.PropertyDefinition{}, false
+}
+
+func (*standaloneTypeReferences) PropertyId(anyblockjson.PropertyDefinition) (string, bool) {
+	return "", false
 }
 
 // snapshotSource exposes the converted native archive without temporary files.

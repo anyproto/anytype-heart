@@ -6,6 +6,7 @@ package wrapper
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -39,8 +40,9 @@ func TestCreate(t *testing.T) {
 		// describe teaches now (D5)
 		result, err := fx.Run(ctx, "create", map[string]any{
 			"space": "space1", "type": "task", "name": "Report",
-			"properties": map[string]any{"status": "Done", "Due date": "friday", "assignee": "@me"},
-			"markdown":   "# Plan\n\n- [ ] draft",
+			"properties":           map[string]any{"status": "Done", "Due date": "friday", "assignee": "@me"},
+			"markdown":             "# Plan\n\n- [ ] draft",
+			"layout_width_percent": 175.5,
 		})
 
 		// then
@@ -52,6 +54,7 @@ func TestCreate(t *testing.T) {
 		assert.Empty(t, sent[0].Header.Get("If-Match"), "the task tools never send If-Match")
 		body := bodyJSON(t, sent[0])
 		assert.Equal(t, "task", body["type"])
+		assert.Equal(t, 175.5, body["layout_width_percent"])
 		assert.Equal(t, "# Plan\n\n- [ ] draft", body["markdown"], "markdown passes through — the server parses")
 		props, _ := body["properties"].(map[string]any)
 		assert.Equal(t, "Done", props["status"])
@@ -226,7 +229,7 @@ func TestSetProperties(t *testing.T) {
 		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
 		_, err := fx.Run(ctx, "set_properties", map[string]any{"object": "1"})
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "set_properties needs set, add, remove or type")
+		assert.Contains(t, err.Error(), "set_properties needs set, add, remove, type or layout_width_percent")
 	})
 
 	t.Run("type becomes a set_type op ahead of the property op, in one PATCH", func(t *testing.T) {
@@ -254,6 +257,42 @@ func TestSetProperties(t *testing.T) {
 			"the values ride the same PATCH, complete")
 	})
 
+	t.Run("property and width arguments reach Heart as one unordered edit", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
+		fx.stub("GET /v2/spaces/space1/properties", 200, `{"data":[{"key":"layout_width","name":"Layout width","format":"number"},{"key":"custom_width","name":"Layout width","format":"number"}],"total":2}`)
+		const endpoint = "PATCH /v2/spaces/space1/objects/bafyobj1"
+		fx.stub(endpoint, 200, editOKBody)
+		_, err := fx.Run(ctx, "set_properties", map[string]any{
+			"object": "1", "layout_width_percent": nil, "set": map[string]any{"Layout width": 0.75},
+		})
+		require.NoError(t, err)
+		ops := patchOpsSent(t, fx.sent(endpoint)[0])
+		require.Equal(t, []map[string]any{{"op": "set_properties", "layout_width_percent": nil, "set": map[string]any{"Layout width": 0.75}}}, ops)
+	})
+	for _, percent := range []string{"175.5", "1e400", "null"} {
+		t.Run("page width "+percent, func(t *testing.T) {
+			fx := newFixture(t)
+			fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
+			const endpoint = "PATCH /v2/spaces/space1/objects/bafyobj1"
+			fx.stub(endpoint, 200, `{"diff_stats":{"layout_width_changed":true}}`)
+			responses := fx.mcpSession(t, TierSmall, call(t, 1, "set_properties", map[string]any{
+				"object": "1", "layout_width_percent": json.RawMessage(percent),
+			}))
+			message, isError := callText(t, responses[0])
+			require.False(t, isError, message)
+			assert.Contains(t, message, "layout width changed")
+			sent := fx.sent(endpoint)
+			require.Len(t, sent, 1)
+			var body struct {
+				Ops []map[string]json.RawMessage `json:"ops"`
+			}
+			require.NoError(t, json.Unmarshal(sent[0].Body, &body))
+			require.Len(t, body.Ops, 1)
+			assert.Equal(t, `"set_layout_width"`, string(body.Ops[0]["op"]))
+			assert.Equal(t, percent, string(body.Ops[0]["layout_width_percent"]))
+		})
+	}
 	t.Run("type alone is a whole call, and the summary names the change", func(t *testing.T) {
 		fx := newFixture(t)
 		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})

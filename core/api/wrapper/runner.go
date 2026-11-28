@@ -166,6 +166,15 @@ func validateArgs(def Tool, args map[string]any) error {
 			if _, ok := v.(bool); !ok {
 				return fmt.Errorf("%s: %q must be true or false", def.Name, a.Name)
 			}
+		case ArgNumber:
+			if v == nil && a.Nullable {
+				continue
+			}
+			switch v.(type) {
+			case json.Number, float64, int, int64:
+			default:
+				return fmt.Errorf("%s: %q must be a number", def.Name, a.Name)
+			}
 		case ArgInteger:
 			if _, err := intArg(v); err != nil {
 				return fmt.Errorf("%s: %q must be an integer", def.Name, a.Name)
@@ -219,7 +228,7 @@ func jsonTypeName(v any) string {
 		return "a string"
 	case bool:
 		return "a boolean"
-	case float64, int, int64:
+	case json.Number, float64, int, int64:
 		return "a number"
 	case []any:
 		return "an array"
@@ -249,6 +258,12 @@ func containsStr(list []string, s string) bool {
 // intArg accepts the JSON and CLI encodings of an integer.
 func intArg(v any) (int, error) {
 	switch n := v.(type) {
+	case json.Number:
+		f, err := n.Float64()
+		if err != nil {
+			return 0, err
+		}
+		return intArg(f)
 	case int:
 		return n, nil
 	case float64:
@@ -716,6 +731,9 @@ func editSummary(target string, result *v2model.EditResult) string {
 		if n > 0 {
 			parts = append(parts, fmt.Sprintf("%d %s", n, what))
 		}
+	}
+	if stats.LayoutWidthChanged {
+		parts = append(parts, "layout width changed")
 	}
 	add(stats.BlocksAdded, "added")
 	add(stats.BlocksRemoved, "removed")

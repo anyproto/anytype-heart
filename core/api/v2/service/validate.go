@@ -25,7 +25,7 @@ func (s *Service) ValidateDocument(data []byte) v2model.ValidateResponse {
 	if defaulted, err := withCurrentFormat(data); err == nil {
 		data = defaulted
 	}
-	err := anyblockjson.Validate(data)
+	err := anyblockjson.ValidateWarn(data, collectWidthWarnings(&resp.Warnings))
 	if err == nil {
 		return resp
 	}

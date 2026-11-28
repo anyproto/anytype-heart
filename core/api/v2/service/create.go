@@ -69,21 +69,20 @@ func (e docEnvelope) propertyDefinitions() json.RawMessage {
 	return e.TypeSettings.PropertyDefinitions
 }
 
-// v2ObjectShortcut is the R7 shortcut body: {type, name, properties,
-// markdown}. A member only the document has picks the full document form;
-// a key neither takes is refused here.
+// v2ObjectShortcut contains the fields accepted by the create shortcut.
 type v2ObjectShortcut struct {
-	Type       string                     `json:"type"`
-	Name       string                     `json:"name"`
-	Properties map[string]json.RawMessage `json:"properties"`
-	Markdown   string                     `json:"markdown"`
+	Type               string                     `json:"type"`
+	Name               string                     `json:"name"`
+	Properties         map[string]json.RawMessage `json:"properties"`
+	Markdown           string                     `json:"markdown"`
+	LayoutWidthPercent json.RawMessage            `json:"layout_width_percent"`
 }
 
 // shortcutKeys gates the shortcut body. `template` is absent on purpose: it
 // is lifted out of the body before the discriminator runs (liftTemplate), so
 // by the time this gate is reached no create body has one, whichever form it
 // was sent in.
-var shortcutKeys = map[string]bool{"type": true, "name": true, "properties": true, "markdown": true}
+var shortcutKeys = map[string]bool{"type": true, "name": true, "properties": true, "markdown": true, "layout_width_percent": true}
 
 // docCreateOptions parameterizes the shared document create path.
 type docCreateOptions struct {
@@ -141,7 +140,7 @@ func (s *Service) CreateObject(ctx context.Context, spaceId string, body []byte,
 
 	// §8/R7 discriminator: a member only the document has (blocks, kind,
 	// formatVersion, cover…) picks the full document; a key neither form
-	// takes stays with the shortcut, whose refusal lists its four members
+	// takes stays with the shortcut, whose refusal lists its accepted members
 	if hasDocumentOnlyMember(fields) {
 		return s.createFromDocument(ctx, spaceId, body, opts)
 	}
@@ -154,7 +153,7 @@ var documentOnlyMembers = sync.OnceValue(func() map[string]bool {
 	var root struct {
 		Properties map[string]json.RawMessage `json:"properties"`
 	}
-	members := map[string]bool{"formatVersion": true, "blocks": true}
+	members := map[string]bool{"formatVersion": true, "version": true, "blocks": true}
 	if err := json.Unmarshal(apiV2KindSchema("object"), &root); err != nil {
 		return members
 	}
@@ -167,8 +166,12 @@ var documentOnlyMembers = sync.OnceValue(func() map[string]bool {
 })
 
 // hasDocumentOnlyMember reports whether a create body carries a member only
-// the full document form takes.
+// the full document form takes. A percentage-only document can also rely on
+// the default page type, while the shortcut requires an explicit type.
 func hasDocumentOnlyMember(fields map[string]json.RawMessage) bool {
+	if fields["layout_width_percent"] != nil && fields["type"] == nil && fields["name"] == nil && fields["markdown"] == nil {
+		return true
+	}
 	only := documentOnlyMembers()
 	for key := range fields {
 		if only[key] {
@@ -250,7 +253,7 @@ func (s *Service) createFromShortcut(ctx context.Context, spaceId string, fields
 			return nil, v2model.ValidationFailed("unknown field in create shortcut",
 				v2model.Issue{
 					Path:    v2model.MemberPointer(key),
-					Message: fmt.Sprintf("unknown key %q — the shortcut accepts type, name, properties, markdown", key),
+					Message: fmt.Sprintf("unknown key %q — the shortcut accepts type, name, properties, markdown, layout_width_percent", key),
 				}.Hintf("for blocks, an icon or a cover, send the full document form; %s shows it", v2model.RefGetSchema("object")))
 		}
 	}
@@ -273,6 +276,9 @@ func (s *Service) createFromShortcut(ctx context.Context, spaceId string, fields
 	}
 	if doc["type"], err = rawJSON(shortcut.Type); err != nil {
 		return nil, err
+	}
+	if shortcut.LayoutWidthPercent != nil {
+		doc["layout_width_percent"] = shortcut.LayoutWidthPercent
 	}
 	properties := shortcut.Properties
 	if properties == nil {
@@ -655,36 +661,18 @@ func normalizeCreateBody(body []byte) ([]byte, error) {
 	return encodeEnvelope(fields)
 }
 
-// withCurrentFormat is assumeCurrentFormat on an encoded body; a body that
-// is not an object is returned as is, for validation to report.
+// withCurrentFormat supplies the current format for an unversioned request.
+// The codec validates both explicit markers, including the legacy numeric version.
 func withCurrentFormat(body []byte) ([]byte, error) {
 	fields, err := parseEnvelope(body)
+	if err != nil || fields["formatVersion"] != nil || fields["version"] != nil {
+		return body, nil
+	}
+	fields["formatVersion"], err = rawJSON(anyblockjson.FormatVersion)
 	if err != nil {
-		return body, nil
-	}
-	if _, ok := fields["formatVersion"]; ok {
-		return body, nil
-	}
-	if err := assumeCurrentFormat(fields); err != nil {
 		return nil, err
 	}
 	return encodeEnvelope(fields)
-}
-
-// assumeCurrentFormat fills in formatVersion when a document omits it. An
-// API caller writes the current format, so the version is not something it
-// is asked for: the member stays legal (an export pasted back carries it,
-// and a wrong value is still refused), only its absence now means current.
-func assumeCurrentFormat(fields map[string]json.RawMessage) error {
-	if _, ok := fields["formatVersion"]; ok {
-		return nil
-	}
-	raw, err := rawJSON(anyblockjson.FormatVersion)
-	if err != nil {
-		return err
-	}
-	fields["formatVersion"] = raw
-	return nil
 }
 
 // docLocalIds collects the doc-local ids a flat AnyBlock document carries
@@ -911,9 +899,17 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 			return nil, err
 		}
 	}
-	_, snapshot, err := anyblockjson.Unmarshal(body, resolvers.Options())
+	var widthWarnings []v2model.Issue
+	importOptions := resolvers.Options()
+	importOptions.OnWarning = collectWidthWarnings(&widthWarnings)
+	nativeKind, snapshot, err := anyblockjson.Unmarshal(body, importOptions)
 	if err != nil {
 		return nil, mapUnmarshalError(body, err, "object")
+	}
+	if key := bundle.RelationKeyLayoutWidth.String(); envelope.Properties[key] != nil && pageWidthKind(nativeKind) && len(snapshot.Blocks) > 0 {
+		if _, override := snapshot.Blocks[0].Fields.GetFields()["width"]; !override {
+			widthWarnings = append(widthWarnings, layoutWidthPropertyIssue(propertiesPointer(orDefault(spellings[key], key))))
+		}
 	}
 	if err := resolvers.err(); err != nil {
 		return nil, fmt.Errorf("resolve document references: %w", err)
@@ -942,6 +938,7 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	labelWarnings := s.labelShapedIdWarnings(ctx, spaceId, body, appliedTemplate.GetId(), opts.dryRun)
 	result.Warnings = append([]v2model.Issue(nil), labelWarnings...)
 	result.Warnings = append(result.Warnings, templateWarnings...)
+	result.Warnings = append(result.Warnings, widthWarnings...)
 	// a cross-space object link whose space reference could not be expanded
 	result.Warnings = append(result.Warnings, links.Warnings("/blocks")...)
 	// F16: a value on a property the type does not list, said at create as
@@ -1075,7 +1072,7 @@ func (s *Service) rejectInvalidDocument(body []byte, kind string) error {
 	if err := rejectMisplacedPropertyArray(body); err != nil {
 		return err
 	}
-	err := anyblockjson.Validate(body)
+	err := anyblockjson.ValidateBeforeBinding(body)
 	if err == nil {
 		return nil
 	}

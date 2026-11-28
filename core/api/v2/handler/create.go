@@ -88,7 +88,7 @@ func respondV2Create(c *gin.Context, result *v2model.CreateResult, createdStatus
 // CreateObjectHandler creates an object from an AnyBlock document or the shortcut
 //
 //	@Summary		Create an object
-//	@Description	A select value naming an option the property does not hold is refused unless `create_missing_options=true` is set. An unknown type or property key is rejected. The body is a full AnyBlock document or the shortcut {type, name, properties, markdown}; a document-only member such as `blocks` picks the document. `template` starts the object from one; absent, the type's `default_template` applies.
+//	@Description	Send an AnyBlock document or the shortcut {type, name, properties, markdown, layout_width_percent}. Members such as `blocks` select the document form. Use `template` to choose a template or omit it to use the type's `default_template`. Unknown type and property keys are rejected. New select options require `create_missing_options=true`.
 //	@Id				create_object
 //	@Tags			Objects
 //	@Accept			json
@@ -559,7 +559,7 @@ func SchemaKindHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Id				get_op_schema
 //	@Tags			Schemas
 //	@Produce		json
-//	@Param			op	path		string				true	"Op name: set_properties, set_type, update_block, replace_subtree, insert_blocks, move_block, delete_block, replace_text, set_cell, update_view, insert_view, move_view, delete_view, add_items, remove_items"
+//	@Param			op	path		string				true	"Op name: set_properties, set_layout_width, set_type, update_block, replace_subtree, insert_blocks, move_block, delete_block, replace_text, set_cell, update_view, insert_view, move_view, delete_view, add_items, remove_items"
 //	@Success		200	{object}	v2model.SchemaEntry	"Schema + example"
 //	@Failure		404	{object}	v2model.Error		"Unknown op"
 //	@Security		bearerauth

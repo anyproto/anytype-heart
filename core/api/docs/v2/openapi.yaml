@@ -733,6 +733,10 @@ components:
           description: Collection members the batch removed, as a set difference;
             absent means none
           type: integer
+        layout_width_changed:
+          description: Whether the page or template width override, or the type's
+            default width, changed.
+          type: boolean
         properties_changed:
           type: integer
       type: object
@@ -1823,6 +1827,34 @@ info:
     to continue paging. Warnings indicate when stores are still loading or
     unavailable, so retry later for a complete view.
 
+    ## Page width
+
+    Set a type's default width beside its layout in `type_settings`. For example,
+    this type uses the basic layout and gives its pages a width of 175%.
+
+    ```json
+    {"type_settings": {"layout": "basic", "layout_width_percent": 175}}
+    ```
+
+    On an existing type, send `{"type_settings":{"layout_width_percent":175}}`
+    to `PATCH /v2/spaces/{space_id}/types/{type}`. Send `null` in the same field
+    to clear the default. A type with no width setting uses 100%.
+
+    On a page or template, set `"layout_width_percent": 175` at the top level.
+    Object creation accepts it in the document and shortcut forms. Omission uses
+    the applied template's override, if present, then the type default. Set
+    `100` explicitly to keep a page at standard width on a wider type.
+    To change an existing page, send
+    `{"ops":[{"op":"set_layout_width","layout_width_percent":175}]}` to its PATCH
+    endpoint. Use `null` in the op to restore inheritance.
+
+    The native Model Context Protocol tools take `layout_width_percent` on
+    `create_type`, `create`, and `set_properties`. Both defaults and overrides
+    use 100–200 inclusive, including decimals. Values outside the range clamp
+    to the nearest endpoint with a warning. A value strictly between 0 and 1
+    also produces a percentage hint. For example, write `175` to express the
+    width that older AnyBlock documents stored as `0.75`.
+
     ## Edit with a batch of operations
 
     Send an `ops` array to the object's `PATCH` endpoint. For example, this body
@@ -2392,9 +2424,9 @@ paths:
         `ops` array, not a whole request body.
       operationId: get_op_schema
       parameters:
-      - description: 'Op name: set_properties, set_type, update_block, replace_subtree,
-          insert_blocks, move_block, delete_block, replace_text, set_cell, update_view,
-          insert_view, move_view, delete_view, add_items, remove_items'
+      - description: 'Op name: set_properties, set_layout_width, set_type, update_block,
+          replace_subtree, insert_blocks, move_block, delete_block, replace_text,
+          set_cell, update_view, insert_view, move_view, delete_view, add_items, remove_items'
         in: path
         name: op
         required: true
@@ -4295,12 +4327,10 @@ paths:
       tags:
       - Objects
     post:
-      description: A select value naming an option the property does not hold is refused
-        unless `create_missing_options=true` is set. An unknown type or property key
-        is rejected. The body is a full AnyBlock document or the shortcut {type, name,
-        properties, markdown}; a document-only member such as `blocks` picks the document.
-        `template` starts the object from one; absent, the type's `default_template`
-        applies.
+      description: Send an AnyBlock document or the shortcut {type, name, properties,
+        markdown, layout_width_percent}. Members such as `blocks` select the document
+        form. Use `template` to choose a template or omit it to use the type's `default_template`.
+        Unknown type and property keys are rejected. New select options require `create_missing_options=true`.
       operationId: create_object
       parameters:
       - description: Space id, from GET /v2/spaces
@@ -4327,6 +4357,9 @@ paths:
               anyOf:
                 - additionalProperties: false
                   properties:
+                    layout_width_percent:
+                      description: Page width from 100 to 200 percent. Omit for the template or type default. Out-of-range values clamp with a warning.
+                      type: number
                     markdown:
                       description: 'markdown body parsed into blocks server-side, part of the same single create (dry runs validate it too); at most 2048 parsed blocks. Start it at the first section: a leading heading that repeats the name is dropped, and with no name a leading # heading becomes the name'
                       maxLength: 1048576
@@ -4380,6 +4413,11 @@ paths:
                       enum:
                         - page
                         - template
+                    layout_width_percent:
+                      description: Page or template width in percent. Use 100 for standard width and 200 for the widest layout. Omit to inherit the type default. Out-of-range values use the nearest endpoint with a warning.
+                      examples:
+                        - 175
+                      type: number
                     properties:
                       type: object
                     query_source:
@@ -4632,6 +4670,7 @@ paths:
                       op:
                         enum:
                           - set_properties
+                          - set_layout_width
                           - set_type
                           - update_block
                           - replace_subtree
@@ -6203,6 +6242,11 @@ paths:
                   type: object
                 kind:
                   const: template
+                layout_width_percent:
+                  description: Page or template width in percent. Use 100 for standard width and 200 for the widest layout. Omit to inherit the type default. Out-of-range values use the nearest endpoint with a warning.
+                  examples:
+                    - 175
+                  type: number
                 properties:
                   type: object
                 query_source:
@@ -6416,6 +6460,9 @@ paths:
                         - set
                         - collection
                       type: string
+                    layout_width_percent:
+                      description: Default width of pages of this type, from 100 (standard) to 200 (widest), including decimals. Out-of-range inputs clamp with a warning. On PATCH send null to clear the default.
+                      type: number
                     name:
                       description: display name, singular. Required on POST; on PATCH send it only to rename
                       maxLength: 4096
@@ -6486,6 +6533,9 @@ paths:
                   type: object
                 - additionalProperties: true
                   description: 'the type as an AnyBlock document: kind object_type, the definition under type_settings; its schema and a worked example come from GET /v2/schemas/type_document'
+                  not:
+                    required:
+                      - layout_width_percent
                   properties:
                     cover:
                       type: object
@@ -6496,6 +6546,12 @@ paths:
                     properties:
                       type: object
                     type_settings:
+                      properties:
+                        layout_width_percent:
+                          description: Default width for pages of this type, from 100 (standard) to 200 (widest). Omit for 100%. Out-of-range values clamp with a warning.
+                          examples:
+                            - 175
+                          type: number
                       type: object
                   type: object
               description: the flat type body, or the interchange document with kind object_type
@@ -6763,6 +6819,11 @@ paths:
                         - set
                         - collection
                       type: string
+                    layout_width_percent:
+                      description: Default width of pages of this type, from 100 (standard) to 200 (widest), including decimals. Out-of-range inputs clamp with a warning. On PATCH send null to clear the default.
+                      type:
+                        - number
+                        - "null"
                     name:
                       description: display name, singular. Required on POST; on PATCH send it only to rename
                       maxLength: 4096
@@ -6932,6 +6993,11 @@ paths:
                             - set
                             - collection
                           type: string
+                        layout_width_percent:
+                          description: Default width of pages of this type, from 100 (standard) to 200 (widest), including decimals. Out-of-range inputs clamp with a warning. On PATCH send null to clear the default.
+                          type:
+                            - number
+                            - "null"
                         plural_name:
                           maxLength: 4096
                           type: string
@@ -7529,6 +7595,11 @@ paths:
                   type: object
                 icon:
                   type: object
+                layout_width_percent:
+                  description: Page or template width in percent. Use 100 for standard width and 200 for the widest layout. Omit to inherit the type default. Out-of-range values use the nearest endpoint with a warning.
+                  examples:
+                    - 175
+                  type: number
                 option_ids:
                   type: object
                 properties:

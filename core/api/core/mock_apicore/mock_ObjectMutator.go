@@ -7,6 +7,8 @@ import (
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 
+	domain "github.com/anyproto/anytype-heart/core/domain"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -81,6 +83,56 @@ func (_c *MockObjectMutator_MutateObject_Call) Return(heads []string, err error)
 }
 
 func (_c *MockObjectMutator_MutateObject_Call) RunAndReturn(run func(context.Context, string, string, apicore.EditNeeds, func(apicore.ObjectEdit) error) ([]string, error)) *MockObjectMutator_MutateObject_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetTypeDetails provides a mock function with given fields: ctx, spaceId, objectId, details, checkHeads
+func (_m *MockObjectMutator) SetTypeDetails(ctx context.Context, spaceId string, objectId string, details []domain.Detail, checkHeads func([]string) error) error {
+	ret := _m.Called(ctx, spaceId, objectId, details, checkHeads)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetTypeDetails")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, []domain.Detail, func([]string) error) error); ok {
+		r0 = rf(ctx, spaceId, objectId, details, checkHeads)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockObjectMutator_SetTypeDetails_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetTypeDetails'
+type MockObjectMutator_SetTypeDetails_Call struct {
+	*mock.Call
+}
+
+// SetTypeDetails is a helper method to define mock.On call
+//   - ctx context.Context
+//   - spaceId string
+//   - objectId string
+//   - details []domain.Detail
+//   - checkHeads func([]string) error
+func (_e *MockObjectMutator_Expecter) SetTypeDetails(ctx interface{}, spaceId interface{}, objectId interface{}, details interface{}, checkHeads interface{}) *MockObjectMutator_SetTypeDetails_Call {
+	return &MockObjectMutator_SetTypeDetails_Call{Call: _e.mock.On("SetTypeDetails", ctx, spaceId, objectId, details, checkHeads)}
+}
+
+func (_c *MockObjectMutator_SetTypeDetails_Call) Run(run func(ctx context.Context, spaceId string, objectId string, details []domain.Detail, checkHeads func([]string) error)) *MockObjectMutator_SetTypeDetails_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].([]domain.Detail), args[4].(func([]string) error))
+	})
+	return _c
+}
+
+func (_c *MockObjectMutator_SetTypeDetails_Call) Return(_a0 error) *MockObjectMutator_SetTypeDetails_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockObjectMutator_SetTypeDetails_Call) RunAndReturn(run func(context.Context, string, string, []domain.Detail, func([]string) error) error) *MockObjectMutator_SetTypeDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }

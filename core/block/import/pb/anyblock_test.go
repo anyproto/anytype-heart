@@ -40,7 +40,7 @@ func authoringBundleFixture() fstest.MapFS {
   ]}`,
 		"types/trip.json":      `{"formatVersion":"2.0","kind":"object_type","id":"type-trip","internal_key":"trip","properties":{"Name":"Trip"},"type_settings":{"default_template":"template-trip","property_definitions":[{"property":"Name"},{"property":"Budget","section":"featured"},{"property":"State"},{"property":"When"},{"property":"Expenses"},{"property":"Tags"}]},"blocks":[{"type":"paragraph","text":"Plan a weekend."}]}`,
 		"types/expense.json":   `{"formatVersion":"2.0","kind":"object_type","id":"type-expense","internal_key":"expense","properties":{"Name":"Expense"},"type_settings":{"property_definitions":[{"property":"Cost state"},{"property":"Trip"}]}}`,
-		"templates/trip.json":  `{"formatVersion":"2.0","kind":"template","type":"template","template_for":"Trip","id":"template-trip","properties":{"Name":"New weekend","State":"Booked","When":"2026-09-18T00:00:00Z"},"blocks":[{"type":"paragraph","text":"Pick a destination."}]}`,
+		"templates/trip.json":  `{"formatVersion":"2.0","kind":"template","type":"template","template_for":"Trip","id":"template-trip","layout_width_percent":175,"properties":{"Name":"New weekend","State":"Booked","When":"2026-09-18T00:00:00Z"},"blocks":[{"type":"paragraph","text":"Pick a destination."}]}`,
 		"objects/home.json":    `{"formatVersion":"2.0","id":"home","type":"Query","properties":{"Name":"Weekends"},"query_source":{"types":["Trip"],"properties":["Budget"]},"blocks":[{"type":"dataview","properties":[{"property":"State","format":"select"},{"property":"Budget","format":"number"}],"views":[{"name":"Booked weekends","type":"table","columns":[{"property":"State"},{"property":"Budget"}],"filters":[{"property":"State","condition":"in","value":["Booked"]}]}]}]}`,
 		"objects/trip.json":    `{"formatVersion":"2.0","id":"weekend","type":"Trip","properties":{"Name":"Prague","Budget":750.5,"State":"Booked","When":"2026-09-18T00:00:00Z","Expenses":["hotel"],"Tags":["Art","Music"]},"icon":{"format":"emoji","emoji":"🚆"},"cover":{"format":"gradient","gradient":"sky"},"blocks":[{"type":"heading_2","text":"Saturday"},{"type":"paragraph","text":"Walk across Charles Bridge."},{"type":"link","object_id":"hotel"}]}`,
 		"objects/expense.json": `{"formatVersion":"2.0","id":"hotel","type":"Expense","properties":{"Name":"Two hotel nights","Cost state":"Booked","Trip":["weekend"]},"blocks":[{"type":"paragraph","text":"A room for two near the old town."}]}`,
@@ -107,6 +107,9 @@ func TestAnyBlockBundleImport(t *testing.T) {
 					properties[snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyName)] = snapshot
 				}
 			}
+			rootFields := byID["template-trip"].Snapshot.Data.Blocks[0].Fields.GetFields()
+			require.Contains(t, rootFields, "width")
+			assert.Equal(t, 0.75, rootFields["width"].GetNumberValue())
 			require.Len(t, properties, 7)
 			key := func(name string) domain.RelationKey {
 				require.Contains(t, properties, name)
@@ -178,13 +181,21 @@ func TestAnyBlockInvalidBundle(t *testing.T) {
 }
 
 func TestAnyBlockSingleDocument(t *testing.T) {
-	for _, version := range []string{"2.0", "3.0"} {
-		t.Run(version, func(t *testing.T) {
+	for _, tc := range []struct {
+		name, version string
+		supported     bool
+	}{
+		{"current", `"formatVersion":"2.0"`, true},
+		{"legacy numeric marker", `"version":2`, true},
+		{"future version", `"formatVersion":"3.0"`, false},
+		{"invalid canonical marker", `"formatVersion":2`, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
 			filename := filepath.Join(t.TempDir(), "note.json")
-			data := strings.ReplaceAll(`{"formatVersion":"VERSION","id":"note","type":"Page","properties":{"Name":"A note"},"blocks":[{"type":"paragraph","text":"Hello"}]}`, "VERSION", version)
+			data := `{` + tc.version + `,"id":"note","type":"Page","root":{"fields":{"width":0}},"properties":{"Name":"A note"},"blocks":[{"type":"paragraph","text":"Hello"}]}`
 			require.NoError(t, os.WriteFile(filename, []byte(data), 0600))
 			response, errs := importAnyBlockFixture(t, filename)
-			if version == "3.0" {
+			if !tc.supported {
 				require.NotNil(t, errs)
 				assert.Nil(t, response)
 				return
@@ -192,6 +203,60 @@ func TestAnyBlockSingleDocument(t *testing.T) {
 			require.Nil(t, errs)
 			require.Len(t, response.Snapshots, 1)
 			assert.Equal(t, "A note", response.Snapshots[0].Snapshot.Data.Details.GetString(bundle.RelationKeyName))
+			fields := response.Snapshots[0].Snapshot.Data.Blocks[0].Fields.GetFields()
+			require.Contains(t, fields, "width")
+			assert.Equal(t, 0.0, fields["width"].GetNumberValue())
+		})
+	}
+	t.Run("native protobuf snapshot", func(t *testing.T) {
+		filename := filepath.Join(t.TempDir(), "native.json")
+		data := `{"version":2,"snapshot":{"data":{"details":{"id":"native","name":"Native note"}}}}`
+		require.NoError(t, os.WriteFile(filename, []byte(data), 0600))
+		response, errs := importAnyBlockFixture(t, filename)
+		require.Nil(t, errs)
+		require.Len(t, response.Snapshots, 1)
+		require.Equal(t, "Native note", response.Snapshots[0].Snapshot.Data.Details.GetString(bundle.RelationKeyName))
+	})
+}
+
+func TestAnyBlockStandaloneTypeInSpace(t *testing.T) {
+	for _, tc := range []struct {
+		name, members string
+		missing       bool
+	}{
+		{"type setting", `"formatVersion":"2.0","type_settings":{"layout_width_percent":175}`, false},
+		{"old property", `"formatVersion":"2.0","properties":{"Layout width":0.75}`, false},
+		{"old version", `"version":2,"properties":{"Layout width":0.75}`, false},
+		{"self reference", `"formatVersion":"2.0","type_settings":{"layout_width_percent":175},"blocks":[{"type":"link","object_id":"type-article"}]`, false},
+		{"external reference", `"formatVersion":"2.0","blocks":[{"type":"link","object_id":"type-external"}]`, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			file := filepath.Join(t.TempDir(), "article.json")
+			doc := `{"kind":"object_type","id":"type-article","internal_key":"article",` + tc.members + `}`
+			require.NoError(t, os.WriteFile(file, []byte(doc), 0600))
+			response, errs := (&Pb{}).GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
+				SpaceId: "root.suffix", Type: model.Import_Pb, Mode: pb.RpcObjectImportRequest_ALL_OR_NOTHING,
+				Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{file}, NoCollection: true}},
+			}, process.NewNoOp())
+			if tc.missing {
+				require.NotNil(t, errs)
+				require.ErrorContains(t, errs.GetResultError(model.Import_Pb), "type-external")
+				return
+			}
+			require.Nil(t, errs)
+			require.Len(t, response.Snapshots, 1)
+			snapshot := response.Snapshots[0]
+			require.Equal(t, "article", snapshot.Snapshot.Data.Key)
+			require.Equal(t, 0.75, snapshot.Snapshot.Data.Details.GetFloat64(bundle.RelationKeyLayoutWidth))
+			if tc.name == "self reference" {
+				var target string
+				for _, block := range snapshot.Snapshot.Data.Blocks {
+					if link := block.GetLink(); link != nil {
+						target = link.TargetBlockId
+					}
+				}
+				require.Equal(t, snapshot.Id, target)
+			}
 		})
 	}
 }

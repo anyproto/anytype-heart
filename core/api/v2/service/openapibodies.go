@@ -85,6 +85,8 @@ var openAPIBodyRecipes = map[string]func(c *openAPIBodyComposer) (json.RawMessag
 		return c.anyOf("the flat type body, or the interchange document with kind object_type",
 			func() (json.RawMessage, error) {
 				return c.kindWith("type", func(root map[string]any) error {
+					props := root["properties"].(map[string]any)
+					props["layout_width_percent"].(map[string]any)["type"] = "number"
 					root["required"] = []string{"name"}
 					return nil
 				})
@@ -99,7 +101,8 @@ var openAPIBodyRecipes = map[string]func(c *openAPIBodyComposer) (json.RawMessag
 				// the same flat body as create, minus api_key: the slug is
 				// identity and the patch refuses it
 				return c.kindWith("type", func(root map[string]any) error {
-					delete(root["properties"].(map[string]any), "api_key")
+					props := root["properties"].(map[string]any)
+					delete(props, "api_key")
 					root["description"] = "the flat body, every member optional; at least one"
 					return nil
 				})
@@ -349,6 +352,11 @@ func (c *openAPIBodyComposer) pointer(kind, what string) (json.RawMessage, error
 		"properties":           skeleton,
 		"additionalProperties": true,
 	}
+	if kind == "type_document" {
+		// The open document branch must not accept a flat width that the
+		// create shortcut rejected. A type document sets width under type_settings.
+		body["not"] = map[string]any{"required": []string{"layout_width_percent"}}
+	}
 	if len(required) > 0 {
 		body["required"] = required
 	}
@@ -405,6 +413,17 @@ func kindSkeleton(kind string) (map[string]any, []string, error) {
 		}
 		if v, ok := member["enum"].([]any); ok && len(v) <= maxSkeletonEnum {
 			skeleton[name] = map[string]any{"enum": v}
+			continue
+		}
+		if name == "layout_width_percent" {
+			skeleton[name] = member
+			continue
+		}
+		if kind == "type_document" && name == "type_settings" {
+			settings := resolve(member)["properties"].(map[string]any)
+			skeleton[name] = map[string]any{"type": "object", "properties": map[string]any{
+				"layout_width_percent": settings["layout_width_percent"],
+			}}
 			continue
 		}
 		switch resolve(member)["type"] {

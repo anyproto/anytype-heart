@@ -42,6 +42,7 @@ type v2TypeShortcut struct {
 	PluralName          string          `json:"plural_name"`
 	Icon                json.RawMessage `json:"icon"`
 	Layout              string          `json:"layout"`
+	LayoutWidthPercent  json.RawMessage `json:"layout_width_percent"`
 	ApiKey              string          `json:"api_key"`
 	DefaultView         string          `json:"default_view"`
 	DefaultTemplate     string          `json:"default_template"`
@@ -53,7 +54,7 @@ type v2TypeShortcut struct {
 var typeShortcutKeys = map[string]bool{
 	"name": true, "plural_name": true, "icon": true, "layout": true,
 	"api_key": true, "default_view": true, "default_template": true,
-	"property_definitions": true,
+	"property_definitions": true, "layout_width_percent": true,
 }
 
 // isTypeDocument is the discriminator. It answers on any member only the
@@ -65,7 +66,7 @@ var typeShortcutKeys = map[string]bool{
 // property values; an array is the field list in the wrong place, which the
 // flat path names rather than silently treating as a document.
 func isTypeDocument(fields map[string]json.RawMessage) bool {
-	for _, member := range []string{"formatVersion", "kind", "type_settings", "blocks"} {
+	for _, member := range []string{"formatVersion", "version", "kind", "type_settings", "blocks"} {
 		if _, ok := fields[member]; ok {
 			return true
 		}
@@ -120,7 +121,7 @@ func typeShortcutDocument(fields map[string]json.RawMessage) (map[string]json.Ra
 				v2model.Issue{
 					Path:    v2model.MemberPointer(key),
 					Message: fmt.Sprintf("unknown key %q", key),
-					Hint:    "the flat body takes name, plural_name, icon, layout, api_key, default_view, default_template, property_definitions — or send a full AnyBlock document, its definition under type_settings",
+					Hint:    "the flat body takes name, plural_name, icon, layout, layout_width_percent, api_key, default_view, default_template, property_definitions — or send a full AnyBlock document with type_settings",
 				})
 		}
 	}
@@ -152,6 +153,9 @@ func typeShortcutDocument(fields map[string]json.RawMessage) (map[string]json.Ra
 	}
 	if len(flat.PropertyDefinitions) > 0 {
 		settings["property_definitions"] = flat.PropertyDefinitions
+	}
+	if flat.LayoutWidthPercent != nil {
+		settings["layout_width_percent"] = flat.LayoutWidthPercent
 	}
 
 	doc := map[string]json.RawMessage{}
@@ -217,7 +221,7 @@ func typeShortcutPatch(fields map[string]json.RawMessage) (map[string]json.RawMe
 	}
 	if len(patch) == 0 {
 		return nil, v2model.ValidationFailed("the patch changes nothing",
-			v2model.Issue{Message: "give at least one of name, plural_name, icon, layout, default_view, default_template, property_definitions — only api_key is create-only"})
+			v2model.Issue{Message: "give at least one of name, plural_name, icon, layout, layout_width_percent, default_view, default_template, property_definitions — only api_key is create-only"})
 	}
 	return patch, nil
 }

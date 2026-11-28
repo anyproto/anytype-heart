@@ -233,24 +233,25 @@ func opEnvelopeProse(op string) string {
 // about set_cell). Its own table, because the op table's entries are built
 // by opSchema, which reads this.
 var v2OpAbout = map[string]string{
-	"set_properties":  "Sets, adds to, removes from or unsets property values on the object",
-	"set_type":        "Changes the object's type and converts the document to the new type's layout",
-	"update_block":    "Changes fields of one existing block, found by id or by its text",
-	"replace_subtree": "Replaces one block and its descendants with new blocks",
-	"insert_blocks":   "Inserts new blocks or markdown after, before or inside a block, or at either end of the document",
-	"move_block":      "Moves a block and its subtree to a new place",
-	"delete_block":    "Deletes a childless block found by id or by its text, or its whole subtree with recursive set to true",
-	"replace_text":    "Replaces text inside one block, markup preserved",
-	"set_cell":        "Sets one table cell, by row and column",
-	"update_view":     "Changes a view's fields or columns on the object's dataview",
-	"insert_view":     "Adds a view to the object's dataview, with defaults or copied from another",
-	"move_view":       "Reorders a view among the dataview's views",
-	"delete_view":     "Deletes a view from the dataview; the last one is refused",
-	"add_property":    "Adds one property to the type's field list; an unknown name creates it, with the given format",
-	"remove_property": "Takes one property off the type's field list; the property and its values stay in the space",
-	"move_property":   "Reorders one property within its section of the type",
-	"add_items":       "Adds objects to the collection, by id",
-	"remove_items":    "Removes objects from the collection, by id",
+	"set_layout_width": "Sets or clears the width of a page, template, or object type",
+	"set_properties":   "Sets, adds to, removes from or unsets property values on the object",
+	"set_type":         "Changes the object's type and converts the document to the new type's layout",
+	"update_block":     "Changes fields of one existing block, found by id or by its text",
+	"replace_subtree":  "Replaces one block and its descendants with new blocks",
+	"insert_blocks":    "Inserts new blocks or markdown after, before or inside a block, or at either end of the document",
+	"move_block":       "Moves a block and its subtree to a new place",
+	"delete_block":     "Deletes a childless block found by id or by its text, or its whole subtree with recursive set to true",
+	"replace_text":     "Replaces text inside one block, markup preserved",
+	"set_cell":         "Sets one table cell, by row and column",
+	"update_view":      "Changes a view's fields or columns on the object's dataview",
+	"insert_view":      "Adds a view to the object's dataview, with defaults or copied from another",
+	"move_view":        "Reorders a view among the dataview's views",
+	"delete_view":      "Deletes a view from the dataview; the last one is refused",
+	"add_property":     "Adds one property to the type's field list; an unknown name creates it, with the given format",
+	"remove_property":  "Takes one property off the type's field list; the property and its values stay in the space",
+	"move_property":    "Reorders one property within its section of the type",
+	"add_items":        "Adds objects to the collection, by id",
+	"remove_items":     "Removes objects from the collection, by id",
 }
 
 // opSchema builds one op's strict schema: its own sentence first, then the
@@ -409,16 +410,24 @@ const v2TypePositionPropDef = `"position":{"type":"string","enum":["first","last
 // calendar arithmetic itself and gets the year wrong without a refusal.
 const apiV2PropertyValues = `A list-shaped key takes an array of option names or object ids; a date takes a date string such as 2026-08-01 or 2026-08-01T09:30:00Z rather than unix seconds`
 
+const apiV2LayoutWidth = `"layout_width_percent":{"type":["number","null"],"description":"Width in percent from 100 (standard) to 200 (widest). On a type this sets the default for its pages. Out-of-range values clamp with a warning. Send null to clear the default or override."}`
+
 // v2OpSchemas maps each PATCH op to its strict schema + single-op example.
 var v2OpSchemas = map[string]v2SchemaKind{
 	"set_properties": {
 		endpoint: v2OpsEndpoint,
 		schema: opSchema("set_properties", nil,
+			apiV2LayoutWidth,
 			`"set":{"type":"object","maxProperties":128,"additionalProperties":{"type":["string","number","boolean","array","null"],"maxLength":1048576,"maxItems":2048,"items":{"type":["string","number","boolean","null"],"maxLength":4096}},"description":"property key → value. `+apiV2PropertyValues+`; presence is meaningful — an empty array means present-but-empty; unknown select option names are created"}`,
 			`"unset":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":256},"description":"property keys to remove"}`,
 			`"add":{"type":"object","maxProperties":128,"additionalProperties":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":4096}},"description":"list-shaped keys only (select, multi_select, objects, files): append entries without rewriting the array — existing entries are never duplicated; unknown option NAMES are created"}`,
 			`"remove":{"type":"object","maxProperties":128,"additionalProperties":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":4096}},"description":"list-shaped keys only: delete matching entries — absent entries (and absent keys) are a no-op; a key may appear in only one of set/unset/add/remove"}`),
 		example: `{"op":"set_properties","set":{"status":["Done"],"due_date":"2026-08-01"},"add":{"tags":["Urgent"]},"unset":["reviewer"]}`,
+	},
+	"set_layout_width": {
+		endpoint: v2OpsEndpoint,
+		schema:   opSchema("set_layout_width", []string{"layout_width_percent"}, apiV2LayoutWidth),
+		example:  `{"op":"set_layout_width","layout_width_percent":175}`,
 	},
 	"set_type": {
 		endpoint: v2OpsEndpoint,

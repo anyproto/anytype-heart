@@ -25,7 +25,7 @@ import (
 
 // v2OpNames is the closed op set, in documentation order.
 var v2OpNames = []string{
-	"set_properties", "set_type", "update_block", "replace_subtree",
+	"set_properties", "set_layout_width", "set_type", "update_block", "replace_subtree",
 	"insert_blocks", "move_block", "delete_block", "replace_text", "set_cell",
 	"update_view", "insert_view", "move_view", "delete_view",
 	"add_items", "remove_items",
@@ -62,21 +62,22 @@ var v2OpNames = []string{
 // editor's own (basic.SetObjectTypesInState), the same one the app runs,
 // and the editor re-checks its restrictions under the lock.
 var v2OpEditNeeds = map[string]apicore.EditNeeds{
-	"set_properties":  {Details: true},
-	"set_type":        {TypeChange: true},
-	"update_block":    {Blocks: true},
-	"replace_subtree": {Blocks: true},
-	"insert_blocks":   {Blocks: true},
-	"move_block":      {Blocks: true},
-	"delete_block":    {Blocks: true},
-	"replace_text":    {Blocks: true},
-	"set_cell":        {Blocks: true},
-	"update_view":     {},
-	"insert_view":     {},
-	"move_view":       {},
-	"delete_view":     {},
-	"add_items":       {},
-	"remove_items":    {},
+	"set_properties":   {Details: true},
+	"set_layout_width": {Details: true}, // desktop checks Details before offering the resize action
+	"set_type":         {TypeChange: true},
+	"update_block":     {Blocks: true},
+	"replace_subtree":  {Blocks: true},
+	"insert_blocks":    {Blocks: true},
+	"move_block":       {Blocks: true},
+	"delete_block":     {Blocks: true},
+	"replace_text":     {Blocks: true},
+	"set_cell":         {Blocks: true},
+	"update_view":      {},
+	"insert_view":      {},
+	"move_view":        {},
+	"delete_view":      {},
+	"add_items":        {},
+	"remove_items":     {},
 }
 
 // editNeedsForOps unions the restriction axes a batch touches and refuses the
@@ -163,13 +164,14 @@ var v2NewContentOps = map[string]bool{
 // view valid in place. Unknown op names never reach a rebuild — the batch
 // fails at dispatch first.
 var v2OpRebuildsView = map[string]bool{
-	"set_properties":  true,
-	"set_type":        true,
-	"update_block":    true,
-	"replace_subtree": true,
-	"insert_blocks":   true,
-	"move_block":      true,
-	"delete_block":    true,
+	"set_properties":   true,
+	"set_layout_width": true,
+	"set_type":         true,
+	"update_block":     true,
+	"replace_subtree":  true,
+	"insert_blocks":    true,
+	"move_block":       true,
+	"delete_block":     true,
 	// replace_text maintains the view in place (stateops.go textEdited): it
 	// changes exactly one exported field of one block, and it writes the
 	// canonical rendering a re-marshal would emit. It is also the one op that
@@ -367,8 +369,9 @@ type opSetProperties struct {
 	// Add/Remove are the per-key list edits (v0.3.5): append entries to /
 	// delete entries from a list-shaped property without rewriting the whole
 	// array. Values are arrays of entries (option names or object/file ids).
-	Add    map[string]json.RawMessage `json:"add"`
-	Remove map[string]json.RawMessage `json:"remove"`
+	Add                map[string]json.RawMessage `json:"add"`
+	Remove             map[string]json.RawMessage `json:"remove"`
+	LayoutWidthPercent json.RawMessage            `json:"layout_width_percent"`
 }
 
 // opUpdateBlock addresses its block through EITHER Id or Match. Match is an

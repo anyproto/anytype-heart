@@ -59,6 +59,24 @@ func TestVerbFlagsFromToolTable(t *testing.T) {
 		assert.True(t, opts.jsonOut)
 	})
 
+	t.Run("percentage flags preserve JSON numbers and explicit inheritance", func(t *testing.T) {
+		edit, _ := wrapper.ToolByVerb("set-properties")
+		create, _ := wrapper.ToolByVerb("create")
+		for _, raw := range []string{"175.5", "1e400"} {
+			args, _, err := parseVerbFlags(edit, []string{"--layout_width_percent", " " + raw + " "}, io.Discard)
+			require.NoError(t, err)
+			assert.Equal(t, json.Number(raw), args["layout_width_percent"])
+		}
+		args, _, err := parseVerbFlags(edit, []string{"--layout_width_percent", "null"}, io.Discard)
+		require.NoError(t, err)
+		assert.Contains(t, args, "layout_width_percent")
+		assert.Nil(t, args["layout_width_percent"])
+		for _, raw := range []string{"", "null", "wide", "175%", `"175"`} {
+			_, _, err := parseVerbFlags(create, []string{"--layout_width_percent", raw}, io.Discard)
+			require.Error(t, err)
+		}
+	})
+
 	t.Run("integer flags land as ints, not strings", func(t *testing.T) {
 		tool, ok := wrapper.ToolByVerb("find")
 		require.True(t, ok)
