@@ -530,10 +530,12 @@ func TestV2TemplatePropertiesJudgedAgainstTarget(t *testing.T) {
 		_, err := fx.CreateTemplate(ctx, testSpaceId, []byte(`{"formatVersion":"2.0","template_for":"task","properties":{"name":"Weekly"}}`), true, true)
 
 		// then
+		// the built-in's slug reaches the live type, so it is named by its
+		// stored key, the one address that still resolves to it
 		issue := issueAt(t, err, "/template_for")
-		require.Contains(t, issue.Message, "(key task)")
+		require.Contains(t, issue.Message, "(stored key task)")
 		require.Contains(t, issue.Message, "key zztask")
-		assert.Less(t, strings.Index(issue.Message, "(key task)"), strings.Index(issue.Message, "key zztask"))
+		assert.Less(t, strings.Index(issue.Message, "(stored key task)"), strings.Index(issue.Message, "key zztask"))
 	})
 
 	t.Run("a plain create preview says the value would be stored", func(t *testing.T) {
@@ -818,10 +820,14 @@ func TestV2TemplateNamesResolveAgainstTarget(t *testing.T) {
 
 		// then
 		assert.Equal(t, v2model.CodeAmbiguousInput, v2Err(t, err).Code)
+		// each holder is named by the public key that tells them apart,
+		// listed in order of stored key
 		issue := issueAt(t, err, "ops[0].set.Effort")
-		require.Contains(t, issue.Message, pointsKey)
-		require.Contains(t, issue.Message, hoursKey)
-		assert.Less(t, strings.Index(issue.Message, pointsKey), strings.Index(issue.Message, hoursKey),
+		require.Contains(t, issue.Message, "key effort_points")
+		require.Contains(t, issue.Message, "key effort_hours")
+		assert.NotContains(t, issue.Message, pointsKey)
+		assert.NotContains(t, issue.Message, hoursKey)
+		assert.Less(t, strings.Index(issue.Message, "effort_points"), strings.Index(issue.Message, "effort_hours"),
 			"the holders are listed by stored key, not by store order")
 	})
 }

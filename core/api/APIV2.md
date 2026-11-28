@@ -337,8 +337,11 @@ refuses several as `ambiguous_input`; and only last the **display name** and
 its fold, on the same one-or-refuse rule. The format's own chain underneath
 (`pkg/lib/anyblockjson/storeresolver/keyvocab.go:495`) has the same order but
 degrades to the verbatim term wherever v2 would refuse — it never guesses
-either. Ambiguity at any step lists every holder by stored key and id (the
-addresses that always resolve), ordered by stored key and then id, and never
+either. Ambiguity at any step lists every holder by id and by an address
+verified to resolve back to it: the key the listings serve it under (its
+slug, or its stored key when the slug is shared or shadowed), else its
+stored key, marked as such. A retry with the address shown reaches that
+holder; renaming is not offered, since a slug is frozen at mint. Holders are listed in order of stored key and then id, and it never
 picks by store order; a full miss
 falls to the unknown-key refusal with did-you-mean (§1.3). The one tie-break
 is the object's type: of several holders, the single one the type lists wins
@@ -1051,7 +1054,13 @@ with no positional/index/offset addressing anywhere (§3.1–3.2). It is:
   carry is REFUSED** at its own `set`/`add`/`remove` entry rather than
   silently rounded, dropped or written as null. The favorite flag stays
   authorable and takes only `true` or `false`
-  (`core/api/v2/service/stateops.go:1236`).
+  (`core/api/v2/service/stateops.go:1236`). **A refusal names the property it
+  refuses the way the caller sent it**, the slug or (under `?keys=name`) the
+  display name, in its message as in its issue path, not by its stored key,
+  which for a space-minted property is a 24-hex id the caller was never
+  served. The spelling is the one written in that field: an op may spell one
+  property two ways in two fields, and each refusal addresses its own
+  (`core/api/v2/service/stateops.go:1102`).
 - **`set_properties` `add`/`remove`**: per-key list edits for list-shaped
   formats only (select, multi_select, objects, files — SPEC §3).
   `{"op":"set_properties","add":{"tags":["urgent"]},"remove":{"assignee":["bafy…"]}}`

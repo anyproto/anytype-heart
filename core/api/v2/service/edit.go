@@ -345,7 +345,11 @@ func (s *Service) guardCreateMissing(ctx context.Context, spaceId, objectId stri
 		for _, o := range pending {
 			// the caller's spelling, not the store's id: this message names
 			// the fields they must go and check
-			props[probe.keys.PropertySlug(o.Property)]++
+			spelling, ok := probe.pendingSpelling[o.Property]
+			if !ok {
+				spelling = probe.keys.PropertySlug(o.Property)
+			}
+			props[spelling]++
 		}
 		issue := v2model.Issue{
 			Path: "/ops",
@@ -588,7 +592,7 @@ func parseOpsEnvelope(body []byte, opNames []string, unknownKeyHint func(key str
 	for key := range fields {
 		if key != "ops" {
 			return nil, v2model.ValidationFailed("unknown field in PATCH body",
-				v2model.Issue{Path: "/" + key, Message: fmt.Sprintf("unknown key %q — the PATCH body carries only ops", key)}.WithHint(unknownKeyHint(key)))
+				v2model.Issue{Path: v2model.MemberPointer(key), Message: fmt.Sprintf("unknown key %q — the PATCH body carries only ops", key)}.WithHint(unknownKeyHint(key)))
 		}
 	}
 	var req v2PatchRequest

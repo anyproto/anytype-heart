@@ -329,7 +329,11 @@ func removedCustomPropertyIssue(spaceId string, entry propertyEntry, spelledAs, 
 func removedPropertyIssue(spaceId, key, spelledAs, path string, v errKeys) v2model.Issue {
 	slug := bundle.ApiSlug(key)
 	spelling := slug
-	if v.names {
+	if spelledAs != "" {
+		// the term as written ("DESCRIPTION"): the decision is on the key,
+		// the refusal is addressed to what the caller sent
+		spelling = spelledAs
+	} else if v.names {
 		// a removed bundled property still has its bundled display name —
 		// the spelling a name-mode caller was taught
 		if rel, err := bundle.GetRelation(domain.RelationKey(key)); err == nil && rel.Name != "" {
@@ -358,6 +362,13 @@ func removedTypeIssue(spaceId, key, path string, v errKeys) v2model.Issue {
 			spelling = t.Name
 		}
 	}
+	return removedTypeIssueAs(spaceId, spelling, path)
+}
+
+// removedTypeIssueAs is removedTypeIssue quoting the spelling the caller
+// sent, when there is one: the decision is made on the canonical key, the
+// refusal is addressed to the term as written ("Task", not "task").
+func removedTypeIssueAs(spaceId, spelling, path string) v2model.Issue {
 	return v2model.Issue{
 		Path:    path,
 		Message: fmt.Sprintf("type %q was removed from this space — nothing new is created in a removed type", spelling),

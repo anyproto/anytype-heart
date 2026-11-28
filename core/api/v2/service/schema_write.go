@@ -236,23 +236,26 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 			return nil, err
 		}
 		if taken {
+			// the refusal quotes the key as submitted (meetingNote); the slug it
+			// normalizes to (meeting_note) is what the update route takes
+			submitted := orDefault(apiKey, slug)
 			if holder.Kind == "bundled type" {
 				return nil, v2model.ValidationFailed("type key is reserved",
 					v2model.Issue{Path: keyPath,
-						Message: fmt.Sprintf("key %q is taken by bundled type %q — it already exists", slug, holder.Name)})
+						Message: fmt.Sprintf("key %q is taken by bundled type %q — it already exists", submitted, holder.Name)})
 			}
 			if holder.Kind == "types" {
 				// several types answer to this slug already: an update by
 				// that slug would be refused as ambiguous, so it is not offered
 				return nil, v2model.ValidationFailed("type key already exists",
 					v2model.Issue{Path: keyPath,
-						Message: fmt.Sprintf("key %q is answered by several types in space %s: %s", slug, spaceId, holder.Name),
+						Message: fmt.Sprintf("key %q is answered by several types in space %s: %s", submitted, spaceId, holder.Name),
 					}.WithHint(v2model.Plain("pick a different key")))
 			}
 			return nil, v2model.ValidationFailed("type key already exists",
 				v2model.Issue{Path: keyPath,
-					Message: fmt.Sprintf("key %q is taken by %s %q in space %s", slug, holder.Kind, holder.Name, spaceId),
-				}.Hintf("update it with %s, or pick a different key", v2model.RefUpdateType(spaceId, holder.Key)))
+					Message: fmt.Sprintf("key %q is taken by %s %q in space %s", submitted, holder.Kind, holder.Name, spaceId),
+				}.Hintf("update it with %s, or pick a different key", v2model.RefUpdateType(spaceId, holder.Served)))
 		}
 	}
 
@@ -297,6 +300,14 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 	// Unmarshal rebuilds the four recommended-relation lists from
 	// typeProperties, creating missing properties through the resolver
 	resolvers := s.newCreatingResolvers(ctx, spaceId, dryRun, createMissingOptions)
+	resolvers.definitionPaths = definitionPathsOf(envelope.propertyDefinitions())
+	// two spellings of one property in the type's properties map: the codec
+	// would refuse them by the stored key both resolve to, a bson id the
+	// caller never wrote. The object channel refuses them by what was sent
+	// (canonicalizeDocumentKeys); so does this one, binding as the import will.
+	if err := refuseTwoSpellingsBoundAlike(envelope.Properties, resolvers.Options().Keys); err != nil {
+		return nil, err
+	}
 	_, snapshot, err := anyblockjson.Unmarshal(body, resolvers.Options())
 	if err != nil {
 		return nil, mapUnmarshalError(body, err, kind)
@@ -446,7 +457,7 @@ func typeDetailsFromSnapshot(snapshot *model.SmartBlockSnapshotBase, slug string
 		for _, forbidden := range typeDetailsForbiddenKeys {
 			if _, ok := snapshot.Details.Fields[forbidden]; ok {
 				return nil, v2model.ValidationFailed("property is not writable on a type",
-					v2model.Issue{Path: "/properties/" + forbidden,
+					v2model.Issue{Path: propertiesPointer(forbidden),
 						Message: fmt.Sprintf("%q is system-managed and cannot be supplied", forbidden),
 						Hint:    "identity comes from the document's key (and name); remove this property"})
 			}
@@ -536,7 +547,7 @@ func (s *Service) validateTypePropertyFormats(spaceId string, props []anyblockjs
 		if anyblockjson.FormatName(entry.Format) != tp.Format {
 			return v2model.ValidationFailed("property format conflict",
 				v2model.Issue{
-					Path: fmt.Sprintf("/type_properties/%d/format", i),
+					Path: fmt.Sprintf("/type_settings/property_definitions/%d/format", i),
 					Message: fmt.Sprintf("%q declares format %q but the existing property %q has format %q",
 						term, tp.Format, entry.Name, anyblockjson.FormatName(entry.Format)),
 					Hint: "omit format to use the existing property as it is, or create a new property under a different key",
@@ -845,20 +856,20 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 		key := storedDetailKey(raw)
 		if first, dup := spelledBy[key]; dup {
 			return nil, v2model.ValidationFailed("duplicate property key",
-				v2model.Issue{Path: "/properties/" + raw,
+				v2model.Issue{Path: propertiesPointer(raw),
 					Message: fmt.Sprintf("%q and %q both address %q — keep one", first, raw, key)})
 		}
 		spelledBy[key] = raw
 		if !updatableTypeDetailKeys[key] {
 			return nil, v2model.ValidationFailed("property not updatable on a type",
-				v2model.Issue{Path: "/properties/" + raw, Message: fmt.Sprintf("cannot update %q", raw),
+				v2model.Issue{Path: propertiesPointer(raw), Message: fmt.Sprintf("cannot update %q", raw),
 					Hint: "properties takes name and description; the layout is type_settings.layout and the icon is the typed envelope icon"})
 		}
 		// the map is keyed by the WIRE spelling — reading it back with the
 		// STORED one handed typeDetailValue a nil body for every key the two
 		// vocabularies spell differently, so icon_emoji and recommended_layout
 		// (the only two of the four that differ) 400'd on a value they carried
-		value, err := typeDetailValue(key, "/properties/"+raw, patch.Properties[raw])
+		value, err := typeDetailValue(key, propertiesPointer(raw), patch.Properties[raw])
 		if err != nil {
 			return nil, err
 		}
@@ -894,6 +905,11 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 	}
 
 	resolvers := s.newCreatingResolvers(ctx, spaceId, dryRun, createMissingOptions)
+	if defs := patch.propertyDefinitions(); defs != nil {
+		if raw, err := json.Marshal(*defs); err == nil {
+			resolvers.definitionPaths = definitionPathsOf(raw)
+		}
+	}
 	// the dataview half of a list replacement (round-two eval F2): the op
 	// channel keeps the type's views in step with its lists — a column for
 	// every property added, none for one removed — and a replaced list must
@@ -1134,7 +1150,9 @@ func typeDetailValue(key, path string, raw json.RawMessage) (*types.Value, error
 		if err := json.Unmarshal(raw, &number); err == nil {
 			return pbtypes.Int64(number), nil
 		}
-		return nil, v2model.ValidationFailed("invalid recommendedLayout",
+		// the member the caller wrote is layout; recommendedLayout is the
+		// stored detail it lands on
+		return nil, v2model.ValidationFailed("invalid layout",
 			v2model.Issue{Path: path, Message: "expected a layout name or number"})
 	}
 	if key == "defaultViewType" {
@@ -1339,17 +1357,17 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, req v2mode
 	}
 	if slug != "" {
 		if holder, taken := s.propertySlugConflict(slug, propEntries); taken {
-			path, hint := "/key", v2model.Hintf("update it with %s, or pick a different key", v2model.RefUpdateProperty(spaceId, holder.Key))
+			path, hint := "/key", v2model.Hintf("update it with %s, or pick a different key", v2model.RefUpdateProperty(spaceId, holder.Served))
 			if req.Key == "" {
 				path = "/name"
-				hint = v2model.Plain(fmt.Sprintf("use the existing property %q, or pass an explicit different key", holder.Key))
+				hint = v2model.Plain(fmt.Sprintf("use the existing property %q, or pass an explicit different key", holder.Served))
 			}
 			if holder.Kind == "properties" {
 				// several properties answer to this slug already: neither an
 				// update by that slug nor "use the existing property" can be
 				// followed — both would be refused as ambiguous — so the only
 				// repair is a key of the caller's own, whichever slot they wrote
-				hint = v2model.Plain(fmt.Sprintf("several properties answer to %q (%s) — pass an explicit different key", slug, holder.Name))
+				hint = v2model.Plain(fmt.Sprintf("several properties answer to %q (%s) — pass an explicit different key", orDefault(req.Key, slug), holder.Name))
 			}
 			if _, bundled := bundle.PickRelation(domain.RelationKey(holder.Key)); bundled == nil || holder.Kind == "bundled property" {
 				// a built-in property, installed or not: an update by its key
@@ -1359,7 +1377,8 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, req v2mode
 			}
 			return nil, s.dryRunLoadingNote(ctx, spaceId, dryRun, v2model.ValidationFailed("property key already exists",
 				v2model.Issue{Path: path,
-					Message: fmt.Sprintf("key %q is taken by %s %q", slug, holder.Kind, holder.Name),
+					// the key as submitted (dueDate2), not the slug it normalizes to
+					Message: fmt.Sprintf("key %q is taken by %s %q", orDefault(req.Key, slug), holder.Kind, holder.Name),
 				}.WithHint(hint)))
 		}
 	}

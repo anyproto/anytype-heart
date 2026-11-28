@@ -171,6 +171,22 @@ func TestPhase2StrictBinding(t *testing.T) {
 		assert.Equal(t, "/option", got.Issues[0].Path, "the unknown field must be named")
 	})
 
+	t.Run("an unknown member name is one escaped pointer token", func(t *testing.T) {
+		// given: a member name holding "/" and "~", the two characters a
+		// JSON Pointer must escape
+		fx := newV2HandlerFixture(t)
+		fx.router.POST("/v2/spaces/:space_id/properties", withDryRunFlag(), CreatePropertyHandler(fx.svc))
+
+		// when
+		w := post(t, fx, "/v2/spaces/space1/properties", `{"name":"Priority","format":"text","a/b~c":1}`)
+
+		// then
+		require.Equal(t, http.StatusBadRequest, w.Code)
+		got := decode(t, w)
+		require.NotEmpty(t, got.Issues)
+		assert.Equal(t, "/a~1b~0c", got.Issues[0].Path)
+	})
+
 	t.Run("an unknown field on PATCH properties is a 400", func(t *testing.T) {
 		fx := newV2HandlerFixture(t)
 		fx.router.PATCH("/v2/spaces/:space_id/properties/:key", withDryRunFlag(), UpdatePropertyHandler(fx.svc))

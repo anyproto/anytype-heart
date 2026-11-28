@@ -110,6 +110,22 @@ type creatingResolvers struct {
 	mintedSlugByKey map[string]string
 	sideEffects     v2model.SideEffects
 	errs            []error
+	// definitionPaths locates each property_definitions entry by the term it
+	// names its property with, for a refusal PropertyId raises on it
+	// (definitionPathsOf); nil outside a type body.
+	definitionPaths map[string]string
+	// optionSite is the member being resolved right now — a set_properties
+	// entry or a view filter leaf, in the PATCH prewarm or the op itself: an
+	// option refusal is addressed to it, in the spelling the caller wrote.
+	optionSite *optionErrorSite
+	// siteFor locates the member a document create carries an option name
+	// in, when no single entry is being resolved (the whole body imports at
+	// once). Nil falls back to /properties/<served key>.
+	siteFor func(key domain.RelationKey, name string) *optionErrorSite
+	// pendingSpelling is the spelling each property was written under when
+	// a dry pass recorded an option it would create, for the M5 refusal
+	// that names the properties to check (stored key → as sent)
+	pendingSpelling map[string]string
 
 	// echoPropertyIds are relation object ids the PATCHed type's recommended
 	// lists ALREADY carry (UpdateType primes them; empty on create). They are
@@ -345,7 +361,12 @@ func (r *creatingResolvers) OptionId(key domain.RelationKey, name string) (strin
 		// caller. Refusing beats returning "unresolved": that would store the
 		// NAME where an option id belongs — a value matching nothing that
 		// reads as if it matched.
-		r.errs = append(r.errs, optionConsentError(r.spaceId, r.keys.PropertySlug(string(key)), name))
+		servedKey := r.keys.PropertySlug(string(key))
+		if site := r.siteOf(key, name); site != nil {
+			r.errs = append(r.errs, optionConsentErrorAs(r.spaceId, site.spelling, servedKey, name, site.path))
+		} else {
+			r.errs = append(r.errs, optionConsentError(r.spaceId, servedKey, name))
+		}
 		return "", false
 	}
 	if r.dryRun {
@@ -355,6 +376,12 @@ func (r *creatingResolvers) OptionId(key domain.RelationKey, name string) (strin
 		if !r.dryReported[ref] {
 			r.dryReported[ref] = true
 			r.sideEffects.Options = append(r.sideEffects.Options, v2model.CreatedOption{Property: string(key), Name: name})
+			if site := r.siteOf(key, name); site != nil {
+				if r.pendingSpelling == nil {
+					r.pendingSpelling = map[string]string{}
+				}
+				r.pendingSpelling[string(key)] = site.spelling
+			}
 		}
 		return "", false
 	}
@@ -388,10 +415,30 @@ func (r *creatingResolvers) recordOptionAmbiguity(key domain.RelationKey, name s
 	if r.keys == nil {
 		r.Options() // prime the same served slug vocabulary as the document
 	}
-	r.errs = append(r.errs, optionAmbiguityError(r.keys.PropertySlug(string(key)), name, matches))
+	served := r.keys.PropertySlug(string(key))
+	spelling, path := served, propertiesPointer(served)
+	if site := r.siteOf(key, name); site != nil {
+		spelling, path = site.spelling, site.path
+	}
+	r.errs = append(r.errs, optionAmbiguityError(spelling, path, name, matches))
 }
 
-func optionAmbiguityError(servedKey, name string, matches []*model.RelationOption) error {
+// siteOf is where an option refusal about key is addressed: the entry being
+// resolved right now, else the member a create body carries the name in,
+// else nil (the create channel's /properties/<served key>).
+func (r *creatingResolvers) siteOf(key domain.RelationKey, name string) *optionErrorSite {
+	if r.optionSite != nil {
+		return r.optionSite
+	}
+	if r.siteFor != nil {
+		return r.siteFor(key, name)
+	}
+	return nil
+}
+
+// optionAmbiguityError names the property as spelled at path, the member the
+// caller wrote the ambiguous name in.
+func optionAmbiguityError(spelling, path, name string, matches []*model.RelationOption) error {
 	ordered := append([]*model.RelationOption(nil), matches...)
 	sort.SliceStable(ordered, func(i, j int) bool {
 		if ordered[i].Text != ordered[j].Text {
@@ -411,9 +458,9 @@ func optionAmbiguityError(servedKey, name string, matches []*model.RelationOptio
 		descriptions = append(descriptions, fmt.Sprintf("%q (%s)", option.Text, color))
 	}
 	return v2model.AmbiguousInput(
-		fmt.Sprintf("option name %q is ambiguous for property %q", name, servedKey),
+		fmt.Sprintf("option name %q is ambiguous for property %q", name, spelling),
 		v2model.Issue{
-			Path:    "/properties/" + servedKey,
+			Path:    path,
 			Message: fmt.Sprintf("the name matches %d options: %s", len(matches), strings.Join(descriptions, ", ")),
 			Hint:    "rename or remove one duplicate option before addressing it by name; v2 has no unambiguous bare-name choice",
 		})
@@ -428,7 +475,7 @@ func optionAmbiguityError(servedKey, name string, matches []*model.RelationOptio
 // fetch. An error reporting the stored id makes the caller map it back to the
 // field they wrote by hand.
 func optionConsentError(spaceId, servedKey, name string) error {
-	return optionConsentErrorAt(spaceId, servedKey, name, "/properties/"+servedKey)
+	return optionConsentErrorAt(spaceId, servedKey, name, propertiesPointer(servedKey))
 }
 
 // optionConsentErrorAt is the same refusal addressed at the member the caller
@@ -437,13 +484,36 @@ func optionConsentError(spaceId, servedKey, name string) error {
 // all — the flat path rejects one by name — so the default path above would
 // point at a field the caller could not have written.
 func optionConsentErrorAt(spaceId, servedKey, name, path string) error {
+	return optionConsentErrorAs(spaceId, servedKey, servedKey, name, path)
+}
+
+// optionConsentErrorAs is the refusal for a property the caller spelled
+// differently from its served key: the message quotes the spelling (a
+// display name under ?keys=name), while the options route keeps the served
+// key, which is always a valid path segment.
+func optionConsentErrorAs(spaceId, spelling, servedKey, name, path string) error {
 	return v2model.ValidationFailed("option does not exist",
 		v2model.Issue{
 			Path:    path,
-			Message: fmt.Sprintf("property %q has no option named %q, and this request did not ask to create one", servedKey, name),
+			Message: fmt.Sprintf("property %q has no option named %q, and this request did not ask to create one", spelling, name),
 		}.Hintf("check the spelling against %s, or resend with %s to create it",
 			v2model.RefListPropertyOptions(spaceId, servedKey), v2model.Resend("create_missing_options", "true")))
 }
+
+// optionConsentErrorPending is the refusal for options declared on a
+// property this request would create: there is no options route to check
+// against yet, so the one repair offered is the consent resend.
+func optionConsentErrorPending(spelling, name, path string) error {
+	return v2model.ValidationFailed("option does not exist",
+		v2model.Issue{
+			Path:    path,
+			Message: fmt.Sprintf("property %q has no option named %q, and this request did not ask to create one", spelling, name),
+		}.Hintf("resend with %s to create it", v2model.Resend("create_missing_options", "true")))
+}
+
+// optionErrorSite is the request member an option refusal is addressed to,
+// and the spelling the caller gave its property there.
+type optionErrorSite struct{ path, spelling string }
 
 // prewarmCreateMissing resolves a PATCH's create-missing references BEFORE
 // the object lock is taken (review B6/A6): the create surfaces in PATCH
@@ -475,7 +545,7 @@ func (s *Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creatin
 		targetIds = pbtypes.GetStringList(resolvers.patch.details, targetKey)
 		setOfIds = pbtypes.GetStringList(resolvers.patch.details, setOfKey)
 	}
-	for _, raw := range ops {
+	for i, raw := range ops {
 		var probe struct {
 			Op   string                     `json:"op"`
 			Type string                     `json:"type"`
@@ -511,14 +581,21 @@ func (s *Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creatin
 			// the live proto at commit and imported with a no-create resolver
 			// (viewops.go commitDataviewBlock), so this prewarm is exhaustive:
 			// a name it cannot see is a name the commit will not mint.
-			s.prewarmViewOptionValues(probe.Set, resolvers, viewScope)
+			s.prewarmViewOptionValues(probe.Set, fmt.Sprintf("ops[%d].set", i), resolvers, viewScope)
 			continue
 		}
 		if probe.Op != "set_properties" {
 			continue
 		}
-		for field, values := range map[string]map[string]json.RawMessage{"set": probe.Set, "add": probe.Add} {
-			for rawKey, rawValue := range values {
+		// set, then add, each in key order: the first refusal recorded is the
+		// one reported, so the walk must not depend on map iteration order
+		for _, field := range []string{"set", "add"} {
+			values := probe.Set
+			if field == "add" {
+				values = probe.Add
+			}
+			for _, rawKey := range sortedKeys(values) {
+				rawValue := values[rawKey]
 				// A key claimed by more than one field is rejected by the apply
 				// path, so prewarming it would create an option for a PATCH
 				// that cannot succeed. Skip it here and let the op error.
@@ -552,7 +629,12 @@ func (s *Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creatin
 						continue
 					}
 				}
+				// a refusal is addressed to this entry, in the caller's spelling:
+				// the default /properties/<served key> names a member a PATCH
+				// does not have, and under ?keys=name a spelling it did not use
+				resolvers.optionSite = &optionErrorSite{path: fmt.Sprintf("ops[%d].%s.%s", i, field, rawKey), spelling: rawKey}
 				anyblockjson.UnmarshalPropertyValue(key, value, resolvers.Options())
+				resolvers.optionSite = nil
 			}
 		}
 		// a retarget moves the scope of the ops after this one, as the
@@ -681,8 +763,13 @@ type viewFilterProbe struct {
 // properties, both of which the dataview import resolves with create-missing
 // (SPEC §6.2/§3) — so the creates run before the object lock and the M5
 // bound sees them. Same leniency contract as the set_properties pass.
-func (s *Service) prewarmViewOptionValues(set map[string]json.RawMessage, resolvers *creatingResolvers, viewScope map[string]bool) {
-	resolveSelect := func(rawKey string, value json.RawMessage) {
+//
+// setPath is the op's set channel ("ops[2].set"): a consent refusal is
+// addressed to the leaf or sort the caller wrote, in the property spelling
+// written there — the default /properties/<served key> names a member a
+// view op does not have.
+func (s *Service) prewarmViewOptionValues(set map[string]json.RawMessage, setPath string, resolvers *creatingResolvers, viewScope map[string]bool) {
+	resolveSelect := func(rawKey string, value json.RawMessage, path string) {
 		// a view key is the query source's, as the apply resolves it
 		// (canonicalViewKey), never the object's own type's
 		key := resolvers.canonicalPropertyKeyIn(rawKey, viewScope)
@@ -700,30 +787,49 @@ func (s *Service) prewarmViewOptionValues(set map[string]json.RawMessage, resolv
 		if err := json.Unmarshal(value, &decoded); err != nil || decoded == nil {
 			return
 		}
+		resolvers.optionSite = &optionErrorSite{path: path, spelling: rawKey}
 		anyblockjson.UnmarshalPropertyValue(key, decoded, resolvers.Options())
+		resolvers.optionSite = nil
 	}
-	var walkFilters func(nodes []viewFilterProbe)
-	walkFilters = func(nodes []viewFilterProbe) {
-		for _, node := range nodes {
+	// base is the array the nodes sit in; a compact filter string has no
+	// array the caller wrote, so every leaf it parses to is addressed at the
+	// string itself
+	var walkFilters func(nodes []viewFilterProbe, base string, compact bool)
+	walkFilters = func(nodes []viewFilterProbe, base string, compact bool) {
+		for j, node := range nodes {
+			at := fmt.Sprintf("%s[%d]", base, j)
+			if compact {
+				at = base
+			}
 			if len(node.Filters) > 0 {
-				walkFilters(node.Filters)
+				nested := at + ".filters"
+				if compact {
+					nested = base
+				}
+				walkFilters(node.Filters, nested, compact)
 				continue
 			}
-			// empty/notEmpty/exists leaves carry no meaningful value (§11) —
-			// resolving one here would create an option the view never uses
-			switch node.Condition {
-			case "empty", "notEmpty", "exists":
+			// a presence leaf carries no meaningful value (§11) — resolving one
+			// here would create an option the view never uses. The SAME
+			// predicate the applier strips those values with
+			// (stripValuelessConditionValues), or the wire spelling one of them
+			// misses (not_empty) creates an option the other discards
+			if presenceCondition(node.Condition) {
 				continue
 			}
 			if node.Property != "" && len(node.Value) > 0 {
-				resolveSelect(node.Property, node.Value)
+				leaf := at + ".value"
+				if compact {
+					leaf = base
+				}
+				resolveSelect(node.Property, node.Value, leaf)
 			}
 		}
 	}
 	if raw, ok := set["filters"]; ok {
 		var nodes []viewFilterProbe
 		if err := json.Unmarshal(raw, &nodes); err == nil {
-			walkFilters(nodes)
+			walkFilters(nodes, setPath+".filters", false)
 		}
 	}
 	if raw, ok := set["filter"]; ok {
@@ -737,7 +843,7 @@ func (s *Service) prewarmViewOptionValues(set map[string]json.RawMessage, resolv
 			if err == nil {
 				var nodes []viewFilterProbe
 				if err := json.Unmarshal(parsed, &nodes); err == nil {
-					walkFilters(nodes)
+					walkFilters(nodes, setPath+".filter", true)
 				}
 			}
 		}
@@ -748,9 +854,9 @@ func (s *Service) prewarmViewOptionValues(set map[string]json.RawMessage, resolv
 			CustomOrder json.RawMessage `json:"custom_order"`
 		}
 		if err := json.Unmarshal(raw, &sorts); err == nil {
-			for _, sort := range sorts {
+			for j, sort := range sorts {
 				if sort.Property != "" && len(sort.CustomOrder) > 0 {
-					resolveSelect(sort.Property, sort.CustomOrder)
+					resolveSelect(sort.Property, sort.CustomOrder, fmt.Sprintf("%s.sorts[%d].custom_order", setPath, j))
 				}
 			}
 		}
@@ -837,7 +943,13 @@ func (r *creatingResolvers) PropertyId(def anyblockjson.PropertyDefinition) (str
 	}
 	entry, ok, ambiguous := r.svc.resolvePropertyInputIn(docKey, entries, r.scope)
 	if len(ambiguous) > 0 {
-		r.errs = append(r.errs, fmt.Errorf("property key %q is ambiguous — held by %s; address the intended property by its listed key", docKey, strings.Join(ambiguous, " and ")))
+		// a caller's term several properties answer to: the same typed 400
+		// every channel gives, addressed at the definition that named it
+		path, ok := r.definitionPaths[docKey]
+		if !ok {
+			path = "/type_settings/property_definitions"
+		}
+		r.errs = append(r.errs, ambiguousKeyError(r.v.propertyWord(), docKey, path, ambiguous))
 		return "", false
 	}
 	if ok && entry.Id != "" {
@@ -1119,4 +1231,137 @@ func (r *creatingResolvers) liveProps() ([]propertyEntry, error) {
 	r.livePropsLoaded = true
 	r.liveEntries, r.livePropsErr = r.svc.liveProperties(r.spaceId)
 	return r.liveEntries, r.livePropsErr
+}
+
+// definitionPathsOf maps each property_definitions entry's identifying term
+// (property, else internal_key, else name — the order the format states) to
+// the pointer of that member, first entry winning.
+func definitionPathsOf(raw json.RawMessage) map[string]string {
+	var defs []map[string]any
+	if len(raw) == 0 || json.Unmarshal(raw, &defs) != nil {
+		return nil
+	}
+	out := map[string]string{}
+	for i, def := range defs {
+		for _, member := range []string{"property", "internal_key", "name"} {
+			if term, ok := def[member].(string); ok && term != "" {
+				if _, seen := out[term]; !seen {
+					out[term] = fmt.Sprintf("/type_settings/property_definitions/%d/%s", i, member)
+				}
+				break
+			}
+		}
+	}
+	return out
+}
+
+// optionSiteIndex records where a request carries each option name, by
+// (stored key, name), with the property spelled as the caller wrote it —
+// for a body that imports whole, where no single entry is being resolved
+// when an option refusal fires.
+type optionSiteIndex struct {
+	sites map[optionRef]*optionErrorSite
+	canon func(string) string
+}
+
+func newOptionSiteIndex(canon func(string) string) *optionSiteIndex {
+	return &optionSiteIndex{sites: map[optionRef]*optionErrorSite{}, canon: canon}
+}
+
+// recordAs indexes the names a value carries (a string or a list of them)
+// under key, at path, spelled as spelling. The first occurrence wins.
+func (x *optionSiteIndex) recordAs(key, spelling string, value json.RawMessage, path string) {
+	if key == "" || len(value) == 0 {
+		return
+	}
+	var decoded any
+	if json.Unmarshal(value, &decoded) != nil {
+		return
+	}
+	var names []string
+	switch v := decoded.(type) {
+	case string:
+		names = append(names, v)
+	case []any:
+		for _, item := range v {
+			if name, ok := item.(string); ok {
+				names = append(names, name)
+			}
+		}
+	}
+	for _, name := range names {
+		ref := optionRef{property: key, name: name}
+		if _, taken := x.sites[ref]; !taken {
+			x.sites[ref] = &optionErrorSite{path: path, spelling: spelling}
+		}
+	}
+}
+
+func (x *optionSiteIndex) record(property string, value json.RawMessage, path string) {
+	if property != "" {
+		x.recordAs(x.canon(property), property, value, path)
+	}
+}
+
+// filters walks a §6.2 filter tree at base; flat addresses every leaf at base
+// itself (a compact string has no array of its own).
+func (x *optionSiteIndex) filters(raw json.RawMessage, base string, flat bool) {
+	var nodes []viewFilterProbe
+	if len(raw) == 0 || json.Unmarshal(raw, &nodes) != nil {
+		return
+	}
+	var walk func(nodes []viewFilterProbe, base string)
+	walk = func(nodes []viewFilterProbe, base string) {
+		for j, node := range nodes {
+			at := fmt.Sprintf("%s/%d", base, j)
+			if flat {
+				at = base
+			}
+			if len(node.Filters) > 0 {
+				nested := at + "/filters"
+				if flat {
+					nested = base
+				}
+				walk(node.Filters, nested)
+				continue
+			}
+			leaf := at + "/value"
+			if flat {
+				leaf = base
+			}
+			x.record(node.Property, node.Value, leaf)
+		}
+	}
+	walk(nodes, base)
+}
+
+func (x *optionSiteIndex) sorts(raw json.RawMessage, base string) {
+	var list []struct {
+		Property    string          `json:"property"`
+		CustomOrder json.RawMessage `json:"custom_order"`
+	}
+	if len(raw) > 0 && json.Unmarshal(raw, &list) == nil {
+		for j, sort := range list {
+			x.record(sort.Property, sort.CustomOrder, fmt.Sprintf("%s/%d/custom_order", base, j))
+		}
+	}
+}
+
+// views walks a views array's filters and sorts at base.
+func (x *optionSiteIndex) views(raw json.RawMessage, base string) {
+	var views []struct {
+		Filters json.RawMessage `json:"filters"`
+		Sorts   json.RawMessage `json:"sorts"`
+	}
+	if len(raw) == 0 || json.Unmarshal(raw, &views) != nil {
+		return
+	}
+	for j, view := range views {
+		x.filters(view.Filters, fmt.Sprintf("%s/%d/filters", base, j), false)
+		x.sorts(view.Sorts, fmt.Sprintf("%s/%d/sorts", base, j))
+	}
+}
+
+func (x *optionSiteIndex) lookup(key domain.RelationKey, name string) *optionErrorSite {
+	return x.sites[optionRef{property: string(key), name: name}]
 }

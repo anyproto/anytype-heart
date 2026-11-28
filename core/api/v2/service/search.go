@@ -302,6 +302,13 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 	// documents still emit them); candidate lists speak the served spelling
 	// only (never advertise what a channel rejects)
 	acceptKeys := kc.withServedSpellings(refKeys)
+	// the filter string's unknown-key refusal is worded over the served
+	// spellings: acceptance keeps every stored key, and a space-minted
+	// property's stored key is a bson id no listing serves. Served, not the
+	// request's vocabulary: the compact grammar can only spell bare keys,
+	// and a display name is rarely one
+	advertisedKeys := appendMissing(kc.servedSpellings(refKeys), servedBundledSpellings(v2SystemQueryKeys, errKeys{})...)
+	advertisedKeys = appendMissing(advertisedKeys, "type")
 	// the reference list a refusal shows speaks the request's vocabulary
 	// (?keys — §4.3); acceptance stays vocabulary-wide (D3) either way
 	refKeys = kc.referenceSpellings(refKeys, v)
@@ -315,7 +322,6 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 	// the hidden counters are accepted, never advertised: refKeys (what a
 	// refusal lists and suggests from) stays without them, and so does the
 	// set the filter string's refusals are worded over
-	advertisedKeys := append([]string(nil), acceptKeys...)
 	acceptKeys = appendMissing(acceptKeys, kc.withServedSpellings(v2BundledQueryKeys)...)
 	// The file aliases join the reference set when active (no real
 	// live property claims the spelling): mimeType/size are live in EVERY
@@ -395,7 +401,7 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 		// otherwise bind a RelationKey no relation owns, silently
 		canonical, err := kc.canonicalizeRawChannel(filtersJSON, "filters", filterFieldPath(fromString))
 		if err != nil {
-			return nil, err
+			return nil, compactFilterPaths(err, fromString, filterFieldPath(fromString))
 		}
 		filtersJSON = canonical
 	}
@@ -421,7 +427,21 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 		if err != nil {
 			return nil, mapFilterCodecError(err, fromString)
 		}
-		namedFileType, err := s.resolveTypeLeaves(spaceId, modelFilters, filterFieldPath(fromString), v)
+		// a refusal about one type leaf names the leaf as sent: the model tree
+		// is not in the request's order, so the value is looked up in the
+		// filters the caller wrote
+		var leafPath func(string) string
+		if !fromString {
+			sites := newOptionSiteIndex(func(property string) string { return property })
+			sites.filters(spelledFilters, "/filters", false)
+			leafPath = func(value string) string {
+				if site := sites.lookup(domain.RelationKey(bundle.RelationKeyType.String()), value); site != nil {
+					return site.path
+				}
+				return ""
+			}
+		}
+		namedFileType, err := s.resolveTypeLeaves(spaceId, modelFilters, filterFieldPath(fromString), leafPath, v)
 		if err != nil {
 			return nil, err
 		}
@@ -919,7 +939,7 @@ func (s *Service) validateStructuredFilters(spaceId string, raw json.RawMessage,
 						issues = append(issues, v2model.Issue{
 							Path:    nodePath + "/value",
 							Message: fmt.Sprintf("property %q has no option named %q — a query never creates options", node.Property, value),
-						}.WithHint(didYouMean(value, names, v2model.Hintf("list them with %s", v2model.RefListPropertyOptions(spaceId, node.Property)))))
+						}.WithHint(didYouMean(value, names, v2model.Hintf("list them with %s", v2model.RefListPropertyOptions(spaceId, kc.routeKey(canonical, node.Property))))))
 					}
 				}
 			}
@@ -996,7 +1016,7 @@ func containsString(list []string, s string) bool {
 // caught `allIn` (the compact string's HAS ALL) silently returning zero
 // file rows under the earlier =/IN allowlist. Negated leaves exclude a
 // type, so they never widen the scope.
-func (s *Service) resolveTypeLeaves(spaceId string, filters []*model.BlockContentDataviewFilter, path string, v errKeys) (namedFileType bool, err error) {
+func (s *Service) resolveTypeLeaves(spaceId string, filters []*model.BlockContentDataviewFilter, path string, leafPath func(string) string, v errKeys) (namedFileType bool, err error) {
 	// one live snapshot for every leaf of this tree — chain-resolved and
 	// corpse-aware like the top-level type scope (review cause 2: the same
 	// spelling worked at top level and 400'd one level down, and a
@@ -1005,16 +1025,18 @@ func (s *Service) resolveTypeLeaves(spaceId string, filters []*model.BlockConten
 	if err != nil {
 		return false, err
 	}
-	return s.resolveTypeLeavesIn(spaceId, filters, path, typeEntries, v)
+	return s.resolveTypeLeavesIn(spaceId, filters, path, leafPath, typeEntries, v)
 }
 
-func (s *Service) resolveTypeLeavesIn(spaceId string, filters []*model.BlockContentDataviewFilter, path string, typeEntries []typeEntry, v errKeys) (namedFileType bool, err error) {
+// leafPath, when set, names the member a type value was written at
+// (/filters/1/value); path is the fallback, the whole filter channel.
+func (s *Service) resolveTypeLeavesIn(spaceId string, filters []*model.BlockContentDataviewFilter, path string, leafPath func(string) string, typeEntries []typeEntry, v errKeys) (namedFileType bool, err error) {
 	for _, f := range filters {
 		if f == nil {
 			continue
 		}
 		if len(f.NestedFilters) > 0 {
-			nested, err := s.resolveTypeLeavesIn(spaceId, f.NestedFilters, path, typeEntries, v)
+			nested, err := s.resolveTypeLeavesIn(spaceId, f.NestedFilters, path, leafPath, typeEntries, v)
 			if err != nil {
 				return false, err
 			}
@@ -1026,6 +1048,12 @@ func (s *Service) resolveTypeLeavesIn(spaceId string, filters []*model.BlockCont
 		}
 		positive := !negatedFilterConditions[f.Condition]
 		resolve := func(key string) (string, error) {
+			path := path
+			if leafPath != nil {
+				if at := leafPath(key); at != "" {
+					path = at
+				}
+			}
 			entry, ok, ambiguous, err := s.resolveTypeInput(spaceId, key, typeEntries)
 			if err != nil {
 				return "", err
@@ -1491,4 +1519,19 @@ func servedBundledSpellings(keys []string, v errKeys) []string {
 		out = append(out, spelling)
 	}
 	return out
+}
+
+// compactFilterPaths re-addresses a refusal about a compact filter string's
+// parse at the string itself: /filter/0/property is the server's own parse,
+// not a member the request has.
+func compactFilterPaths(err error, compact bool, member string) error {
+	if !compact {
+		return err
+	}
+	return rebaseIssuePaths(err, func(path string) string {
+		if path == member || strings.HasPrefix(path, member+"/") {
+			return member
+		}
+		return path
+	})
 }
