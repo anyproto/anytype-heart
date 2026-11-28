@@ -816,20 +816,25 @@ func describeTypeCandidates(candidates []typeEntry, bundledKey string, entries [
 		return "stored key " + key
 	}
 	// by stored key, then id: the store's row order is not one a caller can
-	// rely on (§1.6)
+	// rely on (§1.6). The built-in has no id, so it leads the holders of its
+	// own key.
 	sorted := slices.Clone(candidates)
+	if bundledKey != "" {
+		sorted = append(sorted, typeEntry{Key: bundledKey})
+	}
 	sort.SliceStable(sorted, func(i, j int) bool {
 		if sorted[i].Key != sorted[j].Key {
 			return sorted[i].Key < sorted[j].Key
 		}
 		return sorted[i].Id < sorted[j].Id
 	})
-	out := make([]string, 0, len(sorted)+1)
+	out := make([]string, 0, len(sorted))
 	for _, entry := range sorted {
+		if entry.Id == "" {
+			out = append(out, fmt.Sprintf("the bundled %q (%s)", bundle.MustGetType(domain.TypeKey(entry.Key)).Name, address(entry.Key, "")))
+			continue
+		}
 		out = append(out, fmt.Sprintf("%q (%s, id %s)", entry.Name, address(entry.Key, entry.Slug), entry.Id))
-	}
-	if bundledKey != "" {
-		out = append(out, fmt.Sprintf("the bundled %q (%s)", bundle.MustGetType(domain.TypeKey(bundledKey)).Name, address(bundledKey, "")))
 	}
 	return out
 }
