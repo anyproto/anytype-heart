@@ -802,10 +802,20 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 		}
 	}
 
+	// 2b. the type F16 judges the properties against (step 3a), resolved
+	// before the import below can mint an option: a lookup failure after it
+	// would fail a create whose options already exist
+	judged, forTemplate, found, err := s.offTypeJudgedType(spaceId, envelope.Kind, envelope.Type, envelope.TemplateFor)
+	if err != nil {
+		return nil, err
+	}
+
 	// 3. Unmarshal with create-missing resolvers (SPEC §3/§2a); on a dry run
 	// the resolvers only record would-be creations
 	resolvers := s.newCreatingResolvers(ctx, spaceId, opts.dryRun, opts.createMissingOptions)
-	resolvers.scope = s.typeKeyPropertyScope(spaceId, envelope.Type)
+	if resolvers.scope, err = s.createPropertyScope(spaceId, envelope.Kind, envelope.Type, envelope.TemplateFor); err != nil {
+		return nil, err
+	}
 	// an option refusal names the member the caller wrote the name in
 	resolvers.siteFor = opts.optionSites
 	if resolvers.siteFor == nil {
@@ -845,17 +855,22 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	// a cross-space object link whose space reference could not be expanded
 	result.Warnings = append(result.Warnings, links.Warnings("/blocks")...)
 	// F16: a value on a property the type does not list, said at create as
-	// on set_properties (the object takes the key here for the first time)
-	if typeKeys := s.typeListedKeys(spaceId, envelope.Type); typeKeys != nil {
+	// on set_properties (the object takes the key here for the first time).
+	// A template is judged against template_for, never against `template`.
+	if listed := s.listedKeysOf(spaceId, judged.Id, resolvers); found && listed != nil {
+		typeWord := ""
 		for _, key := range sortedKeys(envelope.Properties) {
-			if typeKeys[key] || !offTypeCandidate(key) {
+			if listed.has(key) || !offTypeCandidate(key) {
 				continue
 			}
 			spelling := key
 			if original, ok := spellings[key]; ok {
 				spelling = original
 			}
-			result.Warnings = append(result.Warnings, offTypePropertyIssue(spelling, result.Type, propertiesPointer(spelling)))
+			if typeWord == "" {
+				typeWord = s.offTypeTypeWord(spaceId, judged, errKeysFor(ctx).names)
+			}
+			result.Warnings = append(result.Warnings, offTypePropertyIssue(spelling, typeWord, propertiesPointer(spelling), forTemplate, opts.dryRun))
 		}
 	}
 	if opts.dryRun {
@@ -1062,6 +1077,16 @@ func mapUnmarshalError(body []byte, err error, kind string) error {
 // (apiV2KindNarrowings), so the two cannot drift.
 var documentCreateKinds = map[string]bool{"": true, "page": true, "template": true}
 
+// templateTypeMismatch refuses a template document whose type is not
+// `template`. The creator builds an object of the type it is handed, so a
+// template kind on a page type made a page, after its property names had
+// resolved against the target as a template's do.
+func templateTypeMismatch(spelledAs string) error {
+	return v2model.ValidationFailed("not a template document",
+		v2model.Issue{Path: "/type", Message: fmt.Sprintf("expected type \"template\", got %q", spelledAs)}.
+			Hintf("a template's type is \"template\"; name the type it is for in template_for"))
+}
+
 // validateDocumentRefs is the R9 layer for object creates: kind and type
 // gating, template target, items-on-collections, and property-key existence
 // in the properties map (reject with did-you-mean — creating properties from
@@ -1089,13 +1114,15 @@ func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, enve
 	// every kind — including the forged-identity case this layer used to
 	// guard. One statement of the rule, in the validator.
 
-	if opts.requireTemplate {
+	// the endpoint or the kind says template, and a template's type is
+	// `template` (canonicalizeDocumentKeys holds the same line earlier, before
+	// any property term resolves against the target)
+	if opts.requireTemplate || envelope.Kind == "template" {
 		if envelope.Type == "" {
 			envelope.Type = string(bundle.TypeKeyTemplate)
 		}
 		if envelope.Type != string(bundle.TypeKeyTemplate) {
-			return v2model.ValidationFailed("not a template document",
-				v2model.Issue{Path: "/type", Message: fmt.Sprintf("expected type \"template\", got %q", sentType)})
+			return templateTypeMismatch(sentType)
 		}
 	}
 	// a template must name its target type — the editor derives the layout

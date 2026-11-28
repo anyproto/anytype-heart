@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -111,8 +112,18 @@ type v2StateApplier struct {
 	// can report the members the batch added and removed as a set
 	// difference (F19), the way the block and property counts are diffs.
 	itemsBefore []string
-	// typeKeysCache memoizes typeListedKeys per type for this PATCH.
-	typeKeysCache map[string]map[string]bool
+	// typeKeysCache memoizes listedKeysOf per type id for this PATCH; nil
+	// marks a list that could not be read.
+	typeKeysCache map[string]*listedProps
+	// typeWords memoizes offTypeTypeWord per type id for this PATCH.
+	typeWords map[string]string
+	// liveTypeHits memoizes liveTypeByKey per stored key for this PATCH.
+	liveTypeHits map[string]liveTypeHit
+	// template and target are the object's template identity as the state
+	// this pass edits says it, re-derived under the lock (loadTarget) and
+	// after every op that retargets it
+	template bool
+	target   templateTarget
 	// setObjectType is the editor's type change (apicore.ObjectEdit
 	// .SetObjectType). simulate says no editor is behind the state BY
 	// DESIGN — a dry run, or the create-missing probe pass — so set_type
@@ -232,7 +243,7 @@ func (a *v2StateApplier) marshalDoc(onWarning func(anyblockjson.Issue)) ([]byte,
 		}
 	}
 	opts.OnWarning = onWarning
-	doc, err := anyblockjson.Marshal(a.sbType, snapshotFromState(a.st), opts)
+	doc, err := anyblockjson.Marshal(a.sbType, a.renderSnapshot(), opts)
 	if err != nil {
 		return nil, fmt.Errorf("marshal object %s: %w", a.objectId, err)
 	}
@@ -255,6 +266,9 @@ func (a *v2StateApplier) begin() ([]byte, error) {
 	})
 	if err != nil {
 		return nil, err
+	}
+	if a.template {
+		warnings = append(warnings, templateRenderLoss(snapshotFromState(a.st), a.target)...)
 	}
 	if len(warnings) > 0 {
 		return nil, v2model.NewError(http.StatusUnprocessableEntity, v2model.CodeValidationFailed,
@@ -1086,6 +1100,12 @@ func (a *v2StateApplier) checkedPropertyValue(key, spelling, field string, raw a
 }
 
 func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) error {
+	if !a.simulate && a.resolvers.patch != nil {
+		// a committing PATCH consumes the options its prewarm minted, and
+		// mints none under the lock (creatingResolvers.locked)
+		a.resolvers.locked = true
+		defer func() { a.resolvers.locked = false }()
+	}
 	if len(op.Set) == 0 && len(op.Unset) == 0 && len(op.Add) == 0 && len(op.Remove) == 0 {
 		return v2model.ValidationFailed("set_properties needs at least one of set, unset, add, remove",
 			v2model.Issue{Path: opPath, Message: "set, unset, add and remove are all empty"})
@@ -1276,9 +1296,6 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	for key := range addEntries {
 		offTypeFields[key] = "add"
 	}
-	a.warnOffTypeKeys(doc, opPath, offTypeFields, func(key string) string {
-		return spelledIn(offTypeFields[key], key)
-	})
 	for _, key := range setKeys {
 		spelling := spelledIn("set", key)
 		var raw any
@@ -1396,6 +1413,46 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 		}
 	}
 	a.mutated()
+	target := bundle.RelationKeyTargetObjectType.String()
+	_, inAdd := addEntries[target]
+	_, inRemove := removeEntries[target]
+	if slices.Contains(setKeys, target) || unset[target] || inAdd || inRemove {
+		if err := a.oneTarget(opPath); err != nil {
+			return err
+		}
+		// a retarget moves the scope of the ops after this one
+		if a.template {
+			if err := a.retarget(); err != nil {
+				return err
+			}
+		}
+	}
+	// judged against the type the object has after this op, a target it set
+	// alongside included; each key is named as written in its own field
+	return a.warnOffTypeKeys(doc, opPath, offTypeFields, func(key string) string {
+		return spelledIn(offTypeFields[key], key)
+	})
+}
+
+// oneTarget keeps targetObjectType the one id heart reads
+// (templateimpl updateTypeKey reads a scalar): a list of one is stored as
+// that id, an empty one clears the detail, and a second distinct id is
+// refused, since a template is for one type.
+func (a *v2StateApplier) oneTarget(opPath string) error {
+	key := bundle.RelationKeyTargetObjectType
+	ids := slices.Compact(slices.Sorted(slices.Values(a.st.Details().WrapToStringList(key))))
+	switch len(ids) {
+	case 0:
+		a.st.RemoveDetail(key)
+	case 1:
+		a.st.SetDetail(key, domain.String(ids[0]))
+	default:
+		return v2model.ValidationFailed("set_properties rejected", v2model.Issue{
+			Path:    opPath + ".targetObjectType",
+			Message: fmt.Sprintf("a template is for one type, and this op leaves %d in targetObjectType", len(ids)),
+			Hint:    "set it to the one type id the template is for",
+		})
+	}
 	return nil
 }
 
@@ -2749,8 +2806,9 @@ func (a *v2StateApplier) decodePayloadRun(raws []json.RawMessage, opPath, field,
 // warnOffTypeKeys appends the F16 warning for each of keys (stored
 // spellings, in set or add) that the object's type does not list and the
 // object did not carry before this op. The type lookup runs only when a
-// candidate exists, once per type per PATCH.
-func (a *v2StateApplier) warnOffTypeKeys(doc *v2EditDoc, opPath string, fields map[string]string, spelledAs func(string) string) {
+// candidate exists. A template is judged against its live target, never
+// against `template` (offTypeJudged).
+func (a *v2StateApplier) warnOffTypeKeys(doc *v2EditDoc, opPath string, fields map[string]string, spelledAs func(string) string) error {
 	keys := sortedKeys(fields)
 	carried := func(key string) bool {
 		if _, ok := doc.properties[key]; ok {
@@ -2766,7 +2824,11 @@ func (a *v2StateApplier) warnOffTypeKeys(doc *v2EditDoc, opPath string, fields m
 		}
 		return false
 	}
-	var typeKeys map[string]bool
+	var (
+		judged      liveType
+		forTemplate bool
+		listed      *listedProps
+	)
 	loaded := false
 	for _, key := range keys {
 		if key == bundle.RelationKeyIsFavorite.String() || carried(key) || !offTypeCandidate(key) {
@@ -2774,19 +2836,152 @@ func (a *v2StateApplier) warnOffTypeKeys(doc *v2EditDoc, opPath string, fields m
 		}
 		if !loaded {
 			loaded = true
-			if a.typeKeysCache == nil {
-				a.typeKeysCache = map[string]map[string]bool{}
+			found := false
+			var err error
+			if judged, forTemplate, found, err = a.offTypeJudged(); err != nil {
+				return err
 			}
-			if cached, ok := a.typeKeysCache[doc.docType()]; ok {
-				typeKeys = cached
-			} else {
-				typeKeys = a.s.typeListedKeys(a.spaceId, doc.docType())
-				a.typeKeysCache[doc.docType()] = typeKeys
+			switch {
+			case found && judged.Id == "":
+				listed = &listedProps{keys: pendingTypeKeys(judged.Key)}
+			case found:
+				listed = a.listedKeys(judged.Id)
 			}
 		}
-		if typeKeys == nil || typeKeys[key] {
+		if listed == nil || listed.has(key) {
 			continue
 		}
-		a.warnings = append(a.warnings, offTypePropertyIssue(spelledAs(key), doc.docType(), opPath+"."+fields[key]+"."+spelledAs(key)))
+		a.warnings = append(a.warnings, offTypePropertyIssue(spelledAs(key), a.offTypeTypeWord(judged), opPath+"."+fields[key]+"."+spelledAs(key), forTemplate, a.simulate))
 	}
+	return nil
+}
+
+// offTypeJudged is the live type this object's off-type warnings judge
+// against, by its exact stored key: a template's live target, as the PATCH
+// resolved it once (patchContext), and any other object's own type as it
+// stands now, a set_type earlier in the batch included. found=false means no
+// warning.
+func (a *v2StateApplier) offTypeJudged() (judged liveType, forTemplate, found bool, err error) {
+	if a.template {
+		return a.target.Live, true, a.target.IsLive, nil
+	}
+	keys := a.st.ObjectTypeKeys()
+	if len(keys) == 0 || isTemplateObject(a.sbType) {
+		// a template with no PATCH behind it has no target here, and so is
+		// judged against nothing
+		return liveType{}, isTemplateObject(a.sbType), false, nil
+	}
+	key := string(keys[0])
+	if hit, ok := a.liveTypeHits[key]; ok {
+		return hit.live, false, hit.found, nil
+	}
+	live, found, err := a.s.liveTypeByKey(a.spaceId, key)
+	if err != nil {
+		return liveType{}, false, false, fmt.Errorf("resolve the type to judge properties against: %w", err)
+	}
+	if bundled, berr := bundle.GetType(domain.TypeKey(key)); !found && berr == nil {
+		// a built-in a dry run's set_type has not installed: judged by the
+		// list its install will write (pendingTypeKeys), with no id
+		live, found = liveType{Key: key, Name: bundled.Name}, true
+	}
+	if a.liveTypeHits == nil {
+		a.liveTypeHits = map[string]liveTypeHit{}
+	}
+	a.liveTypeHits[key] = liveTypeHit{live: live, found: found}
+	return live, false, found, nil
+}
+
+// listedKeys is listedKeysOf memoized per type for this PATCH.
+func (a *v2StateApplier) listedKeys(typeId string) *listedProps {
+	if cached, ok := a.typeKeysCache[typeId]; ok {
+		return cached
+	}
+	if a.typeKeysCache == nil {
+		a.typeKeysCache = map[string]*listedProps{}
+	}
+	listed := a.s.listedKeysOf(a.spaceId, typeId, applierProps{a})
+	a.typeKeysCache[typeId] = listed
+	return listed
+}
+
+// applierProps is the applier's once-per-PATCH live property snapshot in
+// the shape listedKeysOf reads.
+type applierProps struct{ a *v2StateApplier }
+
+func (p applierProps) liveProps() ([]propertyEntry, error) { return p.a.propEntries() }
+
+// liveTypeHit is one memoized liveTypeByKey answer.
+type liveTypeHit struct {
+	live  liveType
+	found bool
+}
+
+// loadTarget sets this pass's starting scope from the plan (patchContext),
+// read before the lock, after checking the state it edits still has the
+// type and the template target the plan was made for. Only a PATCH has a
+// plan.
+func (a *v2StateApplier) loadTarget() error {
+	if a.resolvers == nil || a.resolvers.patch == nil {
+		return nil
+	}
+	pc := a.resolvers.patch
+	a.resolvers.scope = pc.objectScope
+	a.template = isTemplateObject(a.sbType)
+	// the plan's scopes and prewarmed options were made for the type and the
+	// target the read saw; a lock that finds others refuses, and the caller
+	// retries against the object as it is now
+	if !slices.Equal(a.st.ObjectTypeKeys(), pc.typeKeys) {
+		return errPlanDrift
+	}
+	if !a.template {
+		return nil
+	}
+	target, err := a.s.templateTargetOf(a.spaceId, a.st.Details().ToProto(), a.st.ObjectTypeKeys())
+	if err != nil {
+		return err
+	}
+	a.target = target
+	if target != pc.target {
+		return errPlanDrift
+	}
+	return nil
+}
+
+// retarget re-reads the template target after an op edited
+// targetObjectType, and moves the scope with it for the ops that follow.
+func (a *v2StateApplier) retarget() error {
+	target, err := a.s.templateTargetOf(a.spaceId, a.st.Details().ToProto(), a.st.ObjectTypeKeys())
+	if err != nil {
+		return err
+	}
+	a.target = target
+	if a.resolvers.scope, err = a.s.templateScope(a.spaceId, target); err != nil {
+		return err
+	}
+	return nil
+}
+
+// renderSnapshot is the state as this PATCH's documents render it: a
+// template names the target it has now (withTemplateTarget), as its read
+// does.
+func (a *v2StateApplier) renderSnapshot() *model.SmartBlockSnapshotBase {
+	snapshot := snapshotFromState(a.st)
+	if a.template {
+		return withTemplateTarget(snapshot, a.target)
+	}
+	return snapshot
+}
+
+// offTypeTypeWord is Service.offTypeTypeWord in this request's vocabulary,
+// memoized per type for this PATCH.
+func (a *v2StateApplier) offTypeTypeWord(judged liveType) string {
+	if word, ok := a.typeWords[judged.Id]; ok {
+		return word
+	}
+	if a.typeWords == nil {
+		a.typeWords = map[string]string{}
+	}
+	word := a.s.offTypeTypeWord(a.spaceId, judged, a.v.names)
+	a.typeWords[judged.Id] = word
+	return word
 }

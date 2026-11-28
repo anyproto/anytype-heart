@@ -17,7 +17,9 @@ package v2service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -74,6 +76,14 @@ type creatingResolvers struct {
 	// settle a key two properties answer to (resolvePropertyInputIn); nil
 	// when no type is in view
 	scope map[string]bool
+	// patch is the PATCH's once-read view of the object (newPatchContext),
+	// nil on every other write
+	patch *patchContext
+	// locked is set while a committing PATCH's set_properties decodes under
+	// the object lock: every option it may need was minted by the prewarm,
+	// so a miss there means the object moved since the plan (errPlanDrift)
+	// and nothing is minted outside the counted limit
+	locked bool
 	// mintedSlugs are the slugs THIS request already minted (doc key by
 	// slug): the live snapshot predates them, so without this a document
 	// declaring two spellings of one key minted both (review cause 4)
@@ -337,6 +347,12 @@ func (r *creatingResolvers) OptionId(key domain.RelationKey, name string) (strin
 	// said, so a caller got a green dry run and a refusal on the very same
 	// body. A dry run that disagrees with the real run is worse than none,
 	// because an agent dry-runs first precisely to avoid the refusal.
+	if r.locked {
+		if len(r.errs) == 0 || !errors.Is(r.errs[len(r.errs)-1], errPlanDrift) {
+			r.errs = append(r.errs, errPlanDrift)
+		}
+		return "", false
+	}
 	if !r.createMissingOptions {
 		// A2 backstop. The pre-lock guard (guardCreateMissing) is what a PATCH
 		// caller actually hits, and it refuses with the whole pending list;
@@ -511,16 +527,51 @@ type optionErrorSite struct{ path, spelling string }
 // from the in-lock op pass, in unchanged order — and create failures ride
 // resolvers.err(), exactly where the in-lock path checks them.
 func (s *Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creatingResolvers) {
+	// the apply resolves each op's keys in the scope the object has at that
+	// op, so the prewarm walks the same order: a set_type moves the scope of
+	// the ops after it, and the walk leaves the scope as it found it
+	base := resolvers.scope
+	defer func() { resolvers.scope = base }()
+	var viewScope map[string]bool
+	if resolvers.patch != nil {
+		viewScope = resolvers.patch.viewScope
+	}
+	var typeEntries []typeEntry
+	typeEntriesLoaded := false
+	// the two references that move a scope, followed through the batch
+	targetKey, setOfKey := bundle.RelationKeyTargetObjectType.String(), bundle.RelationKeySetOf.String()
+	var targetIds, setOfIds []string
+	if resolvers.patch != nil {
+		targetIds = pbtypes.GetStringList(resolvers.patch.details, targetKey)
+		setOfIds = pbtypes.GetStringList(resolvers.patch.details, setOfKey)
+	}
 	for i, raw := range ops {
 		var probe struct {
-			Op  string                     `json:"op"`
-			Set map[string]json.RawMessage `json:"set"`
+			Op   string                     `json:"op"`
+			Type string                     `json:"type"`
+			Set  map[string]json.RawMessage `json:"set"`
 			// add resolves option names with the same create-missing
 			// semantics as set (v0.3.5), so it prewarms too — otherwise
 			// option creation moves back inside the object lock
-			Add map[string]json.RawMessage `json:"add"`
+			Add    map[string]json.RawMessage `json:"add"`
+			Remove map[string]json.RawMessage `json:"remove"`
+			Unset  []string                   `json:"unset"`
 		}
 		if err := json.Unmarshal(raw, &probe); err != nil {
+			continue
+		}
+		if probe.Op == "set_type" {
+			if !typeEntriesLoaded {
+				typeEntriesLoaded = true
+				typeEntries = s.prewarmTypes(resolvers.spaceId)
+			}
+			props, err := resolvers.liveProps()
+			if err != nil {
+				props = nil
+			}
+			if scope, ok := s.setTypeScope(resolvers.spaceId, probe.Type, typeEntries, props); ok {
+				resolvers.scope = scope
+			}
 			continue
 		}
 		if probe.Op == "update_view" || probe.Op == "insert_view" {
@@ -530,7 +581,7 @@ func (s *Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creatin
 			// the live proto at commit and imported with a no-create resolver
 			// (viewops.go commitDataviewBlock), so this prewarm is exhaustive:
 			// a name it cannot see is a name the commit will not mint.
-			s.prewarmViewOptionValues(probe.Set, fmt.Sprintf("ops[%d].set", i), resolvers)
+			s.prewarmViewOptionValues(probe.Set, fmt.Sprintf("ops[%d].set", i), resolvers, viewScope)
 			continue
 		}
 		if probe.Op != "set_properties" {
@@ -586,7 +637,116 @@ func (s *Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creatin
 				resolvers.optionSite = nil
 			}
 		}
+		// a retarget moves the scope of the ops after this one, as the
+		// apply's does (v2StateApplier.retarget), and a new query source
+		// moves the scope of the view ops after it (v2StateApplier.viewScope
+		// reads the state as it stands)
+		if ids, touched := detailEdit(resolvers, targetKey, targetIds, probe.Set, probe.Add, probe.Remove, probe.Unset); touched {
+			targetIds = ids
+			if scope, ok := s.retargetScope(resolvers, ids); ok {
+				resolvers.scope = scope
+			}
+		}
+		if ids, touched := detailEdit(resolvers, setOfKey, setOfIds, probe.Set, probe.Add, probe.Remove, probe.Unset); touched {
+			setOfIds = ids
+			viewScope = nil
+			if len(ids) == 1 {
+				viewScope = s.typePropertyScope(resolvers.spaceId, ids[0])
+			}
+		}
 	}
+}
+
+// errPlanDrift is a committing PATCH finding the object moved between the
+// read its plan was made from and the lock: another target, another type,
+// or an option the prewarm did not mint. The caller retries against the
+// object as it is now (PatchObject answers with the etag mismatch).
+var errPlanDrift = errors.New("the object changed after this request read it")
+
+// prewarmTypes is the live type set the prewarm follows a set_type with.
+// Lenient: an unread set keeps the scope it had, and the apply reads the
+// types again and fails closed on the same error.
+func (s *Service) prewarmTypes(spaceId string) []typeEntry {
+	entries, err := s.liveTypes(spaceId)
+	if err != nil {
+		return nil
+	}
+	return entries
+}
+
+// retargetScope is the scope a template takes on once a set_properties op
+// leaves ids in its targetObjectType: the new target's, resolved as
+// templateTargetOf resolves a stored one. ok=false: the object is not a
+// template, or the target cannot be read here (the apply reads it again and
+// fails closed).
+func (s *Service) retargetScope(resolvers *creatingResolvers, ids []string) (map[string]bool, bool) {
+	pc := resolvers.patch
+	if pc == nil || !pc.template {
+		return nil, false
+	}
+	var details *types.Struct
+	if len(ids) > 0 {
+		details = &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyTargetObjectType.String(): pbtypes.StringList(ids)}}
+	}
+	target, err := s.templateTargetOf(resolvers.spaceId, details, pc.typeKeys)
+	if err != nil {
+		return nil, false
+	}
+	scope, err := s.templateScope(resolvers.spaceId, target)
+	if err != nil {
+		return nil, false
+	}
+	return scope, true
+}
+
+// detailEdit is what one set_properties op leaves in an object-reference
+// detail that held current: its four channels in the order the apply runs
+// them (set, unset, add, remove), each value decoded as the apply decodes
+// it, so a folded reference counts as the id it stands for. touched: the op
+// edits the detail at all. Lenient like the rest of the prewarm: a value it
+// cannot decode contributes no ids.
+func detailEdit(resolvers *creatingResolvers, key string, current []string, set, add, remove map[string]json.RawMessage, unset []string) (ids []string, touched bool) {
+	decode := func(raw json.RawMessage) []string {
+		var value any
+		if err := json.Unmarshal(raw, &value); err != nil {
+			return nil
+		}
+		decoded, err := anyblockjson.UnmarshalPropertyValueChecked(key, value, resolvers.Options())
+		if err != nil || decoded == nil {
+			return nil
+		}
+		return pbtypes.GetStringListValue(decoded)
+	}
+	edits := func(rawKey string) bool { return resolvers.canonicalPropertyKey(rawKey) == key }
+	ids = current
+	for rawKey, raw := range set {
+		if edits(rawKey) {
+			ids, touched = decode(raw), true
+		}
+	}
+	for _, rawKey := range unset {
+		if edits(rawKey) {
+			ids, touched = nil, true
+		}
+	}
+	for rawKey, raw := range add {
+		if edits(rawKey) {
+			for _, id := range decode(raw) {
+				if !slices.Contains(ids, id) {
+					ids = append(slices.Clone(ids), id)
+				}
+			}
+			touched = true
+		}
+	}
+	for rawKey, raw := range remove {
+		if edits(rawKey) {
+			drop := decode(raw)
+			ids = slices.DeleteFunc(slices.Clone(ids), func(id string) bool { return slices.Contains(drop, id) })
+			touched = true
+		}
+	}
+	return ids, touched
 }
 
 // viewFilterProbe decodes a §6.2 filter tree just deep enough to reach the
@@ -608,9 +768,11 @@ type viewFilterProbe struct {
 // addressed to the leaf or sort the caller wrote, in the property spelling
 // written there — the default /properties/<served key> names a member a
 // view op does not have.
-func (s *Service) prewarmViewOptionValues(set map[string]json.RawMessage, setPath string, resolvers *creatingResolvers) {
+func (s *Service) prewarmViewOptionValues(set map[string]json.RawMessage, setPath string, resolvers *creatingResolvers, viewScope map[string]bool) {
 	resolveSelect := func(rawKey string, value json.RawMessage, path string) {
-		key := resolvers.canonicalPropertyKey(rawKey)
+		// a view key is the query source's, as the apply resolves it
+		// (canonicalViewKey), never the object's own type's
+		key := resolvers.canonicalPropertyKeyIn(rawKey, viewScope)
 		format, err := bundle.GetRelationFormat(domain.RelationKey(key))
 		if err != nil {
 			var ok bool
@@ -1039,6 +1201,11 @@ func (r *creatingResolvers) MintingProperty(docKey string) bool {
 // error passes through too (the prewarm is best-effort; the in-lock pass
 // fails closed on the same error).
 func (r *creatingResolvers) canonicalPropertyKey(key string) string {
+	return r.canonicalPropertyKeyIn(key, r.scope)
+}
+
+// canonicalPropertyKeyIn is canonicalPropertyKey in an explicit scope.
+func (r *creatingResolvers) canonicalPropertyKeyIn(key string, scope map[string]bool) string {
 	if _, ok := r.createdProps[key]; ok {
 		return key
 	}
@@ -1046,7 +1213,7 @@ func (r *creatingResolvers) canonicalPropertyKey(key string) string {
 	if err != nil {
 		return key
 	}
-	entry, ok, ambiguous := r.svc.resolvePropertyInputIn(key, entries, r.scope)
+	entry, ok, ambiguous := r.svc.resolvePropertyInputIn(key, entries, scope)
 	if len(ambiguous) > 0 || !ok {
 		return key
 	}
