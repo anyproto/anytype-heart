@@ -157,7 +157,7 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	var jsonDoc responseContractDocument
 	require.NoError(t, json.Unmarshal(jsonBody, &jsonDoc))
 	jsonOperations := responseContractOperations(t, jsonDoc)
-	require.Len(t, jsonOperations, 61)
+	require.Len(t, jsonOperations, 64)
 
 	yamlBody, err := os.ReadFile("../docs/v2/openapi.yaml")
 	require.NoError(t, err)
@@ -282,7 +282,7 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	for _, operation := range jsonOperations {
 		pairCount += len(operation.Responses)
 	}
-	assert.Equal(t, 459, pairCount, "the checked-in response inventory changes only deliberately")
+	assert.Equal(t, 487, pairCount, "the checked-in response inventory changes only deliberately")
 
 	dryRunCreates := stringSet(
 		"add_chat_message", "create_chat", "create_collection", "create_object", "create_property",
@@ -299,7 +299,7 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 		// dryRunCreates: its 200 is ALSO the answer for an object that already
 		// has a discussion, and that description says so rather than
 		// claiming the 200 is a dry run only
-		"create_discussion",
+		"create_discussion", "publish_object", "remove_publication",
 	)
 	requestBodyLimited := stringSet(
 		"add_chat_message", "create_chat", "create_collection", "create_property", "create_query", "create_space",
@@ -322,7 +322,7 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 		"create_property", "update_property", "delete_property", "create_query", "create_collection",
 		"upload_file", "patch_object", "delete_object", "restore_object", "create_chat", "add_chat_message",
 		"edit_chat_message", "delete_chat_message", "toggle_chat_reaction", "read_chat", "publish_chat_status",
-		"create_widget", "update_widget", "delete_widget", "create_discussion",
+		"create_widget", "update_widget", "delete_widget", "create_discussion", "publish_object",
 		"get_object", "get_type", "get_chat_messages", "stream_chat_messages",
 		"get_query_objects", "get_query_views", "get_collection_objects", "get_collection_views",
 		"list_widgets", "download_file", "head_file",
@@ -377,6 +377,8 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 		}
 		if requestBodyLimited[operationId] {
 			assert.Equal(t, "#/components/responses/RequestTooLarge", operation.Responses["413"].Ref, "%s body cap", operationId)
+		} else if operationId == "publish_object" {
+			assert.Contains(t, operation.Responses["413"].Description, "publication")
 		} else {
 			assert.NotContains(t, operation.Responses, "413", "%s has no assertion-linked body cap", operationId)
 		}

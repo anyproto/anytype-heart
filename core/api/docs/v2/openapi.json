@@ -808,6 +808,40 @@
         },
         "type": "object"
       },
+      "ListResponse-Publication": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/Publication"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
       "ListResponse-TemplateRow": {
         "properties": {
           "data": {
@@ -1092,6 +1126,67 @@
         },
         "type": "object"
       },
+      "Publication": {
+        "properties": {
+          "include_invite": {
+            "description": "The include_invite setting used to publish this snapshot.",
+            "type": "boolean"
+          },
+          "invite_included": {
+            "description": "Whether the public snapshot contains an invite link. Omitted when an older publication did not record the outcome.",
+            "type": "boolean"
+          },
+          "object_id": {
+            "description": "Source object id. Use this as publication_id to remove the public copy.",
+            "type": "string"
+          },
+          "size_bytes": {
+            "description": "Total published bytes, including files.",
+            "type": "integer"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "PublishRequest": {
+        "properties": {
+          "include_invite": {
+            "description": "Request shared-space details and an existing invite. Defaults to false. The invite must be available on this device and require approval or grant at most read access. Check invite_included for the outcome.",
+            "type": "boolean"
+          },
+          "slug": {
+            "description": "Last segment of https://any.coop/{identity}/{slug}. A named subdomain requires a plan with a registered Any Name. Use A\u2013Z, a\u2013z, digits, hyphens, underscores, periods or tildes. The segments . and .. are reserved.",
+            "example": "meeting-notes",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug"
+        ],
+        "type": "object"
+      },
+      "PublishResult": {
+        "properties": {
+          "dry_run": {
+            "description": "True when the request was checked without exporting or uploading.",
+            "type": "boolean"
+          },
+          "invite_included": {
+            "description": "Whether the published snapshot contains a space invite link. Omitted on a dry run.",
+            "type": "boolean"
+          },
+          "url": {
+            "description": "Public URL returned after publishing.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "Ref": {
         "properties": {
           "op": {
@@ -1111,6 +1206,17 @@
             },
             "description": "Query parameters to send with the operation, spelled in the hint as ?name=value pairs joined by & and sorted by name, values verbatim.",
             "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "RemovePublicationResult": {
+        "properties": {
+          "dry_run": {
+            "type": "boolean"
+          },
+          "object_id": {
+            "type": "string"
           }
         },
         "type": "object"
@@ -6150,6 +6256,141 @@
         ]
       }
     },
+    "/v2/spaces/{space_id}/objects/{object_id}/publish": {
+      "post": {
+        "description": "Anyone with the URL can view the page, files and linked object metadata. Republish to show edits. Hosted limits are 10 MiB by default or 100 MiB with a registered Any Name, including files and compressed page data.",
+        "operationId": "publish_object",
+        "parameters": [
+          {
+            "description": "Space id, from GET /v2/spaces",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Object id, from GET /v2/spaces/{space_id}/objects",
+            "in": "path",
+            "name": "object_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Check the slug and object without exporting or uploading. Size and URL availability are checked when publishing.",
+            "in": "query",
+            "name": "dry_run",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "Replay the result of the same request",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishRequest"
+              }
+            }
+          },
+          "description": "Page address and optional space invite",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishResult"
+                }
+              }
+            },
+            "description": "Public URL after publishing, or a dry-run receipt"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Invalid publishing request"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The publication exceeds the account limit or the request body exceeds 1 MiB"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Publishing failed"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Publishing unavailable"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "410": {
+            "$ref": "#/components/responses/Gone"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/SpaceLoading"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Publish an object snapshot to the web",
+        "tags": [
+          "Objects"
+        ]
+      }
+    },
     "/v2/spaces/{space_id}/objects/{object_id}/restore": {
       "post": {
         "description": "Moves an archived object out of the Bin. Any user content the key can write can be restored, whoever archived it. Restoring an object that is not archived is a 200 carrying a warning. Types and properties are restored in the Anytype app.",
@@ -6751,6 +6992,202 @@
         "summary": "List property options",
         "tags": [
           "Properties"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}/publications": {
+      "get": {
+        "description": "Lists this account's published pages in the space with their URLs, sizes and invite status.",
+        "operationId": "list_publications",
+        "parameters": [
+          {
+            "description": "Space id, from GET /v2/spaces",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Items to skip",
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "default": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Items to return",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 25,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResponse-Publication"
+                }
+              }
+            },
+            "description": "Published pages"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Listing failed"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Publishing unavailable"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "List published pages",
+        "tags": [
+          "Objects"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}/publications/{publication_id}": {
+      "delete": {
+        "description": "Takes the public copy offline, even if the source object was deleted.",
+        "operationId": "remove_publication",
+        "parameters": [
+          {
+            "description": "Space id, from GET /v2/spaces",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Published object_id, from GET /v2/spaces/{space_id}/publications",
+            "in": "path",
+            "name": "publication_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Check that the public copy exists without removing it",
+            "in": "query",
+            "name": "dry_run",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "Replay the result of the same request",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemovePublicationResult"
+                }
+              }
+            },
+            "description": "Removed publication or dry-run receipt"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Publication or space not found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Removal failed"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Publishing unavailable"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Remove a published page",
+        "tags": [
+          "Objects"
         ]
       }
     },

@@ -89,6 +89,9 @@ var operations = map[string]operation{
 	OpGetObject:            {"GET", "/v2/spaces/{space_id}/objects/{object_id}"},
 	OpPatchObject:          {"PATCH", "/v2/spaces/{space_id}/objects/{object_id}"},
 	OpRestoreObject:        {"POST", "/v2/spaces/{space_id}/objects/{object_id}/restore"},
+	OpListPublications:     {"GET", "/v2/spaces/{space_id}/publications"},
+	OpRemovePublication:    {"DELETE", "/v2/spaces/{space_id}/publications/{publication_id}"},
+	OpPublishObject:        {"POST", "/v2/spaces/{space_id}/objects/{object_id}/publish"},
 	OpCreateDiscussion:     {"POST", "/v2/spaces/{space_id}/objects/{object_id}/discussion"},
 	OpListProperties:       {"GET", "/v2/spaces/{space_id}/properties"},
 	OpCreateProperty:       {"POST", "/v2/spaces/{space_id}/properties"},
@@ -154,6 +157,9 @@ const (
 	OpGetObject            = "get_object"
 	OpPatchObject          = "patch_object"
 	OpRestoreObject        = "restore_object"
+	OpListPublications     = "list_publications"
+	OpRemovePublication    = "remove_publication"
+	OpPublishObject        = "publish_object"
 	OpCreateDiscussion     = "create_discussion"
 	OpListProperties       = "list_properties"
 	OpCreateProperty       = "create_property"

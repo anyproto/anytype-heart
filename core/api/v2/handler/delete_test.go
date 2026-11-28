@@ -146,7 +146,7 @@ func TestDeleteObjectPreviewRefsStayPreviews(t *testing.T) {
 		provenance.EXPECT().CreatorProvenance(mock.Anything, "space1", "obj1").
 			Return(apicore.Provenance{AccountMatch: true, IntegrationName: creator}, nil).Maybe()
 		fx.svc = v2service.NewService(fx.mwMock, fx.readerMock, fx.creatorMock, mock_apicore.NewMockObjectMutator(t), provenance,
-			fx.widgetsMock, nil, nil, nil, nil, fx.fileMock, fx.store, objectstore.TestTechSpaceId, testAccountId)
+			fx.widgetsMock, nil, nil, nil, nil, fx.fileMock, nil, fx.store, objectstore.TestTechSpaceId, testAccountId)
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, "space1", "obj1").
 			Return(apicore.ObjectRead{SbType: model.SmartBlockType_Page, Snapshot: &model.SmartBlockSnapshotBase{}}, nil).Maybe()
 		fx.readerMock.EXPECT().InBin(mock.Anything, "space1", "obj1").Return(archived, nil).Maybe()

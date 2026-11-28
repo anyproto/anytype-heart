@@ -24,6 +24,8 @@ const (
 	CodeNotImplemented      = "not_implemented"
 	CodeInternalError       = "internal_error"
 	CodeRequestTooLarge     = "request_too_large"
+	CodePublicationTooLarge = "publication_too_large"
+	CodePublishURLTaken     = "publish_url_taken"
 	// CodeTooManyStreams is the 429 for a CONCURRENCY cap: too many
 	// long-lived connections held at once. Deliberately not the shared
 	// limiter's "rate_limit_exceeded" — that one means "back off and retry

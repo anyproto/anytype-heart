@@ -76,7 +76,8 @@ type ObjectRead struct {
 	// DeleteRefused is the delete restriction's verdict from the same read:
 	// what the archive and delete RPCs check, so a dry run of a delete
 	// reaches the same conclusion as the real one.
-	DeleteRefused error
+	DeleteRefused  error
+	PublishRefused error
 }
 
 // EditNeeds declares which object-level restriction axes an edit touches, so
@@ -253,6 +254,13 @@ type Provenance struct {
 	// the object, so destroying it destroys their work too. Only evaluated
 	// when AccountMatch holds.
 	EditedByOthers bool
+}
+
+type WebPublisher interface {
+	Publish(ctx context.Context, spaceId, objectId, slug string, joinSpace bool) (domain.PublishResult, error)
+	ListPublications(ctx context.Context, spaceId string) ([]domain.Publication, error)
+	GetStatus(ctx context.Context, spaceId, objectId string) (*pb.RpcPublishingPublishState, error)
+	Unpublish(ctx context.Context, spaceId, objectId string) error
 }
 
 type ClientCommands interface {

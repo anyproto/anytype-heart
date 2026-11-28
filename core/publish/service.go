@@ -23,7 +23,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"time"
+	"strings"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
@@ -58,12 +58,10 @@ const CName = "common.core.publishservice"
 
 var log = logger.NewNamed(CName)
 
-var ErrLimitExceeded = errors.New("limit exceeded")
-var ErrUrlAlreadyTaken = errors.New("url is already taken by another page")
+var ErrLimitExceeded = domain.ErrPublishLimitExceeded
+var ErrUrlAlreadyTaken = domain.ErrPublishURLTaken
 
-type PublishResult struct {
-	Url string
-}
+type PublishResult = domain.PublishResult
 
 type PublishingUberSnapshotMeta struct {
 	SpaceId    string `json:"spaceId,omitempty"`
@@ -72,8 +70,9 @@ type PublishingUberSnapshotMeta struct {
 }
 
 type Version struct {
-	Heads     []string `json:"heads"`
-	JoinSpace bool     `json:"joinSpace"`
+	Heads          []string `json:"heads"`
+	JoinSpace      bool     `json:"joinSpace"`
+	InviteIncluded *bool    `json:"inviteIncluded,omitempty"`
 }
 
 // Contains all publishing .pb files
@@ -89,6 +88,7 @@ type Service interface {
 	app.ComponentRunnable
 	Publish(ctx context.Context, spaceId, pageObjId, uri string, joinSpace bool) (res PublishResult, err error)
 	Unpublish(ctx context.Context, spaceId, pageObjId string) error
+	ListPublications(ctx context.Context, spaceId string) ([]domain.Publication, error)
 	PublishList(ctx context.Context, id string) ([]*pb.RpcPublishingPublishState, error)
 	ResolveUri(ctx context.Context, uri string) (*pb.RpcPublishingPublishState, error)
 	GetStatus(ctx context.Context, spaceId string, objectId string) (*pb.RpcPublishingPublishState, error)
@@ -133,19 +133,15 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func uniqName() string {
-	return time.Now().Format("Anytype.WebPublish.20060102.150405.99")
-}
-
-func (s *service) exportToDir(ctx context.Context, spaceId, pageId string, includeSpaceInfo bool) (dirEntries []fs.DirEntry, exportPath string, err error) {
-	tempDir := s.tempDirService.TempDir()
-	exportPath, _, err = s.exportService.Export(ctx, pb.RpcObjectListExportRequest{
+func (s *service) exportToDir(ctx context.Context, dir, spaceId, pageId string, includeSpaceInfo bool) (dirEntries []fs.DirEntry, exportPath string, err error) {
+	var report *model.ExportReport
+	exportPath, report, err = s.exportService.Export(ctx, pb.RpcObjectListExportRequest{
 		SpaceId:          spaceId,
 		Format:           model.Export_Protobuf,
 		IncludeFiles:     true,
 		IsJson:           false,
 		Zip:              false,
-		Path:             tempDir,
+		Path:             dir,
 		ObjectIds:        []string{pageId},
 		NoProgress:       true,
 		IncludeNested:    true,
@@ -160,6 +156,9 @@ func (s *service) exportToDir(ctx context.Context, spaceId, pageId string, inclu
 		return
 	}
 
+	if report.GetObjectErrors() > 0 || report.GetFileErrors() > 0 {
+		return nil, "", fmt.Errorf("incomplete publishing export: %d object errors and %d file errors", report.ObjectErrors, report.FileErrors)
+	}
 	dirEntries, err = os.ReadDir(exportPath)
 	if err != nil {
 		return
@@ -167,61 +166,66 @@ func (s *service) exportToDir(ctx context.Context, spaceId, pageId string, inclu
 	return
 }
 
-func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, uri, globalName string, joinSpace bool) (err error) {
+func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, uri, globalName string, joinSpace bool) (bool, error) {
 	spc, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
-		return err
+		return false, err
 	}
 	includeInviteLinkAndSpaceInfo := joinSpace && !spc.IsPersonal()
-	dirEntries, exportPath, err := s.exportToDir(ctx, spaceId, pageId, includeInviteLinkAndSpaceInfo)
+	// Both the export and the prepared upload belong to this request. Concurrent
+	// publications can have the same page name and timestamp.
+	workDir, err := os.MkdirTemp(s.tempDirService.TempDir(), "Anytype.WebPublish.*")
 	if err != nil {
-		return err
+		return false, err
 	}
-	defer os.RemoveAll(exportPath)
+	defer os.RemoveAll(workDir)
+	dirEntries, exportPath, err := s.exportToDir(ctx, workDir, spaceId, pageId, includeInviteLinkAndSpaceInfo)
+	if err != nil {
+		return false, err
+	}
 
 	limit, err := s.getPublishLimit(globalName)
 	if err != nil {
-		return err
+		return false, err
 	}
 
-	tempPublishDir := filepath.Join(s.tempDirService.TempDir(), uniqName())
-	defer os.RemoveAll(tempPublishDir)
-
-	if err := os.MkdirAll(tempPublishDir, 0777); err != nil {
-		return err
+	tempPublishDir := filepath.Join(workDir, "upload")
+	if err := os.Mkdir(tempPublishDir, 0700); err != nil {
+		return false, err
 	}
 
 	uberSnapshot, totalSize, err := s.processExportedData(dirEntries, exportPath, tempPublishDir, limit, spaceId, pageId)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	err = s.applyInviteLink(ctx, spaceId, &uberSnapshot, includeInviteLinkAndSpaceInfo)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if err := s.createIndexFile(tempPublishDir, uberSnapshot, totalSize, limit); err != nil {
-		return err
+		return false, err
 	}
 
-	version, err := s.evaluateDocumentVersion(ctx, spc, pageId, joinSpace)
+	inviteIncluded := uberSnapshot.Meta.InviteLink != ""
+	version, err := s.evaluateDocumentVersion(ctx, spc, pageId, joinSpace, inviteIncluded)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if localPublishDir := os.Getenv("ANYTYPE_LOCAL_PUBLISH_DIR"); localPublishDir != "" {
 		err := os.CopyFS(localPublishDir, os.DirFS(tempPublishDir))
 		if err != nil {
 			log.Error("publishing to local dir error", zap.Error(err))
-			return err
+			return false, err
 		}
 	} else {
 		if err := s.publishToServer(ctx, spaceId, pageId, uri, version, tempPublishDir); err != nil {
-			return err
+			return false, err
 		}
 	}
 
-	return nil
+	return inviteIncluded, nil
 }
 
 func (s *service) applyInviteLink(ctx context.Context, spaceId string, snapshot *PublishingUberSnapshot, includeInviteLink bool) error {
@@ -298,6 +302,9 @@ func (s *service) processFilesDirectory(exportPath, tempPublishDir string, limit
 	var size int64
 	originalPath := filepath.Join(exportPath, export.Files)
 	err := filepath.Walk(originalPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
 		if !info.IsDir() {
 			size += info.Size()
 			if size > limit {
@@ -394,13 +401,26 @@ func (s *service) publishToServer(ctx context.Context, spaceId, pageId, uri, ver
 	}
 
 	if err := s.publishClientService.UploadDir(ctx, uploadUrl, tempPublishDir); err != nil {
+		// publishclient exposes the upload server's JSON error body as text.
+		// The hosted limit can be lower than the local export ceiling.
+		if isUploadLimitError(err) {
+			return ErrLimitExceeded
+		}
 		return err
 	}
 
 	return nil
 }
 
-func (s *service) evaluateDocumentVersion(ctx context.Context, spc clientspace.Space, pageId string, joinSpace bool) (string, error) {
+func isUploadLimitError(err error) bool {
+	body, ok := strings.CutPrefix(err.Error(), "failed to upload tar archive: ")
+	var response struct {
+		Error string `json:"error"`
+	}
+	return ok && json.Unmarshal([]byte(body), &response) == nil && response.Error == "upload limit exceeded"
+}
+
+func (s *service) evaluateDocumentVersion(ctx context.Context, spc clientspace.Space, pageId string, joinSpace, inviteIncluded bool) (string, error) {
 	treeStorage, err := spc.Storage().TreeStorage(ctx, pageId)
 	if err != nil {
 		return "", err
@@ -410,7 +430,7 @@ func (s *service) evaluateDocumentVersion(ctx context.Context, spc clientspace.S
 		return "", err
 	}
 	slices.Sort(heads)
-	h := &Version{Heads: heads, JoinSpace: joinSpace}
+	h := &Version{Heads: heads, JoinSpace: joinSpace, InviteIncluded: &inviteIncluded}
 	jsonData, err := json.Marshal(h)
 	if err != nil {
 		return "", err
@@ -429,7 +449,7 @@ func (s *service) Publish(ctx context.Context, spaceId, pageId, uri string, join
 	identity, _, details := s.identityService.GetMyProfileDetails(ctx)
 	globalName := details.GetString(bundle.RelationKeyGlobalName)
 
-	err = s.publishToPublishServer(ctx, spaceId, pageId, uri, globalName, joinSpace)
+	inviteIncluded, err := s.publishToPublishServer(ctx, spaceId, pageId, uri, globalName, joinSpace)
 
 	if err != nil {
 		log.Error("Failed to publish", zap.Error(err))
@@ -437,7 +457,7 @@ func (s *service) Publish(ctx context.Context, spaceId, pageId, uri string, join
 	}
 	url := s.makeUrl(uri, identity, globalName)
 
-	return PublishResult{Url: url}, nil
+	return PublishResult{Url: url, InviteIncluded: inviteIncluded}, nil
 }
 
 func (s *service) makeUrl(uri, identity, globalName string) string {
@@ -456,6 +476,39 @@ func (s *service) Unpublish(ctx context.Context, spaceId, pageObjId string) erro
 		SpaceId:  spaceId,
 		ObjectId: pageObjId,
 	})
+}
+
+// ListPublications lists active web snapshots for the current identity. A
+// publication can outlive its source object, so this does not need the index.
+func (s *service) ListPublications(ctx context.Context, spaceId string) ([]domain.Publication, error) {
+	pages, err := s.publishClientService.ListPublishes(ctx, spaceId)
+	if err != nil {
+		return nil, err
+	}
+	identity, _, details := s.identityService.GetMyProfileDetails(ctx)
+	name := details.GetString(bundle.RelationKeyGlobalName)
+	var rows []domain.Publication
+	for _, page := range pages {
+		if page == nil || page.SpaceId != spaceId || page.Status != publishapi.PublishStatus_PublishStatusPublished {
+			continue
+		}
+		var recorded struct {
+			JoinSpace      *bool `json:"joinSpace"`
+			InviteIncluded *bool `json:"inviteIncluded"`
+		}
+		row := domain.Publication{ObjectId: page.ObjectId, Slug: page.Uri,
+			URL: s.makeUrl(page.Uri, identity, name), SizeBytes: page.Size}
+		if err := json.Unmarshal([]byte(page.Version), &recorded); err == nil {
+			row.JoinSpace = recorded.JoinSpace != nil && *recorded.JoinSpace
+			row.InviteIncluded = recorded.InviteIncluded
+			// An older version can only prove absence when it explicitly omitted the invite.
+			if row.InviteIncluded == nil && !row.JoinSpace {
+				row.InviteIncluded = recorded.JoinSpace
+			}
+		}
+		rows = append(rows, row)
+	}
+	return rows, nil
 }
 
 func (s *service) PublishList(ctx context.Context, spaceId string) ([]*pb.RpcPublishingPublishState, error) {
@@ -527,6 +580,9 @@ func (s *service) GetStatus(ctx context.Context, spaceId string, objectId string
 	status, err := s.publishClientService.GetPublishStatus(ctx, spaceId, objectId)
 	if err != nil {
 		return nil, err
+	}
+	if status == nil {
+		return nil, publishapi.ErrNotFound
 	}
 	version := s.retrieveVersion(status)
 	return &pb.RpcPublishingPublishState{

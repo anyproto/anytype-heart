@@ -131,5 +131,6 @@ func readLiveState(sb smartblock.SmartBlock) apicore.ObjectRead {
 		DetailsRefused:    checkRestriction(sb, model.Restrictions_Details),
 		TypeChangeRefused: checkRestriction(sb, model.Restrictions_TypeChange),
 		DeleteRefused:     checkRestriction(sb, model.Restrictions_Delete),
+		PublishRefused:    checkRestriction(sb, model.Restrictions_Publish),
 	}
 }

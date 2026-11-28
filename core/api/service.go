@@ -24,6 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/filesync"
+	"github.com/anyproto/anytype-heart/core/publish"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
 	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus"
@@ -86,6 +87,7 @@ type apiService struct {
 	objectProvenance     apicore.ObjectProvenance
 	widgets              apicore.Widgets
 	spaceLoads           apicore.SpaceLoads
+	publisher            apicore.WebPublisher
 	syncStatus           apicore.SyncStatus
 	objectStore          objectstore.ObjectStore
 
@@ -145,6 +147,7 @@ func (s *apiService) Init(a *app.App) error {
 	s.objectSearch = newObjectSearchAdapter(subscriptions)
 	s.fileObjectService = a.MustComponent(fileobject.CName).(apicore.FileObjectService)
 	s.objectReader = newObjectReadAdapter(app.MustComponent[cache.ObjectGetterComponent](a), app.MustComponent[space.Service](a))
+	s.publisher = app.MustComponent[publish.Service](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.objectCreator = newObjectCreateAdapter(app.MustComponent[objectcreator.Service](a), app.MustComponent[space.Service](a),
 		app.MustComponent[template.Service](a), s.objectStore)
@@ -244,7 +247,7 @@ func (s *apiService) bindLocked(listenAddr string) *pb.EventAccountJsonApiStatus
 		s.crossSpaceSubService,
 		s.chatSubService,
 		s.fileObjectService,
-		server.V2Deps{Reader: s.objectReader, Creator: s.objectCreator, Mutator: s.objectMutator, Provenance: s.objectProvenance, Widgets: s.widgets, ChatSub: s.chatSubService, ObjectSearch: s.objectSearch, SpaceLoads: s.spaceLoads, SyncStatus: s.syncStatus, Store: s.objectStore, FullTable: FullTable, AccountId: s.accountId()},
+		server.V2Deps{Publisher: s.publisher, Reader: s.objectReader, Creator: s.objectCreator, Mutator: s.objectMutator, Provenance: s.objectProvenance, Widgets: s.widgets, ChatSub: s.chatSubService, ObjectSearch: s.objectSearch, SpaceLoads: s.spaceLoads, SyncStatus: s.syncStatus, Store: s.objectStore, FullTable: FullTable, AccountId: s.accountId()},
 		listenAddr,
 		server.OpenApiDocs{
 			V1YAML: openapiV1YAML,

@@ -104,7 +104,7 @@ func newV2HandlerFixtureWithStreams(t *testing.T, chatSub apicore.ChatSubscripti
 		}).Maybe()
 	fileMock := mock_apicore.NewMockFileObjectService(t)
 	widgetsMock := mock_apicore.NewMockWidgets(t)
-	svc := v2service.NewService(mwMock, readerMock, creatorMock, mock_apicore.NewMockObjectMutator(t), nil, widgetsMock, chatSub, objectSearch, nil, nil, fileMock, store, objectstore.TestTechSpaceId, testAccountId)
+	svc := v2service.NewService(mwMock, readerMock, creatorMock, mock_apicore.NewMockObjectMutator(t), nil, widgetsMock, chatSub, objectSearch, nil, nil, fileMock, nil, store, objectstore.TestTechSpaceId, testAccountId)
 	return &v2HandlerFixture{svc: svc, mwMock: mwMock, readerMock: readerMock, creatorMock: creatorMock, fileMock: fileMock, widgetsMock: widgetsMock, store: store, router: gin.New()}
 }
 

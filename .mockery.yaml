@@ -273,6 +273,7 @@ packages:
       EventService:
       CrossSpaceSubscriptionService:
       ClientCommands:
+      WebPublisher:
       ChatSubscriptionService:
       ObjectSearchService:
       SpaceLoads:

@@ -30,7 +30,7 @@ func TestGetSyncStatusHandler(t *testing.T) {
 		fx := newV2HandlerFixture(t)
 		syncStatus := mock_apicore.NewMockSyncStatus(t)
 		svc := v2service.NewService(fx.mwMock, fx.readerMock, fx.creatorMock, nil, nil, fx.widgetsMock, nil, nil, nil,
-			syncStatus, fx.fileMock, fx.store, objectstore.TestTechSpaceId, testAccountId)
+			syncStatus, fx.fileMock, nil, fx.store, objectstore.TestTechSpaceId, testAccountId)
 		fx.router.Use(pagination.New(pagination.Config{DefaultPage: 0, DefaultPageSize: 25, MinPageSize: 1, MaxPageSize: 1000}))
 		fx.router.GET("/v2/spaces/:space_id/sync", GetSyncStatusHandler(svc))
 		return fx, syncStatus
