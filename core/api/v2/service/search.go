@@ -319,6 +319,14 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 	refKeys = appendMissing(refKeys, servedBundledSpellings(v2SystemQueryKeys, v)...)
 	refKeys = appendMissing(refKeys, "type")
 	acceptKeys = appendMissing(acceptKeys, "type")
+	// id and name are hidden built-ins, so the reference spellings leave
+	// them out, but they are row keys a caller asks for by name: advertised
+	// whenever this search accepts them, as list_objects does (GO-7631)
+	for _, key := range []string{"id", "name"} {
+		if slices.Contains(acceptKeys, key) {
+			refKeys = appendMissing(refKeys, key)
+		}
+	}
 	// the hidden counters are accepted, never advertised: refKeys (what a
 	// refusal lists and suggests from) stays without them, and so does the
 	// set the filter string's refusals are worded over

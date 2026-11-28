@@ -476,6 +476,30 @@ func TestV2SearchObjects(t *testing.T) {
 		assert.NotEmpty(t, apiErr.Issues[0].SeeAlso)
 	})
 
+	t.Run("an unknown fields key is matched against id and name too, as list_objects matches it", func(t *testing.T) {
+		// given: id and name are installed as the hidden built-ins they are
+		fx := searchSetup(t)
+		for _, key := range []string{"id", "name"} {
+			fx.addRelation(t, testSpaceId, objectstore.TestObject{
+				bundle.RelationKeyId:          domain.String("rel-" + key),
+				bundle.RelationKeyRelationKey: domain.String(key),
+				bundle.RelationKeyName:        domain.String(bundle.MustGetRelation(domain.RelationKey(key)).Name),
+				bundle.RelationKeyIsHidden:    domain.Bool(true),
+			})
+		}
+		req := v2model.SearchRequest{Fields: []string{"nmae"}}
+
+		// when
+		_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/fields/0", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Hint, "did you mean name? — if not, ")
+		assert.Contains(t, apiErr.Issues[0].Message, "id, ")
+	})
+
 	t.Run("fields expand rows with property values (C5)", func(t *testing.T) {
 		// given
 		fx := searchSetup(t)
