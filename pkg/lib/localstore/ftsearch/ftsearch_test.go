@@ -583,3 +583,39 @@ func TestSearchChatScopes(t *testing.T) {
 		assert.Equal(t, []string{"chat1/m/msg1"}, collectIds(results))
 	})
 }
+
+func TestSearchDocs(t *testing.T) {
+	t.Run("only the given docs are read, with the highlights a full search gives", func(t *testing.T) {
+		// given
+		fixture := newFixture(t.TempDir(), t)
+		ft := fixture.ft
+		for _, doc := range []SearchDoc{
+			{Id: "a/b/body", SpaceId: "space1", Text: "needle in a haystack"},
+			{Id: "b/b/body", SpaceId: "space1", Text: "needle in a haystack"},
+			{Id: "c/b/body", SpaceId: "space1", Text: "needle in a haystack"},
+		} {
+			require.NoError(t, ft.Index(doc))
+		}
+		full, err := ft.Search("space1", "needle", 0, true)
+		require.NoError(t, err)
+		want := map[string]map[string]*Highlight{}
+		for _, match := range full {
+			if match.ID != "b/b/body" {
+				want[match.ID] = match.Fragments
+			}
+		}
+
+		// when
+		got, err := ft.SearchDocs("space1", "needle", []string{"a/b/body", "c/b/body"})
+
+		// then
+		require.NoError(t, err)
+		gotFragments := map[string]map[string]*Highlight{}
+		for _, match := range got {
+			gotFragments[match.ID] = match.Fragments
+		}
+		assert.Equal(t, want, gotFragments)
+		require.NotEmpty(t, gotFragments["a/b/body"], "the read has highlights")
+		_ = ft.Close(nil)
+	})
+}

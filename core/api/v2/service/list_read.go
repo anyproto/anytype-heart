@@ -311,9 +311,11 @@ func (s *Service) listObjects(ctx context.Context, spaceId, listId string, want 
 		}
 		records, total, err = index.QueryAndCount(database.Query{
 			Filters: filters,
-			Sorts:   sorts,
-			Offset:  offset,
-			Limit:   limit,
+			// a stored view cannot tell an omitted date precision from
+			// false: keep the one the store implies, as the app does
+			Sorts:  database.WithIdTieBreak(database.ImplyIncludeTime(index, sorts)),
+			Offset: offset,
+			Limit:  limit,
 		})
 		if err != nil {
 			return nil, 0, false, nil, fmt.Errorf("query list %s: %w", listId, err)

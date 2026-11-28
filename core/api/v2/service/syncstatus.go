@@ -219,11 +219,11 @@ func (s *Service) outOfSyncObjects(spaceId string, offset, limit int) ([]v2model
 				{Operator: model.BlockContentDataviewFilter_And, NestedFilters: refusedFileFilters()},
 			},
 		}},
-		Sorts: []database.SortRequest{{
+		Sorts: database.WithIdTieBreak([]database.SortRequest{{
 			RelationKey: bundle.RelationKeyLastModifiedDate,
 			Type:        model.BlockContentDataviewSort_Desc,
 			IncludeTime: true,
-		}},
+		}}),
 		Offset: offset,
 		Limit:  limit + 1, // one extra record detects has_more without a count
 	})
