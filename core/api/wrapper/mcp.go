@@ -28,6 +28,7 @@ package wrapper
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -453,6 +454,7 @@ func mcpInstructions(tier Tier) string {
 	}
 	b.WriteString(" Dates accept today, tomorrow, +3d, weekday names; @me means the calling user." +
 		" In filter strings, write multi-word property names with underscores (Due_date)." +
+		" To set page width, pass layout_width_percent directly to create or set_properties (100–200, including decimals). On set_properties, null restores the type default." +
 		" To complete a task-like object, set its done/status property with set_properties." +
 		" To change an object's type (a page into a Task), pass type to set_properties; only same-family layouts convert, and a refusal names the types it can take." +
 		" Every error says how to fix the call — follow it and retry once; do not loop.")
@@ -478,7 +480,9 @@ func (s *MCPServer) handleToolsCall(ctx context.Context, params json.RawMessage)
 		Name      string         `json:"name"`
 		Arguments map[string]any `json:"arguments"`
 	}
-	if err := json.Unmarshal(params, &p); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(params))
+	decoder.UseNumber()
+	if err := decoder.Decode(&p); err != nil {
 		return nil, &RPCError{Code: mcpInvalidParams, Message: fmt.Sprintf("parse tools/call params: %v", err)}
 	}
 	if !s.names[p.Name] {

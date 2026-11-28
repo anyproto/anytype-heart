@@ -696,13 +696,14 @@ func TestV2CreateTemplate(t *testing.T) {
 
 		// when
 		result, err := fx.CreateTemplate(context.Background(), testSpaceId,
-			[]byte(`{"formatVersion":"2.0","template_for":"task","properties":{"name":"Weekly"}}`), false, true)
+			[]byte(`{"formatVersion":"2.0","template_for":"task","layout_width_percent":137.5,"properties":{"name":"Weekly"}}`), false, true)
 
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, "newTemplate", result.Id)
 		assert.Equal(t, "template", result.Type)
 		snapshot := *captured
+		assert.Equal(t, 0.375, pbtypes.GetFloat64(snapshot.Blocks[0].Fields, "width"))
 		assert.Equal(t, []string{"ot-template", "ot-task"}, snapshot.ObjectTypes)
 		assert.Equal(t, "drv-ot-task", pbtypes.GetString(snapshot.Details, bundle.RelationKeyTargetObjectType.String()))
 	})

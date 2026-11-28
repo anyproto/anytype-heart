@@ -39,6 +39,7 @@ type ArgType string
 const (
 	ArgString  ArgType = "string"
 	ArgInteger ArgType = "integer"
+	ArgNumber  ArgType = "number"
 	ArgBoolean ArgType = "boolean"
 	// ArgObject is a flat string-keyed map of scalar/array values (the
 	// set_properties value shape). The one non-scalar arg type.
@@ -55,6 +56,7 @@ type Arg struct {
 	// (edit_text.replace deletes the found text, set_cell.value clears the
 	// cell): Required then means "present", not "non-empty".
 	AllowEmpty  bool
+	Nullable    bool // distinguish explicit JSON null from omission
 	Description string
 	Enum        []string // string args only
 	MaxLen      int      // string args: schema maxLength
@@ -213,6 +215,7 @@ func Tools() []Tool {
 				{Name: "type", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: "a type name, e.g. Task"},
 				{Name: "name", Type: ArgString, Required: true, MaxLen: maxNameLen, Description: "object name"},
 				{Name: "properties", Type: ArgObject, Description: "property name → value; select values are option NAMES"},
+				{Name: "layout_width_percent", Type: ArgNumber, Description: "page width from 100 (standard) to 200 (widest), e.g. 175. Omit to use the template or type width. Out-of-range values clamp with a warning."},
 				{Name: "markdown", Type: ArgString, MaxLen: maxMarkdownLen, Description: "markdown body: headings, lists, - [ ] checkboxes, ``` fences, quotes, tables"},
 			},
 			Example: map[string]any{"space": "space1", "type": "Task", "name": "Prepare the Q3 report", "properties": map[string]any{"Due date": "friday"}},
@@ -236,6 +239,7 @@ func Tools() []Tool {
 				{Name: "set", Type: ArgObject, Description: "property name → new value"},
 				{Name: "add", Type: ArgObject, Description: "list property name → entries to append"},
 				{Name: "remove", Type: ArgObject, Description: "list property name → entries to delete"},
+				{Name: "layout_width_percent", Type: ArgNumber, Nullable: true, Description: "page or template width from 100 (standard) to 200 (widest), e.g. 175. Send null to inherit the type width. Out-of-range values clamp with a warning."},
 				{Name: "type", Type: ArgString, MaxLen: maxKeyLen, Description: "a type name the object becomes, e.g. Task; applied before set/add/remove in the same edit"},
 			},
 			// the example shows the LIST form deliberately: the measured

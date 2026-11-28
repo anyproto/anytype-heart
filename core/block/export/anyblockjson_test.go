@@ -11,6 +11,7 @@ package export
 import (
 	"archive/zip"
 	"context"
+	"encoding/json"
 	"io/fs"
 	"os"
 	"path"
@@ -19,12 +20,15 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/export/collect"
+	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
@@ -32,6 +36,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // anyblockSpace seeds one object of every kind that owns a bundle
@@ -402,6 +407,12 @@ func TestExport_AnyBlockV2SingleInMemory(t *testing.T) {
 	// given
 	fx := newFixture(t)
 	byDirectory := anyblockSpace(t, fx)
+	page, err := fx.picker.GetObject(context.Background(), pageId)
+	require.NoError(t, err)
+	page.(*smarttest.SmartTest).AddBlock(simple.New(&model.Block{
+		Id: pageId, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}},
+		Fields: &types.Struct{Fields: map[string]*types.Value{"width": pbtypes.Float64(0.75)}},
+	}))
 
 	// when
 	result, diagnostics, err := fx.ExportSingleInMemory(context.Background(), spaceId, byDirectory["objects"], model.Export_AnyBlockV2)
@@ -409,6 +420,9 @@ func TestExport_AnyBlockV2SingleInMemory(t *testing.T) {
 	// then
 	require.NoError(t, err)
 	require.NotNil(t, diagnostics)
+	var doc map[string]any
+	require.NoError(t, json.Unmarshal([]byte(result), &doc))
+	assert.Equal(t, 175.0, doc["layout_width_percent"])
 	sbType, snapshot, err := anyblockjson.Unmarshal([]byte(result), anyblockjson.Options{SpaceId: spaceId})
 	require.NoError(t, err)
 	assert.Equal(t, model.SmartBlockType_Page, sbType)

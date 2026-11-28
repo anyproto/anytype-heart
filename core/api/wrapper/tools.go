@@ -303,6 +303,9 @@ func (r *Runner) runCreate(ctx context.Context, session *Session, args map[strin
 		"type": strArg(args, "type"),
 		"name": strArg(args, "name"),
 	}
+	if width, present := args["layout_width_percent"]; present {
+		body["layout_width_percent"] = width
+	}
 	if props := objArg(args, "properties"); len(props) > 0 {
 		idx, err := r.propertyIndexFor(ctx, space)
 		if err != nil {
@@ -506,8 +509,9 @@ func (r *Runner) runSetProperties(ctx context.Context, session *Session, args ma
 	}
 	setM, addM, removeM := objArg(args, "set"), objArg(args, "add"), objArg(args, "remove")
 	typeArg := strArg(args, "type")
-	if len(setM)+len(addM)+len(removeM) == 0 && typeArg == "" {
-		return nil, fmt.Errorf("set_properties needs set, add, remove or type — e.g. set: {\"Status\": \"Done\"}")
+	width, hasWidth := args["layout_width_percent"]
+	if len(setM)+len(addM)+len(removeM) == 0 && typeArg == "" && !hasWidth {
+		return nil, fmt.Errorf("set_properties needs set, add, remove, type or layout_width_percent — e.g. set: {\"Status\": \"Done\"}")
 	}
 	// the type change goes FIRST in the batch, so the values that follow are
 	// set on the object as its new type; the server resolves the type's
@@ -516,6 +520,9 @@ func (r *Runner) runSetProperties(ctx context.Context, session *Session, args ma
 	var ops []map[string]any
 	if typeArg != "" {
 		ops = append(ops, map[string]any{"op": "set_type", "type": typeArg})
+	}
+	if hasWidth {
+		ops = append(ops, map[string]any{"op": "set_layout_width", "layout_width_percent": width})
 	}
 	if len(setM)+len(addM)+len(removeM) > 0 {
 		// one property-index fetch serves set, add AND remove

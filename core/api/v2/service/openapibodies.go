@@ -407,6 +407,10 @@ func kindSkeleton(kind string) (map[string]any, []string, error) {
 			skeleton[name] = map[string]any{"enum": v}
 			continue
 		}
+		if name == "layout_width_percent" {
+			skeleton[name] = member
+			continue
+		}
 		switch resolve(member)["type"] {
 		case "object":
 			skeleton[name] = map[string]any{"type": "object"}

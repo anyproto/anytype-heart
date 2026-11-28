@@ -558,7 +558,7 @@ func TestDiffEditDocs(t *testing.T) {
 // check passed on a payload channel and would have survived update_block
 // losing both `id` and `match`.
 var v2ObjectLevelOps = map[string]bool{
-	"set_properties": true, "set_type": true, "add_items": true, "remove_items": true,
+	"set_properties": true, "set_layout_width": true, "set_type": true, "add_items": true, "remove_items": true,
 }
 
 func addressingChannels(t *testing.T, entry v2model.SchemaEntry) []string {

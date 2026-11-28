@@ -650,11 +650,13 @@ type SearchRequest struct {
 // DiffStats summarizes what a mutation changed: the
 // accidental-full-rewrite signal on PUT, the receipt on PATCH.
 type DiffStats struct {
-	BlocksAdded       int `json:"blocks_added"`
-	BlocksRemoved     int `json:"blocks_removed"`
-	BlocksChanged     int `json:"blocks_changed"`
-	BlocksMoved       int `json:"blocks_moved"`
-	PropertiesChanged int `json:"properties_changed"`
+	// Whether the page width override changed, including setting or clearing it.
+	LayoutWidthChanged bool `json:"layout_width_changed,omitempty"`
+	BlocksAdded        int  `json:"blocks_added"`
+	BlocksRemoved      int  `json:"blocks_removed"`
+	BlocksChanged      int  `json:"blocks_changed"`
+	BlocksMoved        int  `json:"blocks_moved"`
+	PropertiesChanged  int  `json:"properties_changed"`
 	// Collection members the batch added, as a set difference; absent means none
 	ItemsAdded int `json:"items_added,omitempty"`
 	// Collection members the batch removed, as a set difference; absent means none

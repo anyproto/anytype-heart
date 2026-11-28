@@ -534,13 +534,14 @@ func parsePatchRequest(body []byte) ([]json.RawMessage, error) {
 // v2BodyKeyOps maps the members a caller writes at the PATCH body root,
 // having guessed the create body's shape, to the op that carries them.
 var v2BodyKeyOps = map[string]string{
-	"properties":       "set_properties",
-	"name":             "set_properties",
-	"blocks":           "insert_blocks",
-	"markdown":         "insert_blocks",
-	"views":            "insert_view",
-	"items":            "add_items",
-	"collection_items": "add_items",
+	"properties":           "set_properties",
+	"layout_width_percent": "set_layout_width",
+	"name":                 "set_properties",
+	"blocks":               "insert_blocks",
+	"markdown":             "insert_blocks",
+	"views":                "insert_view",
+	"items":                "add_items",
+	"collection_items":     "add_items",
 }
 
 // objectPatchUnknownKeyHint is the repair for a key beside ops on the object

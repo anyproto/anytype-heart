@@ -146,6 +146,28 @@ spaces. Its `total` is a lower bound when results are clipped; use `has_more`
 to continue paging. Warnings indicate when stores are still loading or
 unavailable, so retry later for a complete view.
 
+## Page width
+
+Set `"layout_width_percent": 175` on a new page or template for a width of 175%.
+Create accepts this member in both the document and shortcut forms. Omission
+uses the applied template's override, if present, and otherwise inherits the
+type's default. On an object type, its existing `layout_width` property sets
+the default in 0–1 units. For example, `0.75` gives its pages a width of 175%.
+On a read, `layout_width_percent` reports the page's explicit override. A
+warning identifies a legacy width that requires AnyBlock export to preserve
+its precision.
+
+To change an existing page, send
+`{"ops":[{"op":"set_layout_width","layout_width_percent":175}]}` to its PATCH
+endpoint. Use `null` in the op to restore inheritance. An explicit `100` keeps
+standard width on a wider type. The native Model Context Protocol tools accept the same
+`layout_width_percent` argument on `create` and `set_properties`.
+
+The range is 100–200 inclusive and accepts decimals. An out-of-range input
+clamps to the nearest endpoint with a warning. A value strictly between 0 and
+1 also produces a percentage hint. For example, `0.75` clamps to 100%, and
+the old root width of 0.75 is expressed as `175`.
+
 ## Edit with a batch of operations
 
 Send an `ops` array to the object's `PATCH` endpoint. For example, this body

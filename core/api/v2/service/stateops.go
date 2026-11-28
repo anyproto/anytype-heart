@@ -636,6 +636,15 @@ func (a *v2StateApplier) applyAt(raw json.RawMessage, opPath string) error {
 			v2model.Issue{Path: opPath, Message: err.Error()})
 	}
 	switch probe.Op {
+	case "set_layout_width":
+		var op struct {
+			Op    string          `json:"op"`
+			Width json.RawMessage `json:"layout_width_percent"`
+		}
+		if err := decodeStrictOp(raw, probe.Op, opPath, &op); err != nil {
+			return err
+		}
+		return a.setLayoutWidth(op.Width, opPath)
 	case "set_properties":
 		var op opSetProperties
 		if err := decodeStrictOp(raw, probe.Op, opPath, &op); err != nil {
@@ -1224,6 +1233,10 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 		spelling := spelledIn("set", key)
 		path := opPath + ".set." + spelling
 		claim(key, spelling, "set", path) // set goes first — it can never collide
+		if key == bundle.RelationKeyLayoutWidth.String() && pageWidthKind(a.sbType) {
+			issues = append(issues, layoutWidthPropertyIssue(path))
+			continue
+		}
 		checkKey(key, spelling, path)
 	}
 	unset := map[string]bool{}

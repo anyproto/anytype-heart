@@ -303,6 +303,21 @@ func (s *Service) GetObject(ctx context.Context, spaceId, objectId string, q Obj
 	if issue, removed := removedTypeWarning(spaceId, vocab, objectTypeKey(read)); removed {
 		warnings = append(warnings, issue)
 	}
+	if pageWidthKind(read.SbType) {
+		if key := bundle.RelationKeyLayoutWidth.String(); plan.wantProperties && read.Snapshot.GetDetails().GetFields()[key] != nil {
+			warnings = append(warnings, layoutWidthPropertyIssue(propertiesPointer(spell(key))))
+		}
+		// The backup codec retains widths it cannot express losslessly in
+		// root.fields. REST omits that raw bag. Distinguish its presence
+		// from inheritance on the public read.
+		var root struct {
+			Fields map[string]json.RawMessage `json:"fields"`
+		}
+		if raw := fields["root"]; raw != nil && json.Unmarshal(raw, &root) == nil && root.Fields["width"] != nil {
+			warnings = append(warnings, v2model.Issue{Path: "/layout_width_percent",
+				Message: "This page has a legacy root width that cannot be expressed exactly as a percentage. AnyBlock export preserves the stored value."})
+		}
+	}
 	// a served document matches the schema this API publishes for it
 	trimAPIDocumentEnvelope(fields)
 	// the object's discussion (its comment thread) is a chat reached by its

@@ -54,8 +54,9 @@ type (
 )
 
 var (
-	DetectFormat = codec.DetectFormat
-	SchemaJSON   = codec.SchemaJSON
+	DecodeLayoutWidthPercent = codec.DecodeLayoutWidthPercent
+	DetectFormat             = codec.DetectFormat
+	SchemaJSON               = codec.SchemaJSON
 	// The authoring subset (the format's §2g): the same format at the same
 	// version, narrowed to what an author composes from nothing. The API's
 	// create endpoints serve and enforce THIS, not the full backup grammar,

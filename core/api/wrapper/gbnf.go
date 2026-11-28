@@ -108,6 +108,12 @@ func valueRule(a Arg) string {
 			return enumRule(a.Name)
 		}
 		return "string"
+	case ArgNumber:
+		number := `("-"? ("0" | [1-9] [0-9]*) ("." [0-9]+)? ([eE] [+-]? [0-9]+)?)`
+		if a.Nullable {
+			return "(" + number + ` | "null")`
+		}
+		return number
 	case ArgInteger:
 		return "number"
 	case ArgBoolean:

@@ -300,7 +300,7 @@ var apiV2KindNarrowings = map[string]apiV2KindNarrowing{
 	// refuses blocks; the other dropped members belong to instances
 	"type_document": {
 		kinds: []string{"object_type"},
-		drop:  []string{typeDocumentRefusedOnCreate, "template_for", "collection_items", "query_source"},
+		drop:  []string{typeDocumentRefusedOnCreate, "template_for", "collection_items", "query_source", "layout_width_percent"},
 	},
 }
 

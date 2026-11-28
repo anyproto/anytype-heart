@@ -24,6 +24,7 @@ type diffDocBlock struct {
 
 // diffDocShape is the parsed diff-relevant part of a document.
 type diffDocShape struct {
+	width      string
 	blocks     []diffDocBlock
 	byId       map[string]int
 	properties map[string]any
@@ -32,6 +33,12 @@ type diffDocShape struct {
 
 func parseDiffDoc(body []byte) (*diffDocShape, error) {
 	var doc struct {
+		Width json.RawMessage `json:"layout_width_percent"`
+		Root  struct {
+			Fields struct {
+				Width json.RawMessage `json:"width"`
+			} `json:"fields"`
+		} `json:"root"`
 		Properties map[string]any   `json:"properties"`
 		Blocks     []map[string]any `json:"blocks"`
 		Items      []string         `json:"items"`
@@ -40,6 +47,10 @@ func parseDiffDoc(body []byte) (*diffDocShape, error) {
 		return nil, fmt.Errorf("decode document for diff: %w", err)
 	}
 	shape := &diffDocShape{byId: map[string]int{}, properties: doc.Properties, items: doc.Items}
+	shape.width = string(doc.Width)
+	if doc.Root.Fields.Width != nil {
+		shape.width = "raw:" + string(doc.Root.Fields.Width)
+	}
 	// parent derivation: the SPEC §4 stack walk over indents
 	type frame struct {
 		id     string
@@ -102,6 +113,7 @@ func diffEditDocs(beforeDoc, afterDoc []byte) (v2model.DiffStats, error) {
 		return stats, fmt.Errorf("after document: %w", err)
 	}
 
+	stats.LayoutWidthChanged = before.width != after.width
 	for _, b := range after.blocks {
 		if _, ok := before.byId[b.id]; !ok {
 			stats.BlocksAdded++

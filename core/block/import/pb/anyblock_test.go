@@ -40,7 +40,7 @@ func authoringBundleFixture() fstest.MapFS {
   ]}`,
 		"types/trip.json":      `{"formatVersion":"2.0","kind":"object_type","id":"type-trip","internal_key":"trip","properties":{"Name":"Trip"},"type_settings":{"default_template":"template-trip","property_definitions":[{"property":"Name"},{"property":"Budget","section":"featured"},{"property":"State"},{"property":"When"},{"property":"Expenses"},{"property":"Tags"}]},"blocks":[{"type":"paragraph","text":"Plan a weekend."}]}`,
 		"types/expense.json":   `{"formatVersion":"2.0","kind":"object_type","id":"type-expense","internal_key":"expense","properties":{"Name":"Expense"},"type_settings":{"property_definitions":[{"property":"Cost state"},{"property":"Trip"}]}}`,
-		"templates/trip.json":  `{"formatVersion":"2.0","kind":"template","type":"template","template_for":"Trip","id":"template-trip","properties":{"Name":"New weekend","State":"Booked","When":"2026-09-18T00:00:00Z"},"blocks":[{"type":"paragraph","text":"Pick a destination."}]}`,
+		"templates/trip.json":  `{"formatVersion":"2.0","kind":"template","type":"template","template_for":"Trip","id":"template-trip","layout_width_percent":175,"properties":{"Name":"New weekend","State":"Booked","When":"2026-09-18T00:00:00Z"},"blocks":[{"type":"paragraph","text":"Pick a destination."}]}`,
 		"objects/home.json":    `{"formatVersion":"2.0","id":"home","type":"Query","properties":{"Name":"Weekends"},"query_source":{"types":["Trip"],"properties":["Budget"]},"blocks":[{"type":"dataview","properties":[{"property":"State","format":"select"},{"property":"Budget","format":"number"}],"views":[{"name":"Booked weekends","type":"table","columns":[{"property":"State"},{"property":"Budget"}],"filters":[{"property":"State","condition":"in","value":["Booked"]}]}]}]}`,
 		"objects/trip.json":    `{"formatVersion":"2.0","id":"weekend","type":"Trip","properties":{"Name":"Prague","Budget":750.5,"State":"Booked","When":"2026-09-18T00:00:00Z","Expenses":["hotel"],"Tags":["Art","Music"]},"icon":{"format":"emoji","emoji":"🚆"},"cover":{"format":"gradient","gradient":"sky"},"blocks":[{"type":"heading_2","text":"Saturday"},{"type":"paragraph","text":"Walk across Charles Bridge."},{"type":"link","object_id":"hotel"}]}`,
 		"objects/expense.json": `{"formatVersion":"2.0","id":"hotel","type":"Expense","properties":{"Name":"Two hotel nights","Cost state":"Booked","Trip":["weekend"]},"blocks":[{"type":"paragraph","text":"A room for two near the old town."}]}`,
@@ -107,6 +107,9 @@ func TestAnyBlockBundleImport(t *testing.T) {
 					properties[snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyName)] = snapshot
 				}
 			}
+			rootFields := byID["template-trip"].Snapshot.Data.Blocks[0].Fields.GetFields()
+			require.Contains(t, rootFields, "width")
+			assert.Equal(t, 0.75, rootFields["width"].GetNumberValue())
 			require.Len(t, properties, 7)
 			key := func(name string) domain.RelationKey {
 				require.Contains(t, properties, name)
@@ -181,7 +184,7 @@ func TestAnyBlockSingleDocument(t *testing.T) {
 	for _, version := range []string{"2.0", "3.0"} {
 		t.Run(version, func(t *testing.T) {
 			filename := filepath.Join(t.TempDir(), "note.json")
-			data := strings.ReplaceAll(`{"formatVersion":"VERSION","id":"note","type":"Page","properties":{"Name":"A note"},"blocks":[{"type":"paragraph","text":"Hello"}]}`, "VERSION", version)
+			data := strings.ReplaceAll(`{"formatVersion":"VERSION","id":"note","type":"Page","root":{"fields":{"width":0}},"properties":{"Name":"A note"},"blocks":[{"type":"paragraph","text":"Hello"}]}`, "VERSION", version)
 			require.NoError(t, os.WriteFile(filename, []byte(data), 0600))
 			response, errs := importAnyBlockFixture(t, filename)
 			if version == "3.0" {
@@ -192,6 +195,9 @@ func TestAnyBlockSingleDocument(t *testing.T) {
 			require.Nil(t, errs)
 			require.Len(t, response.Snapshots, 1)
 			assert.Equal(t, "A note", response.Snapshots[0].Snapshot.Data.Details.GetString(bundle.RelationKeyName))
+			fields := response.Snapshots[0].Snapshot.Data.Blocks[0].Fields.GetFields()
+			require.Contains(t, fields, "width")
+			assert.Equal(t, 0.0, fields["width"].GetNumberValue())
 		})
 	}
 }

@@ -37,6 +37,11 @@ func toolSchema(t Tool) (json.RawMessage, error) {
 					prop["maxLength"] = a.MaxLen
 				}
 			}
+		case ArgNumber:
+			prop["type"] = "number"
+			if a.Nullable {
+				prop["type"] = []string{"number", "null"}
+			}
 		case ArgInteger:
 			prop["type"] = "integer"
 			if a.Min != 0 || a.Max != 0 {
