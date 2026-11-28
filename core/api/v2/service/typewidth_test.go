@@ -150,13 +150,20 @@ func TestTypeWidthReadAndValidate(t *testing.T) {
 		body, _, err := fx.GetType(context.Background(), testSpaceId, "chore", ObjectQuery{})
 		require.NoError(t, err)
 		var result struct {
-			Settings map[string]any  `json:"type_settings"`
-			Warnings []v2model.Issue `json:"warnings"`
+			Settings   map[string]any  `json:"type_settings"`
+			Properties map[string]any  `json:"properties"`
+			Warnings   []v2model.Issue `json:"warnings"`
 		}
 		require.NoError(t, json.Unmarshal(body, &result))
 		require.Equal(t, tc.percent, result.Settings["layout_width_percent"])
 		if tc.percent == nil {
-			require.Contains(t, string(body), "original value")
+			require.Equal(t, 1e-18, result.Properties["layout_width"])
+			require.Len(t, result.Warnings, 1)
+			require.Equal(t, "/properties/layout_width", result.Warnings[0].Path)
+			require.Contains(t, result.Warnings[0].Message, "original value")
+		} else {
+			require.NotContains(t, result.Properties, "layout_width")
+			require.Empty(t, result.Warnings)
 		}
 	}
 	fx := newV2Fixture(t)
