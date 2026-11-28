@@ -34,6 +34,7 @@ var log = logging.Logger("api-v2-service")
 // APIV2.md §8, not via ObjectShow and not via lagging store snapshots for
 // object content.
 type Service struct {
+	publisher   apicore.WebPublisher
 	fileService apicore.FileObjectService
 	mw          apicore.ClientCommands
 	reader      apicore.ObjectReader
@@ -100,8 +101,8 @@ const defaultSpaceLoadWait = 10 * time.Second
 // be nil (the wait for a loading space is then not bounded). syncStatus may
 // be nil (no sync status read, no storage report on uploads). accountId may
 // be empty (degraded placeholder substitution only).
-func NewService(mw apicore.ClientCommands, reader apicore.ObjectReader, creator apicore.ObjectCreator, mutator apicore.ObjectMutator, provenance apicore.ObjectProvenance, widgets apicore.Widgets, chatSub apicore.ChatSubscriptionService, objectSearch apicore.ObjectSearchService, spaceLoads apicore.SpaceLoads, syncStatus apicore.SyncStatus, fileService apicore.FileObjectService, store objectstore.ObjectStore, techSpaceId, accountId string) *Service {
-	return &Service{fileService: fileService, mw: mw, reader: reader, creator: creator, mutator: mutator, provenance: provenance, widgets: widgets, chatSub: chatSub, objectSearch: objectSearch, spaceLoads: spaceLoads, spaceLoadWait: defaultSpaceLoadWait, syncStatus: syncStatus, clock: systemClock{}, store: store, techSpaceId: techSpaceId, accountId: accountId}
+func NewService(mw apicore.ClientCommands, reader apicore.ObjectReader, creator apicore.ObjectCreator, mutator apicore.ObjectMutator, provenance apicore.ObjectProvenance, widgets apicore.Widgets, chatSub apicore.ChatSubscriptionService, objectSearch apicore.ObjectSearchService, spaceLoads apicore.SpaceLoads, syncStatus apicore.SyncStatus, fileService apicore.FileObjectService, publisher apicore.WebPublisher, store objectstore.ObjectStore, techSpaceId, accountId string) *Service {
+	return &Service{publisher: publisher, fileService: fileService, mw: mw, reader: reader, creator: creator, mutator: mutator, provenance: provenance, widgets: widgets, chatSub: chatSub, objectSearch: objectSearch, spaceLoads: spaceLoads, spaceLoadWait: defaultSpaceLoadWait, syncStatus: syncStatus, clock: systemClock{}, store: store, techSpaceId: techSpaceId, accountId: accountId}
 }
 
 // ensureSpaceGranted is the space half of the service-level backstop of the

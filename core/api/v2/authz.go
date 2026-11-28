@@ -175,6 +175,9 @@ var v2RouteAuthz = map[string]RouteAuthz{
 	routeKey(http.MethodPost, "/v2/spaces/:space_id/chats/:chat_id/messages/:message_id/reactions"): {Verb: RouteVerbWrite},
 	routeKey(http.MethodPost, "/v2/spaces/:space_id/chats/:chat_id/read"):                           {Verb: RouteVerbWrite},
 	routeKey(http.MethodPost, "/v2/spaces/:space_id/chats/:chat_id/status"):                         {Verb: RouteVerbWrite},
+	routeKey(http.MethodGet, "/v2/spaces/:space_id/publications"):                                   {Verb: RouteVerbRead},
+	routeKey(http.MethodDelete, "/v2/spaces/:space_id/publications/:publication_id"):                {Verb: RouteVerbWrite},
+	routeKey(http.MethodPost, "/v2/spaces/:space_id/objects/:object_id/publish"):                    {Verb: RouteVerbWrite},
 	routeKey(http.MethodPost, "/v2/spaces/:space_id/objects/:object_id/discussion"):                 {Verb: RouteVerbWrite},
 	// pairing, registered outside the authenticated group by server.registerAuthRoutes
 	routeKey(http.MethodPost, "/v2/auth/challenges"): {Verb: RouteVerbWrite, Global: GlobalAuthExempt},

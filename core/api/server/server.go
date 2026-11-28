@@ -112,9 +112,10 @@ type Server struct {
 // is not registered — v1 keeps working standalone. With Creator nil, only
 // the read surface registers; with Mutator nil, the edit routes are skipped.
 type V2Deps struct {
-	Reader  apicore.ObjectReader
-	Creator apicore.ObjectCreator
-	Mutator apicore.ObjectMutator
+	Publisher apicore.WebPublisher
+	Reader    apicore.ObjectReader
+	Creator   apicore.ObjectCreator
+	Mutator   apicore.ObjectMutator
 	// Provenance is the DELETE enforcement read (creator provenance from
 	// validated change storage). With it nil the object DELETE route still
 	// registers but refuses every delete — fail closed, not fail open.
@@ -175,7 +176,7 @@ func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService,
 		mcp:         newMCPSessions(),
 	}
 	if v2Deps.Reader != nil && v2Deps.Store != nil {
-		s.v2Service = v2service.NewService(mw, v2Deps.Reader, v2Deps.Creator, v2Deps.Mutator, v2Deps.Provenance, v2Deps.Widgets, v2Deps.ChatSub, v2Deps.ObjectSearch, v2Deps.SpaceLoads, v2Deps.SyncStatus, fileObjectService, v2Deps.Store, techSpaceId, v2Deps.AccountId)
+		s.v2Service = v2service.NewService(mw, v2Deps.Reader, v2Deps.Creator, v2Deps.Mutator, v2Deps.Provenance, v2Deps.Widgets, v2Deps.ChatSub, v2Deps.ObjectSearch, v2Deps.SpaceLoads, v2Deps.SyncStatus, fileObjectService, v2Deps.Publisher, v2Deps.Store, techSpaceId, v2Deps.AccountId)
 		s.v2CreateDisabled = v2Deps.Creator == nil
 		s.v2EditDisabled = v2Deps.Mutator == nil
 		s.v2StreamDisabled = v2Deps.ChatSub == nil
