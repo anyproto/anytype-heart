@@ -102,6 +102,12 @@ func (s *Service) liveProperties(spaceId string) ([]propertyEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("query live properties of space %s: %w", spaceId, err)
 	}
+	return propertyEntriesOf(records), nil
+}
+
+// propertyEntriesOf builds the entries of live relation records, in their
+// order; a record without a relation key is no property.
+func propertyEntriesOf(records []database.Record) []propertyEntry {
 	entries := make([]propertyEntry, 0, len(records))
 	for _, record := range records {
 		key := record.Details.GetString(bundle.RelationKeyRelationKey)
@@ -117,7 +123,7 @@ func (s *Service) liveProperties(spaceId string) ([]propertyEntry, error) {
 			Hidden: record.Details.GetBool(bundle.RelationKeyIsHidden),
 		})
 	}
-	return entries, nil
+	return entries
 }
 
 // removedProperties lists the space's REMOVED relation objects — archived
@@ -193,6 +199,12 @@ func (s *Service) liveTypes(spaceId string) ([]typeEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("query live types of space %s: %w", spaceId, err)
 	}
+	return typeEntriesOf(records), nil
+}
+
+// typeEntriesOf builds the entries of live type records, in their order; a
+// record without a type unique key is no type.
+func typeEntriesOf(records []database.Record) []typeEntry {
 	entries := make([]typeEntry, 0, len(records))
 	for _, record := range records {
 		key, err := domain.GetTypeKeyFromRawUniqueKey(record.Details.GetString(bundle.RelationKeyUniqueKey))
@@ -208,7 +220,7 @@ func (s *Service) liveTypes(spaceId string) ([]typeEntry, error) {
 			Layout: model.ObjectTypeLayout(record.Details.GetInt64(bundle.RelationKeyRecommendedLayout)), //nolint:gosec
 		})
 	}
-	return entries, nil
+	return entries
 }
 
 // resolvePropertyInput applies the resolution chain for one inbound

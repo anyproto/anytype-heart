@@ -21,6 +21,9 @@ import (
 
 // searchRouter mounts the space-search route with the C10 pagination
 // defaults the /v2 group provides.
+// ignoredPresetWarning is the codec warning the structured `empty` + `date_preset` probe raises.
+const ignoredPresetWarning = `date_preset "today" is ignored under condition "empty"; a preset's range is applied on equal · greater · greater_or_equal · in · less · less_or_equal`
+
 func searchRouter(fx *v2HandlerFixture) {
 	fx.router.Use(pagination.New(pagination.Config{
 		DefaultPage:     0,
@@ -122,14 +125,14 @@ func TestSearchObjectsHandler(t *testing.T) {
 	})
 
 	t.Run("warnings ride the response body (C6/C11 on the wire)", func(t *testing.T) {
-		// given: the unguarded-date hazard produces a warning-grade issue —
+		// given: an ignored date preset produces a warning-grade issue —
 		// the service-level channel must actually reach the JSON response
 		fx := newV2HandlerFixture(t)
 		searchRouter(fx)
 
 		// when
 		req := httptest.NewRequest(http.MethodPost, "/v2/spaces/space1/search",
-			strings.NewReader(`{"filter":"lastModifiedDate < today()"}`))
+			strings.NewReader(`{"filters":[{"property":"lastModifiedDate","condition":"empty","date_preset":"today"}]}`))
 		w := httptest.NewRecorder()
 		fx.router.ServeHTTP(w, req)
 
@@ -138,8 +141,8 @@ func TestSearchObjectsHandler(t *testing.T) {
 		var got v2model.ListResponse[v2model.ObjectRow]
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
 		require.Len(t, got.Warnings, 1)
-		assert.Equal(t, "/filter", got.Warnings[0].Path)
-		assert.Contains(t, got.Warnings[0].Message, "also matches objects with no lastModifiedDate")
+		assert.Equal(t, "/filters/0", got.Warnings[0].Path)
+		assert.Equal(t, ignoredPresetWarning, got.Warnings[0].Message)
 	})
 
 	t.Run("filter and filters together map to 400 ambiguous_input", func(t *testing.T) {
@@ -188,7 +191,7 @@ func TestGlobalSearchObjectsHandler(t *testing.T) {
 
 		// when
 		req := httptest.NewRequest(http.MethodPost, "/v2/search",
-			strings.NewReader(`{"filter":"lastModifiedDate < today()"}`))
+			strings.NewReader(`{"filters":[{"property":"lastModifiedDate","condition":"empty","date_preset":"today"}]}`))
 		w := httptest.NewRecorder()
 		fx.router.ServeHTTP(w, req)
 
@@ -197,7 +200,7 @@ func TestGlobalSearchObjectsHandler(t *testing.T) {
 		var got v2model.ListResponse[v2model.ObjectRow]
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
 		require.Len(t, got.Warnings, 1)
-		assert.Contains(t, got.Warnings[0].Message, "also matches objects with no lastModifiedDate")
+		assert.Equal(t, ignoredPresetWarning, got.Warnings[0].Message)
 	})
 }
 
@@ -210,7 +213,9 @@ func TestSearchPaginationMessage(t *testing.T) {
 		message string
 	}{
 		{"global browse", "/v2/search?offset=1&limit=1", `{}`, 3, "at least 3 matches — showing 1 from offset 1"},
-		{"global full text", "/v2/search?offset=1&limit=1", `{"query":"needle"}`, 3, "at least 3 matches — showing 1 from offset 1"},
+		// a full-text global search reads the 100 best matches it orders by
+		// the requested sorts whatever the page, so it counts all four here
+		{"global full text", "/v2/search?offset=1&limit=1", `{"query":"needle"}`, 4, "at least 4 matches — showing 1 from offset 1"},
 		{"space browse", "/v2/spaces/space1/search?offset=1&limit=1", `{}`, 4, "4 matches — showing 1 from offset 1"},
 		{"space full text", "/v2/spaces/space1/search?offset=1&limit=1", `{"query":"needle"}`, 3, "at least 3 matches — showing 1 from offset 1"},
 		{"complete global", "/v2/search", `{}`, 4, ""},

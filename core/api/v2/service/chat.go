@@ -73,11 +73,11 @@ func (s *Service) ListChats(ctx context.Context, spaceId string, q ChatListQuery
 	}
 	query := database.Query{
 		Filters: chatListFilters(q.IncludeDiscussions),
-		Sorts: []database.SortRequest{{
+		Sorts: database.WithIdTieBreak([]database.SortRequest{{
 			RelationKey: bundle.RelationKeyLastModifiedDate,
 			Type:        model.BlockContentDataviewSort_Desc,
 			IncludeTime: true,
-		}},
+		}}),
 	}
 	if q.Unread != "" || q.IncludeDiscussions {
 		return s.listScannedChats(spaceId, query, q, offset, limit)

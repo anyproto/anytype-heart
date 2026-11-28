@@ -150,7 +150,7 @@ func GlobalSearchObjectsHandler(s *v2service.Service) gin.HandlerFunc {
 			RespondError(c, err)
 			return
 		}
-		resp := v2model.NewListResponse(rows, total, offset, limit, hasMore, v2service.SearchNarrowHint)
+		resp := v2model.NewListResponse(rows, total, offset, limit, hasMore, v2service.GlobalSearchNarrowHint(offset, limit))
 		// Cross-space search does not compute an exact total when clipped.
 		if hasMore {
 			resp.Message = "at least " + resp.Message

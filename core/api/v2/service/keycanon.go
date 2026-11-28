@@ -180,7 +180,7 @@ func (k *keyCanon) candidateSpellings(stored []string, v errKeys) []string {
 //
 // The set-create request carries filters/sorts/views as raw JSON that lands
 // in the set document verbatim — a served-slug property key there would
-// bind a dataview filter to a spelling the store never matches, silently.
+// bind a dataview filter to a spelling no relation owns, silently.
 // The rewriters walk generic JSON (no partial-struct re-marshal, so no
 // field is ever dropped) and canonicalize exactly the key slots
 // collectViewPropertyKeys reads: filter nodes' property (recursive), sorts'

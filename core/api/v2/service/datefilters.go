@@ -20,10 +20,9 @@ func opFilterPath(base string, i int) string      { return fmt.Sprintf("%s[%d]",
 // date — RFC 3339 or YYYY-MM-DD, the spellings the compact filter string
 // takes — becomes unix seconds in place, and a string that is not a date
 // is an issue. A view persists its filter, so a date left as a string is
-// not a bad query but a view that compares string-against-int64 and
-// quietly matches nothing, for good (round-six eval R6-1: an actor built
-// "this quarter's deals", read the definition back, saw zero rows, and
-// finished). Search still refuses the string on its structured form and
+// not a bad query but a view that compares a string with stored numbers,
+// for good (round-six eval R6-1: an actor built "this quarter's deals",
+// read the definition back, saw zero rows, and finished). Search still refuses the string on its structured form and
 // spells the conversion out; converting there too is a later iteration.
 // Numbers pass untouched; nodes are walked recursively.
 func convertDateFilterValues(nodes []any, base string, style filterPathStyle, formatName func(string) (string, bool)) []v2model.Issue {
@@ -60,7 +59,7 @@ func convertDateFilterValues(nodes []any, base string, style filterPathStyle, fo
 			if sec, ok := filterstring.ParseDate(value); ok {
 				node["value"] = sec
 			} else {
-				issues = append(issues, notADateIssue(property, value, valuePath))
+				issues = append(issues, notADateIssue(property, value, valuePath, node["condition"]))
 			}
 		case []any:
 			converted := make([]any, len(value))
@@ -72,7 +71,7 @@ func convertDateFilterValues(nodes []any, base string, style filterPathStyle, fo
 				}
 				sec, ok := filterstring.ParseDate(s)
 				if !ok {
-					issues = append(issues, notADateIssue(property, s, valuePath))
+					issues = append(issues, notADateIssue(property, s, valuePath, node["condition"]))
 					converted[j] = item
 					continue
 				}
@@ -84,11 +83,17 @@ func convertDateFilterValues(nodes []any, base string, style filterPathStyle, fo
 	return issues
 }
 
-func notADateIssue(property, value, path string) v2model.Issue {
+func notADateIssue(property, value, path string, condition any) v2model.Issue {
+	hint := `a date takes unix seconds as a JSON number, an RFC 3339 string or YYYY-MM-DD`
+	if c, _ := condition.(string); c == "" {
+		hint += ` — or replace value with "date_preset", e.g. "date_preset":"today"`
+	} else if _, applies := datePresetConditionNames[normalizeCondition(c)]; applies {
+		hint += ` — or replace value with "date_preset", e.g. "date_preset":"today"`
+	}
 	return v2model.Issue{
 		Path:    path,
 		Message: fmt.Sprintf("property %q is a date, and %q is not one", property, value),
-	}.Hintf(`a date takes unix seconds as a JSON number, an RFC 3339 string or YYYY-MM-DD — or replace value with date_preset, e.g. "date_preset":"today" (%s lists them)`, v2model.RefGetSchema("filters"))
+	}.Hintf("%s (%s lists them)", hint, v2model.RefGetSchema("filters"))
 }
 
 // presenceCondition reports whether a condition ignores its leaf's value.

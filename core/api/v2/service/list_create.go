@@ -118,8 +118,8 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 	// the read-only search path.
 	// kc canonicalizes the request's property spellings (served slugs →
 	// stored keys) — the query DOCUMENT persists these keys, and a served
-	// spelling landing in a dataview filter would bind a RelationKey the
-	// store never matches, silently (review cause 3)
+	// spelling landing in a dataview filter would bind a RelationKey no
+	// relation owns, silently (review cause 3)
 	kc, err := s.newKeyCanon(spaceId)
 	if err != nil {
 		return nil, err

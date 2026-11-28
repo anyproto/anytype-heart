@@ -118,6 +118,11 @@ type FTSearch interface {
 	// is pure waste for record-only responses — pass withHighlights=false
 	// unless the caller returns highlight fragments to the client.
 	Search(spaceId string, query string, limit int, withHighlights bool) (results []*DocumentMatch, err error)
+	// SearchDocs runs Search with highlights over the docs with the given ids
+	// only: it reads the highlights of chosen docs a search without them
+	// found, at the cost of those docs alone. A doc the query does not match
+	// is left out.
+	SearchDocs(spaceId string, query string, docIds []string) (results []*DocumentMatch, err error)
 	// SearchChat searches only message documents ("chatId/m/...") so messages
 	// don't compete with the rest of the space for the limit. Empty chatId
 	// searches messages of all chats; empty spaceId searches all spaces.
@@ -713,6 +718,22 @@ func (f *ftSearch) NamePrefixSearch(spaceId, query string, limit int) ([]*Docume
 
 func (f *ftSearch) Search(spaceId, query string, limit int, withHighlights bool) ([]*DocumentMatch, error) {
 	return f.performSearch(spaceId, query, limit, withHighlights, f.buildDetailedQuery)
+}
+
+func (f *ftSearch) SearchDocs(spaceId, query string, docIds []string) ([]*DocumentMatch, error) {
+	if len(docIds) == 0 {
+		return nil, nil
+	}
+	return f.performSearch(spaceId, query, len(docIds), true, func(qb *tantivy.QueryBuilder, query string) {
+		// the raw id field holds the whole doc id; boost 0 keeps the clause
+		// out of BM25 scoring, and the highlights come from the text clauses
+		ids := qb.NestedBuilder()
+		for _, id := range docIds {
+			ids.Query(tantivy.Should, fieldIdRaw, id, tantivy.TermQuery, 0.0)
+		}
+		qb.BooleanQuery(tantivy.Must, ids, 0.0)
+		f.buildDetailedQuery(qb, query)
+	})
 }
 
 func (f *ftSearch) SearchChat(spaceId, chatId, query string, creators []string, limit int) ([]*DocumentMatch, error) {

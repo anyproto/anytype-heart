@@ -450,7 +450,7 @@ func TestUpdateViewOp(t *testing.T) {
 		assert.False(t, hasValue, "the canonical form drops the value")
 	})
 
-	t.Run("an unguarded date comparison warns (C11), it does not reject", func(t *testing.T) {
+	t.Run("a date less comparison stores without a warning (GO-7613)", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		captured := fx.expectMutate(editRead(t, editSetDoc), "headB")
 
@@ -458,11 +458,27 @@ func TestUpdateViewOp(t *testing.T) {
 			patchBody(`{"op":"update_view","set":{"filters":[{"property":"dueDate","condition":"less","date_preset":"today"}]}}`), "", false, true)
 
 		require.NoError(t, err)
-		require.NotEmpty(t, result.Warnings, "the §6.2 empty-date trap rides the warnings channel")
-		assert.Contains(t, result.Warnings[0].Path, "ops[0].set.filters")
+		assert.Empty(t, result.Warnings, "the store never matches an undated object, so there is nothing to warn about")
+		view := viewsOf(t, dataviewOf(t, *captured, "dataview"))[0]
+		filters, _ := view["filters"].([]any)
+		require.Len(t, filters, 1, "the filter is stored")
+		assert.Equal(t, map[string]any{"property": "due_date", "condition": "less", "date_preset": "today"}, filters[0])
+	})
+
+	t.Run("an ignored date preset warns (C11), it does not reject", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editSetDoc), "headB")
+
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"update_view","set":{"filters":[{"property":"dueDate","condition":"empty","date_preset":"today"}]}}`), "", false, true)
+
+		require.NoError(t, err)
+		assert.Equal(t, []v2model.Issue{{Path: "ops[0].set.filters[0]", Message: ignoredPresetWarning}}, result.Warnings)
 		view := viewsOf(t, dataviewOf(t, *captured, "dataview"))[0]
 		filters, _ := view["filters"].([]any)
 		require.Len(t, filters, 1, "the filter is stored despite the warning")
+		wantFilter := map[string]any{"property": "due_date", "condition": "empty", "date_preset": "today"}
+		assert.Equal(t, wantFilter, filters[0])
 	})
 
 	t.Run("the compact filter string parses into stored filters", func(t *testing.T) {
@@ -1488,8 +1504,8 @@ func TestV2ViewAcceptsPropertyByServedKey(t *testing.T) {
 }
 
 // TestV2StoredDateFiltersTakeDateStrings: a view PERSISTS its filter, so a
-// date left as a string is not a bad query but a view that compares
-// string-against-int64 and quietly matches nothing (round-six eval R6-1).
+// date left as a string is not a bad query but a view that compares a string
+// with stored numbers, for good (round-six eval R6-1).
 // update_view converts a date string to unix seconds on write and refuses a
 // string that is no date — the same value search refuses with the
 // conversion spelled out.

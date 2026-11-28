@@ -140,8 +140,8 @@ type v2StateApplier struct {
 	// cannot silently regress to a re-marshal per op.
 	marshalCount int
 
-	// warnings collects C11 warning-grade findings the ops raise (today: the
-	// §6.2 unguarded-date-comparison trap from an update_view filter edit);
+	// warnings collects C11 warning-grade findings the ops raise (today: an
+	// ignored date preset from an update_view filter edit);
 	// applyPatchOps surfaces them on the EditResult.
 	warnings []v2model.Issue
 	// spaceLinkExp expands the space reference of a cross-space object link

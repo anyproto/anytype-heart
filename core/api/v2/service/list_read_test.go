@@ -3,6 +3,7 @@ package v2service
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 	"testing"
 
 	"github.com/gogo/protobuf/types"
@@ -12,10 +13,59 @@ import (
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
+
+// two space-minted keys, bson ids no listing ever spells
+const (
+	removedKeyA = "6aad3ad361fab22f055a8648"
+	removedKeyB = "6aad3ad361fab22f055a8700"
+)
+
+func removedRelation(id, key, slug, name string) objectstore.TestObject {
+	return objectstore.TestObject{
+		bundle.RelationKeyId:           domain.String(id),
+		bundle.RelationKeyRelationKey:  domain.String(key),
+		bundle.RelationKeyApiObjectKey: domain.String(slug),
+		bundle.RelationKeyName:         domain.String(name),
+		bundle.RelationKeyIsArchived:   domain.Bool(true),
+	}
+}
+
+// filterViewOn is a one-view dataview whose view filters on every key, so no
+// object satisfies it.
+func filterViewOn(name string, keys ...string) *model.BlockContentDataview {
+	view := &model.BlockContentDataviewView{Id: "vgone", Name: name}
+	for _, key := range keys {
+		view.Filters = append(view.Filters, &model.BlockContentDataviewFilter{
+			RelationKey: key,
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.Int64(5),
+		})
+	}
+	return &model.BlockContentDataview{Views: []*model.BlockContentDataviewView{view}}
+}
+
+// servedFilterProperty is what the views read calls the i-th filter's
+// property of the first view of "query1" — the spelling the warning must match.
+func servedFilterProperty(t *testing.T, fx *v2Fixture, ctx context.Context, i int) string {
+	t.Helper()
+	views, _, _, err := fx.GetQueryViews(ctx, testSpaceId, "query1", 0, 25)
+	require.NoError(t, err)
+	require.NotEmpty(t, views)
+	var view struct {
+		Filters []struct {
+			Property string `json:"property"`
+		} `json:"filters"`
+	}
+	require.NoError(t, json.Unmarshal(views[0], &view))
+	require.Greater(t, len(view.Filters), i)
+	return view.Filters[i].Property
+}
 
 // listReadRead builds one live ObjectRead for a query/collection target.
 func listReadRead(layout model.ObjectTypeLayout, details map[string]*types.Value, dv *model.BlockContentDataview, members []string) apicore.ObjectRead {
@@ -158,40 +208,194 @@ func TestV2GetQueryObjects(t *testing.T) {
 		assert.Contains(t, warnings[0].Hint, "pass ?view=<view_id> to read through another view")
 	})
 
-	// A stored view now applies by default, so a filter keyed on a property
-	// the space no longer holds empties the page for every caller — the
-	// silent no-match this file's contract rules out. The rows are still
-	// empty (the filter genuinely matches nothing); what must not be empty is
-	// the explanation.
-	t.Run("a default view filtering on a deleted property warns instead of emptying silently", func(t *testing.T) {
-		// given: one stored view, filtering on a key no live property has
-		fx := searchSetup(t)
-		dv := &model.BlockContentDataview{Views: []*model.BlockContentDataviewView{{
-			Id:   "vgone",
-			Name: "By status",
-			Filters: []*model.BlockContentDataviewFilter{{
-				RelationKey: "a_property_that_was_deleted",
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList([]string{"whatever"}),
-			}},
-		}}}
-		fx.expectListRead("query1", queryRead(dv))
+	// A stored view now applies by default, so a filter keyed on a property the
+	// space cannot serve empties the page for every caller. The warning names
+	// the property the way the views read does and predicts nothing.
+	t.Run("a default view filtering on a removed property warns, labelled as the views read labels it", func(t *testing.T) {
+		for _, tc := range []struct {
+			name string
+			ctx  context.Context
+			want string
+		}{
+			{"slug keys", context.Background(), `"gamma"`},
+			{"name keys", CtxWithNameKeys(context.Background()), ""},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				// given: the property was removed; its row keeps the slug and the name
+				fx := searchSetup(t)
+				fx.addRelation(t, testSpaceId, removedRelation("rel-gone", removedKeyA, "gamma", "Gamma"))
+				fx.expectListRead("query1", queryRead(filterViewOn("By status", removedKeyA)))
 
-		// when — no view requested, so the stored one applies
+				// when — no view requested, so the stored one applies
+				rows, total, _, warnings, err := fx.GetQueryObjects(tc.ctx, testSpaceId, "query1", "", nil, 0, 25)
+
+				// then
+				require.NoError(t, err)
+				assert.Empty(t, rows)
+				assert.Zero(t, total)
+				label := strconv.Quote(servedFilterProperty(t, fx, tc.ctx, 0))
+				if tc.want != "" {
+					assert.Equal(t, tc.want, label)
+				}
+				want := v2model.Issue{
+					Path:    "view",
+					Message: `view "By status" (vgone) returned no rows. Its filters reference unavailable properties (` + label + `)`,
+				}.Hintf("the properties were probably deleted; edit the view's filters")
+				assert.Equal(t, []v2model.Issue{want}, warnings)
+			})
+		}
+	})
+
+	t.Run("two removed generations of one slug get the distinct labels the views read gives them", func(t *testing.T) {
+		for _, ctx := range []context.Context{context.Background(), CtxWithNameKeys(context.Background())} {
+			fx := searchSetup(t)
+			fx.addRelation(t, testSpaceId, removedRelation("rel-gone-a", removedKeyA, "gamma", "Gamma"))
+			fx.addRelation(t, testSpaceId, removedRelation("rel-gone-b", removedKeyB, "gamma", "Gamma"))
+			fx.expectListRead("query1", queryRead(filterViewOn("By status", removedKeyA, removedKeyB)))
+
+			_, _, _, warnings, err := fx.GetQueryObjects(ctx, testSpaceId, "query1", "", nil, 0, 25)
+
+			require.NoError(t, err)
+			require.Len(t, warnings, 1)
+			first, second := servedFilterProperty(t, fx, ctx, 0), servedFilterProperty(t, fx, ctx, 1)
+			assert.Contains(t, warnings[0].Message, strconv.Quote(first))
+			assert.Contains(t, warnings[0].Message, strconv.Quote(second))
+		}
+	})
+
+	t.Run("a removed property sharing a live one's spelling is labelled as the views read labels it", func(t *testing.T) {
+		for _, ctx := range []context.Context{context.Background(), CtxWithNameKeys(context.Background())} {
+			// given: a live property answers to the removed one's slug and name
+			fx := searchSetup(t)
+			fx.addRelation(t, testSpaceId, removedRelation("rel-gone", removedKeyA, "gamma", "Gamma"))
+			fx.addRelation(t, testSpaceId, objectstore.TestObject{
+				bundle.RelationKeyId:           domain.String("rel-live"),
+				bundle.RelationKeyRelationKey:  domain.String(removedKeyB),
+				bundle.RelationKeyApiObjectKey: domain.String("gamma"),
+				bundle.RelationKeyName:         domain.String("Gamma"),
+			})
+			fx.expectListRead("query1", queryRead(filterViewOn("By status", removedKeyA)))
+
+			// when
+			_, _, _, warnings, err := fx.GetQueryObjects(ctx, testSpaceId, "query1", "", nil, 0, 25)
+
+			// then: the warning agrees with the views read, and never names the live property's spelling
+			require.NoError(t, err)
+			require.Len(t, warnings, 1)
+			label := strconv.Quote(servedFilterProperty(t, fx, ctx, 0))
+			assert.Contains(t, warnings[0].Message, "("+label+")")
+			assert.NotEqual(t, `"gamma"`, label, "the live property owns that slug")
+		}
+	})
+
+	t.Run("an explicitly removed bundled property warns, a never-installed one does not", func(t *testing.T) {
+		for _, tc := range []struct {
+			name    string
+			removed bool
+		}{{"removed", true}, {"never installed", false}} {
+			t.Run(tc.name, func(t *testing.T) {
+				fx := searchSetup(t)
+				if tc.removed {
+					fx.addRelation(t, testSpaceId, objectstore.TestObject{
+						bundle.RelationKeyId:          domain.String("rel-due"),
+						bundle.RelationKeyRelationKey: domain.String("dueDate"),
+						bundle.RelationKeyName:        domain.String("Due date"),
+						bundle.RelationKeyIsArchived:  domain.Bool(true),
+					})
+				}
+				fx.expectListRead("query1", queryRead(filterViewOn("Due", "dueDate")))
+
+				_, _, _, warnings, err := fx.GetQueryObjects(context.Background(), testSpaceId, "query1", "", nil, 0, 25)
+
+				require.NoError(t, err)
+				if !tc.removed {
+					assert.Empty(t, warnings)
+					return
+				}
+				require.Len(t, warnings, 1)
+				assert.Contains(t, warnings[0].Message, "("+strconv.Quote(servedFilterProperty(t, fx, context.Background(), 0))+")")
+			})
+		}
+	})
+
+	t.Run("keys the store serves without a relation row are not unavailable", func(t *testing.T) {
+		// given: bundled and system keys, and a nested path, none matching any object
+		fx := searchSetup(t)
+		fx.expectListRead("query1", queryRead(&model.BlockContentDataview{Views: []*model.BlockContentDataviewView{{
+			Id: "vquiet", Name: "Quiet",
+			Filters: []*model.BlockContentDataviewFilter{
+				{RelationKey: "unreadMentionCount", Condition: model.BlockContentDataviewFilter_Greater, Value: pbtypes.Int64(0)},
+				{RelationKey: "lastModifiedDate", Condition: model.BlockContentDataviewFilter_Greater, Value: pbtypes.Int64(9999999999)},
+				{RelationKey: "dueDate", Condition: model.BlockContentDataviewFilter_Equal, Value: pbtypes.Int64(5)},
+				{RelationKey: "isFavorite", Condition: model.BlockContentDataviewFilter_Equal, Value: pbtypes.Bool(true)},
+				{RelationKey: "type.uniqueKey", Condition: model.BlockContentDataviewFilter_Equal, Value: pbtypes.String("ot-none")},
+			},
+		}}}))
+
+		// when
 		rows, total, _, warnings, err := fx.GetQueryObjects(context.Background(), testSpaceId, "query1", "", nil, 0, 25)
 
-		// then: empty, but said out loud, naming the view and the key
+		// then
 		require.NoError(t, err)
 		assert.Empty(t, rows)
 		assert.Zero(t, total)
-		require.NotEmpty(t, warnings, "an empty page from a dangling filter must not be silent")
-		joined := ""
-		for _, w := range warnings {
-			joined += w.Message + " | " + w.Hint + " "
-		}
-		assert.Contains(t, joined, "a_property_that_was_deleted")
-		assert.Contains(t, joined, "By status")
-		assert.Contains(t, joined, "matches nothing")
+		assert.Empty(t, warnings)
+	})
+
+	t.Run("the warning offers another view only when one exists", func(t *testing.T) {
+		// given: two views, the first filtering on a property that is gone
+		fx := searchSetup(t)
+		two := filterViewOn("By status", removedKeyA)
+		two.Views = append(two.Views, &model.BlockContentDataviewView{Id: "vall", Name: "All"})
+		fx.expectListRead("query1", queryRead(two))
+
+		// when
+		_, _, _, warnings, err := fx.GetQueryObjects(context.Background(), testSpaceId, "query1", "", nil, 0, 25)
+
+		// then: the view-choice note, then the dangling warning with a way out
+		require.NoError(t, err)
+		require.Len(t, warnings, 2)
+		assert.Equal(t, "edit the view's filters, or pass ?view=<view_id> to read through another view", warnings[1].Hint)
+		assert.Equal(t, []v2model.Ref{v2model.Resend("view", "<view_id>")}, warnings[1].SeeAlso)
+	})
+
+	t.Run("a stored view substitutes the placeholder into any string leaf, direct search compares the literal", func(t *testing.T) {
+		// given: one chore named like the query id, one named like the token
+		fx := searchSetup(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("choreQ"),
+				bundle.RelationKeyName:           domain.String("query1"),
+				bundle.RelationKeyType:           domain.String("type-chore"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("choreT"),
+				bundle.RelationKeyName:           domain.String("_filter_template_1_"),
+				bundle.RelationKeyType:           domain.String("type-chore"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			},
+		})
+		fx.expectListRead("query1", queryRead(&model.BlockContentDataview{Views: []*model.BlockContentDataviewView{{
+			Id: "vnot", Name: "Not host",
+			Filters: []*model.BlockContentDataviewFilter{{
+				RelationKey: "name",
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       pbtypes.String("_filter_template_1_"),
+			}},
+		}}}))
+
+		// when
+		viewRows, _, _, _, err := fx.GetQueryObjects(context.Background(), testSpaceId, "query1", "", nil, 0, 25)
+		require.NoError(t, err)
+		searchRows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, v2model.SearchRequest{
+			Type: "chore", Filter: `name != "_filter_template_1_"`,
+		}, 0, 25)
+		require.NoError(t, err)
+
+		// then: the view compared against the query id, the search against the token
+		assert.ElementsMatch(t, []string{"chore1", "chore2", "choreT"}, rowIds(viewRows))
+		assert.ElementsMatch(t, []string{"chore1", "chore2", "choreQ"}, rowIds(searchRows))
 	})
 
 	t.Run("a query whose dataview has no views reads its source only", func(t *testing.T) {
