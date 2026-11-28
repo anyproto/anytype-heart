@@ -210,7 +210,9 @@ func TestSearchPaginationMessage(t *testing.T) {
 		message string
 	}{
 		{"global browse", "/v2/search?offset=1&limit=1", `{}`, 3, "at least 3 matches — showing 1 from offset 1"},
-		{"global full text", "/v2/search?offset=1&limit=1", `{"query":"needle"}`, 3, "at least 3 matches — showing 1 from offset 1"},
+		// a full-text global search reads the 100 best matches it orders by
+		// the requested sorts whatever the page, so it counts all four here
+		{"global full text", "/v2/search?offset=1&limit=1", `{"query":"needle"}`, 4, "at least 4 matches — showing 1 from offset 1"},
 		{"space browse", "/v2/spaces/space1/search?offset=1&limit=1", `{}`, 4, "4 matches — showing 1 from offset 1"},
 		{"space full text", "/v2/spaces/space1/search?offset=1&limit=1", `{"query":"needle"}`, 3, "at least 3 matches — showing 1 from offset 1"},
 		{"complete global", "/v2/search", `{}`, 4, ""},

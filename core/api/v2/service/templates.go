@@ -565,11 +565,11 @@ func (s *Service) ListTemplates(ctx context.Context, spaceId, typeTerm string, o
 		}
 		listedFor = targetId
 	}
-	byDate := []database.SortRequest{{
+	byDate := database.WithIdTieBreak([]database.SortRequest{{
 		RelationKey: bundle.RelationKeyLastModifiedDate,
 		Type:        model.BlockContentDataviewSort_Desc,
 		IncludeTime: true,
-	}}
+	}})
 	// the index carries an object's first type key, not its kind: the rows
 	// of the template type and the rows elsewhere that name a target are the
 	// candidates, each answered by templateRowTargetId, and the page is cut
@@ -602,8 +602,14 @@ func (s *Service) ListTemplates(ctx context.Context, spaceId, typeTerm string, o
 		targetOf[row.Details.GetString(bundle.RelationKeyId)] = target
 		all = append(all, row)
 	}
+	// the two queries' rows merge in the order each was cut by: modified
+	// date, then id, both descending (database.WithIdTieBreak)
 	sort.SliceStable(all, func(i, j int) bool {
-		return all[i].Details.GetInt64(bundle.RelationKeyLastModifiedDate) > all[j].Details.GetInt64(bundle.RelationKeyLastModifiedDate)
+		di, dj := all[i].Details.GetInt64(bundle.RelationKeyLastModifiedDate), all[j].Details.GetInt64(bundle.RelationKeyLastModifiedDate)
+		if di != dj {
+			return di > dj
+		}
+		return all[i].Details.GetString(bundle.RelationKeyId) > all[j].Details.GetString(bundle.RelationKeyId)
 	})
 	total := len(all)
 	var records []database.Record
