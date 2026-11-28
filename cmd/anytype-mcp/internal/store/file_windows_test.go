@@ -193,16 +193,22 @@ func TestH1R1_BLD06_FolderAtTheEndpointName(t *testing.T) {
 	deniedOn(t, err, f.Path(), "not a regular file")
 }
 
-// COR-12: a reader holds the file open with delete sharing, so the
-// desktop's replacement and removal never wait for it.
+// COR-12: a reader holds the file open with delete sharing, so a
+// replacement with POSIX semantics and a removal never wait for it. (A
+// classic MoveFileEx replace, which is what os.Rename and Node's
+// fs.rename do, fails while any handle is open, whatever its sharing: the
+// desktop's writer retries that.)
 func TestH1R1_COR12_ReaderDoesNotBlockTheWriter(t *testing.T) {
 	f := seeded(t)
 	fh, err := f.openChecked(filepath.Dir(f.Path()), filepath.Base(f.Path()), "the endpoint file")
 	require.NoError(t, err)
 	defer fh.Close()
-	next := f.Path() + ".tmp"
-	require.NoError(t, os.WriteFile(next, []byte(`{"v":1,"port":2}`), 0o600))
-	require.NoError(t, os.Rename(next, f.Path()), "a replacement while the reader is open")
+	dir, err := os.OpenRoot(filepath.Dir(f.Path()))
+	require.NoError(t, err)
+	defer dir.Close()
+	name := filepath.Base(f.Path())
+	require.NoError(t, os.WriteFile(f.Path()+".tmp", []byte(`{"v":1,"port":2}`), 0o600))
+	require.NoError(t, dir.Rename(name+".tmp", name), "a POSIX-semantics replacement while the reader is open")
 	port, err := f.Read(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 2, port)

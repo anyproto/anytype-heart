@@ -233,20 +233,28 @@ func (f *File) checkExecutable(launch, running string) error {
 	if passes(filepath.Dir(launch), anytype) {
 		return deniedAt(launch, alias)
 	}
-	// and the running file must not really lie in it
-	fh, err := os.Open(running)
-	if err != nil {
-		return unreachable(running, err)
-	}
-	defer fh.Close()
-	real, err := FinalPath(fh)
-	if err != nil {
-		return unreachable(running, err)
-	}
-	if passes(filepath.Dir(real), anytype) {
-		return deniedAt(running, alias)
+	// nor may the file it names, or the running one, really lie in it.
+	// The denial names the path as the caller spelled it: Linux reports
+	// the running file resolved.
+	for _, p := range []string{launch, running} {
+		real, err := finalPath(p)
+		if err != nil {
+			return unreachable(launch, err)
+		}
+		if passes(filepath.Dir(real), anytype) {
+			return deniedAt(launch, alias)
+		}
 	}
 	return nil
+}
+
+func finalPath(path string) (string, error) {
+	fh, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer fh.Close()
+	return FinalPath(fh)
 }
 
 // passes reports whether dir or a folder above it is the folder target,

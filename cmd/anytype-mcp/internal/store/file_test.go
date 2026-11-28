@@ -152,7 +152,7 @@ func TestH1R1_C_LaunchPathIsTheRunningFile(t *testing.T) {
 	}
 	// a running file in .anytype that the launch path does not show
 	e := requireReason(t, f.CheckExecutable(outside, launch), ReasonDenied, "unseen")
-	assert.Equal(t, launch, e.Path)
+	assert.Equal(t, outside, e.Path, "named as the caller spelled it")
 	assert.Contains(t, e.Rule, "another spelling or through a link")
 }
 

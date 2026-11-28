@@ -216,9 +216,11 @@ func TestCheckExecutableRules(t *testing.T) {
 			if filepath.Base(alias) == "bin" {
 				launch = filepath.Join(alias, "anytype-mcp")
 			}
-			// the path passes no .anytype by its spelling; the file it runs
-			// really lies there
-			deniedOn(t, f.CheckExecutable(launch, exe), exe, "another spelling or through a link")
+			// the path passes no .anytype by its spelling; the file it names
+			// really lies there. The denial names it as spelled, whatever
+			// the system reports for the running file (Linux: resolved)
+			deniedOn(t, f.CheckExecutable(launch, exe), launch, "another spelling or through a link")
+			deniedOn(t, f.CheckExecutable(launch, launch), launch, "another spelling or through a link")
 		}
 		// a home spelled through a link while the path is spelled resolved
 		link := filepath.Join(t.TempDir(), "home")
