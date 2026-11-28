@@ -2401,9 +2401,9 @@ func TestPatchObject(t *testing.T) {
 			dryRun bool
 			want   v2model.Issue
 		}{
-			{want: v2model.Issue{Path: "/properties/severity", Message: `property "severity" has no option named "Critical", and this request did not ask to create one`}.
+			{want: v2model.Issue{Path: "ops[0].set.severity", Message: `property "severity" has no option named "Critical", and this request did not ask to create one`}.
 				Hintf("check the spelling against %s, or resend with %s to create it", options, v2model.Resend("create_missing_options", "true"))},
-			{dryRun: true, want: v2model.Issue{Path: "/properties/severity", Message: `property "severity" has no option named "Critical", and this request did not ask to create one`}.
+			{dryRun: true, want: v2model.Issue{Path: "ops[0].set.severity", Message: `property "severity" has no option named "Critical", and this request did not ask to create one`}.
 				Hintf("check the spelling against %s, or resend with %s to preview creating it", options, v2model.Resend("create_missing_options", "true").With("dry_run", "true"))},
 		} {
 			// given
