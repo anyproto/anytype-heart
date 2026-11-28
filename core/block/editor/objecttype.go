@@ -97,7 +97,7 @@ func (ot *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		bundle.RelationKeyRecommendedLayout: domain.Int64(model.ObjectType_basic),
 	}))
 	newLayout := layout.NewLayoutStateFromDetails(ot.Details().CopyOnlyKeys(bundle.RelationKeyRecommendedLayout))
-	return ot.syncLayoutForObjectsAndTemplates(oldLayout, newLayout, false)
+	return ot.syncLayoutForObjectsAndTemplates(oldLayout, newLayout, false, "")
 }
 
 func (ot *ObjectType) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
@@ -204,15 +204,15 @@ func removeDescriptionMigration(s *state.State) {
 	s.RemoveDetail(bundle.RelationKeyDescription)
 }
 
-func (ot *ObjectType) syncLayoutForObjectsAndTemplates(oldLayout, newLayout layout.LayoutState, applyOtherObjects bool) error {
-	syncer := layout.NewSyncer(ot.Id(), ot.Space(), ot.spaceIndex)
+func (ot *ObjectType) syncLayoutForObjectsAndTemplates(oldLayout, newLayout layout.LayoutState, applyOtherObjects bool, integrationName string) error {
+	syncer := layout.NewSyncer(ot.Id(), ot.Space(), ot.spaceIndex, layout.WithIntegrationName(integrationName))
 	return syncer.SyncLayoutWithType(oldLayout, newLayout, false, applyOtherObjects, true)
 }
 
 func (ot *ObjectType) syncLayoutHook(info smartblock.ApplyInfo) error {
 	newLayout := layout.NewLayoutStateFromEvents(info.Events)
 	oldLayout := layout.NewLayoutStateFromDetails(info.ParentDetails)
-	return ot.syncLayoutForObjectsAndTemplates(oldLayout, newLayout, info.ApplyOtherObjects)
+	return ot.syncLayoutForObjectsAndTemplates(oldLayout, newLayout, info.ApplyOtherObjects, info.IntegrationName)
 }
 
 // reconcileDataviewColumns keeps the type's own dataview in step with the

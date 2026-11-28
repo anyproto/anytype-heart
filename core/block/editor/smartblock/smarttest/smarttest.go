@@ -366,10 +366,12 @@ func (st *SmartTest) Apply(s *state.State, flags ...smartblock.ApplyFlag) (err e
 		s.RemoveDetail(bundle.RelationKeyInternalFlags)
 	}
 
+	integrationName := s.TakeIntegrationName()
 	msgs, act, err := state.ApplyState(st.SpaceID(), s, true)
 	if err != nil {
 		return
 	}
+	st.Results.IntegrationNames = append(st.Results.IntegrationNames, integrationName)
 
 	if hooks {
 		for _, h := range st.hooks {
@@ -457,6 +459,12 @@ func (st *SmartTest) Update(ctx session.Context, apply func(b simple.Block) erro
 }
 
 type Results struct {
+	// IntegrationNames holds, per Apply, the attribution the real
+	// smartblock would have stamped on the pushed change: what the applied
+	// state answers to state.TakeIntegrationName, taken at the same point
+	// (before the state is merged into the document). "" for an apply the
+	// real smartblock would push unstamped.
+	IntegrationNames    []string
 	Events              [][]simple.EventMessage
 	Applies             [][]*model.Block
 	IsStateAppendCalled bool

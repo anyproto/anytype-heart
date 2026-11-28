@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -401,5 +402,129 @@ func TestBasic_LayoutChangeConvertsBlocks(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "Meeting", s.Details().GetString(bundle.RelationKeyName))
 		assert.NotNil(t, s.PickParentOf(template.TitleBlockId))
+	})
+}
+
+// lastModifiedVia says which app authored the object's latest change and is
+// derived from that change alone. The details API refuses to set or clear it.
+func TestBasic_LastModifiedViaCannotBeWritten(t *testing.T) {
+	newAttributed := func(t *testing.T) *basicFixture {
+		f := newBasicFixture(t)
+		f.store.AddObjects(t, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("rel-lastModifiedVia"),
+			bundle.RelationKeySpaceId:        domain.String(spaceId),
+			bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyLastModifiedVia.String()),
+			bundle.RelationKeyUniqueKey:      domain.String("rel-lastModifiedVia"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_shorttext)),
+		}, {
+			bundle.RelationKeyId:             domain.String("rel-name"),
+			bundle.RelationKeySpaceId:        domain.String(spaceId),
+			bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyName.String()),
+			bundle.RelationKeyUniqueKey:      domain.String("rel-name"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_shorttext)),
+		}})
+		// an object whose latest change was made through an app
+		f.sb.Doc.(*state.State).SetLastModified(state.LastModified{Timestamp: 100, By: "alice", IntegrationName: "Raycast"})
+		return f
+	}
+	via := func(f *basicFixture) string {
+		return f.sb.LocalDetails().GetString(bundle.RelationKeyLastModifiedVia)
+	}
+
+	t.Run("a set is refused", func(t *testing.T) {
+		// given
+		f := newAttributed(t)
+
+		// when: the gRPC ObjectSetDetails shape — a property-only edit
+		err := f.basic.SetDetails(nil, []domain.Detail{{Key: bundle.RelationKeyLastModifiedVia, Value: domain.String("Forged")}}, false)
+
+		// then: red if validateUpdates lets the key through
+		require.ErrorIs(t, err, domain.ErrValidationFailed)
+		assert.Equal(t, "Raycast", via(f))
+	})
+
+	t.Run("an unset is refused", func(t *testing.T) {
+		// given
+		f := newAttributed(t)
+
+		// when: a null value is how a detail is removed
+		err := f.basic.SetDetails(nil, []domain.Detail{{Key: bundle.RelationKeyLastModifiedVia, Value: domain.Null()}}, false)
+
+		// then: red if only sets are refused — clearing it hides the app
+		// that made the latest change
+		require.ErrorIs(t, err, domain.ErrValidationFailed)
+		assert.Equal(t, "Raycast", via(f))
+	})
+
+	t.Run("a write that would change nothing is refused all the same", func(t *testing.T) {
+		// the keys the caller NAMED are refused, not the diff: these two
+		// writes are empty diffs and used to be answered as successes
+		// given
+		f := newAttributed(t)
+
+		// when: set to the current value
+		err := f.basic.SetDetails(nil, []domain.Detail{{Key: bundle.RelationKeyLastModifiedVia, Value: domain.String("Raycast")}}, false)
+
+		// then: red if the refusal still sits behind the diff
+		require.ErrorIs(t, err, domain.ErrValidationFailed)
+
+		// given: an object with no app
+		f = newAttributed(t)
+		f.sb.Doc.(*state.State).SetLastModified(state.LastModified{Timestamp: 100, By: "alice"})
+
+		// when: unset when absent
+		err = f.basic.SetDetails(nil, []domain.Detail{{Key: bundle.RelationKeyLastModifiedVia, Value: domain.Null()}}, false)
+
+		// then
+		require.ErrorIs(t, err, domain.ErrValidationFailed)
+	})
+
+	t.Run("a new author written through the setter does not keep the previous author's app", func(t *testing.T) {
+		// given: last edited by Alice through Raycast. lastModifiedBy has
+		// always been writable through ObjectSetDetails.
+		f := newAttributed(t)
+		f.store.AddObjects(t, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("rel-lastModifiedBy"),
+			bundle.RelationKeySpaceId:        domain.String(spaceId),
+			bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyLastModifiedBy.String()),
+			bundle.RelationKeyUniqueKey:      domain.String("rel-lastModifiedBy"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
+		}})
+		want := state.LastModified{Timestamp: 100, By: "bob"}
+
+		// the editor writes the object's WHOLE details back, the app among
+		// them, and the order a map is visited in is random: repeat until
+		// both orders have certainly been met
+		for i := 0; i < 64; i++ {
+			f.sb.Doc.(*state.State).SetLastModified(state.LastModified{Timestamp: 100, By: "alice", IntegrationName: "Raycast"})
+
+			// when: only the author is set
+			err := f.basic.SetDetails(nil, []domain.Detail{{Key: bundle.RelationKeyLastModifiedBy, Value: domain.String("bob")}}, false)
+
+			// then: red if the bulk write can put the app back after the new
+			// author cleared it — "Bob via Raycast", with no change pushed
+			// that could correct it
+			require.NoError(t, err)
+			local := f.sb.LocalDetails()
+			got := state.LastModified{
+				Timestamp:       local.GetInt64(bundle.RelationKeyLastModifiedDate),
+				By:              local.GetString(bundle.RelationKeyLastModifiedBy),
+				IntegrationName: local.GetString(bundle.RelationKeyLastModifiedVia),
+			}
+			require.Equal(t, want, got, "iteration %d", i)
+			require.False(t, local.Has(bundle.RelationKeyLastModifiedVia), "iteration %d", i)
+		}
+	})
+
+	t.Run("an edit of another property leaves it alone and is not refused", func(t *testing.T) {
+		// given
+		f := newAttributed(t)
+
+		// when
+		err := f.basic.SetDetails(nil, []domain.Detail{{Key: bundle.RelationKeyName, Value: domain.String("Renamed")}}, false)
+
+		// then: red if the guard refuses every write to an attributed object
+		require.NoError(t, err)
+		assert.Equal(t, "Renamed", f.sb.Details().GetString(bundle.RelationKeyName))
 	})
 }

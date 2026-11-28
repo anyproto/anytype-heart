@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -66,13 +67,18 @@ func (td *textDetails) ApplyToDetails(prevBlock simple.Block, s simple.DetailsSe
 	var prev Block
 	prev, _ = prevBlock.(Block)
 
-	if td.keys.Text != "" {
+	// a binding to a derived attribution detail never writes it: the detail
+	// is derived from the object's changes alone (like any local detail, the
+	// bound block shows nothing). Each binding
+	// is judged on its own — a block whose text is bound to such a key keeps
+	// writing its checkbox to a writable one, and the other way round.
+	if td.keys.Text != "" && !bundle.IsDerivedAttribution(td.keys.Text) {
 		if prev == nil && !s.Details().Has(td.keys.Text) || prev != nil && prev.GetText() != td.GetText() {
 			s.SetDetail(td.keys.Text, domain.String(td.GetText()))
 			ok = true
 		}
 	}
-	if td.keys.Checked != "" {
+	if td.keys.Checked != "" && !bundle.IsDerivedAttribution(td.keys.Checked) {
 		if prev == nil && !s.Details().Has(td.keys.Text) || prev != nil && prev.GetChecked() != td.GetChecked() {
 			s.SetDetail(td.keys.Checked, domain.Bool(td.GetChecked()))
 			ok = true

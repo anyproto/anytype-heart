@@ -25,7 +25,7 @@ import (
 
 var ErrHomepageChangeRestricted = errors.New("homepage change is restricted for 1-on-1 spaces")
 
-func (s *service) SetSpaceInfo(spaceId string, details *domain.Details) error {
+func (s *service) SetSpaceInfo(ctx context.Context, spaceId string, details *domain.Details) error {
 	spc, err := s.spaceService.Get(s.componentCtx, spaceId)
 	if err != nil {
 		return err
@@ -44,10 +44,17 @@ func (s *service) SetSpaceInfo(spaceId string, details *domain.Details) error {
 			Value: v,
 		})
 	}
-	return s.SetDetails(nil, workspaceId, setDetails)
+	// no session: the details events broadcast, as they always have. The
+	// attribution-only context adds the stamp of the local-API request this
+	// serves, and is nil for every other caller.
+	return s.SetDetails(session.AttributionOnly(ctx), workspaceId, setDetails)
 }
 
 func (s *service) SetIsFavorite(objectId string, isFavorite bool) error {
+	return s.setIsFavorite(context.Background(), objectId, isFavorite)
+}
+
+func (s *service) setIsFavorite(ctx context.Context, objectId string, isFavorite bool) error {
 	spaceID, err := s.resolver.ResolveSpaceID(objectId)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
@@ -56,7 +63,7 @@ func (s *service) SetIsFavorite(objectId string, isFavorite bool) error {
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
 	}
-	if err = s.objectLinksCollectionModify(spc.DerivedIDs().Home, objectId, isFavorite); err != nil {
+	if err = s.objectLinksCollectionModify(ctx, spc.DerivedIDs().Home, objectId, isFavorite); err != nil {
 		return err
 	}
 	return nil
@@ -77,7 +84,7 @@ func (s *service) SetIsArchived(sctx session.Context, ctx context.Context, objec
 	return s.setIsArchivedForObjects(sctx, ctx, spaceID, []string{objectId}, isArchived, skipCascade)
 }
 
-func (s *service) SetListIsFavorite(objectIds []string, isFavorite bool) error {
+func (s *service) SetListIsFavorite(ctx context.Context, objectIds []string, isFavorite bool) error {
 	objectIdsPerSpace, err := s.partitionObjectIdsBySpaceId(objectIds)
 	if err != nil {
 		return fmt.Errorf("partition object ids by spaces: %w", err)
@@ -95,7 +102,7 @@ func (s *service) SetListIsFavorite(objectIds []string, isFavorite bool) error {
 
 		for _, id := range ids {
 			// TODO Set list of ids at once
-			err := s.SetIsFavorite(id, isFavorite)
+			err := s.setIsFavorite(ctx, id, isFavorite)
 			if err != nil {
 				log.Error("failed to favorite object", zap.String("objectId", id), zap.Error(err))
 				resultError = errors.Join(resultError, err)
@@ -184,7 +191,7 @@ func (s *service) checkArchivedRestriction(ctx context.Context, isArchived bool,
 	})
 }
 
-func (s *service) objectLinksCollectionModify(collectionId string, objectId string, value bool) error {
+func (s *service) objectLinksCollectionModify(ctx context.Context, collectionId string, objectId string, value bool) error {
 	if objectId == collectionId {
 		return fmt.Errorf("can't add links collection to itself")
 	}
@@ -194,9 +201,9 @@ func (s *service) objectLinksCollectionModify(collectionId string, objectId stri
 			return fmt.Errorf("unsupported sb block type: %T", b)
 		}
 		if value {
-			return coll.AddObject(objectId)
+			return coll.AddObject(ctx, objectId)
 		} else {
-			return coll.RemoveObject(objectId)
+			return coll.RemoveObject(ctx, objectId)
 		}
 	})
 }
@@ -271,7 +278,9 @@ func (s *service) setIsArchivedForObjects(sctx session.Context, ctx context.Cont
 		if err != nil {
 			log.Warn("failed to archive", zap.Error(err))
 		}
-		if _, cascadeErr := s.modifyArchiveLinks(ctx, archive, isArchived, cascadeIds...); cascadeErr != nil {
+		// the cascade is the GC's choice, not the request's: only the ids the
+		// caller named are attributed to the local-API app that named them
+		if _, cascadeErr := s.modifyArchiveLinks(domain.CtxWithoutIntegrationName(ctx), archive, isArchived, cascadeIds...); cascadeErr != nil {
 			log.Warn("failed to archive cascaded files", zap.Error(cascadeErr))
 		}
 		if anySucceed {
@@ -325,9 +334,9 @@ func (s *service) modifyArchiveLinks(ctx context.Context, coll blockcollection.C
 		err := s.checkArchivedRestriction(ctx, value, id)
 		if err == nil {
 			if value {
-				err = coll.AddObject(id)
+				err = coll.AddObject(ctx, id)
 			} else {
-				err = coll.RemoveObject(id)
+				err = coll.RemoveObject(ctx, id)
 			}
 		}
 		if err != nil {

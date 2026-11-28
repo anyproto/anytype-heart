@@ -705,8 +705,18 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 	}
 
 	if !st.IsTheHeaderChange() {
-		ts, accountId := sbHandler.GetLastModifiedInfo()
-		st.SetLastModified(ts, domain.NewParticipantId(spaceId, accountId))
+		// WHICH change is the latest, and when the author and date are set
+		// at all, is long-standing behavior this feature does not touch.
+		// The app is read off the very change the author is read off and set
+		// with it — present when that change was made through the local API,
+		// REMOVED when it was not, or when no change was picked — so the
+		// displayed pair is never mixed.
+		last := sbHandler.GetLastModifiedInfo()
+		st.SetLastModified(state.LastModified{
+			Timestamp:       last.Timestamp,
+			By:              domain.NewParticipantId(spaceId, last.Account),
+			IntegrationName: last.IntegrationName,
+		})
 	}
 	st.SetMigrationVersion(lastMigrationVersion)
 	return

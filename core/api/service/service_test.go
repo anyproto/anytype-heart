@@ -134,6 +134,13 @@ func GetTestProperties() []*apimodel.Property {
 			Format:      apimodel.PropertyFormatObjects,
 			RelationKey: bundle.RelationKeyLastModifiedBy.String(),
 		},
+		{
+			Id:          "prop_last_modified_via",
+			Key:         "last_modified_via",
+			Name:        "Last modified via",
+			Format:      apimodel.PropertyFormatText,
+			RelationKey: bundle.RelationKeyLastModifiedVia.String(),
+		},
 		// Test properties for property_test.go
 		{
 			Id:          "text_prop_id",

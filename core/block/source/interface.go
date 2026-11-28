@@ -103,9 +103,10 @@ type PushChangeParams struct {
 	// IntegrationName stamps the pushed change as authored via the API
 	// integration with this RAW app name (pb.Change.IntegrationName;
 	// APIV2_OBJECT_DELETE.md §5/§11.4 — never normalized, compared exactly).
-	// Filled per-apply from the state that produced the change — today only
-	// the creation apply fills it; attribution later widens the fill sites
-	// with zero wire change.
+	// Filled per-apply by smartblock.Apply from the state that produced the
+	// change (state.TakeIntegrationName): the creating apply of an object an
+	// API request creates, and every edit an API request makes
+	// (docs/ApiChangeAttribution.md).
 	IntegrationName string
 }
 

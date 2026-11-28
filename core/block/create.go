@@ -196,7 +196,9 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 				Value: domain.Int64(spaceUxType),
 			})
 		}
-		return b.SetDetails(nil, details, true)
+		// nil for the apps; for a local-API request, attribution only —
+		// the events broadcast either way
+		return b.SetDetails(session.AttributionOnly(ctx), details, true)
 	})
 	if err != nil {
 		return "", "", fmt.Errorf("set details for space %s: %w", newSpace.Id(), err)

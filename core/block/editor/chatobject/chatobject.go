@@ -689,6 +689,8 @@ func (s *storeObject) AddMessage(ctx context.Context, sessionCtx session.Context
 	obj.Del(chatmodel.SyncedKey)
 	obj.Del(chatmodel.ReactionUnreadChangeIdsKey)
 	obj.Del(chatmodel.DeletedKey)
+	// attribution rides the change (StoreChange.integrationName), never the payload
+	obj.Del(chatmodel.IntegrationNameKey)
 
 	builder := storestate.Builder{}
 	err = builder.Create(CollectionName, storestate.IdFromChange, obj)

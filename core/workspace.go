@@ -136,8 +136,8 @@ func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOp
 	return response(info, pb.RpcWorkspaceOpenResponseError_NULL, nil)
 }
 
-func (mw *Middleware) WorkspaceSetInfo(_ context.Context, req *pb.RpcWorkspaceSetInfoRequest) *pb.RpcWorkspaceSetInfoResponse {
-	err := mustService[detailservice.Service](mw).SetSpaceInfo(req.SpaceId, domain.NewDetailsFromProto(req.Details))
+func (mw *Middleware) WorkspaceSetInfo(cctx context.Context, req *pb.RpcWorkspaceSetInfoRequest) *pb.RpcWorkspaceSetInfoResponse {
+	err := mustService[detailservice.Service](mw).SetSpaceInfo(cctx, req.SpaceId, domain.NewDetailsFromProto(req.Details))
 	code := mapErrorCode[pb.RpcWorkspaceSetInfoResponseErrorCode](err)
 	return &pb.RpcWorkspaceSetInfoResponse{
 		Error: &pb.RpcWorkspaceSetInfoResponseError{
@@ -147,8 +147,8 @@ func (mw *Middleware) WorkspaceSetInfo(_ context.Context, req *pb.RpcWorkspaceSe
 	}
 }
 
-func (mw *Middleware) WorkspaceSetHomepage(_ context.Context, req *pb.RpcWorkspaceSetHomepageRequest) *pb.RpcWorkspaceSetHomepageResponse {
-	err := mustService[detailservice.Service](mw).SetSpaceInfo(req.SpaceId, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+func (mw *Middleware) WorkspaceSetHomepage(cctx context.Context, req *pb.RpcWorkspaceSetHomepageRequest) *pb.RpcWorkspaceSetHomepageResponse {
+	err := mustService[detailservice.Service](mw).SetSpaceInfo(cctx, req.SpaceId, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		bundle.RelationKeyHomepage: domain.String(req.Homepage),
 	}))
 	code := mapErrorCode[pb.RpcWorkspaceSetHomepageResponseErrorCode](err)
@@ -289,7 +289,7 @@ func (mw *Middleware) WorkspaceObjectListRemove(cctx context.Context, req *pb.Rp
 	}
 
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.DeleteArchivedObjects(req.ObjectIds)
+		return bs.DeleteArchivedObjects(cctx, req.ObjectIds)
 	})
 	if err != nil {
 		return response([]string{}, pb.RpcWorkspaceObjectListRemoveResponseError_UNKNOWN_ERROR, err)

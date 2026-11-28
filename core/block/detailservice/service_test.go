@@ -352,6 +352,28 @@ func TestService_ModifyDetailsList(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
+	t.Run("an operation on a derived attribution key is refused before any object is touched", func(t *testing.T) {
+		// given: no GetObject expectation — loading any object fails the mock
+		fx := newFixture(t)
+		for name, op := range map[string]*pb.RpcObjectListModifyDetailValuesRequestOperation{
+			"set":    {RelationKey: bundle.RelationKeyLastModifiedVia.String(), Set: domain.String("Raycast").ToProto()},
+			"add":    {RelationKey: bundle.RelationKeyLastModifiedVia.String(), Add: domain.String("Raycast").ToProto()},
+			"remove": {RelationKey: bundle.RelationKeyLastModifiedVia.String(), Remove: domain.String("Raycast").ToProto()},
+		} {
+			// when: a valid operation first, so a per-object refusal would
+			// come only after the first object was already modified
+			err := fx.ModifyDetailsList(&pb.RpcObjectListModifyDetailValuesRequest{
+				ObjectIds:  []string{"obj1", "obj2"},
+				Operations: []*pb.RpcObjectListModifyDetailValuesRequestOperation{ops[0], op},
+			})
+
+			// then: red if the request is validated per object by diff — an
+			// object already holding the value would accept it, the next
+			// would refuse it
+			require.ErrorIs(t, err, domain.ErrValidationFailed, name)
+		}
+	})
+
 	t.Run("some updates failed", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
@@ -436,7 +458,7 @@ func TestService_SetSpaceInfo(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetSpaceInfo(spaceId, details)
+		err := fx.SetSpaceInfo(context.Background(), spaceId, details)
 
 		// then
 		assert.NoError(t, err)
@@ -455,7 +477,7 @@ func TestService_SetSpaceInfo(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetSpaceInfo(spaceId, details)
+		err := fx.SetSpaceInfo(context.Background(), spaceId, details)
 
 		// then
 		assert.Error(t, err)
@@ -471,7 +493,7 @@ func TestService_SetSpaceInfo(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetSpaceInfo(spaceId, homepageDetails)
+		err := fx.SetSpaceInfo(context.Background(), spaceId, homepageDetails)
 
 		// then
 		require.ErrorIs(t, err, ErrHomepageChangeRestricted)
@@ -499,7 +521,7 @@ func TestService_SetSpaceInfo(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetSpaceInfo(spaceId, homepageDetails)
+		err := fx.SetSpaceInfo(context.Background(), spaceId, homepageDetails)
 
 		// then
 		require.NoError(t, err)
@@ -521,7 +543,7 @@ func TestService_SetSpaceInfo(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetSpaceInfo(spaceId, nameDetails)
+		err := fx.SetSpaceInfo(context.Background(), spaceId, nameDetails)
 
 		// then
 		require.NoError(t, err)
@@ -551,7 +573,7 @@ func TestService_SetListIsFavorite(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetListIsFavorite([]string{"obj3", "obj1"}, true)
+		err := fx.SetListIsFavorite(context.Background(), []string{"obj3", "obj1"}, true)
 
 		// then
 		assert.Error(t, err)

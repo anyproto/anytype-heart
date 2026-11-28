@@ -766,6 +766,27 @@ func TestProcessProperties(t *testing.T) {
 			assert.Contains(t, err.Error(), "unknown property key: \"unknown_prop\"")
 		})
 
+		t.Run("lastModifiedVia can be neither set nor cleared", func(t *testing.T) {
+			// it names the app that authored the object's latest change and
+			// is derived from that change alone
+			fx := newFixture(t)
+			setupPropertyCache(fx)
+			for name, text := range map[string]*string{
+				// red if the reserved-property check is all that guards it:
+				// that check sits after the null branch, so a null (the v1
+				// spelling of "clear") went straight through
+				"clear": nil,
+				"set":   util.PtrString("Forged"),
+			} {
+				entries := []apimodel.PropertyLinkWithValue{
+					{WrappedPropertyLinkWithValue: apimodel.TextPropertyLinkValue{Key: "last_modified_via", Text: text}},
+				}
+				_, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
+				require.Error(t, err, name)
+				assert.Contains(t, err.Error(), "cannot be set or cleared", name)
+			}
+		})
+
 		t.Run("excluded system property", func(t *testing.T) {
 			fx := newFixture(t)
 			setupPropertyCache(fx)

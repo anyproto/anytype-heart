@@ -224,3 +224,55 @@ func TestCreatorProvenanceFromTree(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+// With every API edit stamped, the ownership read must still answer for the
+// CREATING change alone (docs/ApiChangeAttribution.md "DELETE ownership is
+// unchanged"). These trees hold a creating change followed by stamped edits,
+// in tree order — the order smartblock.Apply guarantees, since an edit can
+// never be a tree's first change (TestSmartBlock_AnEditIsNeverATreesFirstChange).
+func TestCreatorProvenance_EditsNeverOwn(t *testing.T) {
+	_, ownKey, err := anycrypto.GenerateRandomEd25519KeyPair()
+	require.NoError(t, err)
+	ownAccount := ownKey.Account()
+	tree := func(changes ...*objecttree.Change) *fakeProvenanceTree {
+		root := &objecttree.Change{Id: "root", Identity: ownKey}
+		return &fakeProvenanceTree{id: "root", header: root, changes: append([]*objecttree.Change{root}, changes...)}
+	}
+
+	t.Run("created in an app, then edited through app X: X does not own it", func(t *testing.T) {
+		// given
+		history := tree(
+			contentChange(t, "create", ownKey, ""),
+			contentChange(t, "edit1", ownKey, "Raycast"),
+			contentChange(t, "edit2", ownKey, "Raycast"),
+		)
+		// no recorded creator: the permanent delete X asks for is refused
+		// (v2service.checkCreatorProvenance, "no API key is recorded")
+		want := apicore.Provenance{AccountMatch: true}
+
+		// when
+		got, err := creatorProvenanceFromTree(history, ownAccount)
+
+		// then: red if the read takes the name from ANY stamped change
+		// (the latest, or the first non-empty) instead of the first change
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("created through app X, then edited through app Y: still X's", func(t *testing.T) {
+		// given
+		history := tree(
+			contentChange(t, "create", ownKey, "Raycast"),
+			contentChange(t, "edit1", ownKey, "Linear"),
+			contentChange(t, "edit2", ownKey, ""),
+		)
+		want := apicore.Provenance{AccountMatch: true, IntegrationName: "Raycast"}
+
+		// when
+		got, err := creatorProvenanceFromTree(history, ownAccount)
+
+		// then: red if a later stamp replaces the creator's
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+}

@@ -1,11 +1,16 @@
 package domain
 
 // integrationname.go holds the integration-name primitive shared by the API
-// DELETE provenance rule (core/api/APIV2_OBJECT_DELETE.md §5/§11.2-3) and,
-// later, integration attribution (docs/IntegrationAttribution.md): the RAW
-// app name of the paired API key, stamped by heart into the change payloads
-// it authors (pb.Change.IntegrationName) from the authenticated session —
-// never accepted from a request body, and never normalized.
+// DELETE provenance rule (core/api/APIV2_OBJECT_DELETE.md §5/§11.2-3) and
+// API change attribution (docs/ApiChangeAttribution.md): the RAW app name of
+// the paired API key, stamped by heart into EVERY change it authors while
+// serving a local-API request — tree changes (pb.Change.IntegrationName) and
+// store changes (pb.StoreChange.IntegrationName) — from the authenticated
+// session, never accepted from a request body, and never normalized.
+//
+// The name on the change is all there is: no integration object, no slug, no
+// icon. An earlier spec (docs/IntegrationAttribution.md, never merged) had
+// those; it is superseded.
 //
 // The value used to be a normalized slug (lowercase, [a-z0-9_-], collapsed,
 // capped). That was dropped deliberately: normalization is many-to-one
@@ -17,11 +22,9 @@ package domain
 // matched "Claude Desktop" — but for an AUTHORIZATION comparison tolerance
 // is a liability; exact match is the point. The record's unforgeability
 // never came from the value anyway — it comes from the signature and ACL
-// validation on the change that carries it (§6). A future integration
-// object derives its charset-safe unique key by HASHING the raw name (it
-// need not be human-readable; display comes from the object's name detail),
-// so no slug is needed anywhere — the former IntegrationKeyFromAppName
-// helper is deleted rather than left as a rival spelling authority.
+// validation on the change that carries it (§6). No slug is needed
+// anywhere — the former IntegrationKeyFromAppName helper is deleted rather
+// than left as a rival spelling authority.
 
 import (
 	"context"
@@ -31,7 +34,8 @@ import (
 // names are minted (CreateApp and the challenge flow — reject, never
 // truncate: truncation is normalization again, two names differing only in
 // their tail would collapse to one principal). The name rides every
-// creating change and appears in debug exports, so it must be bounded;
+// change an API request authors and appears in debug exports, so it must be
+// bounded;
 // 128 bytes is double the old slug cap and comfortably covers every real
 // app name. The stamp site deliberately does NOT re-check: a legacy key
 // minted before the bound keeps working, and the recorded value always
@@ -39,11 +43,13 @@ import (
 const MaxIntegrationNameLen = 128
 
 // ctxKeyIntegrationName carries the session's raw app name on a request
-// context. It lives in domain (not core/api/util) because the consumer is
-// the object-creation pipeline (smartblock init → the creating change) and
-// the installers are transport middlewares: today the shared HTTP auth
-// middleware (both API versions), later attribution's gRPC interceptor —
-// one neutral carrier, several installers.
+// context. It lives in domain (not core/api/util) because the consumers are
+// the editor (smartblock init and apply, the store push) and the one
+// installer is a transport middleware: the shared HTTP auth middleware, for
+// both API versions. The apps' gRPC calls install nothing and are never
+// stamped. Inside heart the name also rides a derived context where an apply
+// hands its attribution to a store push (CtxWithIntegrationName on a
+// component context) — never on a context that outlives the request's work.
 type ctxKeyIntegrationName struct{}
 
 // CtxWithIntegrationName installs the session's raw app name on ctx.
@@ -54,6 +60,16 @@ func CtxWithIntegrationName(ctx context.Context, name string) context.Context {
 		return ctx
 	}
 	return context.WithValue(ctx, ctxKeyIntegrationName{}, name)
+}
+
+// CtxWithoutIntegrationName returns ctx with the app name taken off — for
+// work a request triggers but did not ask for (a GC cascade), which must not
+// be attributed to the app. Everything else ctx carries stays.
+func CtxWithoutIntegrationName(ctx context.Context) context.Context {
+	if IntegrationNameFromCtx(ctx) == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, ctxKeyIntegrationName{}, "")
 }
 
 // IntegrationNameFromCtx returns the raw app name riding ctx, or "" —

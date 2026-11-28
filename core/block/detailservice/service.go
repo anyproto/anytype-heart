@@ -35,6 +35,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -64,7 +65,9 @@ type Service interface {
 
 	ListRelationsWithValue(spaceId string, value domain.Value) ([]*pb.RpcRelationListWithValueResponseResponseItem, error)
 
-	SetSpaceInfo(spaceId string, details *domain.Details) error
+	// SetSpaceInfo sets details of the space's workspace object. ctx is the request it
+	// serves, read for attribution only (docs/ApiChangeAttribution.md).
+	SetSpaceInfo(ctx context.Context, spaceId string, details *domain.Details) error
 
 	// SetDetailsInternal writes details on behalf of the middleware itself - migrations and
 	// bootstrap - rather than on behalf of a user edit, so it bypasses the object's restrictions
@@ -73,7 +76,8 @@ type Service interface {
 
 	SetIsFavorite(objectId string, isFavorite bool) error
 	SetIsArchived(sctx session.Context, ctx context.Context, objectId string, isArchived bool, skipCascade bool) error
-	SetListIsFavorite(objectIds []string, isFavorite bool) error
+	// SetListIsFavorite: ctx is the request it serves, read for attribution only.
+	SetListIsFavorite(ctx context.Context, objectIds []string, isFavorite bool) error
 	SetListIsArchived(sctx session.Context, ctx context.Context, objectIds []string, isArchived bool, skipCascade bool) error
 	// SetListIsArchivedNoGC archives/unarchives objects without triggering another GC pass.
 	// Used by callers that must act on GC results without re-entering the GC loop.
@@ -211,6 +215,15 @@ func (s *service) ModifyDetails(ctx session.Context, objectId string, modifier f
 }
 
 func (s *service) ModifyDetailsList(req *pb.RpcObjectListModifyDetailValuesRequest) (resultError error) {
+	// refused by the keys the request NAMES, before any object is touched:
+	// per object the editor only sees a diff, so an operation that happens
+	// to leave an object's value as it is would pass there and be refused
+	// on the next object
+	for _, op := range req.Operations {
+		if key := domain.RelationKey(op.RelationKey); bundle.IsDerivedAttribution(key) {
+			return fmt.Errorf("%s is derived from the object's changes and cannot be modified: %w", key, domain.ErrValidationFailed)
+		}
+	}
 	var anySucceed bool
 	for _, objectId := range req.ObjectIds {
 		err := s.ModifyDetails(nil, objectId, func(current *domain.Details) (*domain.Details, error) {

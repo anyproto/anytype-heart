@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/space"
@@ -293,6 +294,12 @@ func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreSt
 	return nil
 }
 
+// storeChangeAttribution reads a store change's attribution from its
+// payload — the one reader for both a local push and a replay.
+func storeChangeAttribution(change *pb.StoreChange) storestate.ChangeAttribution {
+	return storestate.ChangeAttribution{IntegrationName: change.GetIntegrationName()}
+}
+
 func (s *store) PushStoreChange(ctx context.Context, params source.PushStoreChangeParams) (changeId string, err error) {
 	tx, err := s.store.NewTx(ctx)
 	if err != nil {
@@ -303,7 +310,15 @@ func (s *store) PushStoreChange(ctx context.Context, params source.PushStoreChan
 	}()
 	change := &pb.StoreChange{
 		ChangeSet: params.Changes,
+		// the store twin of the tree stamp (smartblock.Apply →
+		// pb.Change.IntegrationName): the RAW app name of the local-API
+		// request ctx belongs to, "" for every other caller. ctx is the one
+		// carrier here — a store push always has its request's context —
+		// and background pushes run on contexts no API request made
+		// (docs/ApiChangeAttribution.md).
+		IntegrationName: domain.IntegrationNameFromCtx(ctx),
 	}
+	attribution := storeChangeAttribution(change)
 	data, dataType, err := MarshalStoreChange(change)
 	if err != nil {
 		return "", fmt.Errorf("marshal change: %w", err)
@@ -323,6 +338,9 @@ func (s *store) PushStoreChange(ctx context.Context, params source.PushStoreChan
 			Changes:   params.Changes,
 			Creator:   s.accountService.AccountID(),
 			Timestamp: params.Time.Unix(),
+			// the SAME attribution the pushed payload carries, so the local
+			// apply and a later replay of this change build identical rows
+			ChangeAttribution: attribution,
 		})
 		if err != nil {
 			return fmt.Errorf("apply change set: %w", err)
@@ -338,13 +356,16 @@ func (s *store) PushStoreChange(ctx context.Context, params source.PushStoreChan
 	}
 	changeId = addResult.Added[0].Id
 	tx.UpdateMaxAddSeq(addResult.Added[0].AddSeq)
-	err = tx.Commit()
-	if err == nil {
-		s.onUpdateHook()
+	if err = tx.Commit(); err != nil {
+		// the change is in the tree but the store did not take it: say so.
+		// (This error used to be overwritten by GetChange's result below,
+		// so a failed commit was reported as a successful push.)
+		return "", fmt.Errorf("commit store tx: %w", err)
 	}
+	s.onUpdateHook()
 	ch, err := s.ObjectTree.GetChange(changeId)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("get pushed change: %w", err)
 	}
 
 	s.addToDiffManagers(&objecttree.Change{
@@ -352,7 +373,7 @@ func (s *store) PushStoreChange(ctx context.Context, params source.PushStoreChan
 		PreviousIds: ch.PreviousIds,
 	})
 
-	return changeId, err
+	return changeId, nil
 }
 
 func (s *store) addToDiffManagers(change *objecttree.Change) {

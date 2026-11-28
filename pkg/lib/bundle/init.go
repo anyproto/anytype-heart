@@ -66,6 +66,16 @@ func RelationKeepsApiSlug(key domain.RelationKey) bool {
 	return IsSystemRelation(key) || rel.ReadOnly || rel.Hidden
 }
 
+// IsDerivedAttribution reports whether a relation says how an object's latest
+// change was AUTHORED and is derived from that change alone (the local-API
+// app today; the authoring device belongs here too). Nothing a caller
+// supplies may set or clear such a detail — not a details write, not a block
+// bound to the key, not a document — or the object would show an authorship
+// its signed history contradicts. Every write guard asks this one predicate.
+func IsDerivedAttribution(key domain.RelationKey) bool {
+	return key == RelationKeyLastModifiedVia
+}
+
 func IsInternalType(typeKey domain.TypeKey) bool {
 	_, ok := internalTypesTypesMap[typeKey]
 	return ok

@@ -254,7 +254,7 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceId
 			}
 			if len(records) > 0 {
 				id := records[0].Details.GetString(bundle.RelationKeyId)
-				if err = b.detailsService.SetSpaceInfo(spaceId, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				if err = b.detailsService.SetSpaceInfo(context.Background(), spaceId, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 					bundle.RelationKeyHomepage: domain.String(id),
 				})); err != nil {
 					log.Errorf("failed to set homepage to workspace: %v", err)
@@ -569,7 +569,7 @@ func (b *builtinObjects) setWorkspaceSettings(profile *pb.Profile, spaceId strin
 			}
 		}
 	}
-	if err := b.detailsService.SetSpaceInfo(spaceId, details); err != nil {
+	if err := b.detailsService.SetSpaceInfo(context.Background(), spaceId, details); err != nil {
 		log.Errorf("failed to set space info to workspace: %v", err)
 	}
 	return homepage

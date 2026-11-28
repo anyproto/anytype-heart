@@ -68,7 +68,7 @@ var hashersPool = &sync.Pool{
 }
 
 func New() History {
-	return &history{heads: make(map[string]string, 0)}
+	return &history{versions: make(map[string]multiHeadVersion)}
 }
 
 type History interface {
@@ -86,7 +86,11 @@ type history struct {
 	spaceService  space.Service
 	resolver      idresolver.Resolver
 	formatFetcher relationutils.RelationFormatFetcher
-	heads         map[string]string
+	// versions holds what a synthetic (several-heads) version id stands
+	// for. Versions writes it; Show, SetVersion and DiffVersions read it,
+	// from other RPC goroutines — hence the lock.
+	versionsMu sync.Mutex
+	versions   map[string]multiHeadVersion
 }
 
 func (h *history) Init(a *app.App) (err error) {
@@ -191,7 +195,11 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int, no
 	var nextVersionTimestamp int64
 
 	for i := 0; i < len(resp); i++ {
-		if nextVersionTimestamp-resp[i].Time > int64(versionGroupInterval.Seconds()) {
+		// a group is a run of versions close in time AND of one authoring
+		// origin: a change made through the local API never shares a row with
+		// one made in an app, nor with another app's (versionAttribution)
+		if nextVersionTimestamp-resp[i].Time > int64(versionGroupInterval.Seconds()) ||
+			(i > 0 && attributionOf(resp[i]) != attributionOf(resp[i-1])) {
 			groupId++
 		}
 		nextVersionTimestamp = resp[i].Time
@@ -204,9 +212,93 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int, no
 	return
 }
 
+// versionAttribution is what a change says about its own authoring, beyond
+// who signed it. It is a comparable struct on purpose: version grouping
+// splits wherever two neighbors differ in ANY member, so a new per-change
+// attribute (the authoring device, say) joins the split rule by being added
+// here and filled in changeAttribution and attributionOf.
+type versionAttribution struct {
+	// integrationName is pb.Change.IntegrationName: the RAW name of the
+	// local-API app that authored the change, "" for a change made in an app.
+	integrationName string
+}
+
+// changeAttribution reads a change's attribution from its payload. The tree
+// must have been iterated with a convert func (the model is the unmarshalled
+// pb.Change); a change without a model has no attribution.
+func changeAttribution(change *objecttree.Change) versionAttribution {
+	model, ok := change.Model.(*pb.Change)
+	if !ok || model == nil {
+		return versionAttribution{}
+	}
+	return versionAttribution{integrationName: model.IntegrationName}
+}
+
+func attributionOf(version *pb.RpcHistoryVersion) versionAttribution {
+	return versionAttribution{integrationName: version.IntegrationName}
+}
+
+func (a versionAttribution) fill(version *pb.RpcHistoryVersion) {
+	version.IntegrationName = a.integrationName
+}
+
+// multiHeadVersion is what a synthetic version id stands for: the heads that
+// together make the version, and the ONE change Versions described the row
+// by (its author, time and attribution) — recorded so that Show describes
+// the same id by the same change. The two are stored and read as one value.
+type multiHeadVersion struct {
+	heads          []string
+	representative string
+}
+
+// multiHeadVersionId is the id of the version made of heads. The heads are
+// sorted first: the same set of heads is the same version, whatever order a
+// map happened to yield them in.
+func multiHeadVersionId(heads []string, hasher *blake3.Hasher) (id string, sorted []string) {
+	sorted = slices.Clone(heads)
+	slices.Sort(sorted)
+	hasher.Reset()
+	// nolint: errcheck
+	hasher.Write([]byte(strings.Join(sorted, " "))) // it never returns an error
+	return hex.EncodeToString(hasher.Sum(nil)), sorted
+}
+
+func (h *history) rememberMultiHeadVersion(id string, version multiHeadVersion) {
+	h.versionsMu.Lock()
+	defer h.versionsMu.Unlock()
+	if h.versions == nil {
+		h.versions = make(map[string]multiHeadVersion)
+	}
+	h.versions[id] = version
+}
+
+func (h *history) multiHeadVersion(id string) (multiHeadVersion, bool) {
+	h.versionsMu.Lock()
+	defer h.versionsMu.Unlock()
+	version, ok := h.versions[id]
+	return version, ok
+}
+
+// recordMultiHeadVersion gives a tree that ends in several heads its
+// synthetic version id and records it, exactly as Versions does when it
+// reaches the same heads: the canonical id of the sorted heads, represented
+// by last, the last change in tree order — the one the state build visited
+// last (state.ChangeId), so the tree is not walked again to find it.
+func (h *history) recordMultiHeadVersion(heads []string, last string) (string, multiHeadVersion, bool) {
+	if last == "" {
+		return "", multiHeadVersion{}, false
+	}
+	hasher := hashersPool.Get().(*blake3.Hasher)
+	defer hashersPool.Put(hasher)
+	id, sorted := multiHeadVersionId(heads, hasher)
+	version := multiHeadVersion{heads: sorted, representative: last}
+	h.rememberMultiHeadVersion(id, version)
+	return id, version, true
+}
+
 func (h *history) retrieveHeads(versionId string) []string {
-	if heads, ok := h.heads[versionId]; ok {
-		return strings.Split(heads, " ")
+	if version, ok := h.multiHeadVersion(versionId); ok {
+		return slices.Clone(version.heads)
 	}
 	return []string{versionId}
 }
@@ -222,18 +314,17 @@ func (h *history) fillVersionData(change *objecttree.Change, curHeads map[string
 		AuthorId:    participantId,
 		Time:        change.Timestamp,
 	}
+	changeAttribution(change).fill(version)
 	if len(curHeads) > 1 {
-		var combinedHeads string
+		heads := make([]string, 0, len(curHeads))
 		for head := range curHeads {
-			combinedHeads += head + " "
+			heads = append(heads, head)
 		}
-		combinedHeads = strings.TrimSpace(combinedHeads)
-		hasher.Reset()
-		// nolint: errcheck
-		hasher.Write([]byte(combinedHeads)) // it never returns an error
-		hashSum := hex.EncodeToString(hasher.Sum(nil))
-		h.heads[hashSum] = combinedHeads
-		version.Id = hashSum
+		id, sorted := multiHeadVersionId(heads, hasher)
+		// the row is described by the change being visited; remember which,
+		// so Show answers for this id with the same author, time and app
+		h.rememberMultiHeadVersion(id, multiHeadVersion{heads: sorted, representative: change.Id})
+		version.Id = id
 	}
 	return append(data, version)
 }
@@ -281,8 +372,12 @@ func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.Eve
 
 func (h *history) buildDetails(s *state.State, spc clientspace.Space) (details []*model.ObjectViewDetailsSet, resultErr error) {
 	rootDetails := s.CombinedDetails()
+	// the object's id, known whether or not its details were given an id
+	// detail (Show injects one, DiffVersions does not): the historical row
+	// and the self-link filter below must both be keyed by it
+	rootId := s.RootId()
 	details = []*model.ObjectViewDetailsSet{{
-		Id:      rootDetails.GetString(bundle.RelationKeyId),
+		Id:      rootId,
 		Details: rootDetails.ToProto(),
 	}}
 
@@ -303,6 +398,12 @@ func (h *history) buildDetails(s *state.State, spc clientspace.Space) (details [
 		}
 
 		for _, record := range records {
+			if record.Details.GetString(bundle.RelationKeyId) == rootId {
+				// an object that links to itself is its own dependency: the
+				// row above is the HISTORICAL object, and the index's current
+				// row must not follow it under the same id
+				continue
+			}
 			// dependents are name/icon chips in the version view; strip the
 			// high-churn strip-by-default keys, consistent with smartblock.fetchMeta
 			details = append(details, &model.ObjectViewDetailsSet{
@@ -446,8 +547,14 @@ func (h *history) fillBlockParticipantMap(c *objecttree.Change,
 	blocksToParticipant map[string]string,
 	existingBlocks map[string]struct{},
 ) {
+	// an unsigned derived root has no identity (and no pb.Change payload):
+	// it authored no block
+	changeContent, ok := c.Model.(*pb.Change)
+	if c.Identity == nil || !ok || changeContent == nil {
+		return
+	}
 	participantId := domain.NewParticipantId(id.SpaceID, c.Identity.Account())
-	if changeContent, ok := c.Model.(*pb.Change); ok {
+	{
 		blockChanges := h.getChangedBlockIds(changeContent.Content)
 		for _, block := range blockChanges {
 			if _, ok := existingBlocks[block]; !ok {
@@ -577,6 +684,14 @@ func (h *history) buildState(id domain.FullID, versionId string) (
 	if err != nil {
 		return
 	}
+	if sbType.IsStoreBacked() {
+		// a store-backed tree holds pb.StoreChange payloads; read as
+		// pb.Change (every history read does) each looks like a user change
+		// and would lend its app to the object's details. Store-backed
+		// objects never show lastModifiedVia; the version row still names
+		// the app (Version.integrationName).
+		st.SetLastModifiedVia("")
+	}
 	if _, _, err = state.ApplyStateFast(id.SpaceID, st); err != nil {
 		return
 	}
@@ -584,16 +699,40 @@ func (h *history) buildState(id domain.FullID, versionId string) (
 	st.BlocksInit(st)
 	heads := tree.Heads()
 	if ch, e := tree.GetChange(heads[len(heads)-1]); e == nil {
+		// A several-heads version is not one change. Versions listed it
+		// under a synthetic id and described it by one change it recorded;
+		// Show answers with that same row — the listed id, so that passing
+		// it back (Show again, SetVersion, DiffVersions) selects ALL the
+		// heads and not one branch of them, and that change's parents,
+		// author, time and app. A single-head version is its head.
+		described, versionRowId := ch, ch.Id
+		multi, listed := h.multiHeadVersion(versionId)
+		if !listed && len(heads) > 1 {
+			// the tree was built for several heads without Versions having
+			// listed them (Show of the latest version, "", on a branching
+			// tree): the version gets the same canonical id a listing would
+			// give it, and is described by the change a listing would
+			// describe it by — the last one in tree order, which the build
+			// above visited last
+			versionId, multi, listed = h.recordMultiHeadVersion(heads, st.ChangeId())
+		}
+		if listed {
+			versionRowId = versionId
+			if representative, e := tree.GetChange(multi.representative); e == nil {
+				described = representative
+			}
+		}
 		var participantId string
-		if ch.Identity != nil {
-			participantId = domain.NewParticipantId(id.SpaceID, ch.Identity.Account())
+		if described.Identity != nil {
+			participantId = domain.NewParticipantId(id.SpaceID, described.Identity.Account())
 		}
 		ver = &pb.RpcHistoryVersion{
-			Id:          ch.Id,
-			PreviousIds: ch.PreviousIds,
+			Id:          versionRowId,
+			PreviousIds: described.PreviousIds,
 			AuthorId:    participantId,
-			Time:        ch.Timestamp,
+			Time:        described.Timestamp,
 		}
+		changeAttribution(described).fill(ver)
 	}
 	return
 }

@@ -665,6 +665,9 @@ func (fx *fixture) applyToStore(ctx context.Context, params source.PushStoreChan
 		Changes:   params.Changes,
 		Creator:   fx.sourceCreator,
 		Timestamp: params.Time.Unix(),
+		// what store.PushStoreChange does with its context (sourceimpl has
+		// the test of the real one): the push's attribution is the request's
+		ChangeAttribution: storestate.ChangeAttribution{IntegrationName: domain.IntegrationNameFromCtx(ctx)},
 	}
 	err = tx.ApplyChangeSetReturnAllErrors(changeSet)
 	if err != nil {

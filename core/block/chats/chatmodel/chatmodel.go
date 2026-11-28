@@ -38,19 +38,22 @@ func (t CounterType) DiffManagerName() string {
 }
 
 const (
-	CreatorKey                 = "creator"
-	CreatedAtKey               = "createdAt"
-	ModifiedAtKey              = "modifiedAt"
-	ReactionsKey               = "reactions"
-	ContentKey                 = "content"
-	ReadKey                    = "read"
-	MentionReadKey             = "mentionRead"
-	HasMentionKey              = "hasMention"
-	StateIdKey                 = "stateId"
-	OrderKey                   = "_o"
-	SyncedKey                  = "synced"
-	PinnedKey                  = "pinned"
-	DeletedKey                 = "deleted"
+	CreatorKey     = "creator"
+	CreatedAtKey   = "createdAt"
+	ModifiedAtKey  = "modifiedAt"
+	ReactionsKey   = "reactions"
+	ContentKey     = "content"
+	ReadKey        = "read"
+	MentionReadKey = "mentionRead"
+	HasMentionKey  = "hasMention"
+	StateIdKey     = "stateId"
+	OrderKey       = "_o"
+	SyncedKey      = "synced"
+	PinnedKey      = "pinned"
+	DeletedKey     = "deleted"
+	// IntegrationNameKey holds the RAW name of the local-API app whose request created the
+	// message. Only messages created through the API carry the key.
+	IntegrationNameKey         = "integrationName"
 	ReactionUnreadChangeIdsKey = "rUnreadChIds"
 	ReactionUnreadOrderIdKey   = "rUnreadOrdId"
 )
@@ -169,7 +172,8 @@ func (m *Message) pickOrderId() string {
 // deleted comment: identity, author, creation time, reply target and position stay, so
 // replies keep their thread; content, attachments, blocks, reactions and the pin go. A
 // tombstone is never unread and never a mention. ModifiedAt is cleared because clients
-// label any message carrying it as edited.
+// label any message carrying it as edited. IntegrationName stays with the author: it says
+// who made the comment, like Creator.
 func (m *Message) MakeTombstone() {
 	m.Deleted = true
 	m.Message = &model.ChatMessageMessageContent{}
@@ -497,6 +501,14 @@ func (m *Message) MarshalAnyenc(marshalTo *anyenc.Value, arena *anyenc.Arena) {
 	} else {
 		marshalTo.Del(DeletedKey)
 	}
+	if m.IntegrationName != "" {
+		// creation attribution: written by ChatHandler.BeforeCreate from the creating change
+		// and carried unchanged through every later re-marshal of the document (an edit
+		// re-marshals the whole message from toModel)
+		marshalTo.Set(IntegrationNameKey, arena.NewString(m.IntegrationName))
+	} else {
+		marshalTo.Del(IntegrationNameKey)
+	}
 
 	m.MarshalUnreadReactionIds(marshalTo, arena)
 }
@@ -596,6 +608,7 @@ func (m *messageUnmarshaller) toModel() (*Message, error) {
 			HasMention:       m.val.GetBool(HasMentionKey),
 			Pinned:           m.val.GetBool(PinnedKey),
 			Deleted:          m.val.GetBool(DeletedKey),
+			IntegrationName:  string(m.val.GetStringBytes(IntegrationNameKey)),
 			UnreadReaction:   len(unreadReactionIds) > 0 || m.val.GetString(ReactionUnreadOrderIdKey) != "",
 		},
 		UnreadReactionIds: unreadReactionIds,

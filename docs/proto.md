@@ -2857,7 +2857,7 @@ the element of change tree used to store and internal apply smartBlock history
 | timestamp | [int64](#int64) |  | creation timestamp |
 | version | [uint32](#uint32) |  | version of business logic |
 | changeType | [uint32](#uint32) |  | business-level type of change applied to object |
-| integrationName | [string](#string) |  | integrationName is the RAW app name of the paired API key that authored this change — exactly as the app link recorded it, never normalized (normalization is many-to-one and lossy; the DELETE ownership rule compares this value exactly). Stamped by heart from the authenticated session — never accepted from a request. Bounded at key issuance (domain.MaxIntegrationNameLen). Empty for changes not authored through an API key. |
+| integrationName | [string](#string) |  | integrationName is the RAW app name of the paired API key that authored this change — exactly as the app link recorded it, never normalized (normalization is many-to-one and lossy; the DELETE ownership rule compares this value exactly). Stamped by heart from the authenticated session — never accepted from a request. Bounded at key issuance (domain.MaxIntegrationNameLen). Carried by EVERY change a local API request authors, creating or editing (docs/ApiChangeAttribution.md). Empty for changes not authored through an API key. |
 
 
 
@@ -3415,12 +3415,28 @@ the element of change tree used to store and internal apply smartBlock history
 <a name="anytype-StoreChange"></a>
 
 ### StoreChange
+StoreChange is the payload of a store-backed object&#39;s tree change (chats,
+discussions, the account object).
 
+FIELD NUMBERS ARE SHARED WITH Change. Version history and the debug tree
+reader decode EVERY tree payload as Change, store trees included, so the
+two messages are one number space:
+  - a StoreChange field that means the same as a Change field and has the
+    same type MUST take the Change field&#39;s number (integrationName = 10):
+    a reader that decodes a store payload as Change then reads it for free;
+  - any other StoreChange field MUST take a number Change has NEVER used —
+    not a current one and not a historical one (Change used 1, 2 and 5);
+  - never give a Change number to a StoreChange field of another type
+    (3 is `repeated Content` there): the Change decode would fail or
+    misread it.
+changeSet = 1 predates the rule and is the one exception: Change no longer
+declares 1, so its decoder skips it.
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | changeSet | [StoreChangeContent](#anytype-StoreChangeContent) | repeated |  |
+| integrationName | [string](#string) |  | integrationName is Change.integrationName for a store change: the RAW app name of the API key whose request authored this change, stamped by heart from the authenticated session. Empty for changes not authored through an API key. Same number and type as in Change, by the rule above. |
 
 
 
@@ -15025,6 +15041,7 @@ returns blockShow event for given version
 | authorName | [string](#string) |  |  |
 | time | [int64](#int64) |  |  |
 | groupId | [int64](#int64) |  |  |
+| integrationName | [string](#string) |  | integrationName is the RAW app name of the API key whose request authored this version&#39;s changes (Change.integrationName); empty for changes made in an Anytype app. A version group never mixes two different values. |
 
 
 
@@ -36667,6 +36684,7 @@ Used to decode block meta only, without the content itself
 | unreadReaction | [bool](#bool) |  |  |
 | blocks | [ChatMessage.MessageBlock](#anytype-model-ChatMessage-MessageBlock) | repeated | Ordered list of content blocks |
 | deleted | [bool](#bool) |  | deleted marks a soft-deleted discussion comment (a tombstone). It keeps id, orderId, creator, createdAt and replyToMessageId, so replies keep their thread; message, attachments, blocks and reactions are empty and modifiedAt is 0. Only discussions produce it; a deleted space-chat message is removed and announced with Event.Chat.Delete. A tombstone can&#39;t be edited, reacted to, pinned or replied to. |
+| integrationName | [string](#string) |  | integrationName is the RAW app name of the API key whose request CREATED the message (StoreChange.integrationName of the creating change); empty for a message sent from an Anytype app. Creation-only: a later edit or reaction never changes it. |
 
 
 

@@ -15,13 +15,31 @@ import (
 	"github.com/anyproto/anytype-heart/util/text"
 )
 
+// StoreChange returns a copy of a store-backed object's change fit for an
+// anonymized export. Only the envelope is treated — the document operations
+// are exported as they are, as they always were. The one envelope field that
+// names something outside the object, the local-API app that authored the
+// change, is CLEARED, as Change clears pb.Change's. The original is not
+// modified.
+func StoreChange(ch *pb.StoreChange) *pb.StoreChange {
+	if ch == nil {
+		return nil
+	}
+	res := *ch
+	res.IntegrationName = ""
+	return &res
+}
+
 func Change(ch *pb.Change) (res *pb.Change) {
 	resB, _ := ch.Marshal()
 	res = &pb.Change{}
 	res.Unmarshal(resB)
 	// the raw, user-chosen name of the paired API key (§8.44) — it identifies
-	// a person's tooling, so it must not ride a debug export verbatim
-	res.IntegrationName = Text(res.IntegrationName)
+	// a person's tooling, so it must not ride a debug export. Cleared, not
+	// scrambled: Text keeps what it cannot map (a name of punctuation or
+	// digits would be exported as it is), and a name's length and shape
+	// alone can identify a tool.
+	res.IntegrationName = ""
 	if sh := res.Snapshot; sh != nil {
 		sh.Data.Details = Struct(sh.Data.Details)
 		for _, b := range sh.Data.Blocks {

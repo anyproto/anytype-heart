@@ -136,7 +136,11 @@ func AddObjectsToListHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		err := s.AddObjectsToList(c, spaceId, listId, req)
+		// the REQUEST context, not the gin context: gin's Value does not fall
+		// back to the request's, so the session carriers the auth middleware
+		// installs there (the app name every change is attributed with)
+		// would be lost
+		err := s.AddObjectsToList(c.Request.Context(), spaceId, listId, req)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrFailedAddObjectsToList, http.StatusInternalServerError),
 		)
@@ -176,7 +180,8 @@ func RemoveObjectFromListHandler(s *service.Service) gin.HandlerFunc {
 		listId := c.Param("list_id")
 		objectId := c.Param("object_id")
 
-		err := s.RemoveObjectsFromList(c, spaceId, listId, []string{objectId})
+		// the request context: see AddObjectsToListHandler
+		err := s.RemoveObjectsFromList(c.Request.Context(), spaceId, listId, []string{objectId})
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrFailedRemoveObjectsFromList, http.StatusInternalServerError),
 		)

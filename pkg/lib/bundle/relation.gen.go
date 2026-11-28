@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "71001c404294aa631e6656584c2f9f1f73d99abc2fb15c7c4018ebf1dc81dcdb"
+const RelationChecksum = "a2ecf432224312fdf9fa1fc23729fa00d244a8b4145f977de263b6f92c42f940"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -91,6 +91,7 @@ const (
 	RelationKeyLinks                                domain.RelationKey = "links"
 	RelationKeyCoverId                              domain.RelationKey = "coverId"
 	RelationKeyLastModifiedBy                       domain.RelationKey = "lastModifiedBy"
+	RelationKeyLastModifiedVia                      domain.RelationKey = "lastModifiedVia"
 	RelationKeyRelationMaxCount                     domain.RelationKey = "relationMaxCount"
 	RelationKeyWidthInPixels                        domain.RelationKey = "widthInPixels"
 	RelationKeyProgress                             domain.RelationKey = "progress"
@@ -1467,6 +1468,19 @@ var (
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Revision:         1,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyLastModifiedVia: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Name of the app that made the last change through the local API. Empty when the last change was made in an Anytype app",
+			Format:           model.RelationFormat_shorttext,
+			Id:               "_brlastModifiedVia",
+			Key:              "lastModifiedVia",
+			MaxCount:         1,
+			Name:             "Last modified via",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyLastOpenedDate: {

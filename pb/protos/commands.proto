@@ -4296,6 +4296,10 @@ message Rpc {
             string authorName = 4;
             int64 time = 5;
             int64 groupId = 6;
+            // integrationName is the RAW app name of the API key whose request authored
+            // this version's changes (Change.integrationName); empty for changes made in
+            // an Anytype app. A version group never mixes two different values.
+            string integrationName = 7;
         }
 
         // returns list of versions (changes)

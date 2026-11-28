@@ -41,8 +41,8 @@ func TestArchive_Archive(t *testing.T) {
 		a, err := NewArchiveTest(t)
 		require.NoError(t, err)
 
-		require.NoError(t, a.AddObject("1"))
-		require.NoError(t, a.AddObject("2"))
+		require.NoError(t, a.AddObject(context.Background(), "1"))
+		require.NoError(t, a.AddObject(context.Background(), "2"))
 
 		s := a.NewState()
 		chIds := s.Get(s.RootId()).Model().ChildrenIds
@@ -55,8 +55,8 @@ func TestArchive_Archive(t *testing.T) {
 		a, err := NewArchiveTest(t)
 		require.NoError(t, err)
 
-		require.NoError(t, a.AddObject("1"))
-		require.NoError(t, a.AddObject("1"))
+		require.NoError(t, a.AddObject(context.Background(), "1"))
+		require.NoError(t, a.AddObject(context.Background(), "1"))
 
 		s := a.NewState()
 		chIds := s.Get(s.RootId()).Model().ChildrenIds
@@ -69,10 +69,10 @@ func TestArchive_UnArchive(t *testing.T) {
 		a, err := NewArchiveTest(t)
 		require.NoError(t, err)
 
-		require.NoError(t, a.AddObject("1"))
-		require.NoError(t, a.AddObject("2"))
+		require.NoError(t, a.AddObject(context.Background(), "1"))
+		require.NoError(t, a.AddObject(context.Background(), "2"))
 
-		require.NoError(t, a.RemoveObject("2"))
+		require.NoError(t, a.RemoveObject(context.Background(), "2"))
 		s := a.NewState()
 		chIds := s.Get(s.RootId()).Model().ChildrenIds
 		require.Len(t, chIds, 1)
@@ -81,8 +81,8 @@ func TestArchive_UnArchive(t *testing.T) {
 		a, err := NewArchiveTest(t)
 		require.NoError(t, err)
 
-		require.NoError(t, a.AddObject("1"))
-		require.EqualError(t, a.RemoveObject("2"), blockcollection.ErrObjectNotFound.Error())
+		require.NoError(t, a.AddObject(context.Background(), "1"))
+		require.EqualError(t, a.RemoveObject(context.Background(), "2"), blockcollection.ErrObjectNotFound.Error())
 
 		s := a.NewState()
 		chIds := s.Get(s.RootId()).Model().ChildrenIds

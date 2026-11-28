@@ -2,6 +2,7 @@ package state
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"slices"
@@ -118,19 +119,28 @@ type State struct {
 	changes           []*pb.ChangeContent
 	changeType        domain.ChangeType // business-level type of the latest change that is applied to state
 	// integrationName is the raw API-integration app name to stamp on the
-	// change this state produces (APIV2_OBJECT_DELETE.md §5/§11.4 — never
+	// change this state produces (docs/ApiChangeAttribution.md — never
 	// normalized). STRICTLY per-apply, like changeType: deliberately NOT
 	// propagated by NewStateCtx, Copy or apply — a later edit on this device
 	// must not inherit the stamp, or every local change would be
 	// misattributed and the DELETE ownership gate would silently widen.
+	// It is the explicit spelling of the stamp, for writers that have a
+	// request context.Context but no session.Context; a state created with
+	// NewStateCtx(sessionCtx) needs nothing here (see TakeIntegrationName).
 	integrationName string
-	fileInfo        FileInfo
-	fileKeys        []pb.ChangeFileKeys // Deprecated
-	details         *domain.Details
-	localDetails    *domain.Details
-	relationLinks   pbtypes.RelationLinks
-	notifications   map[string]*model.Notification
-	deviceStore     map[string]*model.DeviceInfo
+	// lastModifiedViaDerived records that THIS state's lastModifiedVia (its
+	// value or its absence) was decided by a derivation — a build of the
+	// tree, the local push, the index restore, or the clearing that follows
+	// a write of lastModifiedBy — and not written by content. Per state, not
+	// inherited. See EnforceLastModifiedVia.
+	lastModifiedViaDerived bool
+	fileInfo               FileInfo
+	fileKeys               []pb.ChangeFileKeys // Deprecated
+	details                *domain.Details
+	localDetails           *domain.Details
+	relationLinks          pbtypes.RelationLinks
+	notifications          map[string]*model.Notification
+	deviceStore            map[string]*model.DeviceInfo
 
 	migrationVersion uint32
 
@@ -245,11 +255,19 @@ func (s *State) NewState() *State {
 }
 
 func (s *State) NewStateCtx(ctx session.Context) *State {
+	var integrationName string
+	if session.IsAttributionOnly(ctx) {
+		// attribution without a session: the state is NewState() plus the
+		// explicit stamp, so its events broadcast as a nil context's do
+		integrationName = ctx.IntegrationName()
+		ctx = nil
+	}
 	return &State{
 		parent:                   s,
 		blocks:                   make(map[string]simple.Block),
 		rootId:                   s.rootId,
 		ctx:                      ctx,
+		integrationName:          integrationName,
 		noObjectType:             s.noObjectType,
 		migrationVersion:         s.migrationVersion,
 		uniqueKeyInternal:        s.uniqueKeyInternal,
@@ -1987,10 +2005,53 @@ func (s *State) SetIntegrationName(name string) {
 	s.integrationName = name
 }
 
-// IntegrationName returns the raw integration app name to stamp on this
-// state's change, or "" (no stamp).
+// IntegrationName returns the raw integration app name set explicitly on
+// this state, or "" — see TakeIntegrationName for what a push stamps.
 func (s *State) IntegrationName() string {
 	return s.integrationName
+}
+
+// StampFromCtx marks this state's change as authored by the local-API
+// request ctx belongs to, if it belongs to one (domain.IntegrationNameFromCtx);
+// otherwise it changes nothing. It is the one-line carry for an edit path
+// that holds the request context.Context but builds its state with
+// NewState() — a path with a session.Context should pass that to
+// NewStateCtx instead. Returns s for chaining.
+func (s *State) StampFromCtx(ctx context.Context) *State {
+	if name := domain.IntegrationNameFromCtx(ctx); name != "" {
+		s.integrationName = name
+	}
+	return s
+}
+
+// TakeIntegrationName returns the raw app name the change this state is
+// about to push must carry, and CONSUMES the explicit stamp: the explicit
+// per-state name if one was set, else the name of the request the state was
+// created for (its session context). Layered edit states (a child of a
+// child of the document) answer for the whole layer stack, nearest first —
+// the stack is applied as one change. The document itself (the parentless
+// state) is never consulted: it outlives requests, and a name found there
+// would be some earlier request's.
+//
+// Consuming makes "one stamped push per stamped state" structural — the
+// state object may go on to become the document, and must not carry the
+// name there. The session context needs no consuming: it lives on edit
+// states only, and NewState() never inherits it.
+func (s *State) TakeIntegrationName() string {
+	var name string
+	for layer := s; layer != nil; layer = layer.parent {
+		if layer != s && layer.parent == nil {
+			break
+		}
+		if name == "" {
+			name = layer.integrationName
+		}
+		if name == "" && layer.ctx != nil {
+			name = layer.ctx.IntegrationName()
+		}
+		layer.integrationName = ""
+	}
+	return name
 }
 
 func (s *State) GetChangeType() (changeType domain.ChangeType) {

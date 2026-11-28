@@ -1,6 +1,7 @@
 package blockcollection
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -20,9 +21,12 @@ func NewCollection(sb smartblock.SmartBlock, objectStore spaceindex.Store) Colle
 }
 
 type Collection interface {
-	AddObject(id string) (err error)
+	// AddObject and RemoveObject take the request they serve for
+	// ATTRIBUTION only (state.StampFromCtx): the collection's change is
+	// stamped with the local-API app whose request it is.
+	AddObject(ctx context.Context, id string) (err error)
 	HasObject(id string) (exists bool, linkId string)
-	RemoveObject(id string) (err error)
+	RemoveObject(ctx context.Context, id string) (err error)
 	GetIds() (ids []string, err error)
 	ModifyLocalDetails(
 		objectId string,
@@ -35,8 +39,8 @@ type objectLinksCollection struct {
 	objectStore spaceindex.Store
 }
 
-func (p *objectLinksCollection) AddObject(id string) (err error) {
-	s := p.NewState()
+func (p *objectLinksCollection) AddObject(ctx context.Context, id string) (err error) {
+	s := p.NewState().StampFromCtx(ctx)
 	var found bool
 	s.Iterate(func(b simple.Block) (isContinue bool) {
 		if link := b.Model().GetLink(); link != nil && link.TargetBlockId == id {
@@ -86,8 +90,8 @@ func (p *objectLinksCollection) HasObject(id string) (exists bool, linkId string
 	return
 }
 
-func (p *objectLinksCollection) RemoveObject(id string) (err error) {
-	s := p.NewState()
+func (p *objectLinksCollection) RemoveObject(ctx context.Context, id string) (err error) {
+	s := p.NewState().StampFromCtx(ctx)
 	exists, linkId := p.HasObject(id)
 	if !exists {
 		return ErrObjectNotFound

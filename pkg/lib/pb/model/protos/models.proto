@@ -1750,6 +1750,10 @@ message ChatMessage {
     // produce it; a deleted space-chat message is removed and announced with Event.Chat.Delete.
     // A tombstone can't be edited, reacted to, pinned or replied to.
     bool deleted = 18;
+    // integrationName is the RAW app name of the API key whose request CREATED the
+    // message (StoreChange.integrationName of the creating change); empty for a message
+    // sent from an Anytype app. Creation-only: a later edit or reaction never changes it.
+    string integrationName = 19;
 
     message MessageContent {
         string text = 1;      // The text content of the message part

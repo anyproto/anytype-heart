@@ -26,8 +26,10 @@ message Change {
     // normalized (normalization is many-to-one and lossy; the DELETE
     // ownership rule compares this value exactly). Stamped by heart from
     // the authenticated session — never accepted from a request. Bounded
-    // at key issuance (domain.MaxIntegrationNameLen). Empty for changes
-    // not authored through an API key.
+    // at key issuance (domain.MaxIntegrationNameLen). Carried by EVERY
+    // change a local API request authors, creating or editing
+    // (docs/ApiChangeAttribution.md). Empty for changes not authored
+    // through an API key.
     string integrationName = 10;
 
     message Snapshot {
@@ -201,8 +203,30 @@ message ChangeNoSnapshot {
     string integrationName = 10;
 }
 
+// StoreChange is the payload of a store-backed object's tree change (chats,
+// discussions, the account object).
+//
+// FIELD NUMBERS ARE SHARED WITH Change. Version history and the debug tree
+// reader decode EVERY tree payload as Change, store trees included, so the
+// two messages are one number space:
+//   - a StoreChange field that means the same as a Change field and has the
+//     same type MUST take the Change field's number (integrationName = 10):
+//     a reader that decodes a store payload as Change then reads it for free;
+//   - any other StoreChange field MUST take a number Change has NEVER used —
+//     not a current one and not a historical one (Change used 1, 2 and 5);
+//   - never give a Change number to a StoreChange field of another type
+//     (3 is `repeated Content` there): the Change decode would fail or
+//     misread it.
+// changeSet = 1 predates the rule and is the one exception: Change no longer
+// declares 1, so its decoder skips it.
 message StoreChange {
     repeated StoreChangeContent changeSet = 1;
+    // integrationName is Change.integrationName for a store change: the RAW
+    // app name of the API key whose request authored this change, stamped by
+    // heart from the authenticated session. Empty for changes not authored
+    // through an API key. Same number and type as in Change, by the rule
+    // above.
+    string integrationName = 10;
 }
 
 message StoreChangeContent {

@@ -391,6 +391,12 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 			continue
 		}
 
+		if bundle.IsDerivedAttribution(domain.RelationKey(rk)) {
+			// derived from the object's latest change: neither set nor
+			// cleared (a null), or the object would contradict its history
+			return nil, util.ErrBadInput("property '" + key + "' cannot be set or cleared as it is derived from the object's changes")
+		}
+
 		if value == nil {
 			fields[rk] = pbtypes.ToValue(nil)
 			continue

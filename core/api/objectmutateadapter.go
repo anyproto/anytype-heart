@@ -49,7 +49,9 @@ func (a *objectMutateAdapter) MutateObject(ctx context.Context, spaceId string, 
 		if err := checkObjectEditable(sb, needs); err != nil {
 			return err
 		}
-		st := sb.NewState()
+		// the edit state carries the request's attribution: its one Apply
+		// pushes a change stamped with the calling app's raw name
+		st := sb.NewState().StampFromCtx(ctx)
 		edit := apicore.ObjectEdit{
 			SbType: sb.Type().ToProto(),
 			Heads:  append([]string(nil), sb.GetDocInfo().Heads...),

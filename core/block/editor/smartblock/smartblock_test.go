@@ -263,6 +263,13 @@ type sourceStub struct {
 	// can assert on what an Apply actually pushes (change-set assertions,
 	// not just green Applies).
 	pushed []source.PushChangeParams
+	// pushErr, when set, fails every push — nothing is recorded as pushed
+	pushErr error
+	// attempts records every PushChange call, failed ones included, and
+	// tuplesAtPush the last-modified tuple the pushed state held at the
+	// moment of each call
+	attempts     []source.PushChangeParams
+	tuplesAtPush []state.LastModified
 }
 
 func (s *sourceStub) GetCreationInfo() (creator string, createdDate int64, err error) {
@@ -280,6 +287,13 @@ func (s *sourceStub) ReadDoc(_ context.Context, _ source.ChangeReceiver, _ bool)
 	return s.doc, nil
 }
 func (s *sourceStub) PushChange(params source.PushChangeParams) (id string, err error) {
+	s.attempts = append(s.attempts, params)
+	if params.State != nil {
+		s.tuplesAtPush = append(s.tuplesAtPush, lastModifiedOf(params.State))
+	}
+	if s.pushErr != nil {
+		return "", s.pushErr
+	}
 	s.pushed = append(s.pushed, params)
 	return "", nil
 }

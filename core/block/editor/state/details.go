@@ -160,7 +160,20 @@ func (s *State) removeExactJSONIntegerMetadata(key domain.RelationKey) {
 	}
 }
 
+// SetLocalDetail sets a local or derived detail. It is a generic setter: a
+// derived attribution detail (bundle.IsDerivedAttribution) is skipped, as
+// in every setter built on it — only its derivation (SetLastModifiedVia)
+// writes it. So the result of a bulk write never depends on the order its
+// map is visited in: a new lastModifiedBy clears the app, and nothing in the
+// same write can put the previous author's app back.
 func (s *State) SetLocalDetail(key domain.RelationKey, value domain.Value) {
+	if bundle.IsDerivedAttribution(key) {
+		return
+	}
+	s.setLocalDetail(key, value)
+}
+
+func (s *State) setLocalDetail(key domain.RelationKey, value domain.Value) {
 	if s.localDetails == nil && s.parent != nil {
 		d := s.parent.LocalDetails()
 		if d != nil {
@@ -174,7 +187,11 @@ func (s *State) SetLocalDetail(key domain.RelationKey, value domain.Value) {
 	if s.localDetails == nil {
 		s.localDetails = domain.NewDetails()
 	}
+	authorChanges := key == bundle.RelationKeyLastModifiedBy && !s.localDetails.Get(key).Equal(value)
 	s.localDetails.Set(key, value)
+	if authorChanges {
+		s.authorWritten()
+	}
 }
 
 // details removers
@@ -234,18 +251,34 @@ func (s *State) RemoveDetail(keys ...domain.RelationKey) (ok bool) {
 }
 
 func (s *State) RemoveLocalDetail(keys ...domain.RelationKey) (ok bool) {
-	// TODO It could be lazily copied only if actual deletion is happened
-	det := s.LocalDetails().Copy()
-	if det != nil {
-		for _, key := range keys {
-			if det.Has(key) {
-				det.Delete(key)
-				ok = true
-			}
+	current := s.LocalDetails()
+	if current == nil {
+		return false
+	}
+	// look before copying: most calls remove nothing (lastModifiedVia is
+	// removed on every edit made in an app), and the copy is the whole map
+	present := false
+	for _, key := range keys {
+		if current.Has(key) {
+			present = true
+			break
 		}
 	}
-	if ok {
-		s.SetLocalDetails(det)
+	if !present {
+		return false
+	}
+	det := current.Copy()
+	authorRemoved := false
+	for _, key := range keys {
+		if det.Has(key) {
+			det.Delete(key)
+			ok = true
+			authorRemoved = authorRemoved || key == bundle.RelationKeyLastModifiedBy
+		}
+	}
+	s.SetLocalDetails(det)
+	if authorRemoved {
+		s.authorWritten()
 	}
 	return
 }

@@ -195,16 +195,7 @@ func (f *ObjectFactory) InitObject(space smartblock.Space, id string, initCtx *s
 		return nil, fmt.Errorf("init smartblock: %w", err)
 	}
 
-	// NoSpaceConfigCheck: init is our own code, and its writes must never be able to fail object
-	// loading - this Apply's error is returned straight to the caller. The state also carries
-	// ChangeTypeObjectInit, so the guard would pass anyway; the flag says so explicitly rather than
-	// leaving object loading resting on an enum value someone may repurpose.
-	applyFlags := []smartblock.ApplyFlag{smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions,
-		smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions, smartblock.NoSpaceConfigCheck}
-	if initCtx.IsNewObject {
-		// the creation migration may only now have given the object its type, and so its layout
-		applyFlags = append(applyFlags, smartblock.AllowApplyWithEmptyTree, smartblock.ShapeNewObjectLayout)
-	}
+	applyFlags := smartblock.InitApplyFlags(initCtx.IsNewObject)
 	migration.RunMigrations(sb, initCtx)
 	initCtx.State.SetChangeType(domain.ChangeTypeObjectInit)
 	err = sb.Apply(initCtx.State, applyFlags...)
