@@ -329,7 +329,11 @@ func removedCustomPropertyIssue(spaceId string, entry propertyEntry, spelledAs, 
 func removedPropertyIssue(spaceId, key, spelledAs, path string, v errKeys) v2model.Issue {
 	slug := bundle.ApiSlug(key)
 	spelling := slug
-	if v.names {
+	if spelledAs != "" {
+		// the term as written ("DESCRIPTION"): the decision is on the key,
+		// the refusal is addressed to what the caller sent
+		spelling = spelledAs
+	} else if v.names {
 		// a removed bundled property still has its bundled display name —
 		// the spelling a name-mode caller was taught
 		if rel, err := bundle.GetRelation(domain.RelationKey(key)); err == nil && rel.Name != "" {
@@ -358,6 +362,13 @@ func removedTypeIssue(spaceId, key, path string, v errKeys) v2model.Issue {
 			spelling = t.Name
 		}
 	}
+	return removedTypeIssueAs(spaceId, spelling, path)
+}
+
+// removedTypeIssueAs is removedTypeIssue quoting the spelling the caller
+// sent, when there is one: the decision is made on the canonical key, the
+// refusal is addressed to the term as written ("Task", not "task").
+func removedTypeIssueAs(spaceId, spelling, path string) v2model.Issue {
 	return v2model.Issue{
 		Path:    path,
 		Message: fmt.Sprintf("type %q was removed from this space — nothing new is created in a removed type", spelling),
@@ -542,9 +553,19 @@ var typeRecommendedListKeys = []domain.RelationKey{
 // (its four recommended-relation lists, resolved id→key) — the R9 reference
 // set for set filters and sorts.
 func (s *Service) typePropertyKeys(spaceId, typeId string) []string {
-	details, err := s.store.SpaceIndex(spaceId).GetDetails(typeId)
+	keys, err := s.typePropertyKeysOf(spaceId, typeId)
 	if err != nil {
 		return nil
+	}
+	return keys
+}
+
+// typePropertyKeysOf is typePropertyKeys with the store error kept, so an
+// unreadable list stays distinct from a type that lists nothing.
+func (s *Service) typePropertyKeysOf(spaceId, typeId string) ([]string, error) {
+	details, err := s.store.SpaceIndex(spaceId).GetDetails(typeId)
+	if err != nil {
+		return nil, fmt.Errorf("read type %s of space %s: %w", typeId, spaceId, err)
 	}
 	reads := storeresolver.New(s.store.SpaceIndex(spaceId))
 	var out []string
@@ -560,7 +581,7 @@ func (s *Service) typePropertyKeys(spaceId, typeId string) []string {
 		}
 	}
 	sort.Strings(out)
-	return out
+	return out, nil
 }
 
 // recommendedRelationIds reads the relation object ids a type's four
@@ -585,32 +606,76 @@ func (s *Service) recommendedRelationIds(spaceId, typeId string) map[string]bool
 	return out
 }
 
-// typeListedKeys is the stored key set a type recommends, resolved from the
-// key a document spells the type by — a bundled key (ot-page), or the api
-// slug this surface serves for a space-minted type. Nil when the type cannot
-// be resolved: then no F16 warning is issued, because a warning the code
-// cannot substantiate is worse than none.
-func (s *Service) typeListedKeys(spaceId, typeKey string) map[string]bool {
-	if typeKey == "" {
+// offTypeJudgedType is the live type a document's off-type warnings judge
+// against (offTypeJudge), found by its exact stored key: no slug step, which
+// could land a missing type's key on another type that answers to it.
+// found=false (an unknown target, a type with no live row) means no warning.
+func (s *Service) offTypeJudgedType(spaceId, kind, typeKey, templateFor string) (judged liveType, forTemplate, found bool, err error) {
+	key, forTemplate := offTypeJudge(kind, typeKey, templateFor)
+	judged, found, err = s.liveTypeByKey(spaceId, key)
+	if err != nil {
+		return liveType{}, forTemplate, false, fmt.Errorf("resolve the type to judge properties against: %w", err)
+	}
+	return judged, forTemplate, found, nil
+}
+
+// listedProps is the property list one type carries, for F16 membership.
+type listedProps struct {
+	keys   map[string]bool // the stored keys of the live properties it lists
+	ids    map[string]bool // the ids it lists
+	derive func(key string) string
+}
+
+// has reports whether the list carries the property key names: by its live
+// entry, or, for a built-in, by the id derived from its key, which a list
+// carries before the property's own row has synced.
+func (l *listedProps) has(key string) bool {
+	if l.keys[key] {
+		return true
+	}
+	if l.derive != nil && bundle.HasRelation(domain.RelationKey(key)) {
+		if id := l.derive(key); id != "" && l.ids[id] {
+			return true
+		}
+	}
+	return false
+}
+
+// listedKeysOf is the property list one live type carries, compared by id,
+// so no property definition has to be read to decide membership. nil: the
+// type's row or the live properties could not be read, which is not a type
+// listing nothing, so no warning may rest on it.
+func (s *Service) listedKeysOf(spaceId, typeId string, props interface {
+	liveProps() ([]propertyEntry, error)
+}) *listedProps {
+	if typeId == "" {
 		return nil
 	}
-	typeId, ok := s.typeIdInSpace(spaceId, typeKey)
-	if !ok {
-		entries, err := s.liveTypes(spaceId)
+	ids, err := s.typePropertyScopeOf(spaceId, typeId)
+	if err == nil && ids == nil {
+		err = fmt.Errorf("type %s has no row", typeId)
+	}
+	var entries []propertyEntry
+	if err == nil {
+		entries, err = props.liveProps()
+	}
+	if err != nil {
+		log.Warnf("api v2: read the property list of type %s in space %s: %v", typeId, spaceId, err)
+		return nil
+	}
+	listed := &listedProps{keys: map[string]bool{}, ids: ids, derive: func(key string) string {
+		id, err := s.creator.RelationIdByKey(context.Background(), spaceId, domain.RelationKey(key))
 		if err != nil {
-			return nil
+			return ""
 		}
-		entry, found, ambiguous, err := s.resolveTypeInput(spaceId, typeKey, entries)
-		if err != nil || !found || len(ambiguous) > 0 || entry.Id == "" {
-			return nil
+		return id
+	}}
+	for _, entry := range entries {
+		if entry.Id != "" && ids[entry.Id] {
+			listed.keys[entry.Key] = true
 		}
-		typeId = entry.Id
 	}
-	keys := map[string]bool{}
-	for _, key := range s.typePropertyKeys(spaceId, typeId) {
-		keys[key] = true
-	}
-	return keys
+	return listed
 }
 
 // offTypeCandidate reports whether a stored property key is one the F16
@@ -627,13 +692,117 @@ func offTypeCandidate(key string) bool {
 	return true
 }
 
+// offTypeJudge names the type the F16 warning judges a document's property
+// values against, from the document's kind, type and template_for: its own
+// type, or, for a template, the type the template is for. A template's
+// values are what objects of that type start with, and the type `template`
+// lists none of them, so judging them against it warned on every property
+// the target does list (APIV2-035). A template whose target is not known is
+// judged against nothing: the empty key, which typeListedKeys answers with
+// nil, because a warning the code cannot substantiate is worse than none.
+func offTypeJudge(kind, docType, templateFor string) (typeKey string, forTemplate bool) {
+	if kind == "template" || docType == string(bundle.TypeKeyTemplate) || templateFor != "" {
+		return templateFor, true
+	}
+	return docType, false
+}
+
+// scopeTypeKey names the type whose list settles a property term two
+// properties answer to (resolvePropertyInputIn), by offTypeJudge's rule: a
+// template is scoped by the type it is for, because its own type lists none
+// of its properties. A template whose target is not known keeps its own
+// type, as before. Callers fall back to docType too when the target has no
+// row to read a list from.
+func scopeTypeKey(kind, docType, templateFor string) string {
+	if target, forTemplate := offTypeJudge(kind, docType, templateFor); forTemplate && target != "" {
+		return target
+	}
+	return docType
+}
+
 // offTypePropertyIssue is the F16 warning: the value lands, but the type's
-// own surfaces do not reach it.
-func offTypePropertyIssue(spelling, typeKey, path string) v2model.Issue {
+// own surfaces do not reach it. typeWord is the type in the request's
+// vocabulary (offTypeTypeWord). On a template the type is the one the
+// template is for, whose objects take the value from it. A preview (a dry
+// run) says what the write would do.
+func offTypePropertyIssue(spelling, typeWord, path string, forTemplate, preview bool) v2model.Issue {
+	if forTemplate {
+		take := "take"
+		if preview {
+			take = "would take"
+		}
+		return v2model.Issue{
+			Path: path,
+			Message: fmt.Sprintf("property %q is not on type %q, the type this template is for. "+
+				"Objects created from the template %s the value. "+
+				"That type's search and queries refuse the key. "+
+				"Its default columns omit it.",
+				spelling, typeWord, take),
+		}.Hintf("list it on type %q with the add_property op (%s)", typeWord, v2model.RefGetOpSchema("add_property"))
+	}
+	stored := "is stored and served"
+	if preview {
+		stored = "would be stored and served"
+	}
 	return v2model.Issue{
 		Path:    path,
-		Message: fmt.Sprintf("property %q is not on type %q — the value is stored and served on the object, but type-scoped search and queries over %q refuse the key and the type's default columns omit it", spelling, typeKey, typeKey),
+		Message: fmt.Sprintf("property %q is not on type %q — the value %s on the object, but type-scoped search and queries over %q refuse the key and the type's default columns omit it", spelling, typeWord, stored, typeWord),
 	}.Hintf("list it on the type with the add_property op (%s)", v2model.RefGetOpSchema("add_property"))
+}
+
+// offTypeTypeWord spells the type an off-type warning names in the request's
+// vocabulary: its display name under ?keys=name, its served slug otherwise.
+// It never spells the stored key of a type whose slug cannot serve it (none
+// minted, or one a collision takes away): the display name stands in then,
+// and when the live set cannot be read, too.
+func (s *Service) offTypeTypeWord(spaceId string, judged liveType, names bool) string {
+	if names && judged.Name != "" {
+		return judged.Name
+	}
+	fallback := judged.Key
+	if slug := bundle.TypeApiSlug(judged.Key); bundle.HasObjectTypeByKey(domain.TypeKey(judged.Key)) && slug != "" {
+		fallback = slug
+	} else if mintedKeyShape(judged.Key) && judged.Name != "" {
+		fallback = judged.Name
+	}
+	entries, err := s.liveTypes(spaceId)
+	if err != nil {
+		return fallback
+	}
+	for _, entry := range entries {
+		if entry.Id != judged.Id {
+			continue
+		}
+		keyTaken, slugHolders := servedTypeKeySets(entries)
+		served := servedTypeKeyOf(entry.Key, entry.Slug, keyTaken, slugHolders)
+		wanted := entry.Slug
+		if bundle.HasObjectTypeByKey(domain.TypeKey(entry.Key)) {
+			wanted = bundle.TypeApiSlug(entry.Key)
+		}
+		// a stored key stands where its slug should: a minted one, or any
+		// whose slug another type took
+		displaced := wanted != "" && wanted != entry.Key
+		if served == entry.Key && entry.Name != "" && (mintedKeyShape(entry.Key) || displaced) {
+			return entry.Name
+		}
+		return served
+	}
+	return fallback
+}
+
+// mintedKeyShape reports whether a stored key is one the space minted (a
+// 24-hex id): an internal key no caller sent and no response should quote,
+// unlike a readable key that serves as its own address.
+func mintedKeyShape(key string) bool {
+	if len(key) != 24 {
+		return false
+	}
+	for _, r := range key {
+		if (r < '0' || r > '9') && (r < 'a' || r > 'f') {
+			return false
+		}
+	}
+	return true
 }
 
 // removedTypeRefusal is the issue for a REMOVED space-minted type addressed

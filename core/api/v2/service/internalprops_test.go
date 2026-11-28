@@ -203,7 +203,7 @@ func TestV2HiddenInternalProperties(t *testing.T) {
 		var apiErr *v2model.Error
 		require.True(t, errors.As(err, &apiErr), "got %v", err)
 		require.Len(t, apiErr.Issues, 1)
-		assert.Equal(t, "/ops/0.property", apiErr.Issues[0].Path)
+		assert.Equal(t, "/ops/0/property", apiErr.Issues[0].Path)
 		assert.Contains(t, apiErr.Issues[0].Message, "internal property")
 	})
 

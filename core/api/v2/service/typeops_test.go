@@ -337,7 +337,7 @@ func TestV2TypeOpsAddMintsAnUnknownName(t *testing.T) {
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
 		require.Len(t, apiErr.Issues, 1)
-		assert.Equal(t, "/ops/0.format", apiErr.Issues[0].Path)
+		assert.Equal(t, "/ops/0/format", apiErr.Issues[0].Path)
 		assert.Zero(t, minted, "the request was refused, so it must not have created anything")
 	})
 
@@ -354,7 +354,7 @@ func TestV2TypeOpsAddMintsAnUnknownName(t *testing.T) {
 		// then
 		apiErr := v2Err(t, err)
 		require.Len(t, apiErr.Issues, 1)
-		assert.Equal(t, "/ops/0.format", apiErr.Issues[0].Path)
+		assert.Equal(t, "/ops/0/format", apiErr.Issues[0].Path)
 	})
 }
 
@@ -807,7 +807,7 @@ func TestV2TypeOpsRemovePrunesEveryView(t *testing.T) {
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Message, "elsewhere")
 		require.Len(t, apiErr.Issues, 1)
-		assert.Equal(t, "/ops/0.property", apiErr.Issues[0].Path)
+		assert.Equal(t, "/ops/0/property", apiErr.Issues[0].Path)
 		assert.Contains(t, apiErr.Issues[0].Message, "location", "the refusal must say what the type does carry")
 	})
 
@@ -823,7 +823,7 @@ func TestV2TypeOpsRemovePrunesEveryView(t *testing.T) {
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Message, "sunlight")
 		require.Len(t, apiErr.Issues, 1)
-		assert.Equal(t, "/ops/0.property", apiErr.Issues[0].Path)
+		assert.Equal(t, "/ops/0/property", apiErr.Issues[0].Path)
 	})
 }
 
@@ -909,7 +909,7 @@ func TestV2TypeOpsMoveReordersTheList(t *testing.T) {
 		// then
 		apiErr := v2Err(t, err)
 		require.Len(t, apiErr.Issues, 1)
-		assert.Equal(t, "/ops/0.after", apiErr.Issues[0].Path)
+		assert.Equal(t, "/ops/0/after", apiErr.Issues[0].Path)
 		assert.Contains(t, apiErr.Issues[0].Hint, "section")
 	})
 
@@ -1042,7 +1042,7 @@ func TestV2TypeOpsDeclaredOptionsNeedConsent(t *testing.T) {
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
 		require.NotEmpty(t, apiErr.Issues)
-		assert.Equal(t, "/ops/0.options", apiErr.Issues[0].Path,
+		assert.Equal(t, "/ops/0/options", apiErr.Issues[0].Path,
 			"the refusal must point at the op the caller wrote")
 		assert.Zero(t, created, "a refused batch must mint nothing")
 	})
@@ -1077,7 +1077,7 @@ func TestV2TypeOpsEnvelopeIsNotAFlatBody(t *testing.T) {
 		// then
 		apiErr := v2Err(t, err)
 		require.Len(t, apiErr.Issues, 1)
-		assert.Equal(t, "/ops/0.property", apiErr.Issues[0].Path,
+		assert.Equal(t, "/ops/0/property", apiErr.Issues[0].Path,
 			"an ops envelope refused at /ops means the flat body claimed it")
 	})
 
@@ -1122,7 +1122,7 @@ func TestV2TypeOpsEnvelopeIsNotAFlatBody(t *testing.T) {
 		// then
 		apiErr := v2Err(t, err)
 		require.Len(t, apiErr.Issues, 1)
-		assert.Equal(t, "/ops/0.op", apiErr.Issues[0].Path)
+		assert.Equal(t, "/ops/0/op", apiErr.Issues[0].Path)
 		assert.Contains(t, apiErr.Issues[0].Message, "add_property")
 	})
 

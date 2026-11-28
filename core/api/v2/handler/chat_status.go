@@ -71,7 +71,7 @@ func decodeChatStatus(r io.Reader) (req v2model.ChatStatusRequest, err error) {
 	if err := dec.Decode(&req); err != nil {
 		issue := v2model.Issue{Message: err.Error(), Hint: "send optional text, reply_to and data; omit text for a localized typing label"}
 		if field, ok := unknownFieldName(err); ok {
-			issue.Path = "/" + field
+			issue.Path = v2model.MemberPointer(field)
 		}
 		return req, v2model.ValidationFailed("invalid status request body", issue)
 	}

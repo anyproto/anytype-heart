@@ -125,20 +125,7 @@ func (k *keyCanon) withServedSpellings(stored []string) []string {
 // candidate lists and did-you-mean — never advertise a spelling the
 // channels reject).
 func (k *keyCanon) servedSpellings(stored []string) []string {
-	keyTaken, slugHolders := servedPropertyKeySets(k.entries)
-	byKey := map[string]string{}
-	for _, entry := range k.entries {
-		byKey[entry.Key] = servedKey(entry.Key, entry.Slug, keyTaken, slugHolders)
-	}
-	out := make([]string, 0, len(stored))
-	for _, key := range stored {
-		if served, ok := byKey[key]; ok {
-			out = append(out, served)
-			continue
-		}
-		out = append(out, key)
-	}
-	return sortedDistinct(out)
+	return k.candidateSpellings(stored, errKeys{})
 }
 
 // referenceSpellings is servedSpellings in the request's error vocabulary
@@ -147,21 +134,44 @@ func (k *keyCanon) servedSpellings(stored []string) []string {
 // known-key lists and did-you-mean suggestions a refusal shows — never the
 // acceptance set, which stays vocabulary-wide (D3).
 func (k *keyCanon) referenceSpellings(stored []string, v errKeys) []string {
-	if !v.names {
-		return k.servedSpellings(stored)
+	return k.candidateSpellings(stored, v)
+}
+
+// routeKey is the key a route takes for a stored key: its served spelling,
+// a valid path segment whatever the caller spelled (a display name such as
+// "Sales/Stage" is not one). Falls back to the caller's spelling for a key
+// the space does not serve.
+func (k *keyCanon) routeKey(stored, spelled string) string {
+	if served := k.servedSpellings([]string{stored}); len(served) == 1 {
+		return served[0]
 	}
+	return spelled
+}
+
+// candidateSpellings is the one builder of a refusal's candidate list. Only
+// a live, visible, publicly addressable property makes it: a removed one a
+// type still recommends has no live entry, and a hidden one (the discussion
+// counters) is accepted but never advertised. Falling back to the stored key
+// for either advertised a bson id. A built-in the space has not installed is
+// offered by its derived slug, or its name under ?keys=name.
+func (k *keyCanon) candidateSpellings(stored []string, v errKeys) []string {
 	keyTaken, slugHolders := servedPropertyKeySets(k.entries)
-	byKey := map[string]string{}
+	byKey := make(map[string]propertyEntry, len(k.entries))
 	for _, entry := range k.entries {
-		byKey[entry.Key] = v.spell(servedKey(entry.Key, entry.Slug, keyTaken, slugHolders), entry.Name)
+		byKey[entry.Key] = entry
 	}
 	out := make([]string, 0, len(stored))
 	for _, key := range stored {
-		if spelled, ok := byKey[key]; ok {
-			out = append(out, spelled)
+		if entry, ok := byKey[key]; ok {
+			if !entry.Hidden {
+				out = append(out, v.spell(servedKey(entry.Key, entry.Slug, keyTaken, slugHolders), entry.Name))
+			}
 			continue
 		}
-		out = append(out, key)
+		if bundle.HasRelation(domain.RelationKey(key)) {
+			out = append(out, servedBundledSpellings([]string{key}, v)...)
+		}
+		// neither live nor built-in: a removed property — nothing to offer
 	}
 	return sortedDistinct(out)
 }
@@ -244,7 +254,7 @@ func (k *keyCanon) rewriteViews(views []any, path string) error {
 		}
 		prefix := fmt.Sprintf("%s/%d", path, i)
 		if groupBy, ok := view["group_by"].(string); ok && groupBy != "" {
-			canonical, err := k.canonOrErr(groupBy, prefix+"/groupBy")
+			canonical, err := k.canonOrErr(groupBy, prefix+"/group_by")
 			if err != nil {
 				return err
 			}
@@ -347,7 +357,7 @@ func canonFormatName(base func(string) (string, bool), kc *keyCanon) func(string
 func ambiguousInputIssue(what, input, path string, candidates []string) v2model.Issue {
 	return v2model.Issue{Path: path,
 		Message: fmt.Sprintf("%s %q matches %s", what, input, joinAnd(candidates)),
-		Hint:    "address the intended one by its exact key"}
+		Hint:    ambiguityHint(candidates)}
 }
 
 func joinAnd(parts []string) string {

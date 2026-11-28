@@ -332,11 +332,21 @@ func (d *v2EditDoc) subtreeEnd(i int) int {
 
 // docType returns the envelope type key.
 func (d *v2EditDoc) docType() string {
-	var t string
-	if raw, ok := d.fields["type"]; ok {
-		_ = json.Unmarshal(raw, &t)
+	return envelopeString(d.fields, "type")
+}
+
+// envelopeString returns one string member of a parsed envelope (`type`,
+// `kind`), empty when it is absent or not a string.
+func envelopeString(fields map[string]json.RawMessage, member string) string {
+	raw, ok := fields[member]
+	if !ok {
+		return ""
 	}
-	return t
+	var s string
+	if err := json.Unmarshal(raw, &s); err != nil {
+		return "" // not a string: the document's own validation owns that verdict
+	}
+	return s
 }
 
 //
@@ -501,6 +511,21 @@ type opItems struct {
 	Items []string `json:"items"`
 }
 
+// opMemberPath appends a member to an op's path in that path's own syntax:
+// a JSON Pointer (/ops/0, the type channel) takes escaped "/" tokens, an op
+// path (ops[0], the object channel) takes dotted members. A decoder field
+// path is dotted ("options.0.name").
+func opMemberPath(opPath, field string) string {
+	if !strings.HasPrefix(opPath, "/") {
+		return opPath + "." + field
+	}
+	tokens := strings.Split(field, ".")
+	for i, token := range tokens {
+		tokens[i] = v2model.PointerToken(token)
+	}
+	return opPath + "/" + strings.Join(tokens, "/")
+}
+
 // decodeStrictOp decodes one op body into its typed struct, rejecting
 // unknown fields with a schema pointer. An unknown field is refused by name
 // with the members the op does take, so the caller can fix the call without
@@ -512,14 +537,14 @@ func decodeStrictOp(raw json.RawMessage, opName, opPath string, v any) error {
 		issue := v2model.Issue{Path: opPath, Message: err.Error()}
 		var typeErr *json.UnmarshalTypeError
 		if errors.As(err, &typeErr) && typeErr.Field != "" {
-			issue.Path = opPath + "." + typeErr.Field
+			issue.Path = opMemberPath(opPath, typeErr.Field)
 			issue.Message = fmt.Sprintf("%q is %s, not %s", typeErr.Field, jsonKindOf(typeErr.Type), withArticle(typeErr.Value))
 			if hint, ok := opFieldHints[opName+"."+typeErr.Field]; ok {
 				return v2model.ValidationFailed(fmt.Sprintf("invalid %s op", opName),
 					issue.Hintf("%s; %s for the op's schema and example", hint, v2model.RefGetOpSchema(opName)))
 			}
 		} else if field, ok := unknownJSONField(err); ok {
-			issue.Path = opPath + "." + field
+			issue.Path = opMemberPath(opPath, field)
 			issue.Message = fmt.Sprintf("unknown key %q — %s takes %s", field, opName, strings.Join(opMembers(v), ", "))
 			if hint, ok := opFieldHints[opName+"."+field]; ok {
 				return v2model.ValidationFailed(fmt.Sprintf("invalid %s op", opName),

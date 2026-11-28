@@ -226,6 +226,19 @@ func (s *Service) GetObject(ctx context.Context, spaceId, objectId string, q Obj
 		return nil, "", err
 	}
 	etag := ComputeEtag(read.Heads)
+	// a template names the type it is for as every write resolves it
+	// (templateTargetOf), not by whichever slot a retarget left behind
+	var renderLoss []v2model.Issue
+	if read.Snapshot != nil {
+		if isTemplateObject(read.SbType) {
+			target, err := s.templateTargetOf(spaceId, read.Snapshot.GetDetails(), readTypeKeys(read.Snapshot.GetObjectTypes()))
+			if err != nil {
+				return nil, "", err
+			}
+			renderLoss = templateRenderLoss(read.Snapshot, target)
+			read.Snapshot = withTemplateTarget(read.Snapshot, target)
+		}
+	}
 
 	reads := storeresolver.New(s.store.SpaceIndex(spaceId))
 	if read.SbType == model.SmartBlockType_STType {
@@ -262,11 +275,17 @@ func (s *Service) GetObject(ctx context.Context, spaceId, objectId string, q Obj
 	opts.TableColumnHeaders = true
 	// C11 (M3): a read never fails on content the format can't represent —
 	// unmapped/over-deep blocks degrade to warnings that ride the envelope.
-	var warnings []v2model.Issue
+	warnings := renderLoss
+	spell := func(stored string) string { return stored }
+	if opts.Keys != nil {
+		spell = opts.Keys.PropertySlug
+	}
+	propertyKeys := sortedKeys(read.Snapshot.GetDetails().GetFields())
 	opts.OnWarning = func(iss anyblockjson.Issue) {
 		if readWarningIsNoise(iss) {
 			return
 		}
+		iss.Path = readWarningPath(iss.Path, propertyKeys, spell)
 		warnings = append(warnings, readWarningIssue(iss))
 	}
 
@@ -412,7 +431,11 @@ func (s *Service) markdownEnvelope(ctx context.Context, spaceId, objectId string
 	if fields["id"], err = rawJSON(objectId); err != nil {
 		return nil, "", err
 	}
-	if typeKey := objectTypeKey(read); typeKey != "" {
+	typeKey := objectTypeKey(read)
+	if isTemplateObject(read.SbType) {
+		typeKey = string(bundle.TypeKeyTemplate) // a template's own type, whatever its first key says
+	}
+	if typeKey != "" {
 		vocab := s.apiKeys(spaceId, storeresolver.New(s.store.SpaceIndex(spaceId)))
 		if fields["type"], err = rawJSON(vocab.TypeSlug(typeKey)); err != nil {
 			return nil, "", err

@@ -716,7 +716,10 @@ func TestUnknownOpMemberNamesTheMembers(t *testing.T) {
 		apiErr := v2Err(t, err)
 		require.NotEmpty(t, apiErr.Issues)
 		issue := apiErr.Issues[0]
-		assert.True(t, strings.HasSuffix(issue.Path, ".zz_probe"), "the path names the member: %q", issue.Path)
+		// each channel's own syntax: ops[0].zz_probe on objects, the pointer
+		// /ops/0/zz_probe on types
+		assert.True(t, strings.HasSuffix(issue.Path, ".zz_probe") || strings.HasSuffix(issue.Path, "/zz_probe"),
+			"the path names the member: %q", issue.Path)
 		m := takes.FindStringSubmatch(issue.Message)
 		require.NotNil(t, m, "the refusal names the members: %q", issue.Message)
 		assert.Equal(t, op, m[1])

@@ -1288,7 +1288,7 @@ func TestV2RemovedBundledTypeRefusesWrites(t *testing.T) {
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
 		require.NotEmpty(t, apiErr.Issues)
-		assert.Contains(t, apiErr.Issues[0].Message, `"`+slug+`"`, "the refusal spells the served slug")
+		assert.Contains(t, apiErr.Issues[0].Message, `"`+slug+`"`, "the refusal spells the type as the caller wrote it")
 		assert.Contains(t, apiErr.Issues[0].Message, "removed from this space")
 		assert.NotEmpty(t, apiErr.Issues[0].Hint)
 	}
@@ -1297,7 +1297,9 @@ func TestV2RemovedBundledTypeRefusesWrites(t *testing.T) {
 		for _, spelling := range []struct{ key, input, slug string }{
 			{"task", "task", "task"},
 			{"diaryEntry", "diary_entry", "diary_entry"},
-			{"diaryEntry", "diaryEntry", "diary_entry"},
+			// the refusal quotes the term as sent: the stored key, when that
+			// is what the caller wrote
+			{"diaryEntry", "diaryEntry", "diaryEntry"},
 		} {
 			t.Run(spelling.input, func(t *testing.T) {
 				corpseShapes(t, func(t *testing.T, shape corpseShape) {

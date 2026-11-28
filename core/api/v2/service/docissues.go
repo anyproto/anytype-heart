@@ -182,6 +182,33 @@ func readWarningIsNoise(iss anyblockjson.Issue) bool {
 	return member != "" && apiV2ExcludedSet[member]
 }
 
+// readWarningPath re-addresses a format warning under /properties/ at the
+// member the read serves, as one escaped JSON Pointer token. The format names
+// the property by its stored key in some warnings (a bson id, for a
+// space-minted property) and by its served spelling, unescaped, in others (a
+// display name holding a "/" under ?keys=name). Both are matched against the
+// object's own properties, longest first, so "Start/End" is one member and
+// not "Start" followed by a step into it.
+func readWarningPath(path string, keys []string, spell func(stored string) string) string {
+	rest, ok := strings.CutPrefix(path, "/properties/")
+	if !ok {
+		return path
+	}
+	matched, served := "", ""
+	for _, stored := range keys {
+		spelled := spell(stored)
+		for _, candidate := range []string{stored, spelled} {
+			if len(candidate) > len(matched) && (rest == candidate || strings.HasPrefix(rest, candidate+"/")) {
+				matched, served = candidate, spelled
+			}
+		}
+	}
+	if matched == "" {
+		return path
+	}
+	return "/properties/" + v2model.PointerToken(served) + rest[len(matched):]
+}
+
 // readWarningIssue is a read warning in the C6 shape, with the repair for
 // the one degradation an exposed operation fixes: a date stored in
 // milliseconds where seconds belong is a value set_properties rewrites.

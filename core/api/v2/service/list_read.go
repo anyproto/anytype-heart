@@ -539,8 +539,10 @@ func (s *Service) querySourceFilters(spaceId, queryId string, read apicore.Objec
 			relationKeys = append(relationKeys, relation.Key)
 			continue
 		}
+		// the entry is an internal id (an ot-… unique key, a relation id) of
+		// a type or property that is gone: describe it, never quote it
 		return nil, v2model.ValidationFailed(
-			fmt.Sprintf("query %q has an unresolvable source %q — setOf entries are type or property object ids", queryId, entry))
+			fmt.Sprintf("query %q reads from a type or property that no longer exists, so it has no rows to list", queryId))
 	}
 
 	var alternatives []database.FilterRequest

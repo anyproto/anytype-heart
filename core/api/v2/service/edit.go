@@ -34,6 +34,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+
+	"github.com/gogo/protobuf/types"
 )
 
 // v2MaxOpsPerPatch bounds one PATCH batch. Each op re-renders the document
@@ -196,7 +198,12 @@ func (s *Service) PatchObject(ctx context.Context, spaceId, objectId string, bod
 	if isArchivedRead(cur) {
 		return nil, v2model.ObjectArchived(spaceId, objectId, deletableSbType(cur.SbType), dryRun)
 	}
-	resolvers.scope = s.objectPropertyScope(spaceId, cur)
+	// read once, shared by the probe and the apply below
+	pc, err := s.newPatchContext(spaceId, cur)
+	if err != nil {
+		return nil, err
+	}
+	resolvers.patch, resolvers.scope = pc, pc.objectScope
 	// the object's own restrictions, from the same read — so a dry run reaches
 	// the same verdict as the real edit rather than reporting a success the
 	// adapter would refuse (review C′3). Per-op, not per-request: a set and a
@@ -214,7 +221,7 @@ func (s *Service) PatchObject(ctx context.Context, spaceId, objectId string, bod
 	if err != nil {
 		return nil, err
 	}
-	if err := s.guardCreateMissing(ctx, spaceId, objectId, ops, ifMatch, cur, dryRun, createMissingOptions); err != nil {
+	if err := s.guardCreateMissing(ctx, spaceId, objectId, ops, ifMatch, cur, pc, dryRun, createMissingOptions); err != nil {
 		return nil, err
 	}
 	s.prewarmCreateMissing(ops, resolvers)
@@ -228,6 +235,9 @@ func (s *Service) PatchObject(ctx context.Context, spaceId, objectId string, bod
 	var favorite *bool
 	run := func(edit apicore.ObjectEdit) error {
 		res, applier, err := s.applyPatchOps(ctx, spaceId, objectId, ops, ifMatch, edit, resolvers, dryRun)
+		if errors.Is(err, errPlanDrift) {
+			return v2model.EtagMismatch(ComputeEtag(edit.Heads))
+		}
 		if err != nil {
 			return err
 		}
@@ -306,7 +316,7 @@ const v2MaxCreatedOptionsPerPatch = 64
 // existing option by name before creating, so a retry adopts what the first
 // attempt made instead of duplicating it), and detectable — created options
 // carry ObjectOrigin_api.
-func (s *Service) guardCreateMissing(ctx context.Context, spaceId, objectId string, ops []json.RawMessage, ifMatch string, cur apicore.ObjectRead, dryRun, createMissingOptions bool) error {
+func (s *Service) guardCreateMissing(ctx context.Context, spaceId, objectId string, ops []json.RawMessage, ifMatch string, cur apicore.ObjectRead, pc *patchContext, dryRun, createMissingOptions bool) error {
 	// a resolver in dry mode records would-be creations instead of performing
 	// them: no RPCs, no document work, just a walk of the op payloads
 	// the probe must see the SAME consent as the real run: it exists to
@@ -315,7 +325,7 @@ func (s *Service) guardCreateMissing(ctx context.Context, spaceId, objectId stri
 	probe := s.newCreatingResolvers(ctx, spaceId, true, createMissingOptions)
 	// the probe never writes, but its refusals speak for this request
 	probe.previewing = dryRun
-	probe.scope = s.objectPropertyScope(spaceId, cur)
+	probe.patch, probe.scope = pc, pc.objectScope
 	s.prewarmCreateMissing(ops, probe)
 	if err := probe.err(); err != nil {
 		return err
@@ -337,7 +347,11 @@ func (s *Service) guardCreateMissing(ctx context.Context, spaceId, objectId stri
 		for _, o := range pending {
 			// the caller's spelling, not the store's id: this message names
 			// the fields they must go and check
-			props[probe.keys.PropertySlug(o.Property)]++
+			spelling, ok := probe.pendingSpelling[o.Property]
+			if !ok {
+				spelling = probe.keys.PropertySlug(o.Property)
+			}
+			props[spelling]++
 		}
 		issue := v2model.Issue{
 			Path: "/ops",
@@ -434,6 +448,12 @@ func (s *Service) applyPatchOps(ctx context.Context, spaceId, objectId string, o
 	applier := newV2StateApplier(s, spaceId, objectId, edit.SbType, edit.State, resolvers, errKeysFor(ctx))
 	applier.setObjectType = edit.SetObjectType
 	applier.simulate = simulate
+	// every pass starts from the object's own scope, read off the state it
+	// edits: a set_type or a retarget in the batch moves it, and the object
+	// may have moved between the plan's read and the lock
+	if err := applier.loadTarget(); err != nil {
+		return nil, nil, err
+	}
 	beforeDoc, err := applier.begin()
 	if err != nil {
 		return nil, nil, err
@@ -574,7 +594,7 @@ func parseOpsEnvelope(body []byte, opNames []string, unknownKeyHint func(key str
 	for key := range fields {
 		if key != "ops" {
 			return nil, v2model.ValidationFailed("unknown field in PATCH body",
-				v2model.Issue{Path: "/" + key, Message: fmt.Sprintf("unknown key %q — the PATCH body carries only ops", key)}.WithHint(unknownKeyHint(key)))
+				v2model.Issue{Path: v2model.MemberPointer(key), Message: fmt.Sprintf("unknown key %q — the PATCH body carries only ops", key)}.WithHint(unknownKeyHint(key)))
 		}
 	}
 	var req v2PatchRequest
@@ -616,11 +636,52 @@ func checkEditPreconditions(sbType model.SmartBlockType, heads []string, ifMatch
 	return nil
 }
 
-// objectPropertyScope is the property scope of an object's own keys: the ids
-// its type lists (resolvePropertyInputIn).
-func (s *Service) objectPropertyScope(spaceId string, cur apicore.ObjectRead) map[string]bool {
+// patchContext is what one PATCH reads off the object once and shares
+// between its create-missing probe and its apply: whether it is a template,
+// the template's target, and the scope its own property terms resolve in.
+type patchContext struct {
+	template bool
+	target   templateTarget
+	// typeKeys are the object's stored type keys, the second-key fallback a
+	// retarget in the batch resolves against (prewarmCreateMissing)
+	typeKeys []domain.TypeKey
+	// details are the object's details as read, the starting point of the
+	// references the prewarm follows through the batch
+	details     *types.Struct
+	objectScope map[string]bool
+	// viewScope settles a view filter or sort key: the list of the type the
+	// object's query source names (v2StateApplier.viewScope, read off the
+	// same detail), never the object's own type
+	viewScope map[string]bool
+}
+
+// newPatchContext reads an object's template target and property scope: the
+// ids its type lists (resolvePropertyInputIn), or for a template the ids its
+// live target lists (templateTargetOf), and its own type's when the target is
+// unknown or has no live row. A store failure is an error, so a hiccup never
+// settles a name by the template type's list.
+func (s *Service) newPatchContext(spaceId string, cur apicore.ObjectRead) (*patchContext, error) {
+	pc := &patchContext{}
 	if cur.Snapshot == nil {
-		return nil
+		return pc, nil
 	}
-	return s.typePropertyScope(spaceId, pbtypes.GetString(cur.Snapshot.Details, bundle.RelationKeyType.String()))
+	if setOf := pbtypes.GetStringList(cur.Snapshot.GetDetails(), bundle.RelationKeySetOf.String()); len(setOf) == 1 {
+		pc.viewScope = s.typePropertyScope(spaceId, setOf[0])
+	}
+	pc.typeKeys = readTypeKeys(cur.Snapshot.GetObjectTypes())
+	pc.details = cur.Snapshot.GetDetails()
+	pc.template = isTemplateObject(cur.SbType)
+	if pc.template {
+		target, err := s.templateTargetOf(spaceId, cur.Snapshot.GetDetails(), pc.typeKeys)
+		if err != nil {
+			return nil, err
+		}
+		pc.target = target
+		if pc.objectScope, err = s.templateScope(spaceId, target); err != nil {
+			return nil, err
+		}
+		return pc, nil
+	}
+	pc.objectScope = s.typePropertyScope(spaceId, pbtypes.GetString(cur.Snapshot.Details, bundle.RelationKeyType.String()))
+	return pc, nil
 }

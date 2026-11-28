@@ -35,7 +35,7 @@ func decodeWidgetBody(c *gin.Context, into any, hint v2model.Hint) bool {
 		for name, raw := range members {
 			if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
 				RespondError(c, v2model.ValidationFailed("invalid request body",
-					v2model.Issue{Path: "/" + name, Message: "null is not a value here; omit the member to leave it alone, or send an empty string where one is accepted"}.WithHint(hint)))
+					v2model.Issue{Path: v2model.MemberPointer(name), Message: "null is not a value here; omit the member to leave it alone, or send an empty string where one is accepted"}.WithHint(hint)))
 				return false
 			}
 		}
