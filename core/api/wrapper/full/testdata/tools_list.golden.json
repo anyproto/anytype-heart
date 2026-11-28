@@ -1510,6 +1510,42 @@
    }
   },
   {
+   "name": "publish_object",
+   "description": "Publish an object snapshot to the web. Anyone with the URL can view the page, files and linked object metadata. Republish to show edits. Hosted limits are 10 MiB by default or 100 MiB with a registered Any Name, including files and compressed page data.",
+   "inputSchema": {
+    "additionalProperties": false,
+    "properties": {
+     "dry_run": {
+      "description": "Check the slug and object without exporting or uploading. Size and URL availability are checked when publishing.",
+      "type": "boolean"
+     },
+     "include_invite": {
+      "description": "Request shared-space details and an existing invite. Defaults to false. The invite must be available on this device and require approval or grant at most read access. Check invite_included for the outcome.",
+      "type": "boolean"
+     },
+     "object_id": {
+      "description": "Object id, from `list_objects`",
+      "type": "string"
+     },
+     "slug": {
+      "description": "Last segment of https://any.coop/{identity}/{slug}. A named subdomain requires a plan with a registered Any Name. Use A–Z, a–z, digits, hyphens, underscores, periods or tildes. The segments . and .. are reserved.",
+      "example": "meeting-notes",
+      "type": "string"
+     },
+     "space_id": {
+      "description": "Space id, from `list_spaces`",
+      "type": "string"
+     }
+    },
+    "required": [
+     "object_id",
+     "slug",
+     "space_id"
+    ],
+    "type": "object"
+   }
+  },
+  {
    "name": "restore_object",
    "description": "Restore an object. Moves an archived object out of the Bin. Any user content the key can write can be restored, whoever archived it. Restoring an object that is not archived is a 200 carrying a warning. Types and properties are restored in the Anytype app.",
    "inputSchema": {
@@ -1734,6 +1770,65 @@
    },
    "annotations": {
     "readOnlyHint": true
+   }
+  },
+  {
+   "name": "list_publications",
+   "description": "List published pages. Lists this account's published pages in the space with their URLs, sizes and invite status.",
+   "inputSchema": {
+    "additionalProperties": false,
+    "properties": {
+     "limit": {
+      "default": 25,
+      "description": "Items to return",
+      "type": "integer"
+     },
+     "offset": {
+      "default": 0,
+      "description": "Items to skip",
+      "type": "integer"
+     },
+     "space_id": {
+      "description": "Space id, from `list_spaces`",
+      "type": "string"
+     }
+    },
+    "required": [
+     "space_id"
+    ],
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": true
+   }
+  },
+  {
+   "name": "remove_publication",
+   "description": "Remove a published page. Takes the public copy offline, even if the source object was deleted.",
+   "inputSchema": {
+    "additionalProperties": false,
+    "properties": {
+     "dry_run": {
+      "description": "Check that the public copy exists without removing it",
+      "type": "boolean"
+     },
+     "publication_id": {
+      "description": "Published object_id, from `list_publications`",
+      "type": "string"
+     },
+     "space_id": {
+      "description": "Space id, from `list_spaces`",
+      "type": "string"
+     }
+    },
+    "required": [
+     "publication_id",
+     "space_id"
+    ],
+    "type": "object"
+   },
+   "annotations": {
+    "destructiveHint": true
    }
   },
   {

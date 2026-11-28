@@ -292,6 +292,23 @@ func RegisterRoutes(router *gin.Engine, deps RouteDeps) {
 		v2handler.SchemaOpHandler(deps.Service),
 	)
 
+	v2.GET("/spaces/:space_id/publications",
+		deps.AnalyticsEvent("V2ListPublications"),
+		v2handler.ListPublicationsHandler(deps.Service),
+	)
+	v2.DELETE("/spaces/:space_id/publications/:publication_id",
+		deps.WriteRateLimit,
+		idempotencyMW,
+		deps.AnalyticsEvent("V2RemovePublication"),
+		v2handler.RemovePublicationHandler(deps.Service),
+	)
+	v2.POST("/spaces/:space_id/objects/:object_id/publish",
+		deps.WriteRateLimit,
+		idempotencyMW,
+		deps.AnalyticsEvent("V2PublishObject"),
+		v2handler.PublishObjectHandler(deps.Service),
+	)
+
 	registerCreateRoutes(v2, deps, idempotencyMW)
 	registerWidgetRoutes(v2, deps, idempotencyMW)
 	registerEditRoutes(v2, deps, idempotencyMW)

@@ -73,6 +73,7 @@ var knownRouteParams = map[string]bool{
 	"collection_id":  true,
 	"chat_id":        true,
 	"message_id":     true,
+	"publication_id": true,
 	"widget_id":      true,
 }
 

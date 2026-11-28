@@ -168,5 +168,9 @@ func decodeStrictJSONBody(c *gin.Context, into any, hint v2model.Hint, maxBody i
 		RespondError(c, v2model.ValidationFailed("invalid request body", issue))
 		return false
 	}
+	if len(bytes.TrimSpace(body[dec.InputOffset():])) != 0 {
+		RespondError(c, v2model.ValidationFailed("provide a single JSON request body"))
+		return false
+	}
 	return true
 }

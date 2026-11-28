@@ -162,6 +162,8 @@ IDEMPOTENT_OPERATIONS = {
     "update_widget",
     "delete_widget",
     "create_discussion",
+    "publish_object",
+    "remove_publication",
 }
 
 WRITE_LIMITED_OPERATIONS = IDEMPOTENT_OPERATIONS - {"validate"}
@@ -196,7 +198,7 @@ REQUEST_BODY_LIMITED_OPERATIONS = {
 # (ensureSpaceLoaded). Store reads (lists, search) never wait and are not here,
 # with one exception: list_templates narrowed to a built-in type the space has
 # not installed derives that type's id in the space.
-SPACE_LOAD_GATED_OPERATIONS = (WRITE_LIMITED_OPERATIONS - {"create_space"}) | {
+SPACE_LOAD_GATED_OPERATIONS = (WRITE_LIMITED_OPERATIONS - {"create_space", "remove_publication"}) | {
     "get_object",
     "get_type",
     "get_chat_messages",

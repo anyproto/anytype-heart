@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -195,7 +196,8 @@ func TestPublish(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 		assert.Equal(t, expected, publish.Url)
-		assert.Equal(t, "{\"heads\":[\"heads\"],\"joinSpace\":false}", publishClient.expectedRequest.Version)
+		assert.False(t, publish.InviteIncluded)
+		assert.Equal(t, "{\"heads\":[\"heads\"],\"joinSpace\":false,\"inviteIncluded\":false}", publishClient.expectedRequest.Version)
 		assert.Equal(t, objectId, publishClient.expectedRequest.ObjectId)
 		assert.Equal(t, spaceId, publishClient.expectedRequest.SpaceId)
 		assert.Equal(t, expectedUri, publishClient.expectedRequest.Uri)
@@ -253,7 +255,8 @@ func TestPublish(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 		assert.Equal(t, expected, publish.Url)
-		assert.Equal(t, "{\"heads\":[\"heads\"],\"joinSpace\":true}", publishClient.expectedRequest.Version)
+		assert.True(t, publish.InviteIncluded)
+		assert.Equal(t, "{\"heads\":[\"heads\"],\"joinSpace\":true,\"inviteIncluded\":true}", publishClient.expectedRequest.Version)
 		assert.Equal(t, objectId, publishClient.expectedRequest.ObjectId)
 		assert.Equal(t, spaceId, publishClient.expectedRequest.SpaceId)
 		assert.Equal(t, expectedUri, publishClient.expectedRequest.Uri)
@@ -304,7 +307,8 @@ func TestPublish(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 		assert.Equal(t, expected, publish.Url)
-		assert.Equal(t, "{\"heads\":[\"heads\"],\"joinSpace\":true}", publishClient.expectedRequest.Version)
+		assert.False(t, publish.InviteIncluded)
+		assert.Equal(t, "{\"heads\":[\"heads\"],\"joinSpace\":true,\"inviteIncluded\":false}", publishClient.expectedRequest.Version)
 		assert.Equal(t, objectId, publishClient.expectedRequest.ObjectId)
 		assert.Equal(t, spaceId, publishClient.expectedRequest.SpaceId)
 		assert.Equal(t, expectedUri, publishClient.expectedRequest.Uri)
@@ -365,7 +369,8 @@ func TestPublish(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 		assert.Equal(t, expectedUrl, publish.Url)
-		assert.Equal(t, "{\"heads\":[\"heads\"],\"joinSpace\":true}", publishClient.expectedRequest.Version)
+		assert.True(t, publish.InviteIncluded)
+		assert.Equal(t, "{\"heads\":[\"heads\"],\"joinSpace\":true,\"inviteIncluded\":true}", publishClient.expectedRequest.Version)
 		assert.Equal(t, objectId, publishClient.expectedRequest.ObjectId)
 		assert.Equal(t, spaceId, publishClient.expectedRequest.SpaceId)
 		assert.Equal(t, expectedUri, publishClient.expectedRequest.Uri)
@@ -414,7 +419,7 @@ func TestPublish(t *testing.T) {
 		// then
 		assert.Error(t, err)
 		assert.Equal(t, "", publish.Url)
-		assert.Equal(t, "{\"heads\":[\"heads\"],\"joinSpace\":true}", publishClient.expectedRequest.Version)
+		assert.Equal(t, "{\"heads\":[\"heads\"],\"joinSpace\":true,\"inviteIncluded\":false}", publishClient.expectedRequest.Version)
 		assert.Equal(t, objectId, publishClient.expectedRequest.ObjectId)
 		assert.Equal(t, spaceId, publishClient.expectedRequest.SpaceId)
 		assert.Equal(t, expectedUri, publishClient.expectedRequest.Uri)
@@ -1116,4 +1121,46 @@ func TestService_applyInviteLink(t *testing.T) {
 		require.NoError(t, newService(t, info).applyInviteLink(context.Background(), "spaceId", snapshot, true))
 		require.Empty(t, snapshot.Meta.InviteLink)
 	})
+}
+
+func TestHostedUploadLimit(t *testing.T) {
+	for _, tc := range []struct {
+		message string
+		limit   bool
+	}{
+		{`failed to upload tar archive: {"error":"upload limit exceeded"}`, true},
+		{`failed to upload tar archive: {"error":"storage unavailable"}`, false},
+		{`failed to upload tar archive: bad gateway`, false},
+		{`connection closed`, false},
+	} {
+		assert.Equal(t, tc.limit, isUploadLimitError(errors.New(tc.message)), tc.message)
+	}
+}
+
+func TestActivePublications(t *testing.T) {
+	const active = publishapi.PublishStatus_PublishStatusPublished
+	client := &mockPublishClient{expectedResult: []*publishapi.Publish{
+		{SpaceId: spaceId, ObjectId: "current", Uri: "notes", Status: active, Version: `{"joinSpace":true,"inviteIncluded":true}`, Size: 15},
+		{SpaceId: spaceId, ObjectId: "no-link", Status: active, Version: `{"joinSpace":true,"inviteIncluded":false}`},
+		{SpaceId: spaceId, ObjectId: "legacy", Status: active, Version: `{"joinSpace":true}`},
+		{SpaceId: spaceId, ObjectId: "legacy-no-invite", Status: active, Version: `{"joinSpace":false}`},
+		{SpaceId: spaceId, ObjectId: "missing-version", Status: active},
+		{SpaceId: spaceId, ObjectId: "pending"}, {SpaceId: "other", Status: active}, nil,
+	}}
+	identity := mock_identity.NewMockService(t)
+	identity.EXPECT().GetMyProfileDetails(mock.Anything).Return(id, nil, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyGlobalName: domain.String("reader.any"),
+	}))
+	svc := &service{publishClientService: client, identityService: identity, limitsConfig: testLimitsConfig}
+
+	pages, err := svc.ListPublications(t.Context(), spaceId)
+	require.NoError(t, err)
+	require.Len(t, pages, 5)
+	assert.Equal(t, "https://reader.any.org/notes", pages[0].URL)
+	assert.EqualValues(t, 15, pages[0].SizeBytes)
+	assert.Equal(t, new(true), pages[0].InviteIncluded)
+	assert.Equal(t, new(false), pages[1].InviteIncluded)
+	assert.Nil(t, pages[2].InviteIncluded)
+	assert.Equal(t, new(false), pages[3].InviteIncluded)
+	assert.Nil(t, pages[4].InviteIncluded)
 }
