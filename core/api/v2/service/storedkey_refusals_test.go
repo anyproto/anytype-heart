@@ -198,7 +198,8 @@ func TestV2CreateRefusalsQuoteTheTypeAsSent(t *testing.T) {
 	t.Run("a custom type posted to the templates endpoint", func(t *testing.T) {
 		// given: meeting_note is space-minted, stored under a bson id
 		fx := slugSpaceFixture(t)
-		want := v2model.Issue{Path: "/type", Message: `expected type "template", got "meeting_note"`}
+		want := v2model.Issue{Path: "/type", Message: `expected type "template", got "meeting_note"`,
+			Hint: `a template's type is "template"; name the type it is for in template_for`}
 
 		// when
 		_, err := fx.CreateTemplate(context.Background(), testSpaceId,
