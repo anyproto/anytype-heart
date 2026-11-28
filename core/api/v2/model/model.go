@@ -650,7 +650,7 @@ type SearchRequest struct {
 // DiffStats summarizes what a mutation changed: the
 // accidental-full-rewrite signal on PUT, the receipt on PATCH.
 type DiffStats struct {
-	// Whether the page width override changed, including setting or clearing it.
+	// Whether the page or template width override, or the type's default width, changed.
 	LayoutWidthChanged bool `json:"layout_width_changed,omitempty"`
 	BlocksAdded        int  `json:"blocks_added"`
 	BlocksRemoved      int  `json:"blocks_removed"`

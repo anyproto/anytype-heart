@@ -153,7 +153,7 @@ var documentOnlyMembers = sync.OnceValue(func() map[string]bool {
 	var root struct {
 		Properties map[string]json.RawMessage `json:"properties"`
 	}
-	members := map[string]bool{"formatVersion": true, "blocks": true}
+	members := map[string]bool{"formatVersion": true, "version": true, "blocks": true}
 	if err := json.Unmarshal(apiV2KindSchema("object"), &root); err != nil {
 		return members
 	}
@@ -661,36 +661,18 @@ func normalizeCreateBody(body []byte) ([]byte, error) {
 	return encodeEnvelope(fields)
 }
 
-// withCurrentFormat is assumeCurrentFormat on an encoded body; a body that
-// is not an object is returned as is, for validation to report.
+// withCurrentFormat supplies the current format for an unversioned request.
+// The codec validates both explicit markers, including the legacy numeric version.
 func withCurrentFormat(body []byte) ([]byte, error) {
 	fields, err := parseEnvelope(body)
+	if err != nil || fields["formatVersion"] != nil || fields["version"] != nil {
+		return body, nil
+	}
+	fields["formatVersion"], err = rawJSON(anyblockjson.FormatVersion)
 	if err != nil {
-		return body, nil
-	}
-	if _, ok := fields["formatVersion"]; ok {
-		return body, nil
-	}
-	if err := assumeCurrentFormat(fields); err != nil {
 		return nil, err
 	}
 	return encodeEnvelope(fields)
-}
-
-// assumeCurrentFormat fills in formatVersion when a document omits it. An
-// API caller writes the current format, so the version is not something it
-// is asked for: the member stays legal (an export pasted back carries it,
-// and a wrong value is still refused), only its absence now means current.
-func assumeCurrentFormat(fields map[string]json.RawMessage) error {
-	if _, ok := fields["formatVersion"]; ok {
-		return nil
-	}
-	raw, err := rawJSON(anyblockjson.FormatVersion)
-	if err != nil {
-		return err
-	}
-	fields["formatVersion"] = raw
-	return nil
 }
 
 // docLocalIds collects the doc-local ids a flat AnyBlock document carries
@@ -1090,7 +1072,7 @@ func (s *Service) rejectInvalidDocument(body []byte, kind string) error {
 	if err := rejectMisplacedPropertyArray(body); err != nil {
 		return err
 	}
-	err := anyblockjson.Validate(body)
+	err := anyblockjson.ValidateBeforeBinding(body)
 	if err == nil {
 		return nil
 	}

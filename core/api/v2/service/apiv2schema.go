@@ -106,7 +106,7 @@ var apiV2ValidateSchema = sync.OnceValue(func() []byte {
 
 // formatVersionOptional takes formatVersion out of a document schema's
 // required list: every write assumes the current format when the member is
-// absent (assumeCurrentFormat), so a caller is not asked for it. It stays
+// absent (withCurrentFormat), so a caller is not asked for it. It stays
 // declared, since an export pasted back carries it.
 func formatVersionOptional(raw []byte) ([]byte, error) {
 	var root map[string]any

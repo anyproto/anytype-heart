@@ -456,6 +456,20 @@ func TestCreateType(t *testing.T) {
 		assert.Contains(t, result.Text, "(no properties")
 	})
 
+	t.Run("a width without property definitions reaches preflight and create", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.stub("POST /v2/spaces/space1/types", 200, `{"dry_run":true}`)
+		fx.stub("POST /v2/spaces/space1/types", 201, `{"id":"b1","warnings":[{"path":"/type_settings/layout_width_percent","message":"clamped to 200%"}]}`)
+		result, err := fx.Run(ctx, "create_type", map[string]any{"space": "space1", "name": "Wide", "layout_width_percent": 225})
+		require.NoError(t, err)
+		require.Contains(t, result.Text, "clamped to 200%")
+		sent := fx.sent("POST /v2/spaces/space1/types")
+		require.Len(t, sent, 2)
+		for _, req := range sent {
+			require.Equal(t, map[string]any{"layout_width_percent": float64(225)}, bodyJSON(t, req)["type_settings"])
+		}
+	})
+
 	t.Run("a failed property mint says the type was not created", func(t *testing.T) {
 		// given
 		fx := newFixture(t)

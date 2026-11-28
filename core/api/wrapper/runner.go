@@ -733,7 +733,7 @@ func editSummary(target string, result *v2model.EditResult) string {
 		}
 	}
 	if stats.LayoutWidthChanged {
-		parts = append(parts, "page width changed")
+		parts = append(parts, "layout width changed")
 	}
 	add(stats.BlocksAdded, "added")
 	add(stats.BlocksRemoved, "removed")

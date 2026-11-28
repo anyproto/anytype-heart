@@ -452,9 +452,12 @@ func mcpInstructions(tier Tier) string {
 	if hasToolInTier(tier, "set_cell") {
 		b.WriteString(" set_cell's row and col take the text read mode=full shows: a column's header (each column carries it), a row's first cell — or a row/column id.")
 	}
+	if hasToolInTier(tier, "create_type") {
+		b.WriteString(" create_type accepts layout_width_percent to set the default for its pages.")
+	}
 	b.WriteString(" Dates accept today, tomorrow, +3d, weekday names; @me means the calling user." +
 		" In filter strings, write multi-word property names with underscores (Due_date)." +
-		" To set page width, pass layout_width_percent directly to create or set_properties (100–200, including decimals). On set_properties, null restores the type default." +
+		" Set layout_width_percent on create for a page override (100–200, including decimals). On set_properties, pass that argument to change a page override or type default, or null to clear it." +
 		" To complete a task-like object, set its done/status property with set_properties." +
 		" To change an object's type (a page into a Task), pass type to set_properties; only same-family layouts convert, and a refusal names the types it can take." +
 		" Every error says how to fix the call — follow it and retry once; do not loop.")

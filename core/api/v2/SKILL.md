@@ -89,6 +89,7 @@ prompt with the user, or use a key the user created in **Settings → Local API*
 | watch a search live (new objects, unread mentions) | `POST …/{space_id}/search/stream` — SSE, same body without `query`; see Query |
 | notice a new, renamed or removed space without polling | `GET /v2/spaces/stream` — SSE, the spaces list held open; see Spaces stream |
 | read one object | `GET …/objects/{id}` — start with `?outline=true` |
+| set a type’s default page width | Set `type_settings.layout_width_percent` to 100–200 on create or on `PATCH /v2/spaces/{space_id}/types/{type}`. On PATCH, `null` restores the standard default. |
 | change page or template width | PATCH op `set_layout_width` with `layout_width_percent` from 100 to 200, or `null` to inherit. On create, set the percentage on the document or shortcut. |
 | change property values | PATCH op `set_properties` — `add`/`remove` for list values, `set` for scalars |
 | complete a task object | `set_properties` (`"set":{"done":true}` or the status option) — a property, not a block edit |

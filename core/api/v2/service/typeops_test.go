@@ -1505,6 +1505,17 @@ func TestV2TypeOpsIfMatch(t *testing.T) {
 // Before, that returned `unknown op "insert_view" on a type` — the resource
 // showed you a view and called the op that changes it unknown.
 func TestV2TypeOpsViewFamily(t *testing.T) {
+	t.Run("an archived type is restored in the app", func(t *testing.T) {
+		fx := newTypeOpsFixture(t)
+		fx.mutatorMock.EXPECT().MutateObject(mock.Anything, testSpaceId, typeOpsTypeId, apicore.EditNeeds{}, mock.Anything).
+			Return(nil, &apicore.ObjectArchivedError{SbType: model.SmartBlockType_STType})
+
+		_, err := fx.UpdateType(context.Background(), testSpaceId, "plant", "",
+			opsBody(`{"op":"update_view","view":"v-a","set":{"name":"Renamed"}}`), false, false)
+
+		require.Equal(t, v2model.ObjectArchived(testSpaceId, typeOpsTypeId, false, false), v2Err(t, err))
+	})
+
 	t.Run("insert_view runs on the type's own dataview", func(t *testing.T) {
 		// given
 		fx := newTypeOpsFixture(t)

@@ -148,25 +148,31 @@ unavailable, so retry later for a complete view.
 
 ## Page width
 
-Set `"layout_width_percent": 175` on a new page or template for a width of 175%.
-Create accepts this member in both the document and shortcut forms. Omission
-uses the applied template's override, if present, and otherwise inherits the
-type's default. On an object type, its existing `layout_width` property sets
-the default in 0–1 units. For example, `0.75` gives its pages a width of 175%.
-On a read, `layout_width_percent` reports the page's explicit override. A
-warning identifies a legacy width that requires AnyBlock export to preserve
-its precision.
+Set a type's default width beside its layout in `type_settings`. For example,
+this type uses the basic layout and gives its pages a width of 175%.
 
+```json
+{"type_settings": {"layout": "basic", "layout_width_percent": 175}}
+```
+
+On an existing type, send `{"type_settings":{"layout_width_percent":175}}`
+to `PATCH /v2/spaces/{space_id}/types/{type}`. Send `null` in the same field
+to clear the default. A type with no width setting uses 100%.
+
+On a page or template, set `"layout_width_percent": 175` at the top level.
+Object creation accepts it in the document and shortcut forms. Omission uses
+the applied template's override, if present, then the type default. Set
+`100` explicitly to keep a page at standard width on a wider type.
 To change an existing page, send
 `{"ops":[{"op":"set_layout_width","layout_width_percent":175}]}` to its PATCH
-endpoint. Use `null` in the op to restore inheritance. An explicit `100` keeps
-standard width on a wider type. The native Model Context Protocol tools accept the same
-`layout_width_percent` argument on `create` and `set_properties`.
+endpoint. Use `null` in the op to restore inheritance.
 
-The range is 100–200 inclusive and accepts decimals. An out-of-range input
-clamps to the nearest endpoint with a warning. A value strictly between 0 and
-1 also produces a percentage hint. For example, `0.75` clamps to 100%, and
-the old root width of 0.75 is expressed as `175`.
+The native Model Context Protocol tools take `layout_width_percent` on
+`create_type`, `create`, and `set_properties`. Both defaults and overrides
+use 100–200 inclusive, including decimals. Values outside the range clamp
+to the nearest endpoint with a warning. A value strictly between 0 and 1
+also produces a percentage hint. For example, write `175` to express the
+width that older AnyBlock documents stored as `0.75`.
 
 ## Edit with a batch of operations
 

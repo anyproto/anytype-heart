@@ -9,8 +9,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	coretype "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -99,12 +102,37 @@ func (a *objectMutateAdapter) MutateObject(ctx context.Context, spaceId string, 
 	return heads, nil
 }
 
+func (a *objectMutateAdapter) SetTypeDetails(ctx context.Context, spaceId, objectId string, details []domain.Detail, checkHeads func([]string) error) error {
+	return cache.DoContextFullID(a.getter, ctx, domain.FullID{SpaceID: spaceId, ObjectID: objectId}, func(sb smartblock.SmartBlock) error {
+		if err := checkObjectEditable(sb, apicore.EditNeeds{Details: true}); err != nil {
+			return err
+		}
+		if err := checkHeads(sb.GetDocInfo().Heads); err != nil {
+			return err
+		}
+		editor, ok := sb.(basic.DetailsSettable)
+		if !ok {
+			return fmt.Errorf("type %s does not support detail updates", objectId)
+		}
+		return editor.SetDetails(session.AttributionOnly(ctx), details, true)
+	})
+}
+
 // checkRestriction returns the object's verdict on ONE restriction axis, or
 // nil when that axis is editable. The message names the axis in the API's own
 // vocabulary, and the error wraps restriction.ErrRestricted so the service
 // layer can classify it (403, not 500).
 func checkRestriction(sb smartblock.SmartBlock, r model.RestrictionsObjectRestriction) error {
-	if err := sb.Restrictions().Object.Check(r); err != nil {
+	var err error
+	if r == model.Restrictions_Details && sb.Type() == coretype.SmartBlockTypeObjectType && restriction.IsSpaceConfigObject(sb, restriction.MemberPolicy{}) {
+		// Space configuration types are identified by their signed type key. The
+		// editor caches restrictions across role changes, so recheck the live
+		// role and intrinsic type restrictions for both preview and commit.
+		err = restriction.CheckRestrictions(sb, r)
+	} else {
+		err = sb.Restrictions().Object.Check(r)
+	}
+	if err != nil {
 		switch r {
 		case model.Restrictions_Blocks:
 			return fmt.Errorf("%w: this object's blocks cannot be edited through the API", err)
@@ -129,6 +157,11 @@ func checkRestriction(sb smartblock.SmartBlock, r model.RestrictionsObjectRestri
 // v2 route into an existing collection — permanently refuse. needs comes
 // from the ops the batch actually contains.
 func checkObjectEditable(sb smartblock.SmartBlock, needs apicore.EditNeeds) error {
+	// Moving an object to the Bin can happen after the initial read and
+	// sets all edit restrictions. Report the recoverable archive first.
+	if sb.LocalDetails().GetBool(bundle.RelationKeyIsArchived) {
+		return &apicore.ObjectArchivedError{SbType: sb.Type().ToProto()}
+	}
 	if needs.Blocks {
 		if err := checkRestriction(sb, model.Restrictions_Blocks); err != nil {
 			return err

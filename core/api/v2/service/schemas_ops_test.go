@@ -763,7 +763,7 @@ func TestUnknownOpMemberNamesTheMembers(t *testing.T) {
 			patchBody(`{"op":"set_properties","properties":{"status":"Done"}}`), "", false, true)
 		require.Error(t, err)
 		issue := v2Err(t, err).Issues[0]
-		assert.Equal(t, `unknown key "properties" — set_properties takes set, unset, add, remove`, issue.Message)
+		assert.Equal(t, `unknown key "properties" — set_properties takes set, unset, add, remove, layout_width_percent`, issue.Message)
 		assert.Contains(t, issue.Hint, `values to write go under set`)
 	})
 }

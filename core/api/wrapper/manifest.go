@@ -239,7 +239,7 @@ func Tools() []Tool {
 				{Name: "set", Type: ArgObject, Description: "property name → new value"},
 				{Name: "add", Type: ArgObject, Description: "list property name → entries to append"},
 				{Name: "remove", Type: ArgObject, Description: "list property name → entries to delete"},
-				{Name: "layout_width_percent", Type: ArgNumber, Nullable: true, Description: "page or template width from 100 (standard) to 200 (widest), e.g. 175. Send null to inherit the type width. Out-of-range values clamp with a warning."},
+				{Name: "layout_width_percent", Type: ArgNumber, Nullable: true, Description: "width from 100 (standard) to 200 (widest), e.g. 175. On a type, set its default. On a page or template, override the default. Send null to clear. Out-of-range values clamp with a warning."},
 				{Name: "type", Type: ArgString, MaxLen: maxKeyLen, Description: "a type name the object becomes, e.g. Task; applied before set/add/remove in the same edit"},
 			},
 			// the example shows the LIST form deliberately: the measured
@@ -390,6 +390,7 @@ func Tools() []Tool {
 			Args: []Arg{
 				{Name: "space", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: spaceIdArgDescription},
 				{Name: "name", Type: ArgString, Required: true, MaxLen: maxNameLen, Description: "the type's name, e.g. Cookbook entry"},
+				{Name: "layout_width_percent", Type: ArgNumber, Description: "default width for pages of this type, from 100 (standard) to 200 (widest), e.g. 175. Out-of-range values clamp with a warning."},
 				{Name: "properties", Type: ArgString, MaxLen: maxTypePropertiesLen, Description: `the type's properties: comma-separated "Name: format" pairs, with a select's options in parentheses — "Cook time: number, Rating: select(Low, Medium, High), Source: url". A property name containing a comma, a colon or a parenthesis cannot be written here`},
 			},
 			// the example shows a SELECT WITH OPTIONS deliberately: C12's one

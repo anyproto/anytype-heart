@@ -734,8 +734,8 @@ components:
             absent means none
           type: integer
         layout_width_changed:
-          description: Whether the page width override changed, including setting
-            or clearing it.
+          description: Whether the page or template width override, or the type's
+            default width, changed.
           type: boolean
         properties_changed:
           type: integer
@@ -1749,25 +1749,31 @@ info:
 
     ## Page width
 
-    Set `"layout_width_percent": 175` on a new page or template for a width of 175%.
-    Create accepts this member in both the document and shortcut forms. Omission
-    uses the applied template's override, if present, and otherwise inherits the
-    type's default. On an object type, its existing `layout_width` property sets
-    the default in 0–1 units. For example, `0.75` gives its pages a width of 175%.
-    On a read, `layout_width_percent` reports the page's explicit override. A
-    warning identifies a legacy width that requires AnyBlock export to preserve
-    its precision.
+    Set a type's default width beside its layout in `type_settings`. For example,
+    this type uses the basic layout and gives its pages a width of 175%.
 
+    ```json
+    {"type_settings": {"layout": "basic", "layout_width_percent": 175}}
+    ```
+
+    On an existing type, send `{"type_settings":{"layout_width_percent":175}}`
+    to `PATCH /v2/spaces/{space_id}/types/{type}`. Send `null` in the same field
+    to clear the default. A type with no width setting uses 100%.
+
+    On a page or template, set `"layout_width_percent": 175` at the top level.
+    Object creation accepts it in the document and shortcut forms. Omission uses
+    the applied template's override, if present, then the type default. Set
+    `100` explicitly to keep a page at standard width on a wider type.
     To change an existing page, send
     `{"ops":[{"op":"set_layout_width","layout_width_percent":175}]}` to its PATCH
-    endpoint. Use `null` in the op to restore inheritance. An explicit `100` keeps
-    standard width on a wider type. The native Model Context Protocol tools accept the same
-    `layout_width_percent` argument on `create` and `set_properties`.
+    endpoint. Use `null` in the op to restore inheritance.
 
-    The range is 100–200 inclusive and accepts decimals. An out-of-range input
-    clamps to the nearest endpoint with a warning. A value strictly between 0 and
-    1 also produces a percentage hint. For example, `0.75` clamps to 100%, and
-    the old root width of 0.75 is expressed as `175`.
+    The native Model Context Protocol tools take `layout_width_percent` on
+    `create_type`, `create`, and `set_properties`. Both defaults and overrides
+    use 100–200 inclusive, including decimals. Values outside the range clamp
+    to the nearest endpoint with a warning. A value strictly between 0 and 1
+    also produces a percentage hint. For example, write `175` to express the
+    width that older AnyBlock documents stored as `0.75`.
 
     ## Edit with a batch of operations
 
@@ -6163,6 +6169,9 @@ paths:
                         - set
                         - collection
                       type: string
+                    layout_width_percent:
+                      description: Default width of pages of this type, from 100 (standard) to 200 (widest), including decimals. Out-of-range inputs clamp with a warning. On PATCH send null to clear the default.
+                      type: number
                     name:
                       description: display name, singular. Required on POST; on PATCH send it only to rename
                       maxLength: 4096
@@ -6233,6 +6242,9 @@ paths:
                   type: object
                 - additionalProperties: true
                   description: 'the type as an AnyBlock document: kind object_type, the definition under type_settings; its schema and a worked example come from GET /v2/schemas/type_document'
+                  not:
+                    required:
+                      - layout_width_percent
                   properties:
                     cover:
                       type: object
@@ -6243,6 +6255,12 @@ paths:
                     properties:
                       type: object
                     type_settings:
+                      properties:
+                        layout_width_percent:
+                          description: Default width for pages of this type, from 100 (standard) to 200 (widest). Omit for 100%. Out-of-range values clamp with a warning.
+                          examples:
+                            - 175
+                          type: number
                       type: object
                   type: object
               description: the flat type body, or the interchange document with kind object_type
@@ -6510,6 +6528,11 @@ paths:
                         - set
                         - collection
                       type: string
+                    layout_width_percent:
+                      description: Default width of pages of this type, from 100 (standard) to 200 (widest), including decimals. Out-of-range inputs clamp with a warning. On PATCH send null to clear the default.
+                      type:
+                        - number
+                        - "null"
                     name:
                       description: display name, singular. Required on POST; on PATCH send it only to rename
                       maxLength: 4096
@@ -6679,6 +6702,11 @@ paths:
                             - set
                             - collection
                           type: string
+                        layout_width_percent:
+                          description: Default width of pages of this type, from 100 (standard) to 200 (widest), including decimals. Out-of-range inputs clamp with a warning. On PATCH send null to clear the default.
+                          type:
+                            - number
+                            - "null"
                         plural_name:
                           maxLength: 4096
                           type: string

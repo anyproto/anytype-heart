@@ -468,6 +468,10 @@ func (s *Service) applyPatchOps(ctx context.Context, spaceId, objectId string, o
 	if err := checkPatchRenderWork(ops, applier.view.blocks); err != nil {
 		return nil, nil, err
 	}
+	var typeWidthBefore domain.Value
+	if typeWidthKind(edit.SbType) {
+		typeWidthBefore = edit.State.Details().Get(bundle.RelationKeyLayoutWidth)
+	}
 	for i, raw := range ops {
 		// the loop runs under the object lock: honour cancellation so an
 		// abandoned request stops holding it (review A′2)
@@ -506,6 +510,10 @@ func (s *Service) applyPatchOps(ctx context.Context, spaceId, objectId string, o
 		return nil, nil, err
 	}
 	stats.ItemsAdded, stats.ItemsRemoved = applier.itemsDiff()
+	if typeWidthKind(edit.SbType) {
+		// Legacy widths can export under a space-specific property spelling.
+		stats.LayoutWidthChanged = !typeWidthBefore.Equal(edit.State.Details().Get(bundle.RelationKeyLayoutWidth))
+	}
 	result := &v2model.EditResult{Created: resolvers.created(), DiffStats: stats, TypeChanged: applier.typeChanged}
 	if len(applier.createdBlocks) > 0 {
 		result.CreatedBlocks = applier.createdBlocks

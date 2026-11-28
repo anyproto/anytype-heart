@@ -94,6 +94,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 		schema: `{"type":"object","additionalProperties":false,"description":"the body POST takes. PATCH takes the same members, all optional, except api_key, which is create-only","properties":{` +
 			`"name":{"type":"string","minLength":1,"maxLength":4096,"description":"display name, singular. Required on POST; on PATCH send it only to rename"},` +
 			`"plural_name":{"type":"string","maxLength":4096},` +
+			`"layout_width_percent":{"type":["number","null"],"description":"Default width of pages of this type, from 100 (standard) to 200 (widest), including decimals. Out-of-range inputs clamp with a warning. On PATCH send null to clear the default."},` +
 			`"icon":{"type":"object","additionalProperties":false,"description":"give format plus its own member: emoji, name or file","properties":{` +
 			`"format":{"type":"string","enum":["emoji","icon","file"]},` +
 			`"emoji":{"type":"string","minLength":1,"maxLength":32},` +

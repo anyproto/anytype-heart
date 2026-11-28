@@ -262,6 +262,12 @@ func Validate(data []byte) error {
 	return codec.Validate(data, codec.Options{})
 }
 
+// ValidateBeforeBinding checks a document before Heart resolves property names
+// in its destination space. Unmarshal completes the identity-dependent checks.
+func ValidateBeforeBinding(data []byte) error {
+	return codec.ValidateBeforeBinding(data, codec.Options{}, false)
+}
+
 // ValidateWarn checks a document and reports warning-grade issues through
 // onWarning. The external codec now carries this sink in Options.
 func ValidateWarn(data []byte, onWarning func(Issue)) error {

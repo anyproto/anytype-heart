@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 )
 
 // defaultFindLimit is find's page size when no limit is given.
@@ -521,9 +522,6 @@ func (r *Runner) runSetProperties(ctx context.Context, session *Session, args ma
 	if typeArg != "" {
 		ops = append(ops, map[string]any{"op": "set_type", "type": typeArg})
 	}
-	if hasWidth {
-		ops = append(ops, map[string]any{"op": "set_layout_width", "layout_width_percent": width})
-	}
 	if len(setM)+len(addM)+len(removeM) > 0 {
 		// one property-index fetch serves set, add AND remove
 		idx, err := r.propertyIndexFor(ctx, space)
@@ -531,6 +529,16 @@ func (r *Runner) runSetProperties(ctx context.Context, session *Session, args ma
 			return nil, err
 		}
 		op := map[string]any{"op": "set_properties"}
+		if hasWidth {
+			// Only the server sees each target's property scope. Preserve an
+			// ambiguous width spelling so it can distinguish a custom property
+			// from a second assignment to the type default.
+			class := anyblockjson.FoldKeyTerm("Layout width")
+			if len(idx.byFold[class]) > 1 {
+				delete(idx.byFold, class)
+			}
+			op["layout_width_percent"] = width
+		}
 		for _, field := range []struct {
 			name string
 			m    map[string]any
@@ -554,6 +562,8 @@ func (r *Runner) runSetProperties(ctx context.Context, session *Session, args ma
 			op["remove"] = resolved
 		}
 		ops = append(ops, op)
+	} else if hasWidth {
+		ops = append(ops, map[string]any{"op": "set_layout_width", "layout_width_percent": width})
 	}
 	// one object keeps the receipt and the machine shape every other
 	// mutation tool serves — the batch form must not change what a

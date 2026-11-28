@@ -193,6 +193,10 @@ func restrictionForbidden(objectId string, err error) *v2model.Error {
 // into a loop (surface review M2a). Everything else takes the read
 // classification.
 func mapWriteError(spaceId, objectId string, err error) error {
+	var archived *apicore.ObjectArchivedError
+	if errors.As(err, &archived) {
+		return v2model.ObjectArchived(spaceId, objectId, deletableSbType(archived.SbType), false)
+	}
 	if errors.Is(err, restriction.ErrRestricted) {
 		return restrictionForbidden(objectId, err)
 	}
@@ -303,10 +307,7 @@ func (s *Service) GetObject(ctx context.Context, spaceId, objectId string, q Obj
 	if issue, removed := removedTypeWarning(spaceId, vocab, objectTypeKey(read)); removed {
 		warnings = append(warnings, issue)
 	}
-	if pageWidthKind(read.SbType) {
-		if key := bundle.RelationKeyLayoutWidth.String(); plan.wantProperties && read.Snapshot.GetDetails().GetFields()[key] != nil {
-			warnings = append(warnings, layoutWidthPropertyIssue(propertiesPointer(spell(key))))
-		}
+	if pageWidthKind(read.SbType) && fields["layout_width_percent"] == nil {
 		// The backup codec retains widths it cannot express losslessly in
 		// root.fields. REST omits that raw bag. Distinguish its presence
 		// from inheritance on the public read.
@@ -316,10 +317,29 @@ func (s *Service) GetObject(ctx context.Context, spaceId, objectId string, q Obj
 		if raw := fields["root"]; raw != nil && json.Unmarshal(raw, &root) == nil && root.Fields["width"] != nil {
 			warnings = append(warnings, v2model.Issue{Path: "/layout_width_percent",
 				Message: "This page has a legacy root width that cannot be expressed exactly as a percentage. AnyBlock export preserves the stored value."})
+		} else if key := bundle.RelationKeyLayoutWidth.String(); plan.wantProperties && read.Snapshot.GetDetails().GetFields()[key] != nil {
+			warnings = append(warnings, layoutWidthPropertyIssue(propertiesPointer(spell(key))))
 		}
 	}
 	// a served document matches the schema this API publishes for it
 	trimAPIDocumentEnvelope(fields)
+	if typeWidthKind(read.SbType) {
+		key := bundle.RelationKeyLayoutWidth.String()
+		if read.Snapshot.GetDetails().GetFields()[key] != nil {
+			var settings struct {
+				Width json.RawMessage `json:"layout_width_percent"`
+			}
+			if raw := fields["type_settings"]; raw != nil {
+				if err := json.Unmarshal(raw, &settings); err != nil {
+					return nil, "", fmt.Errorf("decode type settings: %w", err)
+				}
+			}
+			if settings.Width == nil {
+				warnings = append(warnings, v2model.Issue{Path: propertiesPointer(spell(key)),
+					Message: "The type's stored width cannot be expressed exactly as a percentage. Its property preserves the original value."})
+			}
+		}
+	}
 	// the object's discussion (its comment thread) is a chat reached by its
 	// own id; the parent keeps that id in a hidden relation the property
 	// vocabulary never serves, so the read carries it as its own member, on

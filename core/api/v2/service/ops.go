@@ -63,7 +63,7 @@ var v2OpNames = []string{
 // and the editor re-checks its restrictions under the lock.
 var v2OpEditNeeds = map[string]apicore.EditNeeds{
 	"set_properties":   {Details: true},
-	"set_layout_width": {}, // root presentation, like the editor's SetFields
+	"set_layout_width": {Details: true}, // desktop checks Details before offering the resize action
 	"set_type":         {TypeChange: true},
 	"update_block":     {Blocks: true},
 	"replace_subtree":  {Blocks: true},
@@ -369,8 +369,9 @@ type opSetProperties struct {
 	// Add/Remove are the per-key list edits (v0.3.5): append entries to /
 	// delete entries from a list-shaped property without rewriting the whole
 	// array. Values are arrays of entries (option names or object/file ids).
-	Add    map[string]json.RawMessage `json:"add"`
-	Remove map[string]json.RawMessage `json:"remove"`
+	Add                map[string]json.RawMessage `json:"add"`
+	Remove             map[string]json.RawMessage `json:"remove"`
+	LayoutWidthPercent json.RawMessage            `json:"layout_width_percent"`
 }
 
 // opUpdateBlock addresses its block through EITHER Id or Match. Match is an

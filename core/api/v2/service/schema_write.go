@@ -18,6 +18,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -148,7 +149,7 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 	} else if fields["kind"], err = rawJSON("object_type"); err != nil {
 		return nil, err
 	}
-	if _, ok := fields["formatVersion"]; !ok {
+	if fields["formatVersion"] == nil && fields["version"] == nil {
 		if fields["formatVersion"], err = rawJSON(anyblockjson.FormatVersion); err != nil {
 			return nil, err
 		}
@@ -309,7 +310,10 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 	if err := refuseTwoSpellingsBoundAlike(envelope.Properties, resolvers.Options().Keys); err != nil {
 		return nil, err
 	}
-	_, snapshot, err := anyblockjson.Unmarshal(body, resolvers.Options())
+	importOpts := resolvers.Options()
+	var widthWarnings []v2model.Issue
+	importOpts.OnWarning = collectWidthWarnings(&widthWarnings)
+	_, snapshot, err := anyblockjson.Unmarshal(body, importOpts)
 	if err != nil {
 		return nil, mapUnmarshalError(body, err, kind)
 	}
@@ -332,6 +336,12 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 	}
 
 	result = &v2model.CreateResult{Key: slug, Created: resolvers.created(), Warnings: dropped}
+	if flat {
+		for i := range widthWarnings {
+			widthWarnings[i].Path = flatTypeBodyPath(widthWarnings[i].Path)
+		}
+	}
+	result.Warnings = append(result.Warnings, widthWarnings...)
 	if dryRun {
 		result.DryRun = true
 		return result, nil
@@ -697,10 +707,11 @@ var updatableTypeDetailKeys = map[string]bool{
 // typeSettingsPatchKeys is the PATCH surface of the §2a type_settings
 // subtree, mapped to the stored detail key each member carries.
 var typeSettingsPatchKeys = map[string]string{
-	"layout":           "recommendedLayout",
-	"plural_name":      "pluralName",
-	"default_view":     "defaultViewType",
-	"default_template": "defaultTemplateId",
+	"layout":               "recommendedLayout",
+	"plural_name":          "pluralName",
+	"default_view":         "defaultViewType",
+	"default_template":     "defaultTemplateId",
+	"layout_width_percent": "layoutWidth",
 }
 
 // v2TypePatch is the PATCH types/{type} body: partial type-document
@@ -724,6 +735,7 @@ type v2TypePatch struct {
 // type.
 type v2TypeSettingsPatch struct {
 	Layout              json.RawMessage              `json:"layout"`
+	LayoutWidthPercent  json.RawMessage              `json:"layout_width_percent"`
 	PluralName          json.RawMessage              `json:"plural_name"`
 	DefaultView         json.RawMessage              `json:"default_view"`
 	DefaultTemplate     json.RawMessage              `json:"default_template"`
@@ -736,10 +748,11 @@ type v2TypeSettingsPatch struct {
 // struct and silently ignored by the loop.
 func (p v2TypeSettingsPatch) patchableSettings() map[string]json.RawMessage {
 	return map[string]json.RawMessage{
-		"layout":           p.Layout,
-		"plural_name":      p.PluralName,
-		"default_view":     p.DefaultView,
-		"default_template": p.DefaultTemplate,
+		"layout":               p.Layout,
+		"layout_width_percent": p.LayoutWidthPercent,
+		"plural_name":          p.PluralName,
+		"default_view":         p.DefaultView,
+		"default_template":     p.DefaultTemplate,
 	}
 }
 
@@ -768,6 +781,13 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 		return nil, err
 	}
 	typeId := entry.Id
+	var typeRead *apicore.ObjectRead
+	checkHeads := func(heads []string) error {
+		if !EtagMatches(ifMatch, heads) {
+			return v2model.EtagMismatch(ComputeEtag(heads))
+		}
+		return nil
+	}
 
 	// C7 concurrency precondition, advisory like the object channel's: absent
 	// If-Match is last-write-wins, a stale one is a 409. It matters more here
@@ -780,8 +800,9 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 		if rerr != nil {
 			return nil, fmt.Errorf("read type %s: %w", typeId, rerr)
 		}
-		if !EtagMatches(ifMatch, read.Heads) {
-			return nil, v2model.EtagMismatch(ComputeEtag(read.Heads))
+		typeRead = &read
+		if err := checkHeads(read.Heads); err != nil {
+			return nil, err
 		}
 	}
 
@@ -836,8 +857,25 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 		return nil, v2model.ValidationFailed("invalid type patch",
 			v2model.Issue{Message: err.Error(), Hint: "the patch accepts properties and type_settings"})
 	}
+	withWidth := patch.TypeSettings != nil && patch.TypeSettings.LayoutWidthPercent != nil
+	if withWidth {
+		if typeRead == nil {
+			read, err := s.reader.ReadObject(ctx, spaceId, typeId)
+			if err != nil {
+				return nil, mapReadError(spaceId, typeId, err)
+			}
+			typeRead = &read
+		}
+		if isArchivedRead(*typeRead) {
+			return nil, v2model.ObjectArchived(spaceId, typeId, deletableSbType(typeRead.SbType), dryRun)
+		}
+		if typeRead.DetailsRefused != nil {
+			return nil, restrictionForbidden(typeId, typeRead.DetailsRefused)
+		}
+	}
 
 	var detailUpdates []*model.Detail
+	var widthWarnings []v2model.Issue
 	var detached []v2model.PropertyRow
 	// two spellings of one key in one body: sortedKeys makes the winner
 	// deterministic, which is not the same as correct — the caller asked for
@@ -897,7 +935,19 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 				continue
 			}
 			key := typeSettingsPatchKeys[member]
-			value, err := typeDetailValue(key, "/type_settings/"+member, raw)
+			path := "/type_settings/" + member
+			if member == "layout_width_percent" {
+				if flat {
+					path = flatTypeBodyPath(path)
+				}
+				width, err := decodeWidthEdit(raw, path, &widthWarnings)
+				if err != nil {
+					return nil, err
+				}
+				detailUpdates = append(detailUpdates, &model.Detail{Key: key, Value: width.ToProto()})
+				continue
+			}
+			value, err := typeDetailValue(key, path, raw)
 			if err != nil {
 				return nil, err
 			}
@@ -994,6 +1044,7 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 	}
 
 	result = &v2model.CreateResult{Id: typeId, Key: typeKey, Created: resolvers.created(), Warnings: droppedDefs}
+	result.Warnings = append(result.Warnings, widthWarnings...)
 	// a replaced list detaches whatever it omitted. Report it in BOTH channels:
 	// `removed` so a client can act on it, and a warning so a human reading the
 	// response sees it without knowing to look for a new field. A dry run says
@@ -1038,7 +1089,19 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 		result.DryRun = true
 		return result, nil
 	}
-	if len(detailUpdates) > 0 {
+	if withWidth {
+		updates := make([]domain.Detail, 0, len(detailUpdates))
+		for _, detail := range detailUpdates {
+			updates = append(updates, domain.Detail{Key: domain.RelationKey(detail.Key), Value: domain.ValueFromProto(detail.Value)})
+		}
+		if err := s.mutator.SetTypeDetails(ctx, spaceId, typeId, updates, checkHeads); err != nil {
+			var apiErr *v2model.Error
+			if errors.As(err, &apiErr) {
+				return nil, apiErr
+			}
+			return nil, mapWriteError(spaceId, typeId, err)
+		}
+	} else if len(detailUpdates) > 0 {
 		resp := s.mw.ObjectSetDetails(ctx, &pb.RpcObjectSetDetailsRequest{ContextId: typeId, Details: detailUpdates})
 		if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetDetailsResponseError_NULL {
 			return nil, fmt.Errorf("update type %s: %s", typeKey, resp.Error.Description)

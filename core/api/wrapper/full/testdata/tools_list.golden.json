@@ -1384,7 +1384,7 @@
   },
   {
    "name": "patch_object",
-   "description": "Update an object. Edits in place, keeping the id and links; to change the type, use set_type rather than recreating the object. Applies ops in order as one atomic edit. A failed op or invalid result leaves the object unchanged. Text locators must match exactly one block. New block and view IDs are returned by payload position in `created_blocks` and `created_views`, compact by default or full with `ids=full`. Ops and their members, ? marking an optional one: set_properties{add?, remove?, set?, unset?}, set_layout_width{layout_width_percent}, set_type{type}, update_block{set, id?, match?}, replace_subtree{id, blocks}, insert_blocks{after?, before?, blocks?, inside?, markdown?, position?}, move_block{id, after?, before?, inside?, position?}, delete_block{id?, match?, recursive?}, replace_text{find, replace, id?, replace_all?}, set_cell{table_id, row, col, value}, update_view{block?, columns?, set?, view?}, insert_view{name, after?, before?, block?, columns?, copy_from?, position?, set?}, move_view{view, after?, before?, block?, position?}, delete_view{view, block?}, add_items{items}, remove_items{items}. get_op_schema with an op's name serves the members' value shapes and a worked example; call it before first using an op whose shapes you do not know.",
+   "description": "Update an object. Edits in place, keeping the id and links; to change the type, use set_type rather than recreating the object. Applies ops in order as one atomic edit. A failed op or invalid result leaves the object unchanged. Text locators must match exactly one block. New block and view IDs are returned by payload position in `created_blocks` and `created_views`, compact by default or full with `ids=full`. Ops and their members, ? marking an optional one: set_properties{add?, layout_width_percent?, remove?, set?, unset?}, set_layout_width{layout_width_percent}, set_type{type}, update_block{set, id?, match?}, replace_subtree{id, blocks}, insert_blocks{after?, before?, blocks?, inside?, markdown?, position?}, move_block{id, after?, before?, inside?, position?}, delete_block{id?, match?, recursive?}, replace_text{find, replace, id?, replace_all?}, set_cell{table_id, row, col, value}, update_view{block?, columns?, set?, view?}, insert_view{name, after?, before?, block?, columns?, copy_from?, position?, set?}, move_view{view, after?, before?, block?, position?}, delete_view{view, block?}, add_items{items}, remove_items{items}. get_op_schema with an op's name serves the members' value shapes and a worked example; call it before first using an op whose shapes you do not know.",
    "inputSchema": {
     "additionalProperties": false,
     "properties": {
@@ -2999,6 +2999,7 @@
         "type": "object"
        },
        "layout": {},
+       "layout_width_percent": {},
        "name": {},
        "plural_name": {},
        "property_definitions": {},
@@ -3011,6 +3012,11 @@
      {
       "additionalProperties": true,
       "description": "the type as an AnyBlock document: kind object_type, the definition under type_settings; its schema and a worked example come from `get_schema` with kind: type_document",
+      "not": {
+       "required": [
+        "layout_width_percent"
+       ]
+      },
       "properties": {
        "cover": {},
        "create_missing_options": {},
@@ -3079,6 +3085,10 @@
        "collection"
       ],
       "type": "string"
+     },
+     "layout_width_percent": {
+      "description": "Default width of pages of this type, from 100 (standard) to 200 (widest), including decimals. Out-of-range inputs clamp with a warning. On PATCH send null to clear the default.",
+      "type": "number"
      },
      "name": {
       "description": "display name, singular. Required on POST; on PATCH send it only to rename",
@@ -3170,6 +3180,15 @@
       "type": "string"
      },
      "type_settings": {
+      "properties": {
+       "layout_width_percent": {
+        "description": "Default width for pages of this type, from 100 (standard) to 200 (widest). Omit for 100%. Out-of-range values clamp with a warning.",
+        "examples": [
+         175
+        ],
+        "type": "number"
+       }
+      },
       "type": "object"
      }
     },
@@ -3225,6 +3244,7 @@
        "icon": {},
        "if_match": {},
        "layout": {},
+       "layout_width_percent": {},
        "name": {},
        "plural_name": {},
        "property_definitions": {},
@@ -3386,6 +3406,13 @@
        "collection"
       ],
       "type": "string"
+     },
+     "layout_width_percent": {
+      "description": "Default width of pages of this type, from 100 (standard) to 200 (widest), including decimals. Out-of-range inputs clamp with a warning. On PATCH send null to clear the default.",
+      "type": [
+       "number",
+       "null"
+      ]
      },
      "name": {
       "description": "display name, singular. Required on POST; on PATCH send it only to rename",
@@ -3557,6 +3584,13 @@
          "collection"
         ],
         "type": "string"
+       },
+       "layout_width_percent": {
+        "description": "Default width of pages of this type, from 100 (standard) to 200 (widest), including decimals. Out-of-range inputs clamp with a warning. On PATCH send null to clear the default.",
+        "type": [
+         "number",
+         "null"
+        ]
        },
        "plural_name": {
         "maxLength": 4096,

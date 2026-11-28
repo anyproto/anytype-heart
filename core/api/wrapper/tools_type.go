@@ -477,10 +477,11 @@ func distinctPropertyName(label string) string {
 // ignores it (see the file header), and a document that states options the
 // server drops is the silent claim this tool exists to avoid. Options reach
 // the space through the property mint below, before this document is sent.
-func typeDocument(name string, plans []typePropertyPlan) map[string]any {
+func typeDocument(name string, plans []typePropertyPlan, width any) map[string]any {
 	doc := map[string]any{"properties": map[string]any{"name": name}}
-	if len(plans) == 0 {
-		return doc
+	settings := map[string]any{}
+	if width != nil {
+		settings["layout_width_percent"] = width
 	}
 	defs := make([]any, 0, len(plans))
 	for _, plan := range plans {
@@ -498,7 +499,12 @@ func typeDocument(name string, plans []typePropertyPlan) map[string]any {
 			"format":   plan.decl.Format,
 		})
 	}
-	doc["type_settings"] = map[string]any{"property_definitions": defs}
+	if len(defs) > 0 {
+		settings["property_definitions"] = defs
+	}
+	if len(settings) > 0 {
+		doc["type_settings"] = settings
+	}
 	return doc
 }
 
@@ -549,7 +555,8 @@ func (r *Runner) runCreateType(ctx context.Context, session *Session, args map[s
 	// slugs, live keys and live slugs. Asking it with dry_run=true costs one
 	// round trip and buys the invariant this whole tool is built around:
 	// nothing is created until the name and every format have been accepted.
-	preflight, err := r.createTypeRequest(ctx, session, space, typeDocument(name, plans), true)
+	width := args["layout_width_percent"]
+	preflight, err := r.createTypeRequest(ctx, session, space, typeDocument(name, plans, width), true)
 	if err != nil {
 		// mintResidueNote with nothing minted says "nothing was created" —
 		// which is the whole point of pre-flighting, and the fact that
@@ -599,7 +606,7 @@ func (r *Runner) runCreateType(ctx context.Context, session *Session, args map[s
 		minted = append(minted, plans[i].decl.Name)
 	}
 
-	result, err := r.createTypeRequest(ctx, session, space, typeDocument(name, plans), false)
+	result, err := r.createTypeRequest(ctx, session, space, typeDocument(name, plans, width), false)
 	if err != nil {
 		// distinct from the pre-flight's failure, which leaves NOTHING: by
 		// here the mints above are permanent, and the two used to read

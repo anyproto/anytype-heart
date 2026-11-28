@@ -257,6 +257,19 @@ func TestSetProperties(t *testing.T) {
 			"the values ride the same PATCH, complete")
 	})
 
+	t.Run("property and width arguments reach Heart as one unordered edit", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
+		fx.stub("GET /v2/spaces/space1/properties", 200, `{"data":[{"key":"layout_width","name":"Layout width","format":"number"},{"key":"custom_width","name":"Layout width","format":"number"}],"total":2}`)
+		const endpoint = "PATCH /v2/spaces/space1/objects/bafyobj1"
+		fx.stub(endpoint, 200, editOKBody)
+		_, err := fx.Run(ctx, "set_properties", map[string]any{
+			"object": "1", "layout_width_percent": nil, "set": map[string]any{"Layout width": 0.75},
+		})
+		require.NoError(t, err)
+		ops := patchOpsSent(t, fx.sent(endpoint)[0])
+		require.Equal(t, []map[string]any{{"op": "set_properties", "layout_width_percent": nil, "set": map[string]any{"Layout width": 0.75}}}, ops)
+	})
 	for _, percent := range []string{"175.5", "1e400", "null"} {
 		t.Run("page width "+percent, func(t *testing.T) {
 			fx := newFixture(t)
@@ -268,7 +281,7 @@ func TestSetProperties(t *testing.T) {
 			}))
 			message, isError := callText(t, responses[0])
 			require.False(t, isError, message)
-			assert.Contains(t, message, "page width changed")
+			assert.Contains(t, message, "layout width changed")
 			sent := fx.sent(endpoint)
 			require.Len(t, sent, 1)
 			var body struct {

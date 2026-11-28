@@ -210,7 +210,18 @@ type ObjectMutator interface {
 	// the adapter re-checks them under the lock (the apply itself runs
 	// without object-level restriction checks, so this gate is the only one).
 	MutateObject(ctx context.Context, spaceId string, objectId string, needs EditNeeds, apply func(edit ObjectEdit) error) (heads []string, err error)
+	// SetTypeDetails applies a partial type document's native detail updates
+	// together, after checking editability and the caller's heads under the lock.
+	SetTypeDetails(ctx context.Context, spaceId, objectId string, details []domain.Detail, checkHeads func([]string) error) error
 }
+
+// ObjectArchivedError reports that the locked object is in the Bin. The API
+// uses the object's kind to identify the available restore operation.
+type ObjectArchivedError struct {
+	SbType model.SmartBlockType
+}
+
+func (e *ObjectArchivedError) Error() string { return "object is in the Bin" }
 
 // ObjectProvenance reads an object's creator provenance from validated
 // change storage — never from details (APIV2_OBJECT_DELETE.md §10). It is

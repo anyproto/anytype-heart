@@ -206,6 +206,13 @@ func TestV2Schemas(t *testing.T) {
 		}
 	})
 
+	t.Run("the shared type schema accepts a PATCH that clears width", func(t *testing.T) {
+		entry, err := fx.SchemaKind("type")
+		require.NoError(t, err)
+		schema := compileOpenAPIBody(t, &OpenAPIBodies{}, entry.Schema)
+		require.NoError(t, schema.Validate(map[string]any{"layout_width_percent": nil}))
+	})
+
 	t.Run("object kind serves this API's own document schema with C13 bounds", func(t *testing.T) {
 		// NOT the format's complete schema: this surface publishes the format
 		// minus the members an export writes and a caller here can neither

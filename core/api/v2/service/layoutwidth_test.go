@@ -7,6 +7,8 @@ import (
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 )
 
 func TestPageWidthCreateValidateAndPatch(t *testing.T) {
@@ -16,6 +18,7 @@ func TestPageWidthCreateValidateAndPatch(t *testing.T) {
 		width      float64
 		warnings   int
 	}{
+		{"legacy document", `{"version":2,"root":{"fields":{"width":0.75}}}`, 0.75, 0},
 		{"shortcut", `{"type":"page","name":"Wide","layout_width_percent":175.5}`, 0.755, 0},
 		{"document default type", `{"layout_width_percent":100}`, 0, 0},
 		{"fraction", `{"type":"page","layout_width_percent":0.75}`, 0, 2},
@@ -61,7 +64,11 @@ func TestPageWidthCreateValidateAndPatch(t *testing.T) {
 		})
 	}
 	fx := newV2Fixture(t)
-	report := fx.ValidateDocument([]byte(`{"layout_width_percent":0.75}`))
+	report := fx.ValidateDocument([]byte(`{"version":2,"root":{"fields":{"width":0.75}}}`))
+	require.Empty(t, report.Issues)
+	report = fx.ValidateDocument([]byte(`{"version":1,"root":{"fields":{"width":0.75}}}`))
+	require.NotEmpty(t, report.Issues)
+	report = fx.ValidateDocument([]byte(`{"layout_width_percent":0.75}`))
 	require.Empty(t, report.Issues)
 	require.Len(t, report.Warnings, 2)
 	for _, v := range []string{"null", `"175"`, "true"} {
@@ -80,6 +87,16 @@ func TestPageWidthCreateValidateAndPatch(t *testing.T) {
 	}
 }
 
+// A type's default uses the existing property on the type object itself.
+func TestTypeWidthOnObjectEndpoint(t *testing.T) {
+	fx := newV2Fixture(t)
+	state := fx.expectMutate(editRead(t, `{"formatVersion":"2.0","kind":"object_type","id":"obj1"}`))
+	_, err := fx.PatchObject(context.Background(), testSpaceId, "obj1",
+		patchBody(`{"op":"set_properties","set":{"layout_width":0.75}}`), "", false, true)
+	require.NoError(t, err)
+	require.Equal(t, 0.75, (*state).Details().GetFloat64(bundle.RelationKeyLayoutWidth))
+}
+
 func TestGetPageWidth(t *testing.T) {
 	for _, tc := range []struct {
 		name, members string
@@ -89,6 +106,8 @@ func TestGetPageWidth(t *testing.T) {
 		{"inherit", "", nil, ""},
 		{"explicit standard", `,"root":{"fields":{"width":0}}`, 100.0, ""},
 		{"legacy detail", `,"properties":{"Layout width":0.75}`, nil, "metadata"},
+		{"detail and override", `,"properties":{"Layout width":0.75},"layout_width_percent":100`, 100.0, ""},
+		{"detail and legacy override", `,"properties":{"Layout width":0.75},"root":{"fields":{"width":1e-18}}`, nil, "legacy root width"},
 		{"legacy precision", `,"root":{"fields":{"width":1e-18}}`, nil, "legacy root width"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -100,6 +119,9 @@ func TestGetPageWidth(t *testing.T) {
 			var doc map[string]any
 			require.NoError(t, json.Unmarshal(body, &doc))
 			require.Equal(t, tc.percent, doc["layout_width_percent"])
+			if tc.warning != "metadata" {
+				require.NotContains(t, string(body), "This property is metadata")
+			}
 			if tc.warning != "" {
 				require.Contains(t, string(body), tc.warning)
 			}

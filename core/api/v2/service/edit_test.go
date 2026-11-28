@@ -2084,6 +2084,33 @@ func TestPatchObject(t *testing.T) {
 			"a property-only batch must not demand the Blocks axis")
 	})
 
+	t.Run("a page archived after the initial read returns a restore hint", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(editRead(t, editEmptyDoc), nil)
+		fx.mutatorMock.EXPECT().MutateObject(mock.Anything, testSpaceId, "obj1", apicore.EditNeeds{Details: true}, mock.Anything).
+			Return(nil, &apicore.ObjectArchivedError{SbType: model.SmartBlockType_Page})
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"set_layout_width","layout_width_percent":175}`), "", false, true)
+
+		require.Equal(t, v2model.ObjectArchived(testSpaceId, "obj1", true, false), v2Err(t, err))
+	})
+
+	t.Run("previewing a width edit on a collection leaves its root unchanged", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		read := editRead(t, editCollectionDoc)
+		read.BlocksRefused = blocksRefusedProduction()
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(read, nil)
+
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"set_layout_width","layout_width_percent":175}`), "", true, true)
+
+		require.NoError(t, err)
+		require.True(t, result.DryRun)
+		require.True(t, result.DiffStats.LayoutWidthChanged)
+		require.NotContains(t, read.Snapshot.Blocks[0].Fields.GetFields(), "width")
+	})
+
 	t.Run("M1: a blocks-restricted object still refuses a block op, naming it", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		read := editRead(t, editBaseDoc)

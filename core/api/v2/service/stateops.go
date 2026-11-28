@@ -1116,7 +1116,10 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 		defer func() { a.resolvers.locked = false }()
 	}
 	if len(op.Set) == 0 && len(op.Unset) == 0 && len(op.Add) == 0 && len(op.Remove) == 0 {
-		return v2model.ValidationFailed("set_properties needs at least one of set, unset, add, remove",
+		if op.LayoutWidthPercent != nil {
+			return a.setLayoutWidth(op.LayoutWidthPercent, opPath)
+		}
+		return v2model.ValidationFailed("set_properties needs at least one of set, unset, add, remove, layout_width_percent",
 			v2model.Issue{Path: opPath, Message: "set, unset, add and remove are all empty"})
 	}
 	// §7.5a-5: property terms may arrive as api-key slugs (a v2-created
@@ -1212,6 +1215,9 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	// when the two fields spell the property differently.
 	type claimed struct{ field, spelling string }
 	seenIn := map[string]claimed{}
+	if op.LayoutWidthPercent != nil && typeWidthKind(a.sbType) {
+		seenIn[bundle.RelationKeyLayoutWidth.String()] = claimed{field: "layout_width_percent", spelling: "layout_width_percent"}
+	}
 	claim := func(key, spelling, field, path string) bool {
 		if prev, ok := seenIn[key]; ok {
 			message := fmt.Sprintf("%q appears in both %s and %s — pick one", spelling, prev.field, field)
@@ -1232,7 +1238,9 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 		// unactionable (§8.41-10)
 		spelling := spelledIn("set", key)
 		path := opPath + ".set." + spelling
-		claim(key, spelling, "set", path) // set goes first — it can never collide
+		if !claim(key, spelling, "set", path) {
+			continue
+		}
 		if key == bundle.RelationKeyLayoutWidth.String() && pageWidthKind(a.sbType) {
 			issues = append(issues, layoutWidthPropertyIssue(path))
 			continue
@@ -1297,6 +1305,11 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	removeEntries := checkListField("remove", op.Remove)
 	if len(issues) > 0 {
 		return v2model.ValidationFailed("set_properties rejected", issues...)
+	}
+	if op.LayoutWidthPercent != nil {
+		if err := a.setLayoutWidth(op.LayoutWidthPercent, opPath); err != nil {
+			return err
+		}
 	}
 	// F16: a value on a property the object's type does not list is stored
 	// and served, but type-scoped search and queries refuse the key and the
