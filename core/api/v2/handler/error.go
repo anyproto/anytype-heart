@@ -163,7 +163,7 @@ func decodeStrictJSONBody(c *gin.Context, into any, hint v2model.Hint, maxBody i
 	if err := dec.Decode(into); err != nil {
 		issue := v2model.Issue{Message: err.Error()}.WithHint(hint)
 		if field, ok := unknownFieldName(err); ok {
-			issue.Path = "/" + field
+			issue.Path = v2model.MemberPointer(field)
 		}
 		RespondError(c, v2model.ValidationFailed("invalid request body", issue))
 		return false

@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/api/util"
@@ -621,18 +622,30 @@ func TestDryRunsOfALoadingSpaceSayTheIndexMayBeIncomplete(t *testing.T) {
 			Hint:    "repeat the request once the space has loaded for the complete result",
 		}
 	}
-	// both spaces hold the same index: one type ("page") and one property
+	// both spaces hold the same index: the system type "page", a deletable
+	// custom type ("chore") and one property. The loaded space's dry deletes
+	// read its Bin; the loading space's do not, since opening the Bin there
+	// would wait for the load
 	withProperty := func(t *testing.T) *v2Fixture {
 		fx := newLoadingFixture(t)
 		for _, spaceId := range []string{loadingSpaceId, loadedSpaceId} {
-			fx.objectStore.AddObjects(t, spaceId, []objectstore.TestObject{{
-				bundle.RelationKeyId:             domain.String("rel-severity"),
-				bundle.RelationKeyRelationKey:    domain.String("severity"),
-				bundle.RelationKeyName:           domain.String("Severity"),
-				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_status)),
-				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
-			}})
+			fx.objectStore.AddObjects(t, spaceId, []objectstore.TestObject{
+				{
+					bundle.RelationKeyId:             domain.String("rel-severity"),
+					bundle.RelationKeyRelationKey:    domain.String("severity"),
+					bundle.RelationKeyName:           domain.String("Severity"),
+					bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_status)),
+					bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+				},
+				{
+					bundle.RelationKeyId:             domain.String("type-chore"),
+					bundle.RelationKeyName:           domain.String("Chore"),
+					bundle.RelationKeyUniqueKey:      domain.String("ot-chore"),
+					bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+				},
+			})
 		}
+		fx.readerMock.EXPECT().InBin(mock.Anything, loadedSpaceId, mock.Anything).Return(false, nil).Maybe()
 		return fx
 	}
 
@@ -686,7 +699,7 @@ func TestDryRunsOfALoadingSpaceSayTheIndexMayBeIncomplete(t *testing.T) {
 
 	results := map[string]func(fx *v2Fixture, spaceId string) (*v2model.CreateResult, error){
 		"delete type": func(fx *v2Fixture, spaceId string) (*v2model.CreateResult, error) {
-			return fx.DeleteType(bg, spaceId, "page", true)
+			return fx.DeleteType(bg, spaceId, "chore", true)
 		},
 		"update property": func(fx *v2Fixture, spaceId string) (*v2model.CreateResult, error) {
 			return fx.UpdateProperty(bg, spaceId, "severity", v2model.UpdatePropertyRequest{Name: &name}, true)

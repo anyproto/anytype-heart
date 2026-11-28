@@ -2,6 +2,7 @@ package v2service
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/gogo/protobuf/types"
@@ -84,7 +85,9 @@ func TestV2PropertyMintCollisionCheck(t *testing.T) {
 
 		apiErr := v2ErrWithIssue(t, err)
 		require.NotEmpty(t, apiErr.Issues)
-		assert.Contains(t, apiErr.Issues[0].Message, `"due_date_2"`)
+		// the key as submitted, and the slug both normalize to in the route
+		assert.Contains(t, apiErr.Issues[0].Message, `"dueDate2"`)
+		assert.Contains(t, apiErr.Issues[0].Hint, "/properties/due_date_2")
 
 		// the snake spelling of the same key is the same refusal
 		_, err = fx.CreateProperty(context.Background(), testSpaceId,
@@ -196,7 +199,8 @@ func TestV2PropertyMintCollisionCheck(t *testing.T) {
 
 		apiErr := v2ErrWithIssue(t, err)
 		require.NotEmpty(t, apiErr.Issues)
-		assert.Contains(t, apiErr.Issues[0].Message, `"priority_level"`)
+		assert.Contains(t, apiErr.Issues[0].Message, `"priorityLevel"`)
+		assert.Contains(t, apiErr.Issues[0].Hint, "/properties/priority_level")
 	})
 
 	t.Run("propertyKeyExists is corpse-blind and live-sighted", func(t *testing.T) {
@@ -280,7 +284,8 @@ func TestV2TypeMintCollisionCheck(t *testing.T) {
 
 		apiErr := v2ErrWithIssue(t, err)
 		require.NotEmpty(t, apiErr.Issues)
-		assert.Contains(t, apiErr.Issues[0].Message, `"meeting_note"`)
+		assert.Contains(t, apiErr.Issues[0].Message, `"meetingNote"`)
+		assert.Contains(t, apiErr.Issues[0].Hint, "/types/meeting_note")
 	})
 }
 
@@ -371,11 +376,14 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 		_, err := fx.CreateType(context.Background(), testSpaceId,
 			[]byte(`{"kind":"object_type","properties":{"name":"Twin user"},"type_settings":{"api_key":"twinuser","property_definitions":[{"property":"twin_key"}]}}`), false, true)
 
-		// then
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "ambiguous")
-		assert.Contains(t, err.Error(), "rel-twin1")
-		assert.Contains(t, err.Error(), "rel-twin2")
+		// then: the typed 400, at the definition that named the property
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/type_settings/property_definitions/0/property", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, "rel-twin1")
+		assert.Contains(t, apiErr.Issues[0].Message, "rel-twin2")
 	})
 
 	t.Run("a declared format conflicting with the resolved property is a loud 400", func(t *testing.T) {
@@ -391,7 +399,7 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 
 		apiErr := v2ErrWithIssue(t, err)
 		require.NotEmpty(t, apiErr.Issues)
-		assert.Equal(t, "/type_properties/0/format", apiErr.Issues[0].Path)
+		assert.Equal(t, "/type_settings/property_definitions/0/format", apiErr.Issues[0].Path)
 		assert.Contains(t, apiErr.Issues[0].Message, `"select"`)
 	})
 
@@ -403,7 +411,7 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 
 		apiErr := v2ErrWithIssue(t, err)
 		require.NotEmpty(t, apiErr.Issues)
-		assert.Equal(t, "/type_properties/0/format", apiErr.Issues[0].Path)
+		assert.Equal(t, "/type_settings/property_definitions/0/format", apiErr.Issues[0].Path)
 		assert.Contains(t, apiErr.Issues[0].Message, `"date"`)
 	})
 
@@ -437,7 +445,7 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 
 		apiErr := v2ErrWithIssue(t, err)
 		require.NotEmpty(t, apiErr.Issues)
-		assert.Equal(t, "/type_properties/0/format", apiErr.Issues[0].Path)
+		assert.Equal(t, "/type_settings/property_definitions/0/format", apiErr.Issues[0].Path)
 	})
 
 	t.Run("a name-only entry declaring a format the stored property lacks is refused on PATCH", func(t *testing.T) {
@@ -462,7 +470,7 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 		apiErr := v2ErrWithIssue(t, err)
 		assert.Equal(t, "property format conflict", apiErr.Message)
 		require.NotEmpty(t, apiErr.Issues)
-		assert.Equal(t, "/type_properties/0/format", apiErr.Issues[0].Path)
+		assert.Equal(t, "/type_settings/property_definitions/0/format", apiErr.Issues[0].Path)
 		assert.Contains(t, apiErr.Issues[0].Message, `"Severity" declares format "text"`)
 		assert.Contains(t, apiErr.Issues[0].Message, `has format "select"`)
 	})

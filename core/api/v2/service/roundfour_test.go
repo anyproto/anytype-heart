@@ -67,17 +67,16 @@ func TestV2DeletedTypeKeepsItsSpelling(t *testing.T) {
 			{bundle.RelationKeyId: domain.String("c2"), bundle.RelationKeyType: domain.String("type-chore"), bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic))},
 		})
 
+		fx.expectNotInBin("type-chore")
 		result, err := fx.DeleteType(ctx, testSpaceId, "chore", true)
 
 		require.NoError(t, err)
 		require.Len(t, result.Warnings, 1)
-		assert.Contains(t, result.Warnings[0].Message, `2 objects are of type "chore"`)
-		assert.Contains(t, result.Warnings[0].Message, `reads still spell it "chore"`)
+		assert.Contains(t, result.Warnings[0].Message, `2 objects are of type "chore"; after the delete they would keep it`)
 		assert.Empty(t, result.Warnings[0].SeeAlso, "list_objects has no type filter — no reference promises one")
 		assert.Contains(t, result.Warnings[0].Hint, "a dry run reports this without deleting")
 
-		fx.mwMock.EXPECT().ObjectSetIsArchived(mock.Anything, &pb.RpcObjectSetIsArchivedRequest{ContextId: "type-chore", IsArchived: true}).
-			Return(&pb.RpcObjectSetIsArchivedResponse{Error: &pb.RpcObjectSetIsArchivedResponseError{Code: pb.RpcObjectSetIsArchivedResponseError_NULL}})
+		fx.expectSchemaArchive("type-chore")
 		real, err := fx.DeleteType(ctx, testSpaceId, "chore", false)
 		require.NoError(t, err)
 		require.Len(t, real.Warnings, 1)
@@ -87,6 +86,7 @@ func TestV2DeletedTypeKeepsItsSpelling(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.addSelectProperty(t)
 		fx.addTaskType(t)
+		fx.expectNotInBin("type-chore")
 
 		result, err := fx.DeleteType(ctx, testSpaceId, "chore", true)
 
@@ -142,22 +142,24 @@ func TestV2DeletedTypeKeepsItsSpelling(t *testing.T) {
 		assert.Contains(t, v2Err(t, err).Issues[0].Message, "was removed from this space")
 	})
 
-	t.Run("the warning spells the served slug however the type was addressed, and says when a twin will demote it", func(t *testing.T) {
+	t.Run("the warning spells the served slug however the type was addressed, and promises no spelling after the delete", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.addGadgetType(t, false)
 		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{bundle.RelationKeyId: domain.String("g1"), bundle.RelationKeyType: domain.String("type-gadget"), bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic))},
 		})
 
+		fx.readerMock.EXPECT().InBin(mock.Anything, testSpaceId, "type-gadget").Return(false, nil).Times(2)
 		result, err := fx.DeleteType(ctx, testSpaceId, "Gadget", true) // by display name
 
 		require.NoError(t, err)
 		require.Len(t, result.Warnings, 1)
-		assert.Contains(t, result.Warnings[0].Message, `1 object is of type "gadget"; they keep it, and reads still spell it "gadget"`)
+		assert.Contains(t, result.Warnings[0].Message, `1 object is of type "gadget"; after the delete they would keep it, but`)
 		assert.NotContains(t, result.Warnings[0].Message, gadgetTypeKey)
 
-		// a removed type already answers to the slug: after this delete both
-		// read under their stored keys, and the warning says so
+		// a removed type already answers to the slug, which changes how reads
+		// spell the objects after this delete; the receipt promises no
+		// spelling, so it reads the same
 		fx.addType(t, testSpaceId, objectstore.TestObject{
 			bundle.RelationKeyId:           domain.String("type-gadget-old"),
 			bundle.RelationKeyUniqueKey:    domain.String("ot-6aad7fbf61fab205fe53c2f1"),
@@ -165,10 +167,9 @@ func TestV2DeletedTypeKeepsItsSpelling(t *testing.T) {
 			bundle.RelationKeyName:         domain.String("Gadget (old)"),
 			bundle.RelationKeyIsArchived:   domain.Bool(true),
 		})
-		result, err = fx.DeleteType(ctx, testSpaceId, "gadget", true)
+		again, err := fx.DeleteType(ctx, testSpaceId, "gadget", true)
 		require.NoError(t, err)
-		require.Len(t, result.Warnings, 1)
-		assert.Contains(t, result.Warnings[0].Message, `another removed type used "gadget" before, so after this delete the objects of both read under their stored keys ("`+gadgetTypeKey+`" here)`)
+		assert.Equal(t, result.Warnings, again.Warnings)
 	})
 
 	t.Run("a removed slug never folds onto a live type NAMED that way", func(t *testing.T) {
@@ -453,7 +454,7 @@ func TestV2RoundFourCarriedForward(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, result.Warnings, 1)
 		assert.Equal(t, "/name", result.Warnings[0].Path)
-		assert.Contains(t, result.Warnings[0].Message, "this creates another property under the same name")
+		assert.Contains(t, result.Warnings[0].Message, "so this would create another property under the same name", "a dry run creates nothing")
 		assert.Equal(t, []v2model.Ref{v2model.RefListProperties(testSpaceId)}, result.Warnings[0].SeeAlso)
 	})
 

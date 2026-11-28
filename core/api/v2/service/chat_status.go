@@ -13,7 +13,7 @@ import (
 // PublishChatStatus sends an ephemeral activity update for a chat or discussion.
 // Identity and Space encryption are supplied by pubsub, not by the request body.
 func (s *Service) PublishChatStatus(ctx context.Context, spaceId, chatId string, req v2model.ChatStatusRequest, dryRun bool) (*v2model.ChatStatusResult, error) {
-	if _, err := s.ensureChatWrite(ctx, spaceId, chatId); err != nil {
+	if _, err := s.ensureChatWrite(ctx, spaceId, chatId, dryRun); err != nil {
 		return nil, err
 	}
 	if len(req.ReplyTo) > v2model.MaxChatStatusReplyTo {

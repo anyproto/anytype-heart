@@ -16,6 +16,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -102,6 +103,12 @@ func (s *Service) liveProperties(spaceId string) ([]propertyEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("query live properties of space %s: %w", spaceId, err)
 	}
+	return propertyEntriesOf(records), nil
+}
+
+// propertyEntriesOf builds the entries of live relation records, in their
+// order; a record without a relation key is no property.
+func propertyEntriesOf(records []database.Record) []propertyEntry {
 	entries := make([]propertyEntry, 0, len(records))
 	for _, record := range records {
 		key := record.Details.GetString(bundle.RelationKeyRelationKey)
@@ -117,7 +124,7 @@ func (s *Service) liveProperties(spaceId string) ([]propertyEntry, error) {
 			Hidden: record.Details.GetBool(bundle.RelationKeyIsHidden),
 		})
 	}
-	return entries, nil
+	return entries
 }
 
 // removedProperties lists the space's REMOVED relation objects — archived
@@ -193,6 +200,12 @@ func (s *Service) liveTypes(spaceId string) ([]typeEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("query live types of space %s: %w", spaceId, err)
 	}
+	return typeEntriesOf(records), nil
+}
+
+// typeEntriesOf builds the entries of live type records, in their order; a
+// record without a type unique key is no type.
+func typeEntriesOf(records []database.Record) []typeEntry {
 	entries := make([]typeEntry, 0, len(records))
 	for _, record := range records {
 		key, err := domain.GetTypeKeyFromRawUniqueKey(record.Details.GetString(bundle.RelationKeyUniqueKey))
@@ -208,7 +221,7 @@ func (s *Service) liveTypes(spaceId string) ([]typeEntry, error) {
 			Layout: model.ObjectTypeLayout(record.Details.GetInt64(bundle.RelationKeyRecommendedLayout)), //nolint:gosec
 		})
 	}
-	return entries, nil
+	return entries
 }
 
 // resolvePropertyInput applies the resolution chain for one inbound
@@ -244,6 +257,15 @@ func (s *Service) resolvePropertyInputIn(input string, entries []propertyEntry, 
 	if len(candidates) == 0 {
 		return entry, ok, nil
 	}
+	// the refusal lists the holders by stored key, then id: the store's row
+	// order is not one a caller can rely on
+	sort.SliceStable(candidates, func(i, j int) bool {
+		a, b := candidates[i].entry, candidates[j].entry
+		if a.Key != b.Key {
+			return a.Key < b.Key
+		}
+		return a.Id < b.Id
+	})
 	var listed []propertyEntry
 	for _, candidate := range candidates {
 		if candidate.entry.Id != "" && scope[candidate.entry.Id] {
@@ -253,11 +275,7 @@ func (s *Service) resolvePropertyInputIn(input string, entries []propertyEntry, 
 	if len(listed) == 1 {
 		return listed[0], true, nil
 	}
-	out := make([]string, 0, len(candidates))
-	for _, candidate := range candidates {
-		out = append(out, candidate.desc)
-	}
-	return propertyEntry{}, false, out
+	return propertyEntry{}, false, describePropertyCandidates(candidates, entries)
 }
 
 // typePropertyScope is the set of property ids a type lists, across its four
@@ -267,9 +285,23 @@ func (s *Service) typePropertyScope(spaceId, typeId string) map[string]bool {
 	if typeId == "" {
 		return nil
 	}
-	details, err := s.store.SpaceIndex(spaceId).GetDetails(typeId)
-	if err != nil || details == nil {
+	scope, err := s.typePropertyScopeOf(spaceId, typeId)
+	if err != nil {
 		return nil
+	}
+	return scope
+}
+
+// typePropertyScopeOf is typePropertyScope with the store error kept: a
+// write decision taken on a list that could not be read would settle a name
+// by another type's list instead.
+func (s *Service) typePropertyScopeOf(spaceId, typeId string) (map[string]bool, error) {
+	details, err := s.store.SpaceIndex(spaceId).GetDetails(typeId)
+	if err != nil {
+		return nil, fmt.Errorf("read type %s of space %s: %w", typeId, spaceId, err)
+	}
+	if details == nil {
+		return nil, nil
 	}
 	scope := map[string]bool{}
 	for _, listKey := range typeRecommendedListKeys {
@@ -277,7 +309,7 @@ func (s *Service) typePropertyScope(spaceId, typeId string) map[string]bool {
 			scope[id] = true
 		}
 	}
-	return scope
+	return scope, nil
 }
 
 // typeKeyPropertyScope is typePropertyScope by the type's stored key.
@@ -294,18 +326,44 @@ func (s *Service) typeKeyPropertyScope(spaceId, typeKey string) map[string]bool 
 	return nil
 }
 
-// propertyCandidate is one holder of an ambiguous term, with the words the
-// refusal names it by.
+// createPropertyScope is the scope of a created document's own keys, by
+// stored keys: a template's is its target's list (scopeTypeKey), read off
+// the target's exact live row, and its own type's when the target has none.
+// A store failure is an error: falling back on one would settle a name by
+// the template type's list.
+func (s *Service) createPropertyScope(spaceId, kind, typeKey, templateFor string) (map[string]bool, error) {
+	if key := scopeTypeKey(kind, typeKey, templateFor); key != typeKey {
+		target, found, err := s.liveTypeByKey(spaceId, key)
+		if err != nil {
+			return nil, fmt.Errorf("resolve template target: %w", err)
+		}
+		if found {
+			return s.typePropertyScopeOf(spaceId, target.Id)
+		}
+	}
+	entries, err := s.liveTypes(spaceId)
+	if err != nil {
+		return nil, err
+	}
+	for _, entry := range entries {
+		if entry.Key == typeKey && entry.Id != "" {
+			return s.typePropertyScopeOf(spaceId, entry.Id)
+		}
+	}
+	return nil, nil
+}
+
+// propertyCandidate is one holder of an ambiguous term. bundled marks the
+// built-in itself, which the refusal names as such.
 type propertyCandidate struct {
-	entry propertyEntry
-	desc  string
+	entry   propertyEntry
+	bundled bool
 }
 
 func liveCandidates(entries []propertyEntry) []propertyCandidate {
-	descs := describePropertyEntries(entries)
 	out := make([]propertyCandidate, 0, len(entries))
-	for i, entry := range entries {
-		out = append(out, propertyCandidate{entry: entry, desc: descs[i]})
+	for _, entry := range entries {
+		out = append(out, propertyCandidate{entry: entry})
 	}
 	return out
 }
@@ -314,11 +372,7 @@ func liveCandidates(entries []propertyEntry) []propertyCandidate {
 // installed (so a type listing it can pick it), described as the bundled
 // property either way.
 func bundledCandidate(key string, entries []propertyEntry) propertyCandidate {
-	rel := bundle.MustGetRelation(domain.RelationKey(key))
-	return propertyCandidate{
-		entry: bundledPropertyCandidate(key, entries),
-		desc:  fmt.Sprintf("the bundled %q (key %s)", rel.Name, key),
-	}
+	return propertyCandidate{entry: bundledPropertyCandidate(key, entries), bundled: true}
 }
 
 // visibleSlugHolders are the live visible entries answering to slug, other
@@ -522,13 +576,13 @@ func (s *Service) resolveTypeInput(spaceId, input string, entries []typeEntry) (
 		}
 	}
 	if len(slugMatches) == 1 {
-		if shadowed, ok := shadowedBundledType(input, slugMatches[0].Key); ok {
-			return typeEntry{}, false, append(describeTypeEntries(slugMatches), shadowed), nil
+		if _, shadowKey, ok := shadowedBundledType(input, slugMatches[0].Key); ok {
+			return typeEntry{}, false, describeTypeCandidates(slugMatches, shadowKey, entries), nil
 		}
 		return slugMatches[0], true, nil, nil
 	}
 	if len(slugMatches) > 1 {
-		return typeEntry{}, false, describeTypeEntries(slugMatches), nil
+		return typeEntry{}, false, describeTypeCandidates(slugMatches, "", entries), nil
 	}
 	if t, err := bundle.GetType(domain.TypeKey(input)); err == nil {
 		return typeEntry{Key: input, Name: t.Name}, true, nil, nil
@@ -583,7 +637,7 @@ func (s *Service) resolveTypeInput(spaceId, input string, entries []typeEntry) (
 		return candidates[0], true, nil, nil
 	}
 	if len(candidates) > 1 {
-		return typeEntry{}, false, describeTypeEntries(candidates), nil
+		return typeEntry{}, false, describeTypeCandidates(candidates, "", entries), nil
 	}
 	// 5: display names — resolvePropertyInput's step 5 on the type
 	// namespace, same order, same shadow discipline, same refusal rules
@@ -595,11 +649,11 @@ func (s *Service) resolveTypeInput(spaceId, input string, entries []typeEntry) (
 		}
 	}
 	if len(nameMatches) > 1 {
-		return typeEntry{}, false, describeTypeEntries(nameMatches), nil
+		return typeEntry{}, false, describeTypeCandidates(nameMatches, "", entries), nil
 	}
 	if len(nameMatches) == 1 {
-		if shadowed, ok := shadowedBundledTypeName(nfcInput, nameMatches[0].Key); ok {
-			return typeEntry{}, false, append(describeTypeEntries(nameMatches), shadowed), nil
+		if _, shadowKey, ok := shadowedBundledTypeName(nfcInput, nameMatches[0].Key); ok {
+			return typeEntry{}, false, describeTypeCandidates(nameMatches, shadowKey, entries), nil
 		}
 		return nameMatches[0], true, nil, nil
 	}
@@ -632,7 +686,7 @@ func (s *Service) resolveTypeInput(spaceId, input string, entries []typeEntry) (
 		return nameCandidates[0], true, nil, nil
 	}
 	if len(nameCandidates) > 1 {
-		return typeEntry{}, false, describeTypeEntries(nameCandidates), nil
+		return typeEntry{}, false, describeTypeCandidates(nameCandidates, "", entries), nil
 	}
 	return typeEntry{}, false, nil, nil
 }
@@ -673,12 +727,12 @@ func shadowedBundledProperty(input, matchedKey string) (string, bool) {
 }
 
 // shadowedBundledType is shadowedBundledProperty for the type namespace.
-func shadowedBundledType(input, matchedKey string) (string, bool) {
-	key, ok := bundle.TypeKeyByApiSlug(input)
-	if !ok || string(key) == matchedKey {
-		return "", false
+func shadowedBundledType(input, matchedKey string) (desc, key string, ok bool) {
+	typeKey, found := bundle.TypeKeyByApiSlug(input)
+	if !found || string(typeKey) == matchedKey {
+		return "", "", false
 	}
-	return fmt.Sprintf("the bundled %q (key %s)", bundle.MustGetType(key).Name, key), true
+	return fmt.Sprintf("the bundled %q (key %s)", bundle.MustGetType(typeKey).Name, typeKey), string(typeKey), true
 }
 
 // shadowedBundledTypeName is the type namespace's name shadow (chain step
@@ -686,12 +740,12 @@ func shadowedBundledType(input, matchedKey string) (string, bool) {
 // anything — a bundled type answering to its own name is not a shadow, and
 // an ambiguous bundled name binds nobody (the table refuses it at build
 // time), so it cannot shadow either.
-func shadowedBundledTypeName(name, matchedKey string) (string, bool) {
-	key, ok := anyblockjson.BundledTypeKeyByName(name)
+func shadowedBundledTypeName(name, matchedKey string) (desc, key string, ok bool) {
+	key, ok = anyblockjson.BundledTypeKeyByName(name)
 	if !ok || key == matchedKey {
-		return "", false
+		return "", "", false
 	}
-	return fmt.Sprintf("the bundled %q (key %s)", bundle.MustGetType(domain.TypeKey(key)).Name, key), true
+	return fmt.Sprintf("the bundled %q (key %s)", bundle.MustGetType(domain.TypeKey(key)).Name, key), key, true
 }
 
 // bundledPropertyCandidate answers a bundled key that step 5 resolved: the
@@ -718,24 +772,114 @@ func bundledTypeCandidate(key string, entries []typeEntry) typeEntry {
 	return typeEntry{Key: key, Name: bundle.MustGetType(domain.TypeKey(key)).Name}
 }
 
-// describePropertyEntries renders ambiguity candidates ACTIONABLY: the
-// stored key is the one address that always resolves (twin slugs print
-// identically, so the slug alone steers the caller back into the same
-// 400 — the review's unactionable-floor finding).
-func describePropertyEntries(entries []propertyEntry) []string {
-	out := make([]string, 0, len(entries))
-	for _, entry := range entries {
-		out = append(out, fmt.Sprintf("%q (key %s, id %s)", entry.Name, entry.Key, entry.Id))
+// describePropertyCandidates renders ambiguity candidates ACTIONABLY: each
+// by an address that resolves back to that holder. The first choice is the
+// key the listings serve it under (servedKey, over the whole live namespace,
+// so a slug another property's stored key shadows is never offered); the
+// fallback is the stored key, the one address that always resolves, marked
+// as such. Every address is verified through the chain itself, so a retry
+// with it reaches the holder it was offered for.
+func describePropertyCandidates(candidates []propertyCandidate, entries []propertyEntry) []string {
+	keyTaken, slugHolders := servedPropertyKeySets(entries)
+	out := make([]string, 0, len(candidates))
+	for _, candidate := range candidates {
+		key := propertyCandidateAddress(candidate.entry, entries, keyTaken, slugHolders)
+		if candidate.bundled {
+			out = append(out, fmt.Sprintf("the bundled %q (%s)", bundle.MustGetRelation(domain.RelationKey(candidate.entry.Key)).Name, key))
+			continue
+		}
+		out = append(out, fmt.Sprintf("%q (%s, id %s)", candidate.entry.Name, key, candidate.entry.Id))
 	}
 	return out
 }
 
-func describeTypeEntries(entries []typeEntry) []string {
-	out := make([]string, 0, len(entries))
-	for _, entry := range entries {
-		out = append(out, fmt.Sprintf("%q (key %s, id %s)", entry.Name, entry.Key, entry.Id))
+// propertyCandidateAddress is "key <served>" when the served key resolves
+// back to the holder, else "stored key <stored>".
+func propertyCandidateAddress(holder propertyEntry, entries []propertyEntry, keyTaken map[string]bool, slugHolders map[string][]string) string {
+	served := servedKey(holder.Key, holder.Slug, keyTaken, slugHolders)
+	if entry, ok, ambiguous := resolvePropertyChain(served, entries); ok && len(ambiguous) == 0 && entry.Key == holder.Key {
+		return "key " + served
+	}
+	return "stored key " + holder.Key
+}
+
+// describeTypeCandidates is describePropertyCandidates for the type
+// namespace. bundledKey, when set, is the built-in the live candidates
+// shadow, named last as the bundled type; entries is the whole live set.
+func describeTypeCandidates(candidates []typeEntry, bundledKey string, entries []typeEntry) []string {
+	keyTaken, slugHolders := servedTypeKeySets(entries)
+	address := func(key, slug string) string {
+		served := servedTypeKeyOf(key, slug, keyTaken, slugHolders)
+		if typeAddressResolves(served, key, entries) {
+			return "key " + served
+		}
+		return "stored key " + key
+	}
+	// by stored key, then id: the store's row order is not one a caller can
+	// rely on (§1.6). The built-in has no id, so it leads the holders of its
+	// own key.
+	sorted := slices.Clone(candidates)
+	if bundledKey != "" {
+		sorted = append(sorted, typeEntry{Key: bundledKey})
+	}
+	sort.SliceStable(sorted, func(i, j int) bool {
+		if sorted[i].Key != sorted[j].Key {
+			return sorted[i].Key < sorted[j].Key
+		}
+		return sorted[i].Id < sorted[j].Id
+	})
+	out := make([]string, 0, len(sorted))
+	for _, entry := range sorted {
+		if entry.Id == "" {
+			out = append(out, fmt.Sprintf("the bundled %q (%s)", bundle.MustGetType(domain.TypeKey(entry.Key)).Name, address(entry.Key, "")))
+			continue
+		}
+		out = append(out, fmt.Sprintf("%q (%s, id %s)", entry.Name, address(entry.Key, entry.Slug), entry.Id))
 	}
 	return out
+}
+
+// typeAddressResolves reports whether an exact address reaches the type
+// stored under holderKey, by the type chain's exact steps (stored key, sole
+// visible slug holder unshadowed, the built-in table). It mirrors them
+// rather than calling resolveTypeInput, which describes its own
+// ambiguities through this file.
+func typeAddressResolves(addr, holderKey string, entries []typeEntry) bool {
+	for _, entry := range entries {
+		if entry.Key == addr {
+			return entry.Key == holderKey
+		}
+	}
+	var slugMatches []typeEntry
+	for _, entry := range entries {
+		if !entry.Hidden && entry.Slug != "" && entry.Slug == addr {
+			slugMatches = append(slugMatches, entry)
+		}
+	}
+	if len(slugMatches) == 1 {
+		if _, _, shadowed := shadowedBundledType(addr, slugMatches[0].Key); shadowed {
+			return false
+		}
+		return slugMatches[0].Key == holderKey
+	}
+	if len(slugMatches) > 1 {
+		return false
+	}
+	if _, err := bundle.GetType(domain.TypeKey(addr)); err == nil {
+		return addr == holderKey
+	}
+	if key, ok := bundle.TypeKeyByApiSlug(addr); ok {
+		return string(key) == holderKey
+	}
+	return false
+}
+
+// ambiguityHint is the repair an ambiguity refusal offers. Every candidate
+// is listed by an address verified to resolve back to it, so the exact key
+// shown is the repair; renaming would not be one — a slug is frozen at
+// mint, so a renamed twin still answers to the shared slug.
+func ambiguityHint([]string) string {
+	return "address the intended one by its exact key"
 }
 
 // ambiguousKeyError is the loud 400 the chain owes an input that several
@@ -745,7 +889,7 @@ func ambiguousKeyError(what, input, path string, candidates []string) error {
 		fmt.Sprintf("%s %q is ambiguous", what, input),
 		v2model.Issue{Path: path,
 			Message: fmt.Sprintf("%q matches %s", input, strings.Join(candidates, " and ")),
-			Hint:    "address the intended one by its exact key"})
+			Hint:    ambiguityHint(candidates)})
 }
 
 // requireLiveProperty resolves a property-addressing route param: ambiguity
@@ -785,12 +929,50 @@ func (s *Service) requireLiveType(spaceId, input, path string, v errKeys) (typeE
 	return entry, nil
 }
 
+// propertiesPointer is the pointer to one member of a body's `properties`
+// map, by the spelling the caller wrote it under. Every refusal addressed at
+// such a member builds its path here, so no site appends a name raw.
+func propertiesPointer(name string) string {
+	return "/properties/" + v2model.PointerToken(name)
+}
+
+// refuseTwoSpellingsBoundAlike refuses a properties map carrying one
+// property under two spellings, naming both as sent. It binds each spelling
+// exactly as the importer does — the vocabulary the import runs with, on the
+// NFC form — so it refuses precisely the pairs the codec would, whose own
+// refusal names the stored key both resolve to (a bson id the caller never
+// wrote). Two spellings that are one name in two Unicode forms are left to
+// the codec, which names their code points apart.
+func refuseTwoSpellingsBoundAlike(props map[string]json.RawMessage, keys anyblockjson.KeyVocabulary) error {
+	if len(props) < 2 || keys == nil {
+		return nil
+	}
+	boundBy := make(map[string]string, len(props))
+	for _, term := range sortedKeys(props) {
+		key, _ := keys.PropertyKey(norm.NFC.String(term))
+		if key == "" {
+			key = term
+		}
+		if first, dup := boundBy[key]; dup && norm.NFC.String(first) != norm.NFC.String(term) {
+			return v2model.ValidationFailed("duplicate property key",
+				v2model.Issue{Path: propertiesPointer(term),
+					Message: fmt.Sprintf("%q and %q both address one property — keep one", first, term)})
+		}
+		boundBy[key] = term
+	}
+	return nil
+}
+
 // slugHolder names the existing holder of a proposed api key — the material
 // for the loud refusal the union collision check owes the caller.
 type slugHolder struct {
 	Kind string // "bundled property", "property", "bundled type", "type"
-	Key  string // the holder's public key (bundled slug or stored key/slug)
-	Name string
+	Key  string // the holder's key: the bundled slug, or a live holder's STORED key
+	// Served is the spelling a caller addresses a live holder by — the
+	// collision-checked served key. A repair the refusal offers names this,
+	// never Key, which for a space-minted holder is a bson id.
+	Served string
+	Name   string
 	// Format is a bundled holder's, for the refusal to say what the
 	// built-in property would hold
 	Format model.RelationFormat
@@ -818,7 +1000,8 @@ func (s *Service) propertySlugConflict(slug string, entries []propertyEntry) (sl
 		}
 		return slugHolder{Kind: "bundled property", Key: bundle.ApiSlug(entry.Key), Name: entry.Name, Format: entry.Format}, true
 	}
-	return slugHolder{Kind: "property", Key: entry.Key, Name: entry.Name}, true
+	keyTaken, slugHolders := servedPropertyKeySets(entries)
+	return slugHolder{Kind: "property", Key: entry.Key, Served: servedKey(entry.Key, entry.Slug, keyTaken, slugHolders), Name: entry.Name}, true
 }
 
 // typeSlugConflict is propertySlugConflict for the type namespace.
@@ -836,7 +1019,8 @@ func (s *Service) typeSlugConflict(spaceId, slug string, entries []typeEntry) (s
 	if entry.Id == "" {
 		return slugHolder{Kind: "bundled type", Key: bundle.TypeApiSlug(entry.Key), Name: entry.Name}, true, nil
 	}
-	return slugHolder{Kind: "type", Key: entry.Key, Name: entry.Name}, true, nil
+	keyTaken, slugHolders := servedTypeKeySets(entries)
+	return slugHolder{Kind: "type", Key: entry.Key, Served: servedTypeKeyOf(entry.Key, entry.Slug, keyTaken, slugHolders), Name: entry.Name}, true, nil
 }
 
 // There is exactly ONE authority for the wire spelling of a key: servedKeyOf
@@ -938,7 +1122,10 @@ func servedKey(storedKey, slug string, keyTaken map[string]bool, slugHolders map
 // the type tables, not the relation ones).
 func servedTypeKeyOf(storedKey, slug string, keyTaken map[string]bool, slugHolders map[string][]string) string {
 	return servedKeyOf(storedKey, slug, keyTaken, slugHolders,
-		bundle.HasObjectTypeByKey(domain.TypeKey(storedKey)), shadowedBundledType, bundle.TypeApiSlug)
+		bundle.HasObjectTypeByKey(domain.TypeKey(storedKey)), func(input, matchedKey string) (string, bool) {
+			desc, _, ok := shadowedBundledType(input, matchedKey)
+			return desc, ok
+		}, bundle.TypeApiSlug)
 }
 
 // slugOf is the namespace's own derivation, and the two namespaces do not
@@ -1275,9 +1462,8 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 	changed := false
 
 	var typeEntries []typeEntry
-	// the object's type settles a term two properties answer to
-	// (resolvePropertyInputIn)
-	var scope map[string]bool
+	// the resolved type slots, by field: the caller's term and stored key
+	terms, resolvedKeys := map[string]string{}, map[string]string{}
 	for _, field := range []string{"type", "template_for"} {
 		raw, ok := fields[field]
 		if !ok {
@@ -1287,6 +1473,7 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 		if err := json.Unmarshal(raw, &term); err != nil || term == "" {
 			continue
 		}
+		terms[field] = term
 		if typeEntries == nil {
 			if typeEntries, err = s.liveTypes(spaceId); err != nil {
 				return nil, nil, err
@@ -1299,8 +1486,8 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 		if len(ambiguous) > 0 {
 			return nil, nil, ambiguousKeyError("type key", term, "/"+field, ambiguous)
 		}
-		if ok && field == "type" {
-			scope = s.typePropertyScope(spaceId, entry.Id)
+		if ok {
+			resolvedKeys[field] = entry.Key
 		}
 		if ok && entry.Key != term {
 			if fields[field], err = rawJSON(entry.Key); err != nil {
@@ -1308,6 +1495,22 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 			}
 			changed = true
 		}
+	}
+	kind := envelopeString(fields, "kind")
+	ownKey := resolvedKeys["type"]
+	// a template kind on another type would resolve its property names
+	// against the target and then be created as that other type: refused
+	// before any of them resolves (validateDocumentRefs repeats the rule for
+	// a type this pass could not resolve)
+	if kind == "template" && ownKey != "" && ownKey != string(bundle.TypeKeyTemplate) {
+		return nil, nil, templateTypeMismatch(terms["type"])
+	}
+	// the object's type settles a term two properties answer to
+	// (resolvePropertyInputIn); a template's, the type it is for
+	// (scopeTypeKey), or its own when that one has no row
+	scope, err := s.createPropertyScope(spaceId, kind, ownKey, resolvedKeys["template_for"])
+	if err != nil {
+		return nil, nil, err
 	}
 
 	if raw, ok := fields["properties"]; ok {
@@ -1350,7 +1553,7 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 				}
 				entry, ok, ambiguous := s.resolvePropertyInputIn(key, propEntries, scope)
 				if len(ambiguous) > 0 {
-					return nil, nil, ambiguousKeyError("property key", key, "/properties/"+key, ambiguous)
+					return nil, nil, ambiguousKeyError("property key", key, propertiesPointer(key), ambiguous)
 				}
 				if ok && entry.Key != key {
 					renames[key] = entry.Key
@@ -1358,6 +1561,10 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 			}
 			if len(renames) > 0 {
 				rewritten := make(map[string]json.RawMessage, len(props))
+				// the refusal names both spellings the caller sent; the
+				// canonical one is the stored key, a bson id for a
+				// space-minted property
+				spelledBy := make(map[string]string, len(props))
 				// deterministic order, so a duplicate-spelling refusal
 				// names the same path on every run
 				for _, key := range sortedKeys(props) {
@@ -1366,11 +1573,12 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 						canonical = to
 						spellings[canonical] = key
 					}
-					if _, dup := rewritten[canonical]; dup {
+					if first, dup := spelledBy[canonical]; dup {
 						return nil, nil, v2model.ValidationFailed("duplicate property key",
-							v2model.Issue{Path: "/properties/" + key,
-								Message: fmt.Sprintf("%q and another spelling both address property %q — keep one", key, canonical)})
+							v2model.Issue{Path: propertiesPointer(key),
+								Message: fmt.Sprintf("%q and %q both address one property — keep one", first, key)})
 					}
+					spelledBy[canonical] = key
 					rewritten[canonical] = props[key]
 				}
 				if fields["properties"], err = rawJSON(rewritten); err != nil {

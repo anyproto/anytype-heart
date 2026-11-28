@@ -41,6 +41,9 @@ func TestV1ProtosMatchAnyBlockCanonicalSources(t *testing.T) {
 		{"pb/protos/events.proto", "format/v1/proto/events.proto"},
 		{"pb/protos/changes.proto", "format/v1/proto/changes.proto"},
 		{"pb/protos/snapshot.proto", "format/v1/proto/snapshot.proto"},
+		// models.proto imports it, so a field drifting here changes Export
+		// notifications; the check strips the import from models.proto, not the file
+		{"pkg/lib/pb/model/protos/export_report.proto", "format/v1/proto/export_report.proto"},
 	}
 
 	for _, file := range files {
@@ -201,13 +204,18 @@ func TestImportProgressExclusionDropsTheEventMember(t *testing.T) {
 	}
 }
 
-// Export diagnostics are Heart RPC/notification metadata, never part of a v1
-// snapshot. Allow only these additive API fields and their separate proto import;
-// every other definition (including the notification's existing fields) must
-// still match the pinned canonical source.
+// export_report.proto is compared as a file of its own, and Notification.Export
+// (the report and path fields) is compared verbatim. The only difference
+// allowed is the spelling of the import path, which each repository roots
+// differently.
 func withoutExportReportAPI(normalized string) string {
-	normalized = strings.ReplaceAll(normalized, `import"pkg/lib/pb/model/protos/export_report.proto";`, "")
-	return strings.ReplaceAll(normalized, `model.Export.FormatexportType=3;ExportReportreport=4;stringpath=5;`, `model.Export.FormatexportType=3;`)
+	for _, spelling := range []string{
+		`import"pkg/lib/pb/model/protos/export_report.proto";`,
+		`import"format/v1/proto/export_report.proto";`,
+	} {
+		normalized = strings.ReplaceAll(normalized, spelling, `import"export_report.proto";`)
+	}
+	return normalized
 }
 
 // withoutImportProgressAPI removes Heart's live import-progress surface: the

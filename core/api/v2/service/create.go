@@ -93,6 +93,11 @@ type docCreateOptions struct {
 	// to the resolver that would otherwise mint a select option for a name
 	// that matches nothing.
 	createMissingOptions bool
+	// optionSites locates the request member an option name came from, for
+	// a document the server composed (a query): its option refusals would
+	// otherwise point into the composed document. Nil means the body is the
+	// caller's own, addressed through its properties map.
+	optionSites func(key domain.RelationKey, name string) *optionErrorSite
 	// template is the create body's `template` member, lifted before
 	// validation: a template id, the word none, or empty for absent.
 	// honourTemplates gates the whole mechanism — the type's default template
@@ -244,7 +249,7 @@ func (s *Service) createFromShortcut(ctx context.Context, spaceId string, fields
 		if !shortcutKeys[key] {
 			return nil, v2model.ValidationFailed("unknown field in create shortcut",
 				v2model.Issue{
-					Path:    "/" + key,
+					Path:    v2model.MemberPointer(key),
 					Message: fmt.Sprintf("unknown key %q — the shortcut accepts type, name, properties, markdown", key),
 				}.Hintf("for blocks, an icon or a cover, send the full document form; %s shows it", v2model.RefGetSchema("object")))
 		}
@@ -300,7 +305,7 @@ func (s *Service) createFromShortcut(ctx context.Context, spaceId string, fields
 	}
 	// the leading heading is the title, not the first paragraph of the body
 	promotable := name == "" && !facts.blocked
-	run, promoted, titleNotice := s.liftMarkdownTitle(spaceId, shortcut.Type, run, name, promotable)
+	run, promoted, titleNotice := s.liftMarkdownTitle(spaceId, shortcut.Type, run, name, promotable, opts.dryRun)
 	droppedLeadingBlocks := 0
 	if titleNotice != nil {
 		droppedLeadingBlocks = 1
@@ -398,8 +403,9 @@ var headingStyles = map[string]bool{"heading_1": true, "heading_2": true, "headi
 // is what the note exemption below is read from.
 //
 // It returns the blocks to keep, the name to use and the notice to attach,
-// nil when nothing was touched.
-func (s *Service) liftMarkdownTitle(spaceId, typeTerm string, run []json.RawMessage, name string, promotable bool) ([]json.RawMessage, string, *v2model.Issue) {
+// nil when nothing was touched. The notice is worded for the run: a dry run
+// says what the create would do with the heading.
+func (s *Service) liftMarkdownTitle(spaceId, typeTerm string, run []json.RawMessage, name string, promotable, dryRun bool) ([]json.RawMessage, string, *v2model.Issue) {
 	if len(run) == 0 {
 		return run, name, nil
 	}
@@ -443,15 +449,23 @@ func (s *Service) liftMarkdownTitle(spaceId, typeTerm string, run []json.RawMess
 	}
 	switch {
 	case name != "" && heading == strings.TrimSpace(name):
+		message := "the first heading repeated the object's name and was dropped"
+		if dryRun {
+			message = "the first heading repeats the object's name and would be dropped"
+		}
 		return run[1:], name, &v2model.Issue{
 			Path:    "/markdown[0]",
-			Message: "the first heading repeated the object's name and was dropped",
+			Message: message,
 			Hint:    "an object shows its name as its title, so a heading that restates it appears twice",
 		}
 	case promotable && first.Type == "heading_1" && s.typeShowsNameAsTitle(spaceId, typeTerm):
+		message := fmt.Sprintf("the first heading became the object's name: %q", heading)
+		if dryRun {
+			message = fmt.Sprintf("the first heading would become the object's name: %q", heading)
+		}
 		return run[1:], heading, &v2model.Issue{
 			Path:    "/markdown[0]",
-			Message: fmt.Sprintf("the first heading became the object's name: %q", heading),
+			Message: message,
 			Hint:    "an object shows its name as its title; send name to choose it yourself",
 		}
 	}
@@ -697,19 +711,98 @@ func docLocalIds(doc []byte) []string {
 // owns such ids (they never relabel, so its export carries them verbatim)
 // must keep working.
 func warnLabelShapedIds(body []byte) []v2model.Issue {
-	var labelLike []string
-	for _, id := range docLocalIds(body) {
-		if anyblockjson.IsCompactLabelShaped(id) {
-			labelLike = append(labelLike, strconv.Quote(id))
-		}
-	}
-	if len(labelLike) == 0 {
+	labels := labelShapedIds(body)
+	if len(labels) == 0 {
 		return nil
 	}
-	return []v2model.Issue{v2model.Issue{
-		Path:    "/blocks",
-		Message: fmt.Sprintf("ids %s look like compact labels from a default read and were adopted as this object's real ids", strings.Join(labelLike, ", ")),
-	}.Hintf("to clone with the source's real ids, read it with %s; to mint fresh ids, omit them", v2model.NewRef(v2model.OpGetObject).With("ids", "full"))}
+	// the warning describes the create, not its outcome: a dry run returns
+	// it with nothing created
+	return []v2model.Issue{labelIdIssue("ids %s look like compact labels from a default read and become this object's real ids", labels)}
+}
+
+// labelShapedIds are the body's local ids shaped like compact labels.
+func labelShapedIds(body []byte) []string {
+	var labels []string
+	for _, id := range docLocalIds(body) {
+		if anyblockjson.IsCompactLabelShaped(id) {
+			labels = append(labels, id)
+		}
+	}
+	return labels
+}
+
+// labelIdIssue is the label-adoption warning, its ids quoted into format.
+func labelIdIssue(format string, ids []string) v2model.Issue {
+	return v2model.Issue{Path: "/blocks", Message: fmt.Sprintf(format, quotedIds(ids))}.
+		Hintf("to clone with the source's real ids, read it with %s; to mint fresh ids, omit them", v2model.NewRef(v2model.OpGetObject).With("ids", "full"))
+}
+
+func quotedIds(ids []string) string {
+	quoted := make([]string, len(ids))
+	for i, id := range ids {
+		quoted[i] = strconv.Quote(id)
+	}
+	return strings.Join(quoted, ", ")
+}
+
+// labelShapedIdWarnings is warnLabelShapedIds beside an applied template.
+// The merge remints a request block whose id a block of the template already
+// holds (mergeDocumentIntoTemplate), so such an id never becomes the
+// object's: the template's own blocks say which, before the create as after
+// it, and the warnings are worded for the run. Without a template the
+// neutral warning stands; when the template cannot be read, the warning
+// qualifies itself instead of guessing.
+func (s *Service) labelShapedIdWarnings(ctx context.Context, spaceId string, body []byte, templateId string, dryRun bool) []v2model.Issue {
+	if templateId == "" {
+		return warnLabelShapedIds(body)
+	}
+	labels := labelShapedIds(body)
+	if len(labels) == 0 {
+		return nil
+	}
+	read, err := s.reader.ReadObject(ctx, spaceId, templateId)
+	if err != nil || read.Snapshot == nil {
+		if dryRun {
+			return []v2model.Issue{labelIdIssue("ids %s look like compact labels from a default read and would become this object's real ids, except any a block of the applied template already holds, which would get a fresh id", labels)}
+		}
+		return []v2model.Issue{labelIdIssue("ids %s look like compact labels from a default read and became this object's real ids, except any a block of the applied template already held, which got a fresh id", labels)}
+	}
+	held := make(map[string]bool, len(read.Snapshot.Blocks))
+	for _, block := range read.Snapshot.Blocks {
+		held[block.GetId()] = true
+	}
+	// the merge renames block ids only: a view id is never reminted
+	blockIds := map[string]bool{}
+	if parsed, perr := parseEditDoc(body); perr == nil {
+		blockIds = parsed.localBlockIds()
+	}
+	var kept, reminted []string
+	for _, id := range labels {
+		if held[id] && blockIds[id] {
+			reminted = append(reminted, id)
+		} else {
+			kept = append(kept, id)
+		}
+	}
+	var issues []v2model.Issue
+	if len(kept) > 0 {
+		format := "ids %s look like compact labels from a default read and became this object's real ids"
+		if dryRun {
+			format = "ids %s look like compact labels from a default read and would become this object's real ids"
+		}
+		issues = append(issues, labelIdIssue(format, kept))
+	}
+	if len(reminted) > 0 {
+		if dryRun {
+			issues = append(issues, v2model.Issue{Path: "/blocks", Message: fmt.Sprintf(
+				"ids %s look like compact labels from a default read; blocks of the applied template already hold them, so the request's blocks would get fresh ids", quotedIds(reminted))})
+		} else {
+			issues = append(issues, v2model.Issue{Path: "/blocks", Message: fmt.Sprintf(
+				"ids %s look like compact labels from a default read; blocks of the applied template already held them, so the request's blocks got fresh ids", quotedIds(reminted))}.
+				Hintf("read the object with %s for the ids it holds", v2model.NewRef(v2model.OpGetObject).With("ids", "full")))
+		}
+	}
+	return issues
 }
 
 // createFromDocument is the shared full-document create path: structural
@@ -737,6 +830,15 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	// envelope's type/templateFor and in the properties map resolve to
 	// their stored spellings before validation and import; the spelling map
 	// keeps refusal paths addressed to the request as sent
+	// the type terms as the caller wrote them, before canonicalization
+	// replaces a custom type's slug with its stored key (a bson id)
+	var sent sentTypeTerms
+	sentBody := body // the body as written, for the option refusals' sites
+	if err := json.Unmarshal(body, &sent); err != nil {
+		// a slot that is not a string: the validators below refuse it, and a
+		// refusal meanwhile quotes the canonical term
+		sent = sentTypeTerms{}
+	}
 	body, spellings, err := s.canonicalizeDocumentKeys(spaceId, body)
 	if err != nil {
 		return nil, err
@@ -768,7 +870,7 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	}
 
 	// 2. referential validation (R9) — reject before anything is created
-	if err := s.validateDocumentRefs(ctx, spaceId, &envelope, opts, spellings); err != nil {
+	if err := s.validateDocumentRefs(ctx, spaceId, &envelope, opts, spellings, sent); err != nil {
 		return nil, err
 	}
 
@@ -788,10 +890,27 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 		}
 	}
 
+	// 2b. the type F16 judges the properties against (step 3a), resolved
+	// before the import below can mint an option: a lookup failure after it
+	// would fail a create whose options already exist
+	judged, forTemplate, found, err := s.offTypeJudgedType(spaceId, envelope.Kind, envelope.Type, envelope.TemplateFor)
+	if err != nil {
+		return nil, err
+	}
+
 	// 3. Unmarshal with create-missing resolvers (SPEC §3/§2a); on a dry run
 	// the resolvers only record would-be creations
 	resolvers := s.newCreatingResolvers(ctx, spaceId, opts.dryRun, opts.createMissingOptions)
-	resolvers.scope = s.typeKeyPropertyScope(spaceId, envelope.Type)
+	if resolvers.scope, err = s.createPropertyScope(spaceId, envelope.Kind, envelope.Type, envelope.TemplateFor); err != nil {
+		return nil, err
+	}
+	// an option refusal names the member the caller wrote the name in
+	resolvers.siteFor = opts.optionSites
+	if resolvers.siteFor == nil {
+		if resolvers.siteFor, err = s.documentOptionSites(spaceId, sentBody, envelope.Properties, spellings); err != nil {
+			return nil, err
+		}
+	}
 	_, snapshot, err := anyblockjson.Unmarshal(body, resolvers.Options())
 	if err != nil {
 		return nil, mapUnmarshalError(body, err, "object")
@@ -818,23 +937,30 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 		// this is knowable without building the template.
 		appliedTemplate.Combined = countRequestBlocks(snapshot) > 0
 	}
-	// the label-adoption tell rides real runs and dry runs alike (C9)
-	result.Warnings = warnLabelShapedIds(body)
+	// the label-adoption tell rides real runs and dry runs alike (C9),
+	// worded for the template the create applies
+	labelWarnings := s.labelShapedIdWarnings(ctx, spaceId, body, appliedTemplate.GetId(), opts.dryRun)
+	result.Warnings = append([]v2model.Issue(nil), labelWarnings...)
 	result.Warnings = append(result.Warnings, templateWarnings...)
 	// a cross-space object link whose space reference could not be expanded
 	result.Warnings = append(result.Warnings, links.Warnings("/blocks")...)
 	// F16: a value on a property the type does not list, said at create as
-	// on set_properties (the object takes the key here for the first time)
-	if typeKeys := s.typeListedKeys(spaceId, envelope.Type); typeKeys != nil {
+	// on set_properties (the object takes the key here for the first time).
+	// A template is judged against template_for, never against `template`.
+	if listed := s.listedKeysOf(spaceId, judged.Id, resolvers); found && listed != nil {
+		typeWord := ""
 		for _, key := range sortedKeys(envelope.Properties) {
-			if typeKeys[key] || !offTypeCandidate(key) {
+			if listed.has(key) || !offTypeCandidate(key) {
 				continue
 			}
 			spelling := key
 			if original, ok := spellings[key]; ok {
 				spelling = original
 			}
-			result.Warnings = append(result.Warnings, offTypePropertyIssue(spelling, result.Type, "/properties/"+spelling))
+			if typeWord == "" {
+				typeWord = s.offTypeTypeWord(spaceId, judged, errKeysFor(ctx).names)
+			}
+			result.Warnings = append(result.Warnings, offTypePropertyIssue(spelling, typeWord, propertiesPointer(spelling), forTemplate, opts.dryRun))
 		}
 	}
 	if opts.dryRun {
@@ -877,6 +1003,8 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 				result.Type, appliedTemplate.GetId()),
 		}.Hintf("point default_template at a live template, or clear it, with %s", v2model.RefUpdateType(spaceId, result.Type)))
 		result.Template = nil
+		// no template was applied after all, so nothing was reminted
+		result.Warnings = append(warnLabelShapedIds(body), result.Warnings[len(labelWarnings):]...)
 		created, err = s.creator.CreateObjectFromSnapshot(ctx, spaceId, snapshot, "")
 	}
 	if err != nil {
@@ -1041,6 +1169,16 @@ func mapUnmarshalError(body []byte, err error, kind string) error {
 // (apiV2KindNarrowings), so the two cannot drift.
 var documentCreateKinds = map[string]bool{"": true, "page": true, "template": true}
 
+// templateTypeMismatch refuses a template document whose type is not
+// `template`. The creator builds an object of the type it is handed, so a
+// template kind on a page type made a page, after its property names had
+// resolved against the target as a template's do.
+func templateTypeMismatch(spelledAs string) error {
+	return v2model.ValidationFailed("not a template document",
+		v2model.Issue{Path: "/type", Message: fmt.Sprintf("expected type \"template\", got %q", spelledAs)}.
+			Hintf("a template's type is \"template\"; name the type it is for in template_for"))
+}
+
 // validateDocumentRefs is the R9 layer for object creates: kind and type
 // gating, template target, items-on-collections, and property-key existence
 // in the properties map (reject with did-you-mean — creating properties from
@@ -1048,9 +1186,12 @@ var documentCreateKinds = map[string]bool{"": true, "page": true, "template": tr
 // POST /properties). spellings maps canonicalized keys back to the caller's
 // own spelling (canonicalizeDocumentKeys), so refusals address the request
 // that was actually sent.
-func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, envelope *docEnvelope, opts docCreateOptions, spellings map[string]string) error {
+func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, envelope *docEnvelope, opts docCreateOptions, spellings map[string]string, sent sentTypeTerms) error {
 	// the refusals below speak the request's key vocabulary (?keys — §4.3)
 	v := errKeysFor(ctx)
+	// a refusal quotes the type term as sent: by here a custom type's slug is
+	// its stored key, a bson id the caller never wrote
+	sentType := orDefault(sent.Type, envelope.Type)
 	switch {
 	case documentCreateKinds[envelope.Kind]:
 	case envelope.Kind == "object_type":
@@ -1065,13 +1206,15 @@ func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, enve
 	// every kind — including the forged-identity case this layer used to
 	// guard. One statement of the rule, in the validator.
 
-	if opts.requireTemplate {
+	// the endpoint or the kind says template, and a template's type is
+	// `template` (canonicalizeDocumentKeys holds the same line earlier, before
+	// any property term resolves against the target)
+	if opts.requireTemplate || envelope.Kind == "template" {
 		if envelope.Type == "" {
 			envelope.Type = string(bundle.TypeKeyTemplate)
 		}
 		if envelope.Type != string(bundle.TypeKeyTemplate) {
-			return v2model.ValidationFailed("not a template document",
-				v2model.Issue{Path: "/type", Message: fmt.Sprintf("expected type \"template\", got %q", envelope.Type)})
+			return templateTypeMismatch(sentType)
 		}
 	}
 	// a template must name its target type — the editor derives the layout
@@ -1089,7 +1232,7 @@ func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, enve
 		if !s.typeKeyExists(spaceId, envelope.Type) {
 			return s.unknownTypeKeyError(spaceId, envelope.Type, "/type", v)
 		}
-		if err := rejectRestrictedType(envelope.Type); err != nil {
+		if err := rejectRestrictedType(envelope.Type, sentType); err != nil {
 			return err
 		}
 		// the bundled table answers for a type key forever, so existence alone
@@ -1097,7 +1240,7 @@ func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, enve
 		// create landed a new object in a type whose route 404s, and a
 		// reinstall lit it back up (§8.41; the type twin of the property
 		// refusal below)
-		if err := s.refuseRemovedType(ctx, spaceId, envelope.Type, docSpelling(spellings, envelope.Type), "/type"); err != nil {
+		if err := s.refuseRemovedType(ctx, spaceId, envelope.Type, sentType, "/type"); err != nil {
 			return err
 		}
 	}
@@ -1105,7 +1248,7 @@ func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, enve
 		if !s.typeKeyExists(spaceId, envelope.TemplateFor) {
 			return s.unknownTypeKeyError(spaceId, envelope.TemplateFor, "/template_for", v)
 		}
-		if err := s.refuseRemovedType(ctx, spaceId, envelope.TemplateFor, docSpelling(spellings, envelope.TemplateFor), "/template_for"); err != nil {
+		if err := s.refuseRemovedType(ctx, spaceId, envelope.TemplateFor, orDefault(sent.TemplateFor, envelope.TemplateFor), "/template_for"); err != nil {
 			return err
 		}
 	}
@@ -1113,11 +1256,54 @@ func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, enve
 	// SPEC §2: collection_items requires a collection document.
 	if len(envelope.Items) > 0 && envelope.Type != string(bundle.TypeKeyCollection) {
 		return v2model.ValidationFailed("items on a non-collection document",
-			v2model.Issue{Path: "/collection_items", Message: fmt.Sprintf("collection_items requires type \"collection\", got %q", envelope.Type)}.Hintf("create a collection with %s", v2model.RefCreateCollection(spaceId)))
+			v2model.Issue{Path: "/collection_items", Message: fmt.Sprintf("collection_items requires type \"collection\", got %q", sentType)}.Hintf("create a collection with %s", v2model.RefCreateCollection(spaceId)))
 	}
 
 	// property keys must exist — did-you-mean, never silent create (R9)
 	return s.validatePropertyKeys(ctx, spaceId, envelope.Properties, spellings)
+}
+
+// documentOptionSites addresses an option refusal on a create body at the
+// member the caller wrote the name in, in the spelling written there: a
+// properties value (the body is canonicalized by import time, so spellings
+// maps each stored key back to what was sent), or a filter value or custom
+// sort order inside a dataview block's views (read from the body as sent).
+func (s *Service) documentOptionSites(spaceId string, sentBody []byte, props map[string]json.RawMessage, spellings map[string]string) (func(domain.RelationKey, string) *optionErrorSite, error) {
+	kc, err := s.newKeyCanon(spaceId)
+	if err != nil {
+		return nil, fmt.Errorf("load the key vocabulary of space %s: %w", spaceId, err)
+	}
+	idx := newOptionSiteIndex(kc.canonKey)
+	for _, key := range sortedKeys(props) {
+		spelling := orDefault(spellings[key], key)
+		idx.recordAs(key, spelling, props[key], propertiesPointer(spelling))
+	}
+	var doc struct {
+		Blocks []struct {
+			Views json.RawMessage `json:"views"`
+		} `json:"blocks"`
+	}
+	if json.Unmarshal(sentBody, &doc) == nil {
+		for j, block := range doc.Blocks {
+			idx.views(block.Views, fmt.Sprintf("/blocks/%d/views", j))
+		}
+	}
+	return idx.lookup, nil
+}
+
+// sentTypeTerms are a create body's type slots exactly as the caller wrote
+// them.
+type sentTypeTerms struct {
+	Type        string `json:"type"`
+	TemplateFor string `json:"template_for"`
+}
+
+// orDefault is value, or fallback when value is empty.
+func orDefault(value, fallback string) string {
+	if value != "" {
+		return value
+	}
+	return fallback
 }
 
 // refuseRemovedType is the type-namespace removal gate for one canonicalized
@@ -1147,7 +1333,7 @@ func (s *Service) refuseRemovedType(ctx context.Context, spaceId, typeKey, spell
 	}
 	if isRemoved {
 		v := errKeysFor(ctx)
-		return v2model.ValidationFailed(fmt.Sprintf("removed %s", v.typeWord()), removedTypeIssue(spaceId, typeKey, path, v))
+		return v2model.ValidationFailed(fmt.Sprintf("removed %s", v.typeWord()), removedTypeIssueAs(spaceId, spelledAs, path))
 	}
 	return nil
 }
@@ -1221,7 +1407,7 @@ func (s *Service) validatePropertyKeys(ctx context.Context, spaceId string, prop
 					return err
 				}
 				if isRemoved {
-					issues = append(issues, removedPropertyIssue(spaceId, key, spelledAs(key), "/properties/"+spelledAs(key), v))
+					issues = append(issues, removedPropertyIssue(spaceId, key, spelledAs(key), propertiesPointer(spelledAs(key)), v))
 					removedCount++
 				}
 			}
@@ -1239,14 +1425,14 @@ func (s *Service) validatePropertyKeys(ctx context.Context, spaceId string, prop
 		// row, by its slug): refused as removed, which is what happened to
 		// it, rather than as unknown
 		if entry, removed := s.removedCustomProperty(spaceId, key); removed {
-			issues = append(issues, removedCustomPropertyIssue(spaceId, entry, spelledAs(key), "/properties/"+spelledAs(key), v))
+			issues = append(issues, removedCustomPropertyIssue(spaceId, entry, spelledAs(key), propertiesPointer(spelledAs(key)), v))
 			removedCount++
 			continue
 		}
 		if known == nil {
 			known = knownPropertyKeysIn(entries, v)
 		}
-		issues = append(issues, unknownPropertyIssue(key, "/properties/"+spelledAs(key), known, propertyListHint(spaceId), v))
+		issues = append(issues, unknownPropertyIssue(key, propertiesPointer(spelledAs(key)), known, propertyListHint(spaceId), v))
 	}
 	if len(issues) > 0 {
 		// the envelope names what actually happened: "unknown" on a key the
@@ -1264,16 +1450,18 @@ func (s *Service) validatePropertyKeys(ctx context.Context, spaceId string, prop
 
 // rejectRestrictedType blocks creation of system-managed types through the
 // generic object path (mirrors createObjectInSpace's guards).
-func rejectRestrictedType(typeKey string) error {
+// The decision is made on the canonical typeKey; the refusal quotes sent,
+// the term the caller wrote ("IMAGE", not "image").
+func rejectRestrictedType(typeKey, sent string) error {
 	key := domain.TypeKey(typeKey)
 	if t, err := bundle.GetType(key); err == nil && t.RestrictObjectCreation {
 		return v2model.ValidationFailed("this type cannot be created through the API",
-			v2model.Issue{Path: "/type", Message: fmt.Sprintf("creation of %q objects is restricted", typeKey)})
+			v2model.Issue{Path: "/type", Message: fmt.Sprintf("creation of %q objects is restricted", sent)})
 	}
 	switch key {
 	case bundle.TypeKeyFile, bundle.TypeKeyImage, bundle.TypeKeyAudio, bundle.TypeKeyVideo:
 		return v2model.ValidationFailed("file objects are created by upload",
-			v2model.Issue{Path: "/type", Message: fmt.Sprintf("%q objects come from file uploads", typeKey)}.Hintf("upload one with %s", v2model.NewRef(v2model.OpUploadFile)))
+			v2model.Issue{Path: "/type", Message: fmt.Sprintf("%q objects come from file uploads", sent)}.Hintf("upload one with %s", v2model.NewRef(v2model.OpUploadFile)))
 	}
 	return nil
 }
@@ -1286,13 +1474,4 @@ func sortedKeys[V any](m map[string]V) []string {
 	}
 	sort.Strings(keys)
 	return keys
-}
-
-// docSpelling is the caller's original spelling of a canonicalized key, the
-// key itself when canonicalization left it alone.
-func docSpelling(spellings map[string]string, key string) string {
-	if original, ok := spellings[key]; ok {
-		return original
-	}
-	return key
 }

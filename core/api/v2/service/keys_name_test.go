@@ -93,11 +93,12 @@ func TestResolvePropertyInputDisplayNames(t *testing.T) {
 		// when
 		_, ok, ambiguous := fx.resolvePropertyInput("Sprint goal", twins)
 
-		// then: both holders named, by the one address that always resolves
+		// then: both holders named by the public key each answers to — the
+		// first's slug, and the stored key of the twin, which has no slug
 		assert.False(t, ok)
 		require.Len(t, ambiguous, 2)
-		assert.Contains(t, joinedCandidates(ambiguous), "6a7663db61fab21cd4b9e201")
-		assert.Contains(t, joinedCandidates(ambiguous), "6a7663db61fab21cd4b9e205")
+		assert.Equal(t, `"Sprint goal" (key goal_field, id rel-goal) and "Sprint goal" (key 6a7663db61fab21cd4b9e205, id rel-goal-twin)`,
+			joinedCandidates(ambiguous))
 	})
 
 	t.Run("two visible names in one fold class refuse with both candidates", func(t *testing.T) {
@@ -148,9 +149,8 @@ func TestResolvePropertyInputDisplayNames(t *testing.T) {
 		// then
 		assert.False(t, ok)
 		require.Len(t, ambiguous, 2)
-		assert.Contains(t, joinedCandidates(ambiguous), "rel-due-claim")
-		assert.Contains(t, joinedCandidates(ambiguous), "the bundled")
-		assert.Contains(t, joinedCandidates(ambiguous), "dueDate")
+		assert.Equal(t, `"Due date" (key 6a7663db61fab21cd4b9e207, id rel-due-claim) and the bundled "Due date" (key due_date)`,
+			joinedCandidates(ambiguous), "the built-in is named by its public slug, never its stored camelCase key")
 	})
 
 	t.Run("an installed bundled property renamed live still answers its bundled name with its Id", func(t *testing.T) {

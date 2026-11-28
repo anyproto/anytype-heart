@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -56,8 +57,8 @@ func TestEchoSpaceRefKeepsHintAndReferencesAligned(t *testing.T) {
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
 		issue := body.Issues[0]
 		assert.Equal(t, v2model.RefListPropertyOptions(short, key), issue.SeeAlso[0], "space id echoed, the key untouched")
-		assert.Equal(t, "check the spelling against GET /v2/spaces/"+short+"/properties/"+key+"/options in space "+short, issue.Hint,
-			"the rendering follows the reference; the prose around it is echoed")
+		assert.Equal(t, "check the spelling against GET /v2/spaces/"+short+"/properties/"+url.PathEscape(key)+"/options in space "+short, issue.Hint,
+			"the rendering follows the reference, which escapes the key as a path segment; the prose around it is echoed")
 		assert.Equal(t, "no such option in "+short, issue.Message)
 		assert.Contains(t, issue.Hint, issue.SeeAlso[0].String())
 	})

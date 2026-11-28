@@ -451,6 +451,40 @@ func TestV2DiscussionIsAChatForTheMessageOperations(t *testing.T) {
 		assert.Contains(t, got.Warnings[0].Message, "2 quote block(s), 1 link block(s), 1 embed block(s), 2 styled text block(s)")
 	})
 
+	t.Run("the loss warning says what a preview would drop and what an edit dropped", func(t *testing.T) {
+		quoted := func() *model.ChatMessage {
+			return &model.ChatMessage{Id: "msg1", Message: &model.ChatMessageMessageContent{}, Blocks: []*model.ChatMessageMessageBlock{
+				{Content: &model.ChatMessageMessageBlockContentOfEditorQuote{EditorQuote: &model.ChatMessageMessageBlockEditorQuote{BlockId: "b1", Content: &model.ChatMessageMessageBlockText{Text: "q1"}}}},
+			}}
+		}
+		for _, tc := range []struct {
+			dryRun bool
+			want   v2model.Issue
+		}{
+			{dryRun: true, want: v2model.Issue{Path: "/text",
+				Message: "this edit would replace the message's blocks with the text: 1 quote block(s) the text cannot express would be dropped",
+				Hint:    "quotes, links and embeds cannot be written through this API; keep the original message if they matter"}},
+			{dryRun: false, want: v2model.Issue{Path: "/text",
+				Message: "this edit replaced the message's blocks with the text: 1 quote block(s) the text cannot express were dropped",
+				Hint:    "quotes, links and embeds cannot be written through this API, so they cannot be put back here"}},
+		} {
+			// given
+			fx := newV2Fixture(t)
+			fx.addDiscussion(t, testDiscussionId)
+			fx.mwMock.EXPECT().ChatGetMessagesByIds(mock.Anything, mock.Anything).Return(&pb.RpcChatGetMessagesByIdsResponse{Messages: []*model.ChatMessage{quoted()}}).Once()
+			if !tc.dryRun {
+				fx.mwMock.EXPECT().ChatEditMessageContent(mock.Anything, mock.Anything).Return(&pb.RpcChatEditMessageContentResponse{}).Once()
+			}
+
+			// when
+			got, err := fx.EditChatMessage(context.Background(), testSpaceId, testDiscussionId, "msg1", v2model.EditChatMessageRequest{Text: "new"}, tc.dryRun)
+
+			// then
+			require.NoError(t, err, "dryRun=%v", tc.dryRun)
+			assert.Equal(t, []v2model.Issue{tc.want}, got.Warnings, "dryRun=%v", tc.dryRun)
+		}
+	})
+
 	t.Run("a space-chat edit keeps its blocks and warns about nothing", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.addChat(t, testChatId, "Team chat", 1000)
@@ -724,3 +758,61 @@ func TestV2ObjectReadServesTheDiscussionMember(t *testing.T) {
 
 // treeUnknownErr is the reader's answer for an id no tree has.
 func treeUnknownErr() error { return treestorage.ErrUnknownTreeId }
+
+// The write references a discussion or chat preview hands out stay previews:
+// the archived object's restore and the steer to an object's thread.
+func TestV2DiscussionPreviewRefsStayPreviews(t *testing.T) {
+	ctx := context.Background()
+	t.Run("an archived object's restore", func(t *testing.T) {
+		for _, dryRun := range []bool{false, true} {
+			// given
+			fx := newV2Fixture(t)
+			fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "page1").Return(pageRead(model.SmartBlockType_Page, ""), nil).Maybe()
+			fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+				bundle.RelationKeyId:             domain.String("page1"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+				bundle.RelationKeyIsArchived:     domain.Bool(true),
+			}})
+			want := v2model.RefRestoreObject(testSpaceId, "page1")
+			if dryRun {
+				want = want.With("dry_run", "true")
+			}
+
+			// when
+			_, err := fx.CreateDiscussion(ctx, testSpaceId, "page1", dryRun)
+
+			// then
+			e := v2Err(t, err)
+			require.Len(t, e.Issues, 1)
+			assert.Equal(t, []v2model.Ref{want}, e.Issues[0].SeeAlso, "dryRun=%v", dryRun)
+		}
+	})
+
+	t.Run("a page id sent as chat_id is steered to its thread, and a preview to a preview", func(t *testing.T) {
+		for _, tc := range []struct {
+			dryRun bool
+			want   v2model.Issue
+		}{
+			{want: v2model.Issue{Path: "chat_id", Message: `its layout is "basic"`}.
+				Hintf("chat ids come from %s; for this object's comment thread, use the id from %s as chat_id",
+					v2model.RefListChats(testSpaceId), v2model.RefCreateDiscussion(testSpaceId, "page1"))},
+			{dryRun: true, want: v2model.Issue{Path: "chat_id", Message: `its layout is "basic"`}.
+				Hintf("chat ids come from %s; for this object's comment thread, use the discussion member of %s as chat_id, or preview starting one with %s",
+					v2model.RefListChats(testSpaceId), v2model.RefGetObject(testSpaceId, "page1"), v2model.RefCreateDiscussion(testSpaceId, "page1").With("dry_run", "true"))},
+		} {
+			// given
+			fx := newV2Fixture(t)
+			fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+				bundle.RelationKeyId:             domain.String("page1"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			}})
+
+			// when
+			_, err := fx.AddChatMessage(ctx, testSpaceId, "page1", v2model.AddChatMessageRequest{Text: "hi"}, tc.dryRun)
+
+			// then
+			e := v2Err(t, err)
+			assert.Equal(t, []v2model.Issue{tc.want}, e.Issues, "dryRun=%v", tc.dryRun)
+		}
+	})
+}

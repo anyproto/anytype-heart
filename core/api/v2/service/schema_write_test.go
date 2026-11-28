@@ -2,9 +2,11 @@ package v2service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/gogo/protobuf/types"
@@ -363,9 +365,7 @@ func TestV2DeleteType(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.addSelectProperty(t)
 		fx.addTaskType(t)
-		fx.mwMock.EXPECT().ObjectSetIsArchived(mock.Anything, &pb.RpcObjectSetIsArchivedRequest{
-			ContextId: "type-chore", IsArchived: true,
-		}).Return(&pb.RpcObjectSetIsArchivedResponse{Error: &pb.RpcObjectSetIsArchivedResponseError{Code: pb.RpcObjectSetIsArchivedResponseError_NULL}})
+		fx.expectSchemaArchive("type-chore")
 
 		// when
 		result, err := fx.DeleteType(context.Background(), testSpaceId, "chore", false)
@@ -381,6 +381,7 @@ func TestV2DeleteType(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.addSelectProperty(t)
 		fx.addTaskType(t)
+		fx.expectNotInBin("type-chore")
 
 		// when
 		result, err := fx.DeleteType(context.Background(), testSpaceId, "chore", true)
@@ -669,9 +670,7 @@ func TestV2UpdateDeleteProperty(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)
 		fx.addSelectProperty(t)
-		fx.mwMock.EXPECT().ObjectSetIsArchived(mock.Anything, &pb.RpcObjectSetIsArchivedRequest{
-			ContextId: "rel-severity", IsArchived: true,
-		}).Return(&pb.RpcObjectSetIsArchivedResponse{Error: &pb.RpcObjectSetIsArchivedResponseError{Code: pb.RpcObjectSetIsArchivedResponseError_NULL}})
+		fx.expectSchemaArchive("rel-severity")
 
 		// when
 		result, err := fx.DeleteProperty(context.Background(), testSpaceId, "severity", false)
@@ -707,6 +706,8 @@ func TestV2UpdateDeleteProperty(t *testing.T) {
 			},
 		})
 
+		fx.expectNotInBin("rel-severity")
+
 		// when
 		result, err := fx.DeleteProperty(context.Background(), testSpaceId, "severity", true)
 
@@ -715,16 +716,14 @@ func TestV2UpdateDeleteProperty(t *testing.T) {
 		assert.True(t, result.DryRun)
 		require.Len(t, result.Warnings, 2)
 		assert.Contains(t, result.Warnings[0].Message, `2 objects hold a value of "severity"`)
-		assert.Contains(t, result.Warnings[0].Message, "set_properties gives no other object one")
+		assert.Contains(t, result.Warnings[0].Message, "set_properties would give no other object one", "a dry run deleted nothing")
 		assert.Equal(t, "key", result.Warnings[0].Path)
 		assert.Contains(t, result.Warnings[1].Message, `1 type lists "severity" (Chore)`)
 		assert.Contains(t, result.Warnings[1].Message, "keep the entry", "the delete does not edit the type: the entry stays until taken off")
 		assert.Equal(t, []v2model.Ref{v2model.RefGetOpSchema("remove_property")}, result.Warnings[1].SeeAlso)
 
 		// and the real run carries the same warnings
-		fx.mwMock.EXPECT().ObjectSetIsArchived(mock.Anything, &pb.RpcObjectSetIsArchivedRequest{
-			ContextId: "rel-severity", IsArchived: true,
-		}).Return(&pb.RpcObjectSetIsArchivedResponse{Error: &pb.RpcObjectSetIsArchivedResponseError{Code: pb.RpcObjectSetIsArchivedResponseError_NULL}})
+		fx.expectSchemaArchive("rel-severity")
 		real, err := fx.DeleteProperty(context.Background(), testSpaceId, "severity", false)
 		require.NoError(t, err)
 		assert.False(t, real.DryRun)
@@ -741,6 +740,8 @@ func TestV2UpdateDeleteProperty(t *testing.T) {
 			"severity":                       domain.String("opt-high"),
 		}})
 
+		fx.expectNotInBin("rel-severity")
+
 		// when
 		result, err := fx.DeleteProperty(context.Background(), testSpaceId, "Severity", true)
 
@@ -750,4 +751,381 @@ func TestV2UpdateDeleteProperty(t *testing.T) {
 		assert.Contains(t, result.Warnings[0].Message, `1 object holds a value of "severity"`)
 		assert.NotContains(t, result.Warnings[0].Message, `"Severity"`)
 	})
+}
+
+// expectSchemaArchive expects a real schema delete: the Bin read that finds
+// the type or property not yet in the Bin, then the archive.
+func (fx *v2Fixture) expectSchemaArchive(id string) {
+	fx.expectNotInBin(id)
+	fx.mwMock.EXPECT().ObjectSetIsArchived(mock.Anything, &pb.RpcObjectSetIsArchivedRequest{ContextId: id, IsArchived: true}).
+		Return(&pb.RpcObjectSetIsArchivedResponse{Error: &pb.RpcObjectSetIsArchivedResponseError{Code: pb.RpcObjectSetIsArchivedResponseError_NULL}}).Once()
+}
+
+// expectNotInBin is the Bin read a schema delete makes before it acts, on
+// the dry run and the real run alike.
+func (fx *v2Fixture) expectNotInBin(id string) {
+	fx.readerMock.EXPECT().InBin(mock.Anything, testSpaceId, id).Return(false, nil).Once()
+}
+
+// newSchemaDeleteFixture is a space where the type "chore" has two objects,
+// one of them holds a value of the property "severity", and chore lists it.
+func newSchemaDeleteFixture(t *testing.T) *v2Fixture {
+	fx := newV2Fixture(t)
+	fx.addSelectProperty(t)
+	fx.addTaskType(t)
+	fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:             domain.String("c1"),
+			bundle.RelationKeyType:           domain.String("type-chore"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			"severity":                       domain.String("opt-high"),
+		},
+		{
+			bundle.RelationKeyId:             domain.String("c2"),
+			bundle.RelationKeyType:           domain.String("type-chore"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+		},
+	})
+	return fx
+}
+
+// A schema delete speaks for the run it rides on. Both runs carry the same
+// warnings, what the delete leaves behind; a dry run words them as what the
+// delete would do, a real delete as what it did. Neither promises how reads
+// will spell what is left: that depends on the read's key mode and on every
+// other removed property or type, so the receipt says where the values and
+// objects stay instead.
+func TestV2SchemaDeleteSpeaksForTheRun(t *testing.T) {
+	ctx := context.Background()
+	holders := func(dryRun bool) v2model.Issue {
+		if dryRun {
+			return v2model.Issue{Path: "key", Message: `1 object holds a value of "severity"; after the delete those values would stay on the objects, readable and editable in place, but set_properties would give no other object one, until this same property is restored in the app (a new property with the same name is a different property)`}.
+				WithHint(v2model.Plain("a dry run reports this without deleting"))
+		}
+		return v2model.Issue{Path: "key", Message: `1 object holds a value of "severity"; those values stay on the objects, readable and editable in place, but set_properties gives no other object one, until this same property is restored in the app (a new property with the same name is a different property)`}.
+			WithHint(v2model.Plain("the property was moved to the Bin; to use it again, restore it from the Bin in the Anytype app"))
+	}
+	typeList := func(dryRun bool) v2model.Issue {
+		message := `1 type lists "severity" (Chore); their property lists and views keep the entry until it is taken off them`
+		if dryRun {
+			message = `1 type lists "severity" (Chore); after the delete their property lists and views would keep the entry until it is taken off them`
+		}
+		return v2model.Issue{Path: "key", Message: message}.
+			Hintf("take it off a type with the remove_property op (%s)", v2model.RefGetOpSchema("remove_property"))
+	}
+
+	t.Run("property delete", func(t *testing.T) {
+		for _, dryRun := range []bool{false, true} {
+			// given
+			fx := newSchemaDeleteFixture(t)
+			if dryRun {
+				fx.expectNotInBin("rel-severity")
+			} else {
+				fx.expectSchemaArchive("rel-severity")
+			}
+			want := []v2model.Issue{holders(dryRun), typeList(dryRun)}
+
+			// when
+			result, err := fx.DeleteProperty(ctx, testSpaceId, "severity", dryRun)
+
+			// then
+			require.NoError(t, err, "dryRun=%v", dryRun)
+			assert.Equal(t, dryRun, result.DryRun)
+			assert.Equal(t, want, result.Warnings, "dryRun=%v", dryRun)
+		}
+	})
+
+	t.Run("type delete", func(t *testing.T) {
+		cases := []struct {
+			dryRun bool
+			want   v2model.Issue
+		}{
+			{want: v2model.Issue{Path: "type", Message: `2 objects are of type "chore"; they keep it, but nothing new is created in it and it is not listed or filterable, until this same type is restored in the app`}.
+				WithHint(v2model.Plain("the type was moved to the Bin; to use it again, restore it from the Bin in the Anytype app"))},
+			{dryRun: true, want: v2model.Issue{Path: "type", Message: `2 objects are of type "chore"; after the delete they would keep it, but nothing new could be created in it and it would not be listed or filterable, until this same type is restored in the app`}.
+				WithHint(v2model.Plain("a dry run reports this without deleting; to keep the type usable, keep it"))},
+		}
+		for _, tc := range cases {
+			// given
+			fx := newSchemaDeleteFixture(t)
+			if tc.dryRun {
+				fx.expectNotInBin("type-chore")
+			} else {
+				fx.expectSchemaArchive("type-chore")
+			}
+
+			// when
+			result, err := fx.DeleteType(ctx, testSpaceId, "chore", tc.dryRun)
+
+			// then
+			require.NoError(t, err, "dryRun=%v", tc.dryRun)
+			assert.Equal(t, tc.dryRun, result.DryRun)
+			assert.Equal(t, []v2model.Issue{tc.want}, result.Warnings, "dryRun=%v", tc.dryRun)
+		}
+	})
+
+	t.Run("a recreated slug changes nothing the receipt promises", func(t *testing.T) {
+		// given: "severity" was deleted once and recreated under the same
+		// slug, and an object holds a value of the replacement. Which key
+		// reads spell the values by after the second delete depends on the
+		// read's key mode and on the removed twin, so the receipt names none
+		const oldKey, newKey = "6a8f2c1d9e4b7a3f5c2d8e01", "6a8f2c1d9e4b7a3f5c2d8e02"
+		for _, dryRun := range []bool{false, true} {
+			fx := newV2Fixture(t)
+			fx.addRelation(t, testSpaceId, objectstore.TestObject{
+				bundle.RelationKeyId: domain.String("rel-sev-old"), bundle.RelationKeyRelationKey: domain.String(oldKey),
+				bundle.RelationKeyApiObjectKey: domain.String("severity"), bundle.RelationKeyName: domain.String("Severity"),
+				bundle.RelationKeyIsArchived: domain.Bool(true),
+			})
+			fx.addRelation(t, testSpaceId, objectstore.TestObject{
+				bundle.RelationKeyId: domain.String("rel-sev-new"), bundle.RelationKeyRelationKey: domain.String(newKey),
+				bundle.RelationKeyApiObjectKey: domain.String("severity"), bundle.RelationKeyName: domain.String("Severity"),
+			})
+			fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+				bundle.RelationKeyId:             domain.String("holder"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+				domain.RelationKey(newKey):       domain.String("high"),
+			}})
+			if dryRun {
+				fx.expectNotInBin("rel-sev-new")
+			} else {
+				fx.expectSchemaArchive("rel-sev-new")
+			}
+			want := []v2model.Issue{holders(dryRun)}
+
+			// when
+			result, err := fx.DeleteProperty(ctx, testSpaceId, "severity", dryRun)
+
+			// then
+			require.NoError(t, err, "dryRun=%v", dryRun)
+			assert.Equal(t, want, result.Warnings, "dryRun=%v", dryRun)
+		}
+	})
+
+	t.Run("an unnamed type listing the property is spelled by its served key, not its unique key", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:                   domain.String("type-gizmo"),
+			bundle.RelationKeyUniqueKey:            domain.String("ot-6aad7fbf61fab205fe53c2f1"),
+			bundle.RelationKeyApiObjectKey:         domain.String("gizmo"),
+			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-severity"}),
+		})
+		fx.expectNotInBin("rel-severity")
+
+		// when
+		result, err := fx.DeleteProperty(ctx, testSpaceId, "severity", true)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, result.Warnings, 1)
+		assert.Contains(t, result.Warnings[0].Message, `1 type lists "severity" (gizmo)`)
+		assert.NotContains(t, result.Warnings[0].Message, "ot-")
+	})
+}
+
+// Heart's archive skips the system types and properties its own features
+// depend on and still answers success, so a delete of one would report a
+// Bin move that never happened. Both runs refuse it up front, addressed at
+// the route's own parameter.
+func TestV2SchemaDeleteRefusesSystemTargets(t *testing.T) {
+	ctx := context.Background()
+	newFx := func(t *testing.T) *v2Fixture {
+		fx := newV2Fixture(t)
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:        domain.String("type-page"),
+			bundle.RelationKeyUniqueKey: domain.String("ot-page"),
+			bundle.RelationKeyName:      domain.String("Page"),
+		})
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:          domain.String("rel-name"),
+			bundle.RelationKeyRelationKey: domain.String("name"),
+			bundle.RelationKeyName:        domain.String("Name"),
+		})
+		return fx
+	}
+	for _, dryRun := range []bool{false, true} {
+		t.Run(fmt.Sprintf("the system type page, dryRun=%v", dryRun), func(t *testing.T) {
+			// given: no Bin read or archive expectation, so reaching either
+			// fails the test
+			fx := newFx(t)
+			want := v2model.NewError(http.StatusForbidden, v2model.CodeForbidden,
+				`type "page" is built into Anytype and cannot be deleted`,
+				v2model.Issue{Path: "type", Message: "the app's own features depend on this type"})
+
+			// when
+			_, err := fx.DeleteType(ctx, testSpaceId, "page", dryRun)
+
+			// then
+			assert.Equal(t, want, v2Err(t, err))
+		})
+		t.Run(fmt.Sprintf("the system property name, dryRun=%v", dryRun), func(t *testing.T) {
+			// given
+			fx := newFx(t)
+			want := v2model.NewError(http.StatusForbidden, v2model.CodeForbidden,
+				`property "name" is built into Anytype and cannot be deleted`,
+				v2model.Issue{Path: "key", Message: "the app's own features depend on this property"})
+
+			// when
+			_, err := fx.DeleteProperty(ctx, testSpaceId, "name", dryRun)
+
+			// then
+			assert.Equal(t, want, v2Err(t, err))
+		})
+	}
+}
+
+// statefulBin is a Bin whose membership follows the archive RPC, the way the
+// real one does: the archive adds the target, and a restore elsewhere can
+// take it out again.
+type statefulBin struct {
+	mu    sync.Mutex
+	in    map[string]bool
+	calls int
+}
+
+func (b *statefulBin) wire(fx *v2Fixture, afterArchive func(b *statefulBin, id string)) {
+	fx.readerMock.EXPECT().InBin(mock.Anything, testSpaceId, mock.Anything).RunAndReturn(
+		func(_ context.Context, _ string, id string) (bool, error) {
+			b.mu.Lock()
+			defer b.mu.Unlock()
+			return b.in[id], nil
+		}).Maybe()
+	fx.mwMock.EXPECT().ObjectSetIsArchived(mock.Anything, mock.Anything).RunAndReturn(
+		func(_ context.Context, req *pb.RpcObjectSetIsArchivedRequest) *pb.RpcObjectSetIsArchivedResponse {
+			b.mu.Lock()
+			b.calls++
+			b.in[req.ContextId] = req.IsArchived
+			b.mu.Unlock()
+			if afterArchive != nil {
+				afterArchive(b, req.ContextId)
+			}
+			return &pb.RpcObjectSetIsArchivedResponse{Error: &pb.RpcObjectSetIsArchivedResponseError{Code: pb.RpcObjectSetIsArchivedResponseError_NULL}}
+		}).Maybe()
+}
+
+// A schema delete reads the Bin before it acts. The index row that resolves
+// the type or property as live trails the archive, so a delete repeated
+// before the index catches up would archive again and claim another move;
+// the Bin itself says it is already there, which is the documented 404.
+func TestV2SchemaDeleteReadsTheBinFirst(t *testing.T) {
+	ctx := context.Background()
+	inBinRefusal := func(kind, param, spelling string) *v2model.Error {
+		return v2model.NotFound(fmt.Sprintf("%s %q is already deleted: it is in the Bin", kind, spelling),
+			v2model.Issue{Path: param, Message: "restore it from the Bin in the Anytype app to use it again"})
+	}
+	deletes := []struct {
+		name, id string
+		call     func(fx *v2Fixture, dryRun bool) error
+		refusal  *v2model.Error
+	}{
+		{
+			name: "type", id: "type-chore",
+			call: func(fx *v2Fixture, dryRun bool) error {
+				_, err := fx.DeleteType(ctx, testSpaceId, "chore", dryRun)
+				return err
+			},
+			refusal: inBinRefusal("type", "type", "chore"),
+		},
+		{
+			name: "property", id: "rel-severity",
+			call: func(fx *v2Fixture, dryRun bool) error {
+				_, err := fx.DeleteProperty(ctx, testSpaceId, "severity", dryRun)
+				return err
+			},
+			refusal: inBinRefusal("property", "key", "severity"),
+		},
+	}
+	for _, d := range deletes {
+		t.Run("a "+d.name+" deleted again before the index catches up is a 404, archived once", func(t *testing.T) {
+			// given: the index still says live after the first delete
+			fx := newSchemaDeleteFixture(t)
+			bin := &statefulBin{in: map[string]bool{}}
+			bin.wire(fx, nil)
+
+			// when
+			first := d.call(fx, false)
+			again := d.call(fx, false)
+			preview := d.call(fx, true)
+
+			// then
+			require.NoError(t, first)
+			assert.Equal(t, d.refusal, v2Err(t, again))
+			assert.Equal(t, d.refusal, v2Err(t, preview), "a dry run reads the same Bin")
+			assert.Equal(t, 1, bin.calls)
+		})
+
+		t.Run("a "+d.name+" restored right after its archive still answers the delete that happened", func(t *testing.T) {
+			// given: the app restores the target between the archive and any
+			// later read
+			fx := newSchemaDeleteFixture(t)
+			bin := &statefulBin{in: map[string]bool{}}
+			bin.wire(fx, func(b *statefulBin, id string) {
+				b.mu.Lock()
+				b.in[id] = false
+				b.mu.Unlock()
+			})
+
+			// when
+			err := d.call(fx, false)
+
+			// then
+			require.NoError(t, err)
+			assert.Equal(t, 1, bin.calls)
+		})
+
+		t.Run("a "+d.name+" delete whose Bin read fails is an error, never a guess", func(t *testing.T) {
+			for _, dryRun := range []bool{false, true} {
+				// given: no archive expectation, so an archive fails the test
+				fx := newSchemaDeleteFixture(t)
+				fx.readerMock.EXPECT().InBin(mock.Anything, testSpaceId, d.id).Return(false, errors.New("bin unavailable")).Once()
+
+				// when
+				err := d.call(fx, dryRun)
+
+				// then
+				require.Error(t, err, "dryRun=%v", dryRun)
+				assert.Contains(t, err.Error(), "bin unavailable", "dryRun=%v", dryRun)
+				var apiErr *v2model.Error
+				assert.False(t, errors.As(err, &apiErr), "an infrastructure failure is a 500, not a shaped refusal")
+			}
+		})
+	}
+}
+
+// A space rebuilding on restart can still publish its previous Ok, so a
+// schema dry run decides from the load itself, without waiting for it: it
+// leaves the Bin unopened (opening it would wait for the load) and says the
+// index it answered from can be incomplete, from that same decision.
+func TestV2SchemaDeleteDryRunOfALoadingSpaceWhoseViewSaysOk(t *testing.T) {
+	ctx := context.Background()
+	for _, tc := range []struct {
+		name string
+		call func(fx *v2Fixture) (*v2model.CreateResult, error)
+	}{
+		{"type", func(fx *v2Fixture) (*v2model.CreateResult, error) {
+			return fx.DeleteType(ctx, testSpaceId, "chore", true)
+		}},
+		{"property", func(fx *v2Fixture) (*v2model.CreateResult, error) {
+			return fx.DeleteProperty(ctx, testSpaceId, "severity", true)
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given: no Bin read expectation, so opening the Bin fails the test
+			fx := newSchemaDeleteFixture(t)
+			loads := fx.withLoadingSpace(testSpaceId)
+			require.Empty(t, fx.LoadingSpaceWarnings(ctx, testSpaceId), "the view says Ok")
+			loading := spaceLoadingWarning(fx.servedSpaceRef(ctx, testSpaceId))
+
+			// when
+			result, err := tc.call(fx)
+
+			// then
+			require.NoError(t, err)
+			assert.True(t, result.DryRun)
+			assert.Contains(t, result.Warnings, loading)
+			assert.Empty(t, loads.waitedFor(), "the readiness probe does not wait")
+		})
+	}
 }

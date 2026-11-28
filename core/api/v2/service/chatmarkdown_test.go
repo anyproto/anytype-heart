@@ -318,6 +318,26 @@ func TestV2DiscussionMarkdown(t *testing.T) {
 		assert.Contains(t, result.Warnings[0].Message, "table")
 	})
 
+	t.Run("the table warning describes the message, so a dry run does not claim a post", func(t *testing.T) {
+		for _, dryRun := range []bool{false, true} {
+			// given
+			fx := newV2Fixture(t)
+			fx.addDiscussion(t, testDiscussionId)
+			if !dryRun {
+				fx.mwMock.EXPECT().ChatAddMessage(mock.Anything, mock.Anything).Return(&pb.RpcChatAddMessageResponse{MessageId: "msgNew"}).Once()
+			}
+			want := []v2model.Issue{{Path: "/text", Message: "a chat message cannot hold a table: each row becomes one line, its cells separated by |"}}
+
+			// when
+			got, err := fx.AddChatMessage(context.Background(), testSpaceId, testDiscussionId,
+				v2model.AddChatMessageRequest{Text: "| a | b |\n|---|---|\n| 1 | 2 |"}, dryRun)
+
+			// then
+			require.NoError(t, err, "dryRun=%v", dryRun)
+			assert.Equal(t, want, got.Warnings, "dryRun=%v", dryRun)
+		}
+	})
+
 	t.Run("an empty table cell keeps its column", func(t *testing.T) {
 		// when
 		got, _ := postToDiscussion(t, "| A | B | C |\n|---|---|---|\n| x |  | z |")

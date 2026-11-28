@@ -53,7 +53,7 @@ func decodeSearchRequest(c *gin.Context) (v2model.SearchRequest, bool) {
 	if err := dec.Decode(&req); err != nil {
 		issue := v2model.Issue{Message: err.Error(), Hint: "the search body takes query, type, filter, filters, sorts, fields"}
 		if field, ok := unknownFieldName(err); ok {
-			issue.Path = "/" + field
+			issue.Path = v2model.MemberPointer(field)
 			if field == "limit" || field == "offset" {
 				issue = issue.Hintf("pagination is a query parameter, not a body field — resend with %s", v2model.Resend(field, "25"))
 			}
@@ -150,7 +150,7 @@ func GlobalSearchObjectsHandler(s *v2service.Service) gin.HandlerFunc {
 			RespondError(c, err)
 			return
 		}
-		resp := v2model.NewListResponse(rows, total, offset, limit, hasMore, v2service.SearchNarrowHint)
+		resp := v2model.NewListResponse(rows, total, offset, limit, hasMore, v2service.GlobalSearchNarrowHint(offset, limit))
 		// Cross-space search does not compute an exact total when clipped.
 		if hasMore {
 			resp.Message = "at least " + resp.Message

@@ -32,8 +32,12 @@ type fakeSpaceLoads struct {
 
 func (f *fakeSpaceLoads) WaitLoaded(ctx context.Context, spaceId string) error {
 	f.mu.Lock()
-	f.waited = append(f.waited, spaceId)
 	loading, err := f.loading[spaceId], f.errs[spaceId]
+	// a context already done is a readiness probe: it answers at once, and
+	// is not a wait
+	if ctx.Err() == nil {
+		f.waited = append(f.waited, spaceId)
+	}
 	f.mu.Unlock()
 	if err != nil {
 		return fmt.Errorf("get space %s: %w", spaceId, err)
@@ -592,6 +596,9 @@ func TestDryRunsAndRefusalsDoNotWaitForALoad(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.addTaskType(t)
 		fx.addSelectProperty(t)
+		// the space view is left as it is: a space rebuilding on restart can
+		// still publish its previous Ok, so a schema dry run that leaves the
+		// Bin unopened must learn the load from the port, without waiting
 		loads := fx.withLoadingSpace(testSpaceId)
 		fx.spaceLoadWait = bound
 		return fx, loads

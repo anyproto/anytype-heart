@@ -30,7 +30,7 @@ citation is one nothing in the tree pins yet.
 | C7 | Every object read returns **`etag`** (short opaque token, ≤8 chars, derived from tree heads — NOT the object's `revision` property, which stays in `properties`) plus an `ETag` header. Mutations accept **`If-Match` header only** (the AnyBlock body has no envelope slot for it). **Advisory by default**: without `If-Match`, ops apply last-write-wins and `diff_stats` reports the outcome; with it, mismatch → 409 `etag_mismatch` carrying the current etag. Note: the etag advances on background sync, not only on agent edits — strict If-Match will 409 on sync noise; block-scoped preconditions are the deferred v2.x refinement. Derivation and comparison: §1.2. Two surfaces are exempt and say so at their router, service and handler: **chat** (Phase 6) and **spaces** (Phase 7). | R2; optimistic concurrency (§3.2) |
 | C8 | `Idempotency-Key` honored on all mutations (POST, PATCH, DELETE) and on the data-free `POST /validate` read; replay with the same key returns the stored result; same key with a different request → 409 `idempotency_conflict`. Response always returns created ids where the operation creates them. Scope, identity and the multipart carve-out: §1.2. | agent auto-retry (§3.7); R15 |
 | C9 | `?dry_run=true` on every mutation → would-be diff summary + issues, nothing committed. The response's `dry_run` echo is spelled exactly like the query parameter it answers. | highest-leverage affordance (§3.7) |
-| C10 | Pagination on **every** list surface — objects, search, and the discovery lists (types, properties, **options**): default `limit=25`, `has_more`, truncation messages steer ("312 matches — narrow with filter…"). Options lists take a `prefix=` filter (tag-like properties can hold thousands of options). An out-of-range `limit` is refused in the C6 envelope like any other v2 refusal. | Linear/AXI (§3.4, §3.7); R-minor |
+| C10 | Pagination on **every** list surface — objects, search, and the discovery lists (types, properties, **options**): default `limit=25`, `has_more`, truncation messages steer ("312 matches — narrow with filter…"). Options lists take a `prefix=` filter (tag-like properties can hold thousands of options). An out-of-range `limit` is refused in the C6 envelope like any other v2 refusal. **Every offset-paged list has one total order**: rows that tie on the list's sorts are ordered by object id (option id for options), so over an unchanged result set an `offset` walk at any page size serves each row exactly once. A row added, removed or edited between two pages can still shift the rows after it. The store queries end their sorts with the raw object id (`database.WithIdTieBreak`), in the last sort's direction, ascending after a relevance sort (see the full-text exception below). The append is skipped only when the sorts already hold that raw id, a mark no request can set. An `id` sort orders by id in store-served reads. Without it the store broke ties one way through an index scan and the other way through an in-memory sort, and picked between them by `offset+limit` (GO-7612). Global search merges its per-space cuts on the sort keys each space's store cut them by, keeping each cut's order, and takes a maximum starting offset of 2000: a page whose next offset passes it steers to the space search. **Full-text exception:** only the best 100 matches are ordered by the requested sorts and the relevance boosts; the rest follow by relevance, ties by id. Space search counts those 100 among the candidate matches, global search among the merged rows. Exactly-once holds over the candidate set, at most 2000 docs: a score tie at the budget cut is settled by widening the budget up to that limit, and a tie past it is cut where the index cuts it. Relevance includes a recency boost that moves with the clock, so a full-text walk that crosses an hour can shift rows. | Linear/AXI (§3.4, §3.7); R-minor |
 | C11 | Reads never fail on unknown *content*; anything a representation cannot express is listed in `warnings` (array of the C6 issue shape, warning-grade). Writes never pass through a lossy representation — enforced as a precondition on **every** PATCH (§1.3). | ADF disaster (§3.3) |
 | C12 | Every endpoint documents **one worked example + its JSON Schema**, embedded in OpenAPI and fetchable (§5 discovery). | examples 72→90% (§3.4) |
 | C13 | **Every schema served by discovery for generation purposes — ops, creates, properties, types, the filter string — is strict-mode-compatible**: non-recursive, `additionalProperties: false`, bounded, within vendor complexity caps. Known exception: the structured `filters` array is recursive (SPEC §12 filterNode) and therefore **not constrained-decodable** — documented as such; small models are steered to the `filter` string. | the format's own premise (Addendum A.1); R8 |
@@ -337,9 +337,32 @@ refuses several as `ambiguous_input`; and only last the **display name** and
 its fold, on the same one-or-refuse rule. The format's own chain underneath
 (`pkg/lib/anyblockjson/storeresolver/keyvocab.go:495`) has the same order but
 degrades to the verbatim term wherever v2 would refuse — it never guesses
-either. Ambiguity at any step lists every holder by stored key and id (the
-addresses that always resolve) and never picks by store order; a full miss
-falls to the unknown-key refusal with did-you-mean (§1.3). The chain is wired
+either. Ambiguity at any step lists every holder by id and by an address
+verified to resolve back to it: the key the listings serve it under (its
+slug, or its stored key when the slug is shared or shadowed), else its
+stored key, marked as such. A retry with the address shown reaches that
+holder; renaming is not offered, since a slug is frozen at mint. Holders are listed in order of stored key and then id, and it never
+picks by store order; a full miss
+falls to the unknown-key refusal with did-you-mean (§1.3). The one tie-break
+is the object's type: of several holders, the single one the type lists wins
+(`core/api/v2/service/keys.go:243`). A template is scoped by the type it is
+for, because the type `template` lists none of its properties. So a spelling
+the target lists wins on a template even when it is also the display name of
+a template-owned property (`Template's Type` is `targetObjectType`); the
+exact stored key still addresses that one. A template whose target is
+unknown, or has no live row in the space, keeps its own type
+(`core/api/v2/service/refs.go:705`). A view filter or sort key is settled by
+the type the view's query source names instead (except a display name two
+properties share in a structured view filter, which the codec refuses
+before that scope applies, `core/api/v2/service/viewops.go:623`), as it
+stands at that op
+(a `setOf` edit earlier in the batch moves it), and after a `set_type` the
+batch's later ops are settled by the new type: for a built-in the batch
+installs, by its bundled and default featured properties. The install also
+lists the default recommended and hidden ones, which a dry run and the
+create-missing pre-pass do not see yet (a known gap). The create-missing pre-pass
+uses the same scopes in the same op order as the apply, so it never creates
+an option on another property (`core/api/v2/service/resolver.go:459`). The chain is wired
 into route params, search and set type scopes, document creates,
 `set_properties` keys and the option pre-resolution pass, so one spelling
 works at every level and no channel keeps a private resolution.
@@ -394,6 +417,18 @@ key-addressed routes, did-you-mean candidate lists, existence guards), and it
 with a fresh identity, and DELETE of an already-deleted type or property is a
 404, not a second archive (`core/api/v2/service/keys.go:56`). What a corpse
 still does to a **write** is §2's key-acceptance rules.
+
+**System types and properties cannot be deleted.** DELETE of one of heart's
+system types or properties (`bundle.SystemTypes`, `bundle.SystemRelations`,
+such as `page` or `name`) is a 403 `forbidden` on the dry run and the real
+run alike: heart restricts their deletion, and its archive skips them while
+still answering success. Other bundled types and properties, such as `task`,
+delete like custom ones. A type or property already in the Bin is the
+documented 404 on both runs, read from the Bin itself before anything is
+done, since the index row that resolves it as live trails the archive; a dry
+run of a space still loading answers from the index instead
+(`core/api/v2/service/schema_write.go`, `systemSchemaRefusal` and
+`refuseSchemaInBin`).
 
 **Option listings exclude removed options**: an option belonging to an
 uninstalled property or removed on its own never appears in
@@ -604,7 +639,38 @@ PATCH/DELETE /v2/spaces/{space_id}/properties/{key}    # update / archive
   and created as another (`core/api/v2/service/create.go:934`).
 - **Templates**: no create-from-body RPC exists; `POST /templates` targets
   the generic AnyBlock create path (Template kind + `templateFor`), which the
-  importer already supports (R-note).
+  importer already supports (R-note). A template's type is `template` on
+  both endpoints: `kind: "template"` beside any other type is refused at
+  `/type` before a property name resolves, because the creator would build
+  an object of that other type (`core/api/v2/service/keys.go:1396`).
+- **A value on a property the type does not list is stored and warned
+  about**, on create and on `set_properties`, once, when the object first
+  takes the key. `name`, the system query keys and hidden built-in
+  properties never warn (`core/api/v2/service/refs.go:674`). A template is
+  judged against the type it is for, the one whose objects take its values,
+  never against the type `template`, and the warning names that target. The
+  warning names the type in the request's vocabulary: its display name under
+  `?keys=name`, its slug otherwise, and its display name when a slug
+  collision would expose the stored key. On a dry run it says what the write
+  would do. The type judged against is found by its exact stored key and
+  must be live. A
+  template whose target is unknown, or has no live row in the space, gets no
+  such warning, and neither does a property list that cannot be read
+  (`core/api/v2/service/refs.go:692`).
+- **A template's target is one identity.** It is the `targetObjectType`
+  detail, which heart's own template application reads and a retarget
+  moves; the second type key counts only when that detail is absent. A
+  detail naming no type row this space holds is an unknown target, and its
+  stale second key is not served. GET serves the target as `template_for`
+  under the type `template`, and name scope, off-type warnings, a create's
+  `template` check and the template listing use the same type. A retarget
+  written through `set_properties` is stored as one id, as heart reads it
+  (a second distinct id is refused), and moves the scope of the batch's
+  later ops. A template is known by its object's kind, never by the first
+  type key the index carries. A PATCH whose object changed type or target
+  between its read and the object lock is refused with `etag_mismatch` so
+  the caller retries, and a committing `set_properties` mints no option
+  under the lock (`core/api/v2/service/templates.go:247`).
 - **Every side effect a write creates** — properties and options, real on a
   live run and would-be on a dry run — is reported under `created` in the
   response, each option named once however many ops resolved it
@@ -763,7 +829,7 @@ is §1.6.
   starts from is visible where the templates are. The listing excludes
   uninstalled and hidden rows: offering an id the create path then refuses is
   the same broken loop pointing the other way
-  (`core/api/v2/service/templates.go:279`).
+  (`core/api/v2/service/templates.go:509`).
 - **A type's `default_template` is stored as a one-element list**, which is
   the spelling clients read, and is read back from either spelling.
   `PATCH /types/{type}` with `default_template: ""` clears it — the repair
@@ -863,9 +929,10 @@ error: the upload itself succeeded (`core/api/v2/service/syncstatus.go`,
   tree's signed root is this account AND the first content change carries
   this account's identity together with the caller's app name, compared
   EXACTLY as raw text. Details are never consulted. It **fails closed** — no
-  recorded app name, a nameless caller, a provenance read error or a
-  missing provenance dependency all refuse with 403
-  `not_created_by_this_key` — so objects created in the app, by import, by
+  recorded app name or a nameless caller refuse with 403
+  `not_created_by_this_key`, and a provenance read error or a missing
+  provenance dependency refuse with 500 `internal_error`, which a retry can
+  clear — so objects created in the app, by import, by
   another member, or before provenance existed can only be archived through
   the API. More rules keep a hard delete from destroying another member's
   work or breaking other objects: a change signed by another space member
@@ -1000,7 +1067,13 @@ with no positional/index/offset addressing anywhere (§3.1–3.2). It is:
   carry is REFUSED** at its own `set`/`add`/`remove` entry rather than
   silently rounded, dropped or written as null. The favorite flag stays
   authorable and takes only `true` or `false`
-  (`core/api/v2/service/stateops.go:1236`).
+  (`core/api/v2/service/stateops.go:1236`). **A refusal names the property it
+  refuses the way the caller sent it**, the slug or (under `?keys=name`) the
+  display name, in its message as in its issue path, not by its stored key,
+  which for a space-minted property is a 24-hex id the caller was never
+  served. The spelling is the one written in that field: an op may spell one
+  property two ways in two fields, and each refusal addresses its own
+  (`core/api/v2/service/stateops.go:1102`).
 - **`set_properties` `add`/`remove`**: per-key list edits for list-shaped
   formats only (select, multi_select, objects, files — SPEC §3).
   `{"op":"set_properties","add":{"tags":["urgent"]},"remove":{"assignee":["bafy…"]}}`
@@ -1029,8 +1102,8 @@ with no positional/index/offset addressing anywhere (§3.1–3.2). It is:
   payload position — `ops[3].blocks[0] → "b1a2…"`), `created_views` (its twin
   for server-minted view ids, keyed by the same exact nested payload path),
   `diff_stats`, and `warnings` — the same warning-grade C6 channel reads use,
-  so hazards an edit introduces (for example an unguarded date comparison
-  that also matches undated objects) surface instead of passing silently. A
+  so hazards an edit introduces (for example a date preset its condition
+  ignores) surface instead of passing silently. A
   client-supplied payload id resolves an existing block and preserves that
   identity, so it is absent from both maps. Both receipts follow `?ids=`:
   compact labels by default, full ids with `ids=full`
@@ -1376,14 +1449,13 @@ Secondary example — programmatic composition (the structured array):
   for good. Presence predicates and counting presets keep their values
   untouched (`core/api/v2/service/search.go:790`).
 - **The structured `filters` array is shape-validated before it reaches the
-  store**, because three malformed shapes otherwise degrade silently into
-  MATCH EVERYTHING: a node carrying both the group and the leaf arms, a group
-  with an empty `filters` array, and a leaf with no `condition` (which a
-  misspelled key also produces). Each is a path-addressed 400 whose hint
-  states that the shape matches every object. The gate runs on the query path
-  AND on `POST /queries` and on a view op's `set.filters`, because a persisted
-  match-everything filter is a saved query that quietly contains the whole
-  space. The served schema matches the enforcement: the leaf arm requires
+  store**, because three malformed shapes otherwise degrade silently: a node
+  carrying both the group and the leaf arms, a group with an empty `filters`
+  array, and a leaf with no `condition` (which a misspelled key also
+  produces). Each is a path-addressed 400 whose hint names the repair. The
+  gate runs on the query path AND on `POST /queries` and on a view op's
+  `set.filters`, because a persisted malformed filter is a saved query that
+  quietly filters less than it says. The served schema matches the enforcement: the leaf arm requires
   `condition` and the group arm's `filters` carries `minItems: 1`. The shared
   document codec is deliberately untouched and keeps accepting condition-less
   leaves, since stored dataviews legitimately carry them
@@ -1410,10 +1482,20 @@ Secondary example — programmatic composition (the structured array):
      and sorts. The result includes one lookahead row: `total` is a lower
      bound when clipped, and `has_more` reports whether another page is
      available.
-  5. **Empty-date hazard surfaces.** SPEC §6.2: an unguarded `less`/
-     `lessOrEqual` date comparison matches undated objects. Document import
-     warns; the search path does too — the same warning text rides the C6
-     `warnings` channel.
+  5. **Ordering conditions skip undated objects.** SPEC §6.2: `less`,
+     `less_or_equal`, `greater` and `greater_or_equal` (the spellings the
+     structured form accepts) compared against a date or a date preset never
+     match an object with no value for the property (any-store v2 compares
+     only values of one type), so `dueDate < today()` lists dated objects
+     only. The exception needs `include_time: true` and no preset: a
+     `less_or_equal` or `greater_or_equal` with no value then compares against
+     null and a `valueFromRelation` operand compares encoded bytes, and either
+     can match a missing value. With the default `include_time: false` the
+     operand becomes a day bound (an absent one reads as the epoch day): `>=`
+     and `<` use the start of the day, `>` and `<=` its end, and the undated
+     stay out. To include the
+     undated, OR an `empty` leaf in. Neither import nor search warns about
+     this.
   6. **`type` is a filterable pseudo-key.** The top-level `type` stays a
      single type key (the small-model form, C2). Multi-type queries use the
      filter channel: `type IN ("task", "bug")` — resolved key→id server-side
@@ -1469,9 +1551,13 @@ Secondary example — programmatic composition (the structured array):
   total. Unknown filter and sort keys keep the skip-with-warning behaviour on
   the global path (`core/api/v2/service/search.go:178`).
 - **Stored-view execution (`?view=`) substitutes dynamic placeholders.**
-  SPEC §6.2's `_filter_template_<n>_` values are client-substituted and opaque
-  to the middleware — a query evaluated server-side against the literal string
-  matches nothing. The handler substitutes `_filter_template_2_` → the
+  SPEC §6.2's `_filter_template_<n>_` values are client-substituted; the
+  codec leaves them verbatim. Stored-view execution substitutes into every
+  string-valued leaf, whatever the property's format. Direct search
+  (`POST .../search`) does not substitute: it applies ordinary value
+  validation, so a placeholder in a date leaf or an unknown select option is a
+  400, and on a text leaf it compares the literal token with a warning. The
+  handler substitutes `_filter_template_2_` → the
   caller's participant id (`_participant_<space>_<account>`) and
   `_filter_template_1_` → the hosting object id before building the store
   query; any other placeholder degrades to a C6 warning, never a silent

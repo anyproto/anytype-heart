@@ -108,21 +108,16 @@ func TestFulltextQueryFillsThePage(t *testing.T) {
 // candidate budget, and a budget-dependent NameMatch would shift the object's
 // final score (±1.0) between page requests, breaking pagination consistency.
 func TestFulltextNameMatchBudgetStable(t *testing.T) {
-	fx := NewStoreFixture(t)
 	nameDoc := &ftsearch.DocumentMatch{Score: 3.0, ID: "obj1/r/name"}
 	pluralDoc := &ftsearch.DocumentMatch{Score: 1.0, ID: "obj1/r/pluralName"}
 
-	searchReturning := func(docs ...*ftsearch.DocumentMatch) func() ([]*ftsearch.DocumentMatch, error) {
-		return func() ([]*ftsearch.DocumentMatch, error) { return docs, nil }
-	}
-
 	// small budget: only the name doc is in the candidate set
-	small, _, err := fx.performFulltextSearch(true, searchReturning(nameDoc))
+	small, err := GroupFulltextResults([]*ftsearch.DocumentMatch{nameDoc}, true)
 	require.NoError(t, err)
 	require.Len(t, small, 1)
 
 	// bigger budget: the pluralName doc enters and becomes the representative
-	big, _, err := fx.performFulltextSearch(true, searchReturning(nameDoc, pluralDoc))
+	big, err := GroupFulltextResults([]*ftsearch.DocumentMatch{nameDoc, pluralDoc}, true)
 	require.NoError(t, err)
 	require.Len(t, big, 1)
 
@@ -132,6 +127,26 @@ func TestFulltextNameMatchBudgetStable(t *testing.T) {
 	assert.True(t, big[0].NameMatch)
 	assert.Equal(t, bundle.RelationKeyPluralName.String(), big[0].Path.RelationKey,
 		"representative doc keeps the pluralName preference for metadata")
+
+	t.Run("the best doc decides the score gate", func(t *testing.T) {
+		// given: a weak body match with highlights, and a weaker pluralName
+		// match without, which only a bigger budget reads
+		bodyDoc := &ftsearch.DocumentMatch{Score: 0.015, ID: "obj2/b/body", Fragments: map[string]*ftsearch.Highlight{
+			"Text": {Text: "needle", Ranges: [][]int{{0, 6}}},
+		}}
+		weakPluralDoc := &ftsearch.DocumentMatch{Score: 0.010, ID: "obj2/r/pluralName"}
+
+		// when
+		small, err := GroupFulltextResults([]*ftsearch.DocumentMatch{bodyDoc}, true)
+		require.NoError(t, err)
+		big, err := GroupFulltextResults([]*ftsearch.DocumentMatch{bodyDoc, weakPluralDoc}, true)
+		require.NoError(t, err)
+
+		// then: admitted at both budgets, with the best doc's score
+		require.Len(t, small, 1)
+		require.Len(t, big, 1, "a bigger budget must not drop an admitted object")
+		assert.Equal(t, small[0].Score, big[0].Score)
+	})
 }
 
 // The tail beyond the re-rank head is already in final order, so it must be

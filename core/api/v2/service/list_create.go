@@ -118,21 +118,31 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 	// the read-only search path.
 	// kc canonicalizes the request's property spellings (served slugs →
 	// stored keys) — the query DOCUMENT persists these keys, and a served
-	// spelling landing in a dataview filter would bind a RelationKey the
-	// store never matches, silently (review cause 3)
+	// spelling landing in a dataview filter would bind a RelationKey no
+	// relation owns, silently (review cause 3)
 	kc, err := s.newKeyCanon(spaceId)
 	if err != nil {
 		return nil, err
 	}
 	kc.scope = s.typePropertyScope(spaceId, typeId)
+	// the compact string is the member the caller wrote; its parsed leaves
+	// have no array of their own to be addressed in
+	fromCompact := req.Filter != ""
 	if req.Filter != "" {
 		// "type" joins the reference set only so the discovery-served grammar
 		// example (`type IN (…)`) parses to a targeted error below instead of
 		// an unknown-key message that cannot explain itself
-		refKeys := appendMissing(append(kc.withServedSpellings(s.typePropertyKeys(spaceId, typeId)), "name", "type"), v2SystemQueryKeys...)
+		typeKeys := s.typePropertyKeys(spaceId, typeId)
+		acceptKeys := appendMissing(append(kc.withServedSpellings(typeKeys), "name", "type"), kc.withServedSpellings(v2SystemQueryKeys)...)
+		// a refusal is worded over the served spellings: acceptance keeps
+		// every stored key, and a space-minted property's stored key is a
+		// bson id no listing serves (served, not the request's vocabulary —
+		// the compact grammar spells bare keys only). The hidden counters
+		// parse, but are not listed.
+		refKeys := appendMissing(append(kc.servedSpellings(typeKeys), "name", "type"), servedBundledSpellings(v2SystemQueryKeys, errKeys{})...)
 		sort.Strings(refKeys)
-		// the hidden counters parse, but a refusal is worded without them
-		acceptKeys := appendMissing(append([]string(nil), refKeys...), kc.withServedSpellings(v2BundledQueryKeys)...)
+		acceptKeys = appendMissing(acceptKeys, kc.withServedSpellings(v2BundledQueryKeys)...)
+		sort.Strings(acceptKeys)
 		parsed, err := parseSearchFilter(req.Filter, filterstring.Options{
 			KnownKeys:     acceptKeys,
 			ResolveFormat: canonFormatName(s.formatNameResolver(spaceId), kc),
@@ -160,6 +170,9 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 	// here (round-six R6-7)
 	spelled := req
 	if req.Filters, err = kc.canonicalizeRawChannel(req.Filters, "filters", "/filters"); err != nil {
+		if fromCompact {
+			return nil, rebaseIssuePaths(err, func(string) string { return "/filter" })
+		}
 		return nil, err
 	}
 	if req.Sorts, err = kc.canonicalizeRawChannel(req.Sorts, "sorts", "/sorts"); err != nil {
@@ -187,6 +200,15 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 	if err != nil {
 		return nil, err
 	}
+	if fromCompact {
+		// the caller wrote one string; /filters/<i>/... is the server's own
+		// parse of it, not a member the request has
+		for i := range referenced {
+			if referenced[i].path == "/filters" || strings.HasPrefix(referenced[i].path, "/filters/") {
+				referenced[i].path = "/filter"
+			}
+		}
+	}
 	if err := s.validateViewKeys(ctx, spaceId, typeId, callerType, referenced); err != nil {
 		return nil, err
 	}
@@ -195,7 +217,10 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 	if err != nil {
 		return nil, err
 	}
-	result, err := s.createFromDocument(ctx, spaceId, doc, docCreateOptions{dryRun: dryRun, createMissingOptions: createMissingOptions})
+	result, err := s.createFromDocument(ctx, spaceId, doc, docCreateOptions{
+		dryRun: dryRun, createMissingOptions: createMissingOptions,
+		optionSites: queryOptionSites(spelled, fromCompact, kc.canonKey),
+	})
 	if err != nil {
 		return nil, queryDocumentError(err, len(req.Views) > 0)
 	}
@@ -428,7 +453,7 @@ func collectViewPropertyKeys(req v2model.CreateQueryRequest, canon func(string) 
 		for i, view := range views {
 			prefix := fmt.Sprintf("/views/%d", i)
 			if view.GroupBy != "" {
-				refs = append(refs, viewKeyRef{key: canon(view.GroupBy), spelled: view.GroupBy, path: prefix + "/groupBy"})
+				refs = append(refs, viewKeyRef{key: canon(view.GroupBy), spelled: view.GroupBy, path: prefix + "/group_by"})
 			}
 			for j, sort := range view.Sorts {
 				if sort.Property != "" {
@@ -489,10 +514,17 @@ func (s *Service) validateViewKeys(ctx context.Context, spaceId, typeId, typeKey
 	// inputs arrive canonicalized (CreateQuery's kc rewrite); the candidate
 	// list must speak the SERVED spelling — never advertise what the
 	// channel rejects (review cause 3)
-	entries, entriesErr := s.liveProperties(spaceId)
-	if entriesErr == nil {
+	// a failed read fails the request: listing the raw keys instead would
+	// advertise stored keys, bson ids for space-minted properties
+	entries, err := s.liveProperties(spaceId)
+	if err != nil {
+		return fmt.Errorf("load properties of space %s: %w", spaceId, err)
+	}
+	{
 		kc := &keyCanon{s: s, spaceId: spaceId, entries: entries}
-		typeKeys = kc.servedSpellings(typeKeys)
+		// structured input can carry any spelling, so the list speaks the
+		// request's vocabulary (names under ?keys=name)
+		typeKeys = kc.referenceSpellings(typeKeys, v)
 	}
 	// the bundled-removal set, primed lazily and only when an allowed key is
 	// not live-installed (§7.5a-2)
@@ -500,7 +532,7 @@ func (s *Service) validateViewKeys(ctx context.Context, spaceId, typeId, typeKey
 	var issues []v2model.Issue
 	for _, ref := range refs {
 		if allowed[ref.key] {
-			if entriesErr == nil && bundle.HasRelation(domain.RelationKey(ref.key)) && !propertyKeyInstalledIn(entries, ref.key) {
+			if bundle.HasRelation(domain.RelationKey(ref.key)) && !propertyKeyInstalledIn(entries, ref.key) {
 				if removedBundled == nil {
 					var err error
 					if removedBundled, err = s.bundledRemovalSet(spaceId); err != nil {
@@ -701,4 +733,21 @@ func convertRawViewDateFilters(raw json.RawMessage, formatName func(string) (str
 		return nil, fmt.Errorf("encode views: %w", err)
 	}
 	return out, nil
+}
+
+// queryOptionSites indexes the option names a query create's filters, sorts
+// and views carry, at the member the caller wrote each in. The query
+// DOCUMENT is composed by the server, so an option refusal raised while
+// importing it would otherwise point into a document the caller never saw
+// (/properties/<key>), under the served spelling.
+func queryOptionSites(spelled v2model.CreateQueryRequest, compact bool, canon func(string) string) func(domain.RelationKey, string) *optionErrorSite {
+	idx := newOptionSiteIndex(canon)
+	if compact {
+		idx.filters(spelled.Filters, "/filter", true)
+	} else {
+		idx.filters(spelled.Filters, "/filters", false)
+	}
+	idx.sorts(spelled.Sorts, "/sorts")
+	idx.views(spelled.Views, "/views")
+	return idx.lookup
 }

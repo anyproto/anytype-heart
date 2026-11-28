@@ -17,7 +17,9 @@ package v2service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -59,6 +61,10 @@ type creatingResolvers struct {
 	// per resolver in Options().
 	keys   *apiKeyVocab
 	dryRun bool
+	// previewing is the request's own mode, which words a refusal. It is
+	// dryRun except for the pre-lock probe, which resolves dry for every
+	// request and must still speak for a real one.
+	previewing bool
 	// createMissingOptions is the caller's explicit ?create_missing_options=true consent.
 	// Without it an unmatched select NAME is a refusal, not a mint (A2).
 	createMissingOptions bool
@@ -74,6 +80,14 @@ type creatingResolvers struct {
 	// settle a key two properties answer to (resolvePropertyInputIn); nil
 	// when no type is in view
 	scope map[string]bool
+	// patch is the PATCH's once-read view of the object (newPatchContext),
+	// nil on every other write
+	patch *patchContext
+	// locked is set while a committing PATCH's set_properties decodes under
+	// the object lock: every option it may need was minted by the prewarm,
+	// so a miss there means the object moved since the plan (errPlanDrift)
+	// and nothing is minted outside the counted limit
+	locked bool
 	// mintedSlugs are the slugs THIS request already minted (doc key by
 	// slug): the live snapshot predates them, so without this a document
 	// declaring two spellings of one key minted both (review cause 4)
@@ -100,6 +114,22 @@ type creatingResolvers struct {
 	mintedSlugByKey map[string]string
 	sideEffects     v2model.SideEffects
 	errs            []error
+	// definitionPaths locates each property_definitions entry by the term it
+	// names its property with, for a refusal PropertyId raises on it
+	// (definitionPathsOf); nil outside a type body.
+	definitionPaths map[string]string
+	// optionSite is the member being resolved right now — a set_properties
+	// entry or a view filter leaf, in the PATCH prewarm or the op itself: an
+	// option refusal is addressed to it, in the spelling the caller wrote.
+	optionSite *optionErrorSite
+	// siteFor locates the member a document create carries an option name
+	// in, when no single entry is being resolved (the whole body imports at
+	// once). Nil falls back to /properties/<served key>.
+	siteFor func(key domain.RelationKey, name string) *optionErrorSite
+	// pendingSpelling is the spelling each property was written under when
+	// a dry pass recorded an option it would create, for the M5 refusal
+	// that names the properties to check (stored key → as sent)
+	pendingSpelling map[string]string
 
 	// echoPropertyIds are relation object ids the PATCHed type's recommended
 	// lists ALREADY carry (UpdateType primes them; empty on create). They are
@@ -137,6 +167,7 @@ func (s *Service) newCreatingResolvers(ctx context.Context, spaceId string, dryR
 		spaceId:              spaceId,
 		reads:                storeresolver.New(s.store.SpaceIndex(spaceId)),
 		dryRun:               dryRun,
+		previewing:           dryRun,
 		createMissingOptions: createMissingOptions,
 		createdOptions:       map[optionRef]string{},
 		declaredColors:       map[optionRef]string{},
@@ -160,7 +191,7 @@ func (s *Service) newCreatingResolvers(ctx context.Context, spaceId string, dryR
 // but a corruption: the slug of a BSON-keyed relation is unknown to the
 // bundled table, so `manual_property` imported as the literal stored key
 // `manual_property` — a dataview naming a relation key no relation object
-// owns (columns unbind, filters match nothing, silently). In the other
+// owns (columns unbind, filters read a key nothing carries, silently). In the other
 // direction the bundled table over-reaches: a space holding a live relation
 // STORED under `due_date` had that key rewritten to bundled `dueDate` and the
 // value landed on the wrong property, even though canonicalizeDocumentKeys
@@ -321,6 +352,12 @@ func (r *creatingResolvers) OptionId(key domain.RelationKey, name string) (strin
 	// said, so a caller got a green dry run and a refusal on the very same
 	// body. A dry run that disagrees with the real run is worse than none,
 	// because an agent dry-runs first precisely to avoid the refusal.
+	if r.locked {
+		if len(r.errs) == 0 || !errors.Is(r.errs[len(r.errs)-1], errPlanDrift) {
+			r.errs = append(r.errs, errPlanDrift)
+		}
+		return "", false
+	}
 	if !r.createMissingOptions {
 		// A2 backstop. The pre-lock guard (guardCreateMissing) is what a PATCH
 		// caller actually hits, and it refuses with the whole pending list;
@@ -329,7 +366,12 @@ func (r *creatingResolvers) OptionId(key domain.RelationKey, name string) (strin
 		// caller. Refusing beats returning "unresolved": that would store the
 		// NAME where an option id belongs — a value matching nothing that
 		// reads as if it matched.
-		r.errs = append(r.errs, optionConsentError(r.spaceId, r.keys.PropertySlug(string(key)), name))
+		servedKey := r.keys.PropertySlug(string(key))
+		if site := r.siteOf(key, name); site != nil {
+			r.errs = append(r.errs, optionConsentErrorAs(r.spaceId, site.spelling, servedKey, name, site.path, r.previewing))
+		} else {
+			r.errs = append(r.errs, optionConsentError(r.spaceId, servedKey, name, r.previewing))
+		}
 		return "", false
 	}
 	if r.dryRun {
@@ -339,6 +381,12 @@ func (r *creatingResolvers) OptionId(key domain.RelationKey, name string) (strin
 		if !r.dryReported[ref] {
 			r.dryReported[ref] = true
 			r.sideEffects.Options = append(r.sideEffects.Options, v2model.CreatedOption{Property: string(key), Name: name})
+			if site := r.siteOf(key, name); site != nil {
+				if r.pendingSpelling == nil {
+					r.pendingSpelling = map[string]string{}
+				}
+				r.pendingSpelling[string(key)] = site.spelling
+			}
 		}
 		return "", false
 	}
@@ -372,10 +420,30 @@ func (r *creatingResolvers) recordOptionAmbiguity(key domain.RelationKey, name s
 	if r.keys == nil {
 		r.Options() // prime the same served slug vocabulary as the document
 	}
-	r.errs = append(r.errs, optionAmbiguityError(r.keys.PropertySlug(string(key)), name, matches))
+	served := r.keys.PropertySlug(string(key))
+	spelling, path := served, propertiesPointer(served)
+	if site := r.siteOf(key, name); site != nil {
+		spelling, path = site.spelling, site.path
+	}
+	r.errs = append(r.errs, optionAmbiguityError(spelling, path, name, matches))
 }
 
-func optionAmbiguityError(servedKey, name string, matches []*model.RelationOption) error {
+// siteOf is where an option refusal about key is addressed: the entry being
+// resolved right now, else the member a create body carries the name in,
+// else nil (the create channel's /properties/<served key>).
+func (r *creatingResolvers) siteOf(key domain.RelationKey, name string) *optionErrorSite {
+	if r.optionSite != nil {
+		return r.optionSite
+	}
+	if r.siteFor != nil {
+		return r.siteFor(key, name)
+	}
+	return nil
+}
+
+// optionAmbiguityError names the property as spelled at path, the member the
+// caller wrote the ambiguous name in.
+func optionAmbiguityError(spelling, path, name string, matches []*model.RelationOption) error {
 	ordered := append([]*model.RelationOption(nil), matches...)
 	sort.SliceStable(ordered, func(i, j int) bool {
 		if ordered[i].Text != ordered[j].Text {
@@ -395,9 +463,9 @@ func optionAmbiguityError(servedKey, name string, matches []*model.RelationOptio
 		descriptions = append(descriptions, fmt.Sprintf("%q (%s)", option.Text, color))
 	}
 	return v2model.AmbiguousInput(
-		fmt.Sprintf("option name %q is ambiguous for property %q", name, servedKey),
+		fmt.Sprintf("option name %q is ambiguous for property %q", name, spelling),
 		v2model.Issue{
-			Path:    "/properties/" + servedKey,
+			Path:    path,
 			Message: fmt.Sprintf("the name matches %d options: %s", len(matches), strings.Join(descriptions, ", ")),
 			Hint:    "rename or remove one duplicate option before addressing it by name; v2 has no unambiguous bare-name choice",
 		})
@@ -411,23 +479,56 @@ func optionAmbiguityError(servedKey, name string, matches []*model.RelationOptio
 // served one throughout — path, message, and the URL it tells the caller to
 // fetch. An error reporting the stored id makes the caller map it back to the
 // field they wrote by hand.
-func optionConsentError(spaceId, servedKey, name string) error {
-	return optionConsentErrorAt(spaceId, servedKey, name, "/properties/"+servedKey)
+func optionConsentError(spaceId, servedKey, name string, dryRun bool) error {
+	return optionConsentErrorAt(spaceId, servedKey, name, propertiesPointer(servedKey), dryRun)
 }
 
 // optionConsentErrorAt is the same refusal addressed at the member the caller
 // actually wrote. The type channel declares its options under
 // property_definitions, and a body sent there has no `properties` member at
 // all — the flat path rejects one by name — so the default path above would
-// point at a field the caller could not have written.
-func optionConsentErrorAt(spaceId, servedKey, name, path string) error {
+// point at a field the caller could not have written. A dry run's resend
+// carries dry_run itself: copied as a REST query in place of the request's,
+// a bare create_missing_options=true would commit the write it previews.
+func optionConsentErrorAt(spaceId, servedKey, name, path string, dryRun bool) error {
+	return optionConsentErrorAs(spaceId, servedKey, servedKey, name, path, dryRun)
+}
+
+// optionConsentErrorAs is the refusal for a property the caller spelled
+// differently from its served key: the message quotes the spelling (a
+// display name under ?keys=name), while the options route keeps the served
+// key, which is always a valid path segment.
+func optionConsentErrorAs(spaceId, spelling, servedKey, name, path string, dryRun bool) error {
+	repair, resend := "check the spelling against %s, or resend with %s to create it", v2model.Resend("create_missing_options", "true")
+	if dryRun {
+		repair, resend = "check the spelling against %s, or resend with %s to preview creating it", resend.With("dry_run", "true")
+	}
 	return v2model.ValidationFailed("option does not exist",
 		v2model.Issue{
 			Path:    path,
-			Message: fmt.Sprintf("property %q has no option named %q, and this request did not ask to create one", servedKey, name),
-		}.Hintf("check the spelling against %s, or resend with %s to create it",
-			v2model.RefListPropertyOptions(spaceId, servedKey), v2model.Resend("create_missing_options", "true")))
+			Message: fmt.Sprintf("property %q has no option named %q, and this request did not ask to create one", spelling, name),
+		}.Hintf(repair, v2model.RefListPropertyOptions(spaceId, servedKey), resend))
 }
+
+// optionConsentErrorPending is the refusal for options declared on a
+// property this request would create: there is no options route to check
+// against yet, so the one repair offered is the consent resend, which on a
+// dry run keeps dry_run (optionConsentErrorAs).
+func optionConsentErrorPending(spelling, name, path string, dryRun bool) error {
+	repair, resend := "resend with %s to create it", v2model.Resend("create_missing_options", "true")
+	if dryRun {
+		repair, resend = "resend with %s to preview creating it", resend.With("dry_run", "true")
+	}
+	return v2model.ValidationFailed("option does not exist",
+		v2model.Issue{
+			Path:    path,
+			Message: fmt.Sprintf("property %q has no option named %q, and this request did not ask to create one", spelling, name),
+		}.Hintf(repair, resend))
+}
+
+// optionErrorSite is the request member an option refusal is addressed to,
+// and the spelling the caller gave its property there.
+type optionErrorSite struct{ path, spelling string }
 
 // prewarmCreateMissing resolves a PATCH's create-missing references BEFORE
 // the object lock is taken (review B6/A6): the create surfaces in PATCH
@@ -441,16 +542,51 @@ func optionConsentErrorAt(spaceId, servedKey, name, path string) error {
 // from the in-lock op pass, in unchanged order — and create failures ride
 // resolvers.err(), exactly where the in-lock path checks them.
 func (s *Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creatingResolvers) {
-	for _, raw := range ops {
+	// the apply resolves each op's keys in the scope the object has at that
+	// op, so the prewarm walks the same order: a set_type moves the scope of
+	// the ops after it, and the walk leaves the scope as it found it
+	base := resolvers.scope
+	defer func() { resolvers.scope = base }()
+	var viewScope map[string]bool
+	if resolvers.patch != nil {
+		viewScope = resolvers.patch.viewScope
+	}
+	var typeEntries []typeEntry
+	typeEntriesLoaded := false
+	// the two references that move a scope, followed through the batch
+	targetKey, setOfKey := bundle.RelationKeyTargetObjectType.String(), bundle.RelationKeySetOf.String()
+	var targetIds, setOfIds []string
+	if resolvers.patch != nil {
+		targetIds = pbtypes.GetStringList(resolvers.patch.details, targetKey)
+		setOfIds = pbtypes.GetStringList(resolvers.patch.details, setOfKey)
+	}
+	for i, raw := range ops {
 		var probe struct {
-			Op  string                     `json:"op"`
-			Set map[string]json.RawMessage `json:"set"`
+			Op   string                     `json:"op"`
+			Type string                     `json:"type"`
+			Set  map[string]json.RawMessage `json:"set"`
 			// add resolves option names with the same create-missing
 			// semantics as set (v0.3.5), so it prewarms too — otherwise
 			// option creation moves back inside the object lock
-			Add map[string]json.RawMessage `json:"add"`
+			Add    map[string]json.RawMessage `json:"add"`
+			Remove map[string]json.RawMessage `json:"remove"`
+			Unset  []string                   `json:"unset"`
 		}
 		if err := json.Unmarshal(raw, &probe); err != nil {
+			continue
+		}
+		if probe.Op == "set_type" {
+			if !typeEntriesLoaded {
+				typeEntriesLoaded = true
+				typeEntries = s.prewarmTypes(resolvers.spaceId)
+			}
+			props, err := resolvers.liveProps()
+			if err != nil {
+				props = nil
+			}
+			if scope, ok := s.setTypeScope(resolvers.spaceId, probe.Type, typeEntries, props); ok {
+				resolvers.scope = scope
+			}
 			continue
 		}
 		if probe.Op == "update_view" || probe.Op == "insert_view" {
@@ -460,14 +596,21 @@ func (s *Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creatin
 			// the live proto at commit and imported with a no-create resolver
 			// (viewops.go commitDataviewBlock), so this prewarm is exhaustive:
 			// a name it cannot see is a name the commit will not mint.
-			s.prewarmViewOptionValues(probe.Set, resolvers)
+			s.prewarmViewOptionValues(probe.Set, fmt.Sprintf("ops[%d].set", i), resolvers, viewScope)
 			continue
 		}
 		if probe.Op != "set_properties" {
 			continue
 		}
-		for field, values := range map[string]map[string]json.RawMessage{"set": probe.Set, "add": probe.Add} {
-			for rawKey, rawValue := range values {
+		// set, then add, each in key order: the first refusal recorded is the
+		// one reported, so the walk must not depend on map iteration order
+		for _, field := range []string{"set", "add"} {
+			values := probe.Set
+			if field == "add" {
+				values = probe.Add
+			}
+			for _, rawKey := range sortedKeys(values) {
+				rawValue := values[rawKey]
 				// A key claimed by more than one field is rejected by the apply
 				// path, so prewarming it would create an option for a PATCH
 				// that cannot succeed. Skip it here and let the op error.
@@ -501,10 +644,124 @@ func (s *Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creatin
 						continue
 					}
 				}
+				// a refusal is addressed to this entry, in the caller's spelling:
+				// the default /properties/<served key> names a member a PATCH
+				// does not have, and under ?keys=name a spelling it did not use
+				resolvers.optionSite = &optionErrorSite{path: fmt.Sprintf("ops[%d].%s.%s", i, field, rawKey), spelling: rawKey}
 				anyblockjson.UnmarshalPropertyValue(key, value, resolvers.Options())
+				resolvers.optionSite = nil
+			}
+		}
+		// a retarget moves the scope of the ops after this one, as the
+		// apply's does (v2StateApplier.retarget), and a new query source
+		// moves the scope of the view ops after it (v2StateApplier.viewScope
+		// reads the state as it stands)
+		if ids, touched := detailEdit(resolvers, targetKey, targetIds, probe.Set, probe.Add, probe.Remove, probe.Unset); touched {
+			targetIds = ids
+			if scope, ok := s.retargetScope(resolvers, ids); ok {
+				resolvers.scope = scope
+			}
+		}
+		if ids, touched := detailEdit(resolvers, setOfKey, setOfIds, probe.Set, probe.Add, probe.Remove, probe.Unset); touched {
+			setOfIds = ids
+			viewScope = nil
+			if len(ids) == 1 {
+				viewScope = s.typePropertyScope(resolvers.spaceId, ids[0])
 			}
 		}
 	}
+}
+
+// errPlanDrift is a committing PATCH finding the object moved between the
+// read its plan was made from and the lock: another target, another type,
+// or an option the prewarm did not mint. The caller retries against the
+// object as it is now (PatchObject answers with the etag mismatch).
+var errPlanDrift = errors.New("the object changed after this request read it")
+
+// prewarmTypes is the live type set the prewarm follows a set_type with.
+// Lenient: an unread set keeps the scope it had, and the apply reads the
+// types again and fails closed on the same error.
+func (s *Service) prewarmTypes(spaceId string) []typeEntry {
+	entries, err := s.liveTypes(spaceId)
+	if err != nil {
+		return nil
+	}
+	return entries
+}
+
+// retargetScope is the scope a template takes on once a set_properties op
+// leaves ids in its targetObjectType: the new target's, resolved as
+// templateTargetOf resolves a stored one. ok=false: the object is not a
+// template, or the target cannot be read here (the apply reads it again and
+// fails closed).
+func (s *Service) retargetScope(resolvers *creatingResolvers, ids []string) (map[string]bool, bool) {
+	pc := resolvers.patch
+	if pc == nil || !pc.template {
+		return nil, false
+	}
+	var details *types.Struct
+	if len(ids) > 0 {
+		details = &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyTargetObjectType.String(): pbtypes.StringList(ids)}}
+	}
+	target, err := s.templateTargetOf(resolvers.spaceId, details, pc.typeKeys)
+	if err != nil {
+		return nil, false
+	}
+	scope, err := s.templateScope(resolvers.spaceId, target)
+	if err != nil {
+		return nil, false
+	}
+	return scope, true
+}
+
+// detailEdit is what one set_properties op leaves in an object-reference
+// detail that held current: its four channels in the order the apply runs
+// them (set, unset, add, remove), each value decoded as the apply decodes
+// it, so a folded reference counts as the id it stands for. touched: the op
+// edits the detail at all. Lenient like the rest of the prewarm: a value it
+// cannot decode contributes no ids.
+func detailEdit(resolvers *creatingResolvers, key string, current []string, set, add, remove map[string]json.RawMessage, unset []string) (ids []string, touched bool) {
+	decode := func(raw json.RawMessage) []string {
+		var value any
+		if err := json.Unmarshal(raw, &value); err != nil {
+			return nil
+		}
+		decoded, err := anyblockjson.UnmarshalPropertyValueChecked(key, value, resolvers.Options())
+		if err != nil || decoded == nil {
+			return nil
+		}
+		return pbtypes.GetStringListValue(decoded)
+	}
+	edits := func(rawKey string) bool { return resolvers.canonicalPropertyKey(rawKey) == key }
+	ids = current
+	for rawKey, raw := range set {
+		if edits(rawKey) {
+			ids, touched = decode(raw), true
+		}
+	}
+	for _, rawKey := range unset {
+		if edits(rawKey) {
+			ids, touched = nil, true
+		}
+	}
+	for rawKey, raw := range add {
+		if edits(rawKey) {
+			for _, id := range decode(raw) {
+				if !slices.Contains(ids, id) {
+					ids = append(slices.Clone(ids), id)
+				}
+			}
+			touched = true
+		}
+	}
+	for rawKey, raw := range remove {
+		if edits(rawKey) {
+			drop := decode(raw)
+			ids = slices.DeleteFunc(slices.Clone(ids), func(id string) bool { return slices.Contains(drop, id) })
+			touched = true
+		}
+	}
+	return ids, touched
 }
 
 // viewFilterProbe decodes a §6.2 filter tree just deep enough to reach the
@@ -521,9 +778,16 @@ type viewFilterProbe struct {
 // properties, both of which the dataview import resolves with create-missing
 // (SPEC §6.2/§3) — so the creates run before the object lock and the M5
 // bound sees them. Same leniency contract as the set_properties pass.
-func (s *Service) prewarmViewOptionValues(set map[string]json.RawMessage, resolvers *creatingResolvers) {
-	resolveSelect := func(rawKey string, value json.RawMessage) {
-		key := resolvers.canonicalPropertyKey(rawKey)
+//
+// setPath is the op's set channel ("ops[2].set"): a consent refusal is
+// addressed to the leaf or sort the caller wrote, in the property spelling
+// written there — the default /properties/<served key> names a member a
+// view op does not have.
+func (s *Service) prewarmViewOptionValues(set map[string]json.RawMessage, setPath string, resolvers *creatingResolvers, viewScope map[string]bool) {
+	resolveSelect := func(rawKey string, value json.RawMessage, path string) {
+		// a view key is the query source's, as the apply resolves it
+		// (canonicalViewKey), never the object's own type's
+		key := resolvers.canonicalPropertyKeyIn(rawKey, viewScope)
 		format, err := bundle.GetRelationFormat(domain.RelationKey(key))
 		if err != nil {
 			var ok bool
@@ -538,30 +802,49 @@ func (s *Service) prewarmViewOptionValues(set map[string]json.RawMessage, resolv
 		if err := json.Unmarshal(value, &decoded); err != nil || decoded == nil {
 			return
 		}
+		resolvers.optionSite = &optionErrorSite{path: path, spelling: rawKey}
 		anyblockjson.UnmarshalPropertyValue(key, decoded, resolvers.Options())
+		resolvers.optionSite = nil
 	}
-	var walkFilters func(nodes []viewFilterProbe)
-	walkFilters = func(nodes []viewFilterProbe) {
-		for _, node := range nodes {
+	// base is the array the nodes sit in; a compact filter string has no
+	// array the caller wrote, so every leaf it parses to is addressed at the
+	// string itself
+	var walkFilters func(nodes []viewFilterProbe, base string, compact bool)
+	walkFilters = func(nodes []viewFilterProbe, base string, compact bool) {
+		for j, node := range nodes {
+			at := fmt.Sprintf("%s[%d]", base, j)
+			if compact {
+				at = base
+			}
 			if len(node.Filters) > 0 {
-				walkFilters(node.Filters)
+				nested := at + ".filters"
+				if compact {
+					nested = base
+				}
+				walkFilters(node.Filters, nested, compact)
 				continue
 			}
-			// empty/notEmpty/exists leaves carry no meaningful value (§11) —
-			// resolving one here would create an option the view never uses
-			switch node.Condition {
-			case "empty", "notEmpty", "exists":
+			// a presence leaf carries no meaningful value (§11) — resolving one
+			// here would create an option the view never uses. The SAME
+			// predicate the applier strips those values with
+			// (stripValuelessConditionValues), or the wire spelling one of them
+			// misses (not_empty) creates an option the other discards
+			if presenceCondition(node.Condition) {
 				continue
 			}
 			if node.Property != "" && len(node.Value) > 0 {
-				resolveSelect(node.Property, node.Value)
+				leaf := at + ".value"
+				if compact {
+					leaf = base
+				}
+				resolveSelect(node.Property, node.Value, leaf)
 			}
 		}
 	}
 	if raw, ok := set["filters"]; ok {
 		var nodes []viewFilterProbe
 		if err := json.Unmarshal(raw, &nodes); err == nil {
-			walkFilters(nodes)
+			walkFilters(nodes, setPath+".filters", false)
 		}
 	}
 	if raw, ok := set["filter"]; ok {
@@ -575,7 +858,7 @@ func (s *Service) prewarmViewOptionValues(set map[string]json.RawMessage, resolv
 			if err == nil {
 				var nodes []viewFilterProbe
 				if err := json.Unmarshal(parsed, &nodes); err == nil {
-					walkFilters(nodes)
+					walkFilters(nodes, setPath+".filter", true)
 				}
 			}
 		}
@@ -586,9 +869,9 @@ func (s *Service) prewarmViewOptionValues(set map[string]json.RawMessage, resolv
 			CustomOrder json.RawMessage `json:"custom_order"`
 		}
 		if err := json.Unmarshal(raw, &sorts); err == nil {
-			for _, sort := range sorts {
+			for j, sort := range sorts {
 				if sort.Property != "" && len(sort.CustomOrder) > 0 {
-					resolveSelect(sort.Property, sort.CustomOrder)
+					resolveSelect(sort.Property, sort.CustomOrder, fmt.Sprintf("%s.sorts[%d].custom_order", setPath, j))
 				}
 			}
 		}
@@ -675,7 +958,13 @@ func (r *creatingResolvers) PropertyId(def anyblockjson.PropertyDefinition) (str
 	}
 	entry, ok, ambiguous := r.svc.resolvePropertyInputIn(docKey, entries, r.scope)
 	if len(ambiguous) > 0 {
-		r.errs = append(r.errs, fmt.Errorf("property key %q is ambiguous — held by %s; address the intended property by its listed key", docKey, strings.Join(ambiguous, " and ")))
+		// a caller's term several properties answer to: the same typed 400
+		// every channel gives, addressed at the definition that named it
+		path, ok := r.definitionPaths[docKey]
+		if !ok {
+			path = "/type_settings/property_definitions"
+		}
+		r.errs = append(r.errs, ambiguousKeyError(r.v.propertyWord(), docKey, path, ambiguous))
 		return "", false
 	}
 	if ok && entry.Id != "" {
@@ -927,6 +1216,11 @@ func (r *creatingResolvers) MintingProperty(docKey string) bool {
 // error passes through too (the prewarm is best-effort; the in-lock pass
 // fails closed on the same error).
 func (r *creatingResolvers) canonicalPropertyKey(key string) string {
+	return r.canonicalPropertyKeyIn(key, r.scope)
+}
+
+// canonicalPropertyKeyIn is canonicalPropertyKey in an explicit scope.
+func (r *creatingResolvers) canonicalPropertyKeyIn(key string, scope map[string]bool) string {
 	if _, ok := r.createdProps[key]; ok {
 		return key
 	}
@@ -934,7 +1228,7 @@ func (r *creatingResolvers) canonicalPropertyKey(key string) string {
 	if err != nil {
 		return key
 	}
-	entry, ok, ambiguous := r.svc.resolvePropertyInputIn(key, entries, r.scope)
+	entry, ok, ambiguous := r.svc.resolvePropertyInputIn(key, entries, scope)
 	if len(ambiguous) > 0 || !ok {
 		return key
 	}
@@ -952,4 +1246,137 @@ func (r *creatingResolvers) liveProps() ([]propertyEntry, error) {
 	r.livePropsLoaded = true
 	r.liveEntries, r.livePropsErr = r.svc.liveProperties(r.spaceId)
 	return r.liveEntries, r.livePropsErr
+}
+
+// definitionPathsOf maps each property_definitions entry's identifying term
+// (property, else internal_key, else name — the order the format states) to
+// the pointer of that member, first entry winning.
+func definitionPathsOf(raw json.RawMessage) map[string]string {
+	var defs []map[string]any
+	if len(raw) == 0 || json.Unmarshal(raw, &defs) != nil {
+		return nil
+	}
+	out := map[string]string{}
+	for i, def := range defs {
+		for _, member := range []string{"property", "internal_key", "name"} {
+			if term, ok := def[member].(string); ok && term != "" {
+				if _, seen := out[term]; !seen {
+					out[term] = fmt.Sprintf("/type_settings/property_definitions/%d/%s", i, member)
+				}
+				break
+			}
+		}
+	}
+	return out
+}
+
+// optionSiteIndex records where a request carries each option name, by
+// (stored key, name), with the property spelled as the caller wrote it —
+// for a body that imports whole, where no single entry is being resolved
+// when an option refusal fires.
+type optionSiteIndex struct {
+	sites map[optionRef]*optionErrorSite
+	canon func(string) string
+}
+
+func newOptionSiteIndex(canon func(string) string) *optionSiteIndex {
+	return &optionSiteIndex{sites: map[optionRef]*optionErrorSite{}, canon: canon}
+}
+
+// recordAs indexes the names a value carries (a string or a list of them)
+// under key, at path, spelled as spelling. The first occurrence wins.
+func (x *optionSiteIndex) recordAs(key, spelling string, value json.RawMessage, path string) {
+	if key == "" || len(value) == 0 {
+		return
+	}
+	var decoded any
+	if json.Unmarshal(value, &decoded) != nil {
+		return
+	}
+	var names []string
+	switch v := decoded.(type) {
+	case string:
+		names = append(names, v)
+	case []any:
+		for _, item := range v {
+			if name, ok := item.(string); ok {
+				names = append(names, name)
+			}
+		}
+	}
+	for _, name := range names {
+		ref := optionRef{property: key, name: name}
+		if _, taken := x.sites[ref]; !taken {
+			x.sites[ref] = &optionErrorSite{path: path, spelling: spelling}
+		}
+	}
+}
+
+func (x *optionSiteIndex) record(property string, value json.RawMessage, path string) {
+	if property != "" {
+		x.recordAs(x.canon(property), property, value, path)
+	}
+}
+
+// filters walks a §6.2 filter tree at base; flat addresses every leaf at base
+// itself (a compact string has no array of its own).
+func (x *optionSiteIndex) filters(raw json.RawMessage, base string, flat bool) {
+	var nodes []viewFilterProbe
+	if len(raw) == 0 || json.Unmarshal(raw, &nodes) != nil {
+		return
+	}
+	var walk func(nodes []viewFilterProbe, base string)
+	walk = func(nodes []viewFilterProbe, base string) {
+		for j, node := range nodes {
+			at := fmt.Sprintf("%s/%d", base, j)
+			if flat {
+				at = base
+			}
+			if len(node.Filters) > 0 {
+				nested := at + "/filters"
+				if flat {
+					nested = base
+				}
+				walk(node.Filters, nested)
+				continue
+			}
+			leaf := at + "/value"
+			if flat {
+				leaf = base
+			}
+			x.record(node.Property, node.Value, leaf)
+		}
+	}
+	walk(nodes, base)
+}
+
+func (x *optionSiteIndex) sorts(raw json.RawMessage, base string) {
+	var list []struct {
+		Property    string          `json:"property"`
+		CustomOrder json.RawMessage `json:"custom_order"`
+	}
+	if len(raw) > 0 && json.Unmarshal(raw, &list) == nil {
+		for j, sort := range list {
+			x.record(sort.Property, sort.CustomOrder, fmt.Sprintf("%s/%d/custom_order", base, j))
+		}
+	}
+}
+
+// views walks a views array's filters and sorts at base.
+func (x *optionSiteIndex) views(raw json.RawMessage, base string) {
+	var views []struct {
+		Filters json.RawMessage `json:"filters"`
+		Sorts   json.RawMessage `json:"sorts"`
+	}
+	if len(raw) == 0 || json.Unmarshal(raw, &views) != nil {
+		return
+	}
+	for j, view := range views {
+		x.filters(view.Filters, fmt.Sprintf("%s/%d/filters", base, j), false)
+		x.sorts(view.Sorts, fmt.Sprintf("%s/%d/sorts", base, j))
+	}
+}
+
+func (x *optionSiteIndex) lookup(key domain.RelationKey, name string) *optionErrorSite {
+	return x.sites[optionRef{property: string(key), name: name}]
 }

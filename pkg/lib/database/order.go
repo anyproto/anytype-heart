@@ -31,6 +31,53 @@ type ObjectStore interface {
 	ListRelationOptions(relationKey domain.RelationKey) (options []*model.RelationOption, err error)
 }
 
+// SortKeyer encodes records the way the store sorts them (AnystoreSort).
+// Comparing two keys with bytes.Compare reproduces the store's order, so
+// records merged from several store cuts keep the order each cut was taken
+// in; Order.Compare differs from the store on some sorts (where a day-only
+// date sort puts an empty value, for one). A key reads only the details its
+// sorts read, so its cost does not grow with the record.
+type SortKeyer struct {
+	// sort is the order's store sort, compiled once: a merge keys every row
+	sort  query.Sort
+	deps  []domain.RelationKey
+	arena *anyenc.Arena
+}
+
+// NewSortKeyer builds the keyer of sorts over store, which supplies the
+// relation formats and the option and object order maps: a merge keys each
+// record with the store of its own space. It returns nil for no sorts.
+func NewSortKeyer(store ObjectStore, sorts []SortRequest) *SortKeyer {
+	if len(sorts) == 0 {
+		return nil
+	}
+	deps := make([]domain.RelationKey, 0, len(sorts)+2)
+	for _, sort := range sorts {
+		deps = append(deps, sort.RelationKey)
+		if sort.RelationKey == bundle.RelationKeyName {
+			// a note without a name sorts by its snippet (textSort)
+			deps = append(deps, bundle.RelationKeyResolvedLayout, bundle.RelationKeySnippet)
+		}
+	}
+	return &SortKeyer{
+		sort:  NewSetOrder(store, &anyenc.Arena{}, &collate.Buffer{}, sorts).AnystoreSort(),
+		deps:  deps,
+		arena: &anyenc.Arena{},
+	}
+}
+
+// Key encodes details under the keyer's sorts.
+func (k *SortKeyer) Key(details *domain.Details) []byte {
+	defer k.arena.Reset()
+	value := k.arena.NewObject()
+	for _, key := range k.deps {
+		if v := details.Get(key); v.Ok() {
+			value.Set(string(key), v.ToAnyEnc(k.arena))
+		}
+	}
+	return k.sort.AppendKey(nil, value)
+}
+
 type setOrder []Order
 
 func (so setOrder) Compare(a, b *domain.Details) int {
@@ -82,6 +129,14 @@ func NewKeyOrder(store ObjectStore, arena *anyenc.Arena, collatorBuffer *collate
 	if err != nil {
 		format = sort.Format
 	}
+	// The id relation is object-formatted, so an id sort is an object sort:
+	// by name through an order map in memory, a tie in the store. Only the id
+	// tie-break (IsIdTieBreak) orders the raw id byte-wise, the order of the
+	// store's primary key.
+	rawId := IsIdTieBreak(sort)
+	if rawId {
+		format = model.RelationFormat_shorttext
+	}
 
 	var orderMap *OrderMap
 	if isObjectFormat(format) {
@@ -98,7 +153,7 @@ func NewKeyOrder(store ObjectStore, arena *anyenc.Arena, collatorBuffer *collate
 		orderMapBufferB: make([]byte, 0),
 		arena:           arena,
 		collatorBuffer:  collatorBuffer,
-		disableCollator: sort.NoCollate || sort.RelationKey == bundle.RelationKeyOrderId || sort.RelationKey == bundle.RelationKeySpaceOrder,
+		disableCollator: sort.NoCollate || rawId || sort.RelationKey == bundle.RelationKeyOrderId || sort.RelationKey == bundle.RelationKeySpaceOrder,
 	}
 }
 
@@ -367,10 +422,17 @@ func isObjectFormat(format model.RelationFormat) bool {
 }
 
 func newCustomOrder(arena *anyenc.Arena, key domain.RelationKey, idsIndices map[string]int, keyOrd *keyOrder) customOrder {
+	// an unlisted value ranks after every listed one: a value listed twice
+	// keeps its last index, so the ranks can run past len(idsIndices)
+	unlisted := 0
+	for _, idx := range idsIndices {
+		unlisted = max(unlisted, idx+1)
+	}
 	return customOrder{
 		arena:        arena,
 		key:          key,
 		needOrderMap: idsIndices,
+		unlisted:     unlisted,
 		keyOrd:       keyOrd,
 	}
 }
@@ -379,7 +441,9 @@ type customOrder struct {
 	arena        *anyenc.Arena
 	key          domain.RelationKey
 	needOrderMap map[string]int
-	keyOrd       *keyOrder
+	// unlisted is the rank of a value the custom order does not list
+	unlisted int
+	keyOrd   *keyOrder
 
 	buf []byte
 }
@@ -398,7 +462,7 @@ func (co customOrder) AppendKey(k anyenc.Tuple, v *anyenc.Value) anyenc.Tuple {
 	if !ok {
 		anystoreSort := co.keyOrd.AnystoreSort()
 		// Push to the end
-		k = co.arena.NewNumberInt(len(co.needOrderMap)).MarshalTo(k)
+		k = co.arena.NewNumberInt(co.unlisted).MarshalTo(k)
 		// and add sorting
 		return anystoreSort.AppendKey(k, v)
 	}

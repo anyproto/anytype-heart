@@ -183,10 +183,16 @@ func NotCreatedByThisKey(message string, issues ...Issue) *Error {
 // repair, restoring the object, went unnamed. restorable says whether the
 // restore op takes this object; types and properties are restored in the
 // app, and naming an op that refuses them sent callers in a loop.
-func ObjectArchived(spaceId, objectId string, restorable bool) *Error {
+func ObjectArchived(spaceId, objectId string, restorable, dryRun bool) *Error {
 	issue := Issue{Path: "object_id", Message: "the object is archived"}
 	if restorable {
-		issue = issue.Hintf("restore it with %s, then resend this request", RefRestoreObject(spaceId, objectId))
+		// a preview's restore carries dry_run itself, so following it from a
+		// dry run restores nothing
+		restore := RefRestoreObject(spaceId, objectId)
+		if dryRun {
+			restore = restore.With("dry_run", "true")
+		}
+		issue = issue.Hintf("restore it with %s, then resend this request", restore)
 	} else {
 		issue = issue.WithHint(Plain("restore it from the Bin in the Anytype app, then resend this request"))
 	}
@@ -225,8 +231,8 @@ func VersionUnsupported(documentVersion, supportedVersion string) *Error {
 
 // ListResponse is the C10 paginated list envelope: default limit 25,
 // has_more, and a steering message when the result is truncated. Warnings
-// carry warning-grade C6 issues (C11 — e.g. the unguarded-date-comparison
-// hazard on search, or spaces a global search skipped).
+// carry warning-grade C6 issues (C11 — e.g. an ignored date preset
+// on search, or spaces a global search skipped).
 type ListResponse[T any] struct {
 	Data     []T     `json:"data"`
 	Total    int     `json:"total"`

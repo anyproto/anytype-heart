@@ -366,8 +366,8 @@ func (a *v2StateApplier) applyViewSet(set map[string]json.RawMessage, edited, vi
 // DOCUMENT uses. The view ops merge into exported
 // JSON, which spells slugs, so a key that arrives as a stored key — or as a
 // folded spelling, or as a bundled slug — has to be translated once, on the
-// way in, or it addresses a column that is not there and writes a filter the
-// store can never match.
+// way in, or it addresses a column that is not there and writes a filter on a key
+// no relation owns.
 //
 // This closes the §8.22/§8.23 deferral ("key slots inside view-op set
 // channels accept stored keys only"): every spelling the rest of the API
@@ -467,7 +467,7 @@ func (a *v2StateApplier) canonicalizeDecodedKeySlots(nodes []any, path string, i
 		if len(ambiguous) > 0 {
 			*issues = append(*issues, v2model.Issue{Path: fmt.Sprintf("%s[%d].property", path, i),
 				Message: fmt.Sprintf("%q matches %s", key, strings.Join(ambiguous, " and ")),
-				Hint:    "address the intended one by its exact key"})
+				Hint:    ambiguityHint(ambiguous)})
 			continue
 		}
 		node["property"] = canonical
@@ -503,7 +503,7 @@ func (a *v2StateApplier) applyViewSetField(field, kind string, raw json.RawMessa
 			if len(ambiguous) > 0 {
 				*issues = append(*issues, v2model.Issue{Path: path,
 					Message: fmt.Sprintf("%q matches %s", s, strings.Join(ambiguous, " and ")),
-					Hint:    "address the intended one by its exact key"})
+					Hint:    ambiguityHint(ambiguous)})
 				return nil
 			}
 			s = canonical
@@ -593,9 +593,9 @@ func (a *v2StateApplier) applyViewSorts(raw json.RawMessage, view map[string]any
 
 // applyViewFilters validates a §6.2 structured filters array — the M3 shape
 // gate first (a set PERSISTS its filter, so a malformed shape is not a bad
-// query but a view that quietly matches everything, for good), then the
+// query but a view that quietly filters nothing, for good), then the
 // codec's vocabulary and date-semantics checks — and replaces the view's
-// filters. The §6.2 unguarded-date-comparison finding rides the C11 warnings
+// filters. A codec finding such as an ignored date preset rides the C11 warnings
 // channel, exactly as on document import.
 func (a *v2StateApplier) applyViewFilters(raw json.RawMessage, view map[string]any, path string, issues *[]v2model.Issue, keyUses *[]viewKeyUse) error {
 	nodes, err := decodeFilterNodes(raw, "") // the applier canonicalizes after this, so these leaves are as sent
@@ -680,20 +680,26 @@ func (a *v2StateApplier) applyViewFilterString(raw json.RawMessage, edited, view
 			Message: fmt.Sprintf("%d characters — the cap is %d (the advertised maxLength)", length, maxV2FilterLength)})
 		return nil
 	}
-	refKeys := appendMissing(a.s.knownPropertyKeys(a.spaceId, a.v), "name")
-	refKeys = appendMissing(refKeys, v2SystemQueryKeys...)
+	// accepted: every spelling the channel resolves; advertised: the served
+	// ones, which the compact grammar can spell (bare keys), so a refusal
+	// never lists createdDate beside created_date
+	refKeys := appendMissing(a.s.knownPropertyKeys(a.spaceId, errKeys{}), "name")
+	refKeys = appendMissing(refKeys, servedBundledSpellings(v2SystemQueryKeys, errKeys{})...)
 	for key := range dataviewMembership(edited) {
 		refKeys = appendMissing(refKeys, key)
 	}
 	sort.Strings(refKeys)
-	parsed, err := filterstring.Parse(s, filterstring.Options{
-		KnownKeys: refKeys,
+	acceptKeys := appendMissing(append([]string(nil), refKeys...), a.s.knownPropertyKeys(a.spaceId, a.v)...)
+	acceptKeys = appendMissing(acceptKeys, v2SystemQueryKeys...)
+	sort.Strings(acceptKeys)
+	parsed, err := parseSearchFilter(s, filterstring.Options{
+		KnownKeys: acceptKeys,
 		// the SAME spellings KnownKeys accepts: a served slug must reach the
 		// parser's date conversion too, or `last_modified_date >= "2026-07-01"`
 		// parses to a string and the stored view compares it against int64
 		// (round-six review, the compact half of R6-1)
 		ResolveFormat: a.viewFormatName(),
-	})
+	}, refKeys)
 	if err != nil {
 		fsErr := filterStringError(a.spaceId, err)
 		var v2Err *v2model.Error
@@ -747,7 +753,7 @@ func (a *v2StateApplier) applyViewColumns(patches map[string]json.RawMessage, vi
 		if len(ambiguous) > 0 {
 			*issues = append(*issues, v2model.Issue{Path: path,
 				Message: fmt.Sprintf("%q matches %s", rawKey, strings.Join(ambiguous, " and ")),
-				Hint:    "address the intended one by its exact key"})
+				Hint:    ambiguityHint(ambiguous)})
 			continue
 		}
 		ci := indexOf(key)

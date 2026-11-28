@@ -118,7 +118,7 @@ func typeShortcutDocument(fields map[string]json.RawMessage) (map[string]json.Ra
 		if !typeShortcutKeys[key] {
 			return nil, v2model.ValidationFailed("unknown field in type body",
 				v2model.Issue{
-					Path:    "/" + key,
+					Path:    v2model.MemberPointer(key),
 					Message: fmt.Sprintf("unknown key %q", key),
 					Hint:    "the flat body takes name, plural_name, icon, layout, api_key, default_view, default_template, property_definitions — or send a full AnyBlock document, its definition under type_settings",
 				})

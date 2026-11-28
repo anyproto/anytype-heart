@@ -2392,6 +2392,37 @@ func TestPatchObject(t *testing.T) {
 		assert.Contains(t, apiErr.Issues[0].Hint, "create_missing_options=true")
 	})
 
+	t.Run("an unmatched option's refusal is worded for the caller's run, not the probe's", func(t *testing.T) {
+		// the pre-lock probe always resolves dry, so it never writes; the
+		// refusal it raises still speaks for the request: a real PATCH gets
+		// the real resend, a preview the preview's
+		options := v2model.RefListPropertyOptions(testSpaceId, "severity")
+		for _, tc := range []struct {
+			dryRun bool
+			want   v2model.Issue
+		}{
+			{want: v2model.Issue{Path: "ops[0].set.severity", Message: `property "severity" has no option named "Critical", and this request did not ask to create one`}.
+				Hintf("check the spelling against %s, or resend with %s to create it", options, v2model.Resend("create_missing_options", "true"))},
+			{dryRun: true, want: v2model.Issue{Path: "ops[0].set.severity", Message: `property "severity" has no option named "Critical", and this request did not ask to create one`}.
+				Hintf("check the spelling against %s, or resend with %s to preview creating it", options, v2model.Resend("create_missing_options", "true").With("dry_run", "true"))},
+		} {
+			// given
+			fx := newV2Fixture(t)
+			fx.addSelectProperty(t)
+			fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").
+				Return(editRead(t, editBaseDoc), nil).Maybe()
+
+			// when
+			_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+				patchBody(`{"op":"set_properties","set":{"severity":["Critical"]}}`), "", tc.dryRun, false)
+
+			// then
+			apiErr := v2ErrWithIssue(t, err)
+			require.Len(t, apiErr.Issues, 1, "dryRun=%v", tc.dryRun)
+			assert.Equal(t, tc.want, apiErr.Issues[0], "dryRun=%v", tc.dryRun)
+		}
+	})
+
 	t.Run("an EXISTING option name needs no consent", func(t *testing.T) {
 		// the gate is about minting, not about using: a name the property
 		// already holds resolves on the default path, or the flag would be a
@@ -2449,10 +2480,10 @@ func TestPatchObject(t *testing.T) {
 				assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
 				assert.Equal(t, `option name "Twin option" is ambiguous for property "duplicate_option_labels"`, apiErr.Message)
 				require.Len(t, apiErr.Issues, 1)
-				// the path names the property the CALLER addresses, not the store's
-				// own id: a bson id here is one the caller never wrote and must map
-				// back by hand before they can find the field that failed
-				assert.Equal(t, "/properties/"+servedKey, apiErr.Issues[0].Path)
+				// the path names the entry the CALLER wrote, by the key they
+				// wrote it under — never the store's own id, nor a properties
+				// member a PATCH does not have
+				assert.Equal(t, "ops[0].set."+servedKey, apiErr.Issues[0].Path)
 				assert.Equal(t, `the name matches 2 options: "Twin option" (blue), "Twin option" (red)`, apiErr.Issues[0].Message)
 				assert.Equal(t, "rename or remove one duplicate option before addressing it by name; v2 has no unambiguous bare-name choice", apiErr.Issues[0].Hint)
 			})
@@ -2502,14 +2533,54 @@ func TestPatchObject(t *testing.T) {
 				assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
 				assert.Equal(t, `option name "Twin option" is ambiguous for property "duplicate_option_labels"`, apiErr.Message)
 				require.Len(t, apiErr.Issues, 1)
-				// the path names the property the CALLER addresses, not the store's
-				// own id: a bson id here is one the caller never wrote and must map
-				// back by hand before they can find the field that failed
-				assert.Equal(t, "/properties/"+servedKey, apiErr.Issues[0].Path)
+				// the path names the entry the CALLER wrote, by the key they
+				// wrote it under — never the store's own id, nor a properties
+				// member a PATCH does not have
+				assert.Equal(t, "ops[0].remove."+servedKey, apiErr.Issues[0].Path)
 				assert.Equal(t, `the name matches 2 options: "Twin option" (blue), "Twin option" (red)`, apiErr.Issues[0].Message)
 				assert.Equal(t, "rename or remove one duplicate option before addressing it by name; v2 has no unambiguous bare-name choice", apiErr.Issues[0].Hint)
 			})
 		}
+
+		t.Run("by display name", func(t *testing.T) {
+			// given
+			fx := newV2Fixture(t)
+			fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+				{
+					bundle.RelationKeyId:             domain.String("rel-duplicate-options"),
+					bundle.RelationKeyRelationKey:    domain.String(internalKey),
+					bundle.RelationKeyApiObjectKey:   domain.String(servedKey),
+					bundle.RelationKeyName:           domain.String("Duplicate option labels"),
+					bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_tag)),
+					bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+				},
+				{
+					bundle.RelationKeyId:             domain.String("opt-blue"),
+					bundle.RelationKeyRelationKey:    domain.String(internalKey),
+					bundle.RelationKeyName:           domain.String("Twin option"),
+					bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
+				},
+				{
+					bundle.RelationKeyId:             domain.String("opt-red"),
+					bundle.RelationKeyRelationKey:    domain.String(internalKey),
+					bundle.RelationKeyName:           domain.String("Twin option"),
+					bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
+				},
+			})
+			read := editRead(t, editBaseDoc)
+			read.Snapshot.Details.Fields[internalKey] = pbtypes.StringList([]string{"opt-blue"})
+			fx.expectMutate(read)
+
+			// when
+			_, err := fx.PatchObject(CtxWithNameKeys(ctx), testSpaceId, "obj1",
+				patchBody(`{"op":"set_properties","remove":{"Duplicate option labels":["Twin option"]}}`), "", false, false)
+
+			// then
+			apiErr := v2Err(t, err)
+			assert.Equal(t, `option name "Twin option" is ambiguous for property "Duplicate option labels"`, apiErr.Message)
+			require.Len(t, apiErr.Issues, 1)
+			assert.Equal(t, "ops[0].remove.Duplicate option labels", apiErr.Issues[0].Path)
+		})
 	})
 
 	t.Run("set_properties creates missing select options and reports them", func(t *testing.T) {

@@ -6,8 +6,10 @@ package v2service
 // the format's vocabulary (C2: keys and names, no id/key duality).
 
 import (
+	"cmp"
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -197,10 +199,10 @@ func (s *Service) ListMembers(ctx context.Context, spaceId string, offset, limit
 				Value:       domain.Int64(int64(model.ParticipantStatus_Active)),
 			},
 		},
-		Sorts: []database.SortRequest{{
+		Sorts: database.WithIdTieBreak([]database.SortRequest{{
 			RelationKey: bundle.RelationKeyName,
 			Type:        model.BlockContentDataviewSort_Asc,
-		}},
+		}}),
 		Offset: offset,
 		Limit:  limit + 1,
 	})
@@ -277,47 +279,36 @@ func (s *Service) ListTypes(ctx context.Context, spaceId string, offset, limit i
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, 0, false, err
 	}
-	records, total, err := s.store.SpaceIndex(spaceId).QueryAndCount(database.Query{
-		// live filters: a UI-deleted (uninstalled) type must not list — the
-		// §7.5-requirement-2 corpse policy (keys.go)
-		Filters: append(liveTypeFilters(),
-			database.FilterRequest{
-				RelationKey: bundle.RelationKeyIsHidden,
-				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       domain.Bool(true),
-			}),
-		Sorts: []database.SortRequest{{
+	// one read of the live types serves the rows and the spelling sets,
+	// which count hidden types too, and it is paged here: a record without a
+	// valid unique key serves no row, so it must not count toward total or
+	// has_more (a space holds few types). Live filters: a UI-deleted
+	// (uninstalled) type must not list — the §7.5-requirement-2 corpse
+	// policy (keys.go)
+	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
+		Filters: liveTypeFilters(),
+		Sorts: database.WithIdTieBreak([]database.SortRequest{{
 			RelationKey: bundle.RelationKeyName,
 			Type:        model.BlockContentDataviewSort_Asc,
-		}},
-		Offset: offset,
-		Limit:  limit + 1,
+		}}),
 	})
 	if err != nil {
 		return nil, 0, false, fmt.Errorf("query types in space %s: %w", spaceId, err)
 	}
-
-	hasMore := len(records) > limit
-	if hasMore {
-		records = records[:limit]
-	}
-	liveEntries, err := s.liveTypes(spaceId)
-	if err != nil {
-		return nil, 0, false, err
-	}
-	keyTaken, slugHolders := servedTypeKeySets(liveEntries)
-	rows := make([]v2model.TypeRow, 0, len(records))
-	for _, record := range records {
-		key, err := domain.GetTypeKeyFromRawUniqueKey(record.Details.GetString(bundle.RelationKeyUniqueKey))
-		if err != nil {
+	entries := typeEntriesOf(records)
+	keyTaken, slugHolders := servedTypeKeySets(entries)
+	rows := make([]v2model.TypeRow, 0, len(entries))
+	for _, entry := range entries {
+		if entry.Hidden {
 			continue
 		}
 		rows = append(rows, v2model.TypeRow{
-			Key:  servedTypeKeyOf(string(key), record.Details.GetString(bundle.RelationKeyApiObjectKey), keyTaken, slugHolders),
-			Name: record.Details.GetString(bundle.RelationKeyName),
+			Key:  servedTypeKeyOf(entry.Key, entry.Slug, keyTaken, slugHolders),
+			Name: entry.Name,
 		})
 	}
-	return rows, total, hasMore, nil
+	page, hasMore := pagination.Paginate(rows, offset, limit)
+	return page, len(rows), hasMore, nil
 }
 
 // GetType returns the kind:"object_type" AnyBlock document for one type key,
@@ -329,7 +320,8 @@ func (s *Service) GetType(ctx context.Context, spaceId, typeKey string, q Object
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, "", err
 	}
-	entry, err := s.requireLiveType(spaceId, typeKey, "/key", errKeysFor(ctx))
+	// the route parameter is the member the caller wrote
+	entry, err := s.requireLiveType(spaceId, typeKey, "type", errKeysFor(ctx))
 	if err != nil {
 		return nil, "", err
 	}
@@ -341,52 +333,41 @@ func (s *Service) ListProperties(ctx context.Context, spaceId string, offset, li
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, 0, false, err
 	}
-	records, total, err := s.store.SpaceIndex(spaceId).QueryAndCount(database.Query{
-		// live filters: a UI-deleted (uninstalled) property still carried the
-		// relation layout and passed every filter here — the §2.3-6 defect;
-		// the corpse policy excludes it (keys.go)
-		Filters: append(livePropertyFilters(),
-			database.FilterRequest{
-				RelationKey: bundle.RelationKeyIsHidden,
-				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       domain.Bool(true),
-			}),
-		Sorts: []database.SortRequest{{
+	// one read of the live properties serves the rows and the spelling
+	// sets, which count hidden properties too, and it is paged here: a
+	// record without a relation key serves no row, so it must not count
+	// toward total or has_more (a space holds few properties). Live filters:
+	// a UI-deleted (uninstalled) property still carried the relation layout
+	// and passed every filter here — the §2.3-6 defect; the corpse policy
+	// excludes it (keys.go)
+	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
+		Filters: livePropertyFilters(),
+		Sorts: database.WithIdTieBreak([]database.SortRequest{{
 			RelationKey: bundle.RelationKeyName,
 			Type:        model.BlockContentDataviewSort_Asc,
-		}},
-		Offset: offset,
-		Limit:  limit + 1,
+		}}),
 	})
 	if err != nil {
 		return nil, 0, false, fmt.Errorf("query properties in space %s: %w", spaceId, err)
 	}
-
-	hasMore := len(records) > limit
-	if hasMore {
-		records = records[:limit]
-	}
 	// the served spelling (§7.5a): a BSON-keyed property answers to its
 	// slug, so the slug is what the row advertises — iff it round-trips
 	// (servedKey); the count maps come from the full live set, not the page
-	liveEntries, err := s.liveProperties(spaceId)
-	if err != nil {
-		return nil, 0, false, err
-	}
-	keyTaken, slugHolders := servedPropertyKeySets(liveEntries)
-	rows := make([]v2model.PropertyRow, 0, len(records))
-	for _, record := range records {
-		key := record.Details.GetString(bundle.RelationKeyRelationKey)
-		if key == "" {
+	entries := propertyEntriesOf(records)
+	keyTaken, slugHolders := servedPropertyKeySets(entries)
+	rows := make([]v2model.PropertyRow, 0, len(entries))
+	for _, entry := range entries {
+		if entry.Hidden {
 			continue
 		}
 		rows = append(rows, v2model.PropertyRow{
-			Key:    servedKey(key, record.Details.GetString(bundle.RelationKeyApiObjectKey), keyTaken, slugHolders),
-			Name:   record.Details.GetString(bundle.RelationKeyName),
-			Format: anyblockjson.FormatName(model.RelationFormat(record.Details.GetInt64(bundle.RelationKeyRelationFormat))),
+			Key:    servedKey(entry.Key, entry.Slug, keyTaken, slugHolders),
+			Name:   entry.Name,
+			Format: anyblockjson.FormatName(entry.Format),
 		})
 	}
-	return rows, total, hasMore, nil
+	page, hasMore := pagination.Paginate(rows, offset, limit)
+	return page, len(rows), hasMore, nil
 }
 
 // ListPropertyOptions returns the option names (+color) of one
@@ -407,17 +388,18 @@ func (s *Service) ListPropertyOptions(ctx context.Context, spaceId, propertyKey,
 		return nil, 0, false, fmt.Errorf("list options of property %s: %w", propertyKey, err)
 	}
 
+	options = slices.DeleteFunc(options, func(option *model.RelationOption) bool {
+		return option == nil || (prefix != "" && !strings.HasPrefix(strings.ToLower(option.Text), strings.ToLower(prefix)))
+	})
+	// by name, ties by id: the store returns options in no defined order, and
+	// a page is a slice of this order
+	slices.SortFunc(options, func(a, b *model.RelationOption) int {
+		return cmp.Or(strings.Compare(a.Text, b.Text), strings.Compare(a.Id, b.Id))
+	})
 	rows := make([]v2model.OptionRow, 0, len(options))
 	for _, option := range options {
-		if option == nil {
-			continue
-		}
-		if prefix != "" && !strings.HasPrefix(strings.ToLower(option.Text), strings.ToLower(prefix)) {
-			continue
-		}
 		rows = append(rows, v2model.OptionRow{Name: option.Text, Color: option.Color})
 	}
-	sort.Slice(rows, func(i, j int) bool { return rows[i].Name < rows[j].Name })
 
 	total := len(rows)
 	page, hasMore := pagination.Paginate(rows, offset, limit)
