@@ -338,8 +338,28 @@ its fold, on the same one-or-refuse rule. The format's own chain underneath
 (`pkg/lib/anyblockjson/storeresolver/keyvocab.go:495`) has the same order but
 degrades to the verbatim term wherever v2 would refuse — it never guesses
 either. Ambiguity at any step lists every holder by stored key and id (the
-addresses that always resolve) and never picks by store order; a full miss
-falls to the unknown-key refusal with did-you-mean (§1.3). The chain is wired
+addresses that always resolve), ordered by stored key and then id, and never
+picks by store order; a full miss
+falls to the unknown-key refusal with did-you-mean (§1.3). The one tie-break
+is the object's type: of several holders, the single one the type lists wins
+(`core/api/v2/service/keys.go:243`). A template is scoped by the type it is
+for, because the type `template` lists none of its properties. So a spelling
+the target lists wins on a template even when it is also the display name of
+a template-owned property (`Template's Type` is `targetObjectType`); the
+exact stored key still addresses that one. A template whose target is
+unknown, or has no live row in the space, keeps its own type
+(`core/api/v2/service/refs.go:705`). A view filter or sort key is settled by
+the type the view's query source names instead (except a display name two
+properties share in a structured view filter, which the codec refuses
+before that scope applies, `core/api/v2/service/viewops.go:623`), as it
+stands at that op
+(a `setOf` edit earlier in the batch moves it), and after a `set_type` the
+batch's later ops are settled by the new type: for a built-in the batch
+installs, by its bundled and default featured properties. The install also
+lists the default recommended and hidden ones, which a dry run and the
+create-missing pre-pass do not see yet (a known gap). The create-missing pre-pass
+uses the same scopes in the same op order as the apply, so it never creates
+an option on another property (`core/api/v2/service/resolver.go:459`). The chain is wired
 into route params, search and set type scopes, document creates,
 `set_properties` keys and the option pre-resolution pass, so one spelling
 works at every level and no channel keeps a private resolution.
@@ -604,7 +624,38 @@ PATCH/DELETE /v2/spaces/{space_id}/properties/{key}    # update / archive
   and created as another (`core/api/v2/service/create.go:934`).
 - **Templates**: no create-from-body RPC exists; `POST /templates` targets
   the generic AnyBlock create path (Template kind + `templateFor`), which the
-  importer already supports (R-note).
+  importer already supports (R-note). A template's type is `template` on
+  both endpoints: `kind: "template"` beside any other type is refused at
+  `/type` before a property name resolves, because the creator would build
+  an object of that other type (`core/api/v2/service/keys.go:1396`).
+- **A value on a property the type does not list is stored and warned
+  about**, on create and on `set_properties`, once, when the object first
+  takes the key. `name`, the system query keys and hidden built-in
+  properties never warn (`core/api/v2/service/refs.go:674`). A template is
+  judged against the type it is for, the one whose objects take its values,
+  never against the type `template`, and the warning names that target. The
+  warning names the type in the request's vocabulary: its display name under
+  `?keys=name`, its slug otherwise, and its display name when a slug
+  collision would expose the stored key. On a dry run it says what the write
+  would do. The type judged against is found by its exact stored key and
+  must be live. A
+  template whose target is unknown, or has no live row in the space, gets no
+  such warning, and neither does a property list that cannot be read
+  (`core/api/v2/service/refs.go:692`).
+- **A template's target is one identity.** It is the `targetObjectType`
+  detail, which heart's own template application reads and a retarget
+  moves; the second type key counts only when that detail is absent. A
+  detail naming no type row this space holds is an unknown target, and its
+  stale second key is not served. GET serves the target as `template_for`
+  under the type `template`, and name scope, off-type warnings, a create's
+  `template` check and the template listing use the same type. A retarget
+  written through `set_properties` is stored as one id, as heart reads it
+  (a second distinct id is refused), and moves the scope of the batch's
+  later ops. A template is known by its object's kind, never by the first
+  type key the index carries. A PATCH whose object changed type or target
+  between its read and the object lock is refused with `etag_mismatch` so
+  the caller retries, and a committing `set_properties` mints no option
+  under the lock (`core/api/v2/service/templates.go:247`).
 - **Every side effect a write creates** — properties and options, real on a
   live run and would-be on a dry run — is reported under `created` in the
   response, each option named once however many ops resolved it
@@ -763,7 +814,7 @@ is §1.6.
   starts from is visible where the templates are. The listing excludes
   uninstalled and hidden rows: offering an id the create path then refuses is
   the same broken loop pointing the other way
-  (`core/api/v2/service/templates.go:279`).
+  (`core/api/v2/service/templates.go:509`).
 - **A type's `default_template` is stored as a one-element list**, which is
   the spelling clients read, and is read back from either spelling.
   `PATCH /types/{type}` with `default_template: ""` clears it — the repair

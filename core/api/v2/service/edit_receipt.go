@@ -21,7 +21,7 @@ func (a *v2StateApplier) compactReceiptIDs() (blocks, views map[string]string, e
 	// The full after-document already passed the loss checks. Keep the same
 	// warning-enabled export shape without collecting its diagnostics again.
 	opts.OnWarning = func(anyblockjson.Issue) {}
-	body, err := anyblockjson.Marshal(a.sbType, snapshotFromState(a.st), opts)
+	body, err := anyblockjson.Marshal(a.sbType, a.renderSnapshot(), opts)
 	if err != nil {
 		return nil, nil, fmt.Errorf("marshal receipt labels: %w", err)
 	}
