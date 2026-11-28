@@ -61,6 +61,10 @@ type creatingResolvers struct {
 	// per resolver in Options().
 	keys   *apiKeyVocab
 	dryRun bool
+	// previewing is the request's own mode, which words a refusal. It is
+	// dryRun except for the pre-lock probe, which resolves dry for every
+	// request and must still speak for a real one.
+	previewing bool
 	// createMissingOptions is the caller's explicit ?create_missing_options=true consent.
 	// Without it an unmatched select NAME is a refusal, not a mint (A2).
 	createMissingOptions bool
@@ -163,6 +167,7 @@ func (s *Service) newCreatingResolvers(ctx context.Context, spaceId string, dryR
 		spaceId:              spaceId,
 		reads:                storeresolver.New(s.store.SpaceIndex(spaceId)),
 		dryRun:               dryRun,
+		previewing:           dryRun,
 		createMissingOptions: createMissingOptions,
 		createdOptions:       map[optionRef]string{},
 		declaredColors:       map[optionRef]string{},
@@ -363,9 +368,9 @@ func (r *creatingResolvers) OptionId(key domain.RelationKey, name string) (strin
 		// reads as if it matched.
 		servedKey := r.keys.PropertySlug(string(key))
 		if site := r.siteOf(key, name); site != nil {
-			r.errs = append(r.errs, optionConsentErrorAs(r.spaceId, site.spelling, servedKey, name, site.path))
+			r.errs = append(r.errs, optionConsentErrorAs(r.spaceId, site.spelling, servedKey, name, site.path, r.previewing))
 		} else {
-			r.errs = append(r.errs, optionConsentError(r.spaceId, servedKey, name))
+			r.errs = append(r.errs, optionConsentError(r.spaceId, servedKey, name, r.previewing))
 		}
 		return "", false
 	}
@@ -474,41 +479,51 @@ func optionAmbiguityError(spelling, path, name string, matches []*model.Relation
 // served one throughout — path, message, and the URL it tells the caller to
 // fetch. An error reporting the stored id makes the caller map it back to the
 // field they wrote by hand.
-func optionConsentError(spaceId, servedKey, name string) error {
-	return optionConsentErrorAt(spaceId, servedKey, name, propertiesPointer(servedKey))
+func optionConsentError(spaceId, servedKey, name string, dryRun bool) error {
+	return optionConsentErrorAt(spaceId, servedKey, name, propertiesPointer(servedKey), dryRun)
 }
 
 // optionConsentErrorAt is the same refusal addressed at the member the caller
 // actually wrote. The type channel declares its options under
 // property_definitions, and a body sent there has no `properties` member at
 // all — the flat path rejects one by name — so the default path above would
-// point at a field the caller could not have written.
-func optionConsentErrorAt(spaceId, servedKey, name, path string) error {
-	return optionConsentErrorAs(spaceId, servedKey, servedKey, name, path)
+// point at a field the caller could not have written. A dry run's resend
+// carries dry_run itself: copied as a REST query in place of the request's,
+// a bare create_missing_options=true would commit the write it previews.
+func optionConsentErrorAt(spaceId, servedKey, name, path string, dryRun bool) error {
+	return optionConsentErrorAs(spaceId, servedKey, servedKey, name, path, dryRun)
 }
 
 // optionConsentErrorAs is the refusal for a property the caller spelled
 // differently from its served key: the message quotes the spelling (a
 // display name under ?keys=name), while the options route keeps the served
 // key, which is always a valid path segment.
-func optionConsentErrorAs(spaceId, spelling, servedKey, name, path string) error {
+func optionConsentErrorAs(spaceId, spelling, servedKey, name, path string, dryRun bool) error {
+	repair, resend := "check the spelling against %s, or resend with %s to create it", v2model.Resend("create_missing_options", "true")
+	if dryRun {
+		repair, resend = "check the spelling against %s, or resend with %s to preview creating it", resend.With("dry_run", "true")
+	}
 	return v2model.ValidationFailed("option does not exist",
 		v2model.Issue{
 			Path:    path,
 			Message: fmt.Sprintf("property %q has no option named %q, and this request did not ask to create one", spelling, name),
-		}.Hintf("check the spelling against %s, or resend with %s to create it",
-			v2model.RefListPropertyOptions(spaceId, servedKey), v2model.Resend("create_missing_options", "true")))
+		}.Hintf(repair, v2model.RefListPropertyOptions(spaceId, servedKey), resend))
 }
 
 // optionConsentErrorPending is the refusal for options declared on a
 // property this request would create: there is no options route to check
-// against yet, so the one repair offered is the consent resend.
-func optionConsentErrorPending(spelling, name, path string) error {
+// against yet, so the one repair offered is the consent resend, which on a
+// dry run keeps dry_run (optionConsentErrorAs).
+func optionConsentErrorPending(spelling, name, path string, dryRun bool) error {
+	repair, resend := "resend with %s to create it", v2model.Resend("create_missing_options", "true")
+	if dryRun {
+		repair, resend = "resend with %s to preview creating it", resend.With("dry_run", "true")
+	}
 	return v2model.ValidationFailed("option does not exist",
 		v2model.Issue{
 			Path:    path,
 			Message: fmt.Sprintf("property %q has no option named %q, and this request did not ask to create one", spelling, name),
-		}.Hintf("resend with %s to create it", v2model.Resend("create_missing_options", "true")))
+		}.Hintf(repair, resend))
 }
 
 // optionErrorSite is the request member an option refusal is addressed to,

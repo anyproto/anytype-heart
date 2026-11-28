@@ -418,6 +418,18 @@ with a fresh identity, and DELETE of an already-deleted type or property is a
 404, not a second archive (`core/api/v2/service/keys.go:56`). What a corpse
 still does to a **write** is §2's key-acceptance rules.
 
+**System types and properties cannot be deleted.** DELETE of one of heart's
+system types or properties (`bundle.SystemTypes`, `bundle.SystemRelations`,
+such as `page` or `name`) is a 403 `forbidden` on the dry run and the real
+run alike: heart restricts their deletion, and its archive skips them while
+still answering success. Other bundled types and properties, such as `task`,
+delete like custom ones. A type or property already in the Bin is the
+documented 404 on both runs, read from the Bin itself before anything is
+done, since the index row that resolves it as live trails the archive; a dry
+run of a space still loading answers from the index instead
+(`core/api/v2/service/schema_write.go`, `systemSchemaRefusal` and
+`refuseSchemaInBin`).
+
 **Option listings exclude removed options**: an option belonging to an
 uninstalled property or removed on its own never appears in
 `GET /v2/spaces/{space_id}/properties/{key}/options`
@@ -917,9 +929,10 @@ error: the upload itself succeeded (`core/api/v2/service/syncstatus.go`,
   tree's signed root is this account AND the first content change carries
   this account's identity together with the caller's app name, compared
   EXACTLY as raw text. Details are never consulted. It **fails closed** — no
-  recorded app name, a nameless caller, a provenance read error or a
-  missing provenance dependency all refuse with 403
-  `not_created_by_this_key` — so objects created in the app, by import, by
+  recorded app name or a nameless caller refuse with 403
+  `not_created_by_this_key`, and a provenance read error or a missing
+  provenance dependency refuse with 500 `internal_error`, which a retry can
+  clear — so objects created in the app, by import, by
   another member, or before provenance existed can only be archived through
   the API. More rules keep a hard delete from destroying another member's
   work or breaking other objects: a change signed by another space member

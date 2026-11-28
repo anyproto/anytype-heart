@@ -83,9 +83,7 @@ func DeleteObjectHandler(s *v2service.Service) gin.HandlerFunc {
 		// than ignored, because ignoring it archived with a 200 that read as
 		// the hard delete the caller asked for
 		if _, ok := c.GetQuery("skip_bin"); ok {
-			RespondError(c, v2model.ValidationFailed("unknown query parameter skip_bin",
-				v2model.Issue{Path: "skip_bin", Message: "this route has no skip_bin parameter"}.
-					Hintf("to delete for good, send %s instead", v2model.Resend("permanent", "true"))))
+			RespondError(c, v2model.ValidationFailed("unknown query parameter skip_bin", skipBinRepair(c)))
 			return
 		}
 		var permanent bool
@@ -132,4 +130,35 @@ func RestoreObjectHandler(s *v2service.Service) gin.HandlerFunc {
 		}
 		c.JSON(http.StatusOK, result)
 	}
+}
+
+// skipBinRepair is the issue a skip_bin refusal carries, its repair read off
+// the value. true asked for a delete for good, false for the Bin; anything
+// else, or a value permanent contradicts, gets no reference at all, since a
+// guess could destroy what the caller meant to keep. The repair is the whole
+// request, not a resend: a resend keeps the skip_bin being refused. A dry
+// run's carries dry_run itself, so following it from a preview previews.
+func skipBinRepair(c *gin.Context) v2model.Issue {
+	issue := v2model.Issue{Path: "skip_bin", Message: "this route has no skip_bin parameter"}
+	values := c.QueryArray("skip_bin")
+	permanent, permanentSent := c.GetQuery("permanent")
+	agrees := func(want string) bool { return !permanentSent || permanent == want }
+	ref := v2model.NewRef(v2model.OpDeleteObject, "space_id", c.Param("space_id"), "object_id", c.Param("object_id"))
+	dryRun := isV2DryRun(c)
+	if dryRun {
+		ref = ref.With("dry_run", "true")
+	}
+	switch {
+	case len(values) == 1 && values[0] == "true" && agrees("true"):
+		if dryRun {
+			return issue.Hintf("to preview a delete for good, send %s instead", ref.With("permanent", "true"))
+		}
+		return issue.Hintf("to delete for good, send %s instead", ref.With("permanent", "true"))
+	case len(values) == 1 && values[0] == "false" && agrees("false"):
+		if dryRun {
+			return issue.Hintf("to preview the move to the Bin, send %s instead", ref)
+		}
+		return issue.Hintf("DELETE moves the object to the Bin without it: send %s instead", ref)
+	}
+	return issue.WithHint(v2model.Plain("DELETE moves the object to the Bin; permanent=true deletes it for good instead"))
 }

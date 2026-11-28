@@ -168,6 +168,27 @@ func (fx *v2Fixture) expectTypeViewEdit(read apicore.ObjectRead) **state.State {
 	return &captured
 }
 
+// expectTypeViewEditFrom is expectTypeViewEdit with a different state under
+// the lock than the planning read saw: what another edit leaves between the
+// two.
+func (fx *v2Fixture) expectTypeViewEditFrom(read, locked apicore.ObjectRead) **state.State {
+	var captured *state.State
+	fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, typeOpsTypeId).Return(read, nil).Maybe()
+	fx.mutatorMock.EXPECT().MutateObject(mock.Anything, testSpaceId, typeOpsTypeId, mock.Anything, mock.Anything).
+		RunAndReturn(func(ctx context.Context, spaceId, objectId string, needs apicore.EditNeeds, apply func(apicore.ObjectEdit) error) ([]string, error) {
+			st, err := state.NewDocFromSnapshot(objectId, &pb.ChangeSnapshot{Data: locked.Snapshot})
+			if err != nil {
+				return nil, err
+			}
+			if err := apply(apicore.ObjectEdit{SbType: locked.SbType, Heads: locked.Heads, State: st}); err != nil {
+				return nil, err
+			}
+			captured = st
+			return []string{"headY"}, nil
+		}).Maybe()
+	return &captured
+}
+
 // viewColumnKeys reads the committed state's view columns back.
 func viewColumnKeys(t *testing.T, st *state.State, viewId string) []string {
 	t.Helper()
@@ -439,27 +460,35 @@ func TestV2TypeOpsAddPutsTheColumnInEveryView(t *testing.T) {
 			viewWithColumns("v-a", "All", "name", "location"),
 		))
 
+		// the same two warnings on both runs, worded for each: a rehearsal
+		// names what a real run would remove, the real run what it removed
+		const path = "/type_settings/property_definitions"
+		// a rehearsal says how to keep the field; after the commit it is gone,
+		// so the hint says how to put it back
+		keep := v2model.Issue{}.Hintf("send the complete list to keep a field, omit property_definitions to leave the list untouched, or change one field at a time with the add_property, remove_property and move_property ops (%s)",
+			v2model.RefGetOpSchema("add_property"))
+		reattach := v2model.Issue{}.Hintf("to put a field back on the type, add it with the add_property op (%s)", v2model.RefGetOpSchema("add_property"))
+		warnings := func(listed, columns string, hint v2model.Issue) []v2model.Issue {
+			return []v2model.Issue{
+				{Path: path, Message: "property_definitions replaces the type's whole field list: " + listed, Hint: hint.Hint, SeeAlso: hint.SeeAlso},
+				{Path: path, Message: columns},
+			}
+		}
+
 		// when: the list is resent without location — rehearsed first
 		rehearsal, err := fx.UpdateType(context.Background(), testSpaceId, "plant", "", []byte(`{
 			"type_settings":{"property_definitions":[{"property":"sun_needs"},{"property":"water_needs"}]}}`), true, false)
 		require.NoError(t, err)
 		require.NotNil(t, rehearsal.Removed)
-		require.NotEmpty(t, rehearsal.Warnings)
-		var dropped bool
-		for _, w := range rehearsal.Warnings {
-			if strings.Contains(w.Message, "columns dropped") {
-				dropped = true
-				assert.Equal(t, "/type_settings/property_definitions", w.Path)
-			}
-		}
-		assert.True(t, dropped, "a rehearsal names the columns a real run would drop")
+		assert.Equal(t, warnings("1 would no longer be listed (location)", `columns that would be removed: location from "All"`, keep), rehearsal.Warnings)
 
 		// and for real
-		_, err = fx.UpdateType(context.Background(), testSpaceId, "plant", "", []byte(`{
+		real, err := fx.UpdateType(context.Background(), testSpaceId, "plant", "", []byte(`{
 			"type_settings":{"property_definitions":[{"property":"sun_needs"},{"property":"water_needs"}]}}`), false, false)
 
 		// then: the list half and the view half
 		require.NoError(t, err)
+		assert.Equal(t, warnings("1 no longer listed (location)", `columns dropped: location from "All"`, reattach), real.Warnings)
 		assert.Equal(t, []string{"rel-sun", "rel-water"}, (*captured)[bundle.RelationKeyRecommendedRelations.String()])
 		assert.Equal(t, []string{"name"}, viewColumnKeys(t, *committed, "v-a"))
 	})
@@ -594,6 +623,131 @@ func TestV2TypeOpsRemovePrunesEveryView(t *testing.T) {
 		assert.True(t, warned, "the views left alone must be named: %v", result.Warnings)
 	})
 
+	t.Run("the op channel's prune report speaks for the run", func(t *testing.T) {
+		// a rehearsal of remove_property names what the real run would
+		// remove and keep; the real run names what it removed and kept
+		hint := v2model.Issue{}.Hintf("change those views with update_view through %s", v2model.NewRef(v2model.OpPatchObject))
+		cases := []struct {
+			dryRun bool
+			want   []v2model.Issue
+		}{
+			{dryRun: true, want: []v2model.Issue{
+				{Path: "/ops", Message: `columns that would be removed: sun_needs from "All"`},
+				{Path: "/ops", Message: `the view "Board" uses a removed property for its grouping, sorting, filters, cover or end date and would be left as it is`, Hint: hint.Hint, SeeAlso: hint.SeeAlso},
+			}},
+			{dryRun: false, want: []v2model.Issue{
+				{Path: "/ops", Message: `columns dropped: sun_needs from "All"`},
+				{Path: "/ops", Message: `the view "Board" uses a removed property for its grouping, sorting, filters, cover or end date and was left as it is`, Hint: hint.Hint, SeeAlso: hint.SeeAlso},
+			}},
+		}
+		for _, tc := range cases {
+			// given
+			fx := newTypeOpsFixture(t)
+			fx.captureTypeDetails()
+			board := viewWithColumns("v-c", "Board", "name", "sun_needs")
+			board.GroupRelationKey = "sun_needs"
+			fx.expectTypeViewEdit(typeReadWithViews(viewWithColumns("v-a", "All", "name", "sun_needs"), board))
+
+			// when
+			result, err := fx.UpdateType(context.Background(), testSpaceId, "plant",
+				"", opsBody(`{"op":"remove_property","property":"sun_needs"}`), tc.dryRun, false)
+
+			// then
+			require.NoError(t, err, "dryRun=%v", tc.dryRun)
+			assert.Equal(t, tc.want, result.Warnings, "dryRun=%v", tc.dryRun)
+		}
+	})
+
+	t.Run("a real prune reports the plan applied under the lock, not the one read before it", func(t *testing.T) {
+		// given: the planning read sees the column only shown; by the time
+		// the lock is taken, another edit sorts the view by it, so the prune
+		// keeps it
+		hint := v2model.Issue{}.Hintf("change those views with update_view through %s", v2model.NewRef(v2model.OpPatchObject))
+		kept := v2model.Issue{Path: "/ops", Message: `the view "All" uses a removed property for its grouping, sorting, filters, cover or end date and was left as it is`, Hint: hint.Hint, SeeAlso: hint.SeeAlso}
+		sorted := viewWithColumns("v-a", "All", "name", "sun_needs")
+		sorted.Sorts = []*model.BlockContentDataviewSort{{RelationKey: "sun_needs"}}
+		fx := newTypeOpsFixture(t)
+		fx.captureTypeDetails()
+		committed := fx.expectTypeViewEditFrom(typeReadWithViews(viewWithColumns("v-a", "All", "name", "sun_needs")), typeReadWithViews(sorted))
+
+		// when
+		result, err := fx.UpdateType(context.Background(), testSpaceId, "plant",
+			"", opsBody(`{"op":"remove_property","property":"sun_needs"}`), false, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"name", "sun_needs"}, viewColumnKeys(t, *committed, "v-a"))
+		assert.Equal(t, []v2model.Issue{kept}, result.Warnings)
+	})
+
+	t.Run("a real prune runs under the lock even when the read saw nothing to drop", func(t *testing.T) {
+		// given: the planning read sees a view sorted by the property, so it
+		// plans no prune; by the time the lock is taken, another edit has
+		// cleared the sort, and the column goes
+		sorted := viewWithColumns("v-a", "All", "name", "sun_needs")
+		sorted.Sorts = []*model.BlockContentDataviewSort{{RelationKey: "sun_needs"}}
+		fx := newTypeOpsFixture(t)
+		fx.captureTypeDetails()
+		committed := fx.expectTypeViewEditFrom(typeReadWithViews(sorted), typeReadWithViews(viewWithColumns("v-a", "All", "name", "sun_needs")))
+
+		// when
+		result, err := fx.UpdateType(context.Background(), testSpaceId, "plant",
+			"", opsBody(`{"op":"remove_property","property":"sun_needs"}`), false, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"name"}, viewColumnKeys(t, *committed, "v-a"))
+		assert.Equal(t, []v2model.Issue{{Path: "/ops", Message: `columns dropped: sun_needs from "All"`}}, result.Warnings)
+	})
+
+	t.Run("a real list replacement reports the plan applied under the lock too", func(t *testing.T) {
+		// given
+		hint := v2model.Issue{}.Hintf("change those views with update_view through %s", v2model.NewRef(v2model.OpPatchObject))
+		sorted := viewWithColumns("v-a", "All", "name", "location")
+		sorted.Sorts = []*model.BlockContentDataviewSort{{RelationKey: "location"}}
+		fx := newTypeOpsFixture(t)
+		fx.captureTypeDetails()
+		fx.expectTypeViewEditFrom(typeReadWithViews(viewWithColumns("v-a", "All", "name", "location")), typeReadWithViews(sorted))
+
+		// when
+		result, err := fx.UpdateType(context.Background(), testSpaceId, "plant", "", []byte(`{
+			"type_settings":{"property_definitions":[{"property":"sun_needs"},{"property":"water_needs"}]}}`), false, false)
+
+		// then: the list half as before, the view half as the lock found it
+		require.NoError(t, err)
+		require.Len(t, result.Warnings, 2)
+		assert.Equal(t, v2model.Issue{Path: "/type_settings/property_definitions",
+			Message: `the view "All" uses a removed property for its grouping, sorting, filters, cover or end date and was left as it is`,
+			Hint:    hint.Hint, SeeAlso: hint.SeeAlso}, result.Warnings[1])
+	})
+
+	t.Run("a gallery using the property as its cover is named for it, on both runs", func(t *testing.T) {
+		hint := v2model.Issue{}.Hintf("change those views with update_view through %s", v2model.NewRef(v2model.OpPatchObject))
+		for _, tc := range []struct {
+			dryRun bool
+			want   string
+		}{
+			{dryRun: true, want: `the view "Gallery" uses a removed property for its grouping, sorting, filters, cover or end date and would be left as it is`},
+			{dryRun: false, want: `the view "Gallery" uses a removed property for its grouping, sorting, filters, cover or end date and was left as it is`},
+		} {
+			// given: the property is the gallery's cover and nothing else
+			gallery := viewWithColumns("v-g", "Gallery", "name", "sun_needs")
+			gallery.Type = model.BlockContentDataviewView_Gallery
+			gallery.CoverRelationKey = "sun_needs"
+			fx := newTypeOpsFixture(t)
+			fx.captureTypeDetails()
+			fx.expectTypeViewEdit(typeReadWithViews(gallery))
+
+			// when
+			result, err := fx.UpdateType(context.Background(), testSpaceId, "plant",
+				"", opsBody(`{"op":"remove_property","property":"sun_needs"}`), tc.dryRun, false)
+
+			// then
+			require.NoError(t, err, "dryRun=%v", tc.dryRun)
+			assert.Equal(t, []v2model.Issue{{Path: "/ops", Message: tc.want, Hint: hint.Hint, SeeAlso: hint.SeeAlso}}, result.Warnings, "dryRun=%v", tc.dryRun)
+		}
+	})
+
 	// A sort and a filter are the same argument as the group.
 	t.Run("a view that sorts or filters by the property is left as it is", func(t *testing.T) {
 		for name, view := range map[string]*model.BlockContentDataviewView{
@@ -620,9 +774,16 @@ func TestV2TypeOpsRemovePrunesEveryView(t *testing.T) {
 				_, err := fx.UpdateType(context.Background(), testSpaceId, "plant",
 					"", opsBody(`{"op":"remove_property","property":"sun_needs"}`), false, false)
 
-				// then: nothing was committed at all, the view being the only one
+				// then: the locked prune ran, as it does whenever a property
+				// is removed (the view may have changed since the planning
+				// read), and left the view arranged by the property as it is
 				require.NoError(t, err)
-				assert.Nil(t, *committed, "a view arranged by the property must not be rewritten")
+				require.NotNil(t, *committed, "the prune re-plans under the lock")
+				assert.Equal(t, []string{"name", "sun_needs"}, viewColumnKeys(t, *committed, "viewOne"),
+					"a view arranged by the property must not be rewritten")
+				dv := (*committed).Pick(state.DataviewBlockID).Model().GetDataview()
+				assert.Equal(t, view.Sorts, dv.Views[0].Sorts)
+				assert.Equal(t, view.Filters, dv.Views[0].Filters)
 			})
 		}
 	})
@@ -802,7 +963,10 @@ func TestV2TypeOpsDryRunReportsTheRealRun(t *testing.T) {
 	assert.True(t, preview.DryRun)
 	assert.Equal(t, real.Removed, preview.Removed, "the preview must state the removal the real run makes")
 	assert.Equal(t, real.Created, preview.Created, "and the property the real run creates")
-	assert.Equal(t, real.Warnings, preview.Warnings, "and the views the real run rewrites")
+	// and the views the real run rewrites, worded as a preview: the same
+	// column of the same view, as what the real run would remove
+	assert.Equal(t, []v2model.Issue{{Path: "/ops", Message: `columns that would be removed: sun_needs from "All"`}}, preview.Warnings)
+	assert.Equal(t, []v2model.Issue{{Path: "/ops", Message: `columns dropped: sun_needs from "All"`}}, real.Warnings)
 }
 
 // TestV2TypeOpsDryRunWritesNothing is the other half: the preview above is

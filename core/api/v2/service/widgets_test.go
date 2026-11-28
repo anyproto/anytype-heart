@@ -1347,9 +1347,21 @@ func TestUpdateWidget(t *testing.T) {
 		require.Len(t, e.Issues, 1)
 		assert.Contains(t, e.Issues[0].Message, "w1 (space), p1 (personal)")
 		require.Len(t, e.Issues[0].SeeAlso, 2)
-		assert.Equal(t, map[string]string{"scope": "space"}, e.Issues[0].SeeAlso[0].Query)
-		assert.Equal(t, map[string]string{"scope": "personal"}, e.Issues[0].SeeAlso[1].Query)
+		// a preview's resends carry dry_run themselves: copied in place of the
+		// request's query, a bare ?scope= would perform the write
+		assert.Equal(t, map[string]string{"scope": "space", "dry_run": "true"}, e.Issues[0].SeeAlso[0].Query)
+		assert.Equal(t, map[string]string{"scope": "personal", "dry_run": "true"}, e.Issues[0].SeeAlso[1].Query)
 		assert.Empty(t, e.Issues[0].SeeAlso[0].Op, "a resend names no operation")
+		for _, dryRun := range []bool{false, true} {
+			_, err = fx.DeleteWidget(context.Background(), testSpaceId, "page1", "", dryRun)
+			e = v2Err(t, err)
+			require.Len(t, e.Issues[0].SeeAlso, 2)
+			want := map[string]string{"scope": "space"}
+			if dryRun {
+				want["dry_run"] = "true"
+			}
+			assert.Equal(t, want, e.Issues[0].SeeAlso[0].Query, "delete, dryRun=%v", dryRun)
+		}
 
 		// and with the scope said, it resolves — as a dry run
 		got, err := fx.UpdateWidget(context.Background(), testSpaceId, "page1", "personal", v2model.UpdateWidgetRequest{Limit: intPtr(10)}, true)
@@ -1500,3 +1512,85 @@ func TestDeleteWidget(t *testing.T) {
 }
 
 func int32Ptr(v int32) *int32 { return &v }
+
+// The normalizers run before a dry run returns, so their warnings name the
+// fallback the widget gets without claiming it was stored.
+func TestWidgetNormalizerWarningsClaimNoWrite(t *testing.T) {
+	t.Run("a layout the target cannot take", func(t *testing.T) {
+		// given
+		var warnings []v2model.Issue
+		want := []v2model.Issue{{Path: "/layout", Message: "this target renders as tree, not list; the widget gets tree, the same fallback the app shows. It takes tree, link"}}
+
+		// when
+		layout, err := normalizeWidgetLayout(widgetTarget{kind: widgetTargetPage}, "list", &warnings)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, model.BlockContentWidget_Tree, layout)
+		assert.Equal(t, want, warnings)
+	})
+
+	t.Run("a limit the layout does not offer", func(t *testing.T) {
+		// given
+		var warnings []v2model.Issue
+		requested := 7
+		want := []v2model.Issue{{Path: "/limit", Message: "the tree layout shows 6, 10, 14, 30, 50 entries, not 7; the widget gets 6, the same fallback the app shows"}}
+
+		// when
+		limit := normalizeWidgetLimit(model.BlockContentWidget_Tree, &requested, &warnings)
+
+		// then
+		assert.Equal(t, int32(6), limit)
+		assert.Equal(t, want, warnings)
+	})
+
+	t.Run("a stored layout the target cannot take", func(t *testing.T) {
+		// given
+		var warnings []v2model.Issue
+		want := []v2model.Issue{{Path: "/layout", Message: "the stored list is not one this target renders; the widget gets tree, the same fallback the app shows. It takes tree, link"}}
+
+		// when
+		layout := normalizeStoredLayout(widgetTarget{kind: widgetTargetPage}, model.BlockContentWidget_List, &warnings)
+
+		// then
+		assert.Equal(t, model.BlockContentWidget_Tree, layout)
+		assert.Equal(t, want, warnings)
+	})
+
+	t.Run("a stored limit the new layout does not offer", func(t *testing.T) {
+		// given
+		var warnings []v2model.Issue
+		want := []v2model.Issue{{Path: "/limit", Message: "the stored limit 10 is not one the list layout shows; the widget gets 4, the layout's smallest"}}
+
+		// when
+		limit := refitWidgetLimit(model.BlockContentWidget_List, 10, &warnings)
+
+		// then
+		assert.Equal(t, int32(4), limit)
+		assert.Equal(t, want, warnings)
+	})
+}
+
+// An archived target's repair is a restore; a preview's carries dry_run, so
+// following it from a dry run restores nothing.
+func TestWidgetArchivedTargetRepairKeepsThePreview(t *testing.T) {
+	for _, dryRun := range []bool{false, true} {
+		// given
+		fx := newV2Fixture(t)
+		fx.addWidgetTarget(t, "bin1", model.ObjectType_basic, objectstore.TestObject{bundle.RelationKeyIsArchived: domain.Bool(true)})
+		fx.allowWidgets(apicore.WidgetScopeSpace, true)
+		fx.holdWidgets(apicore.WidgetScopeSpace)
+		want := v2model.RefRestoreObject(testSpaceId, "bin1")
+		if dryRun {
+			want = want.With("dry_run", "true")
+		}
+
+		// when
+		_, err := fx.CreateWidget(context.Background(), testSpaceId, v2model.CreateWidgetRequest{Target: "bin1", Scope: "space"}, dryRun)
+
+		// then
+		e := v2Err(t, err)
+		require.Len(t, e.Issues, 1)
+		assert.Equal(t, []v2model.Ref{want}, e.Issues[0].SeeAlso, "dryRun=%v", dryRun)
+	}
+}

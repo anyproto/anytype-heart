@@ -76,7 +76,13 @@ func TestRefString(t *testing.T) {
 		{"query", RefGetObject("sp1", "o1").With("outline", "true"), "GET /v2/spaces/sp1/objects/o1?outline=true"},
 		{"resend", Resend("create_missing_options", "true"), "?create_missing_options=true"},
 		{"query keys sorted", NewRef(OpListSpaces).With("limit", "5").With("after", "x"), "GET /v2/spaces?after=x&limit=5"},
-		{"a bound value that looks like a placeholder is opaque", RefListPropertyOptions("s", "{space_id}"), "GET /v2/spaces/s/properties/{space_id}/options"},
+		{"a bound value that looks like a placeholder is opaque", RefListPropertyOptions("s", "{space_id}"), "GET /v2/spaces/s/properties/%7Bspace_id%7D/options"},
+		// a bound value is data: a delimiter in it is escaped, so a rendered
+		// reference addresses exactly the object it names and keeps its query
+		{"a path value's delimiters are escaped", NewRef(OpDeleteObject, "space_id", "s", "object_id", "a/b?c#d").With("dry_run", "true"),
+			"DELETE /v2/spaces/s/objects/a%2Fb%3Fc%23d?dry_run=true"},
+		{"a query value's delimiters are escaped", Resend("view", "x&y=z#w"), "?view=x%26y%3Dz%23w"},
+		{"a placeholder the caller fills in stays readable", Resend("after", "<order_id>"), "?after=<order_id>"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -406,7 +406,7 @@ func (s *Service) GetChatMessages(ctx context.Context, spaceId, chatId string, q
 // layout stores it (content for a space chat, text blocks for a
 // discussion). A dry run validates everything and sends nothing.
 func (s *Service) AddChatMessage(ctx context.Context, spaceId, chatId string, req v2model.AddChatMessageRequest, dryRun bool) (*v2model.ChatMessageResult, error) {
-	layout, err := s.ensureChatWrite(ctx, spaceId, chatId)
+	layout, err := s.ensureChatWrite(ctx, spaceId, chatId, dryRun)
 	if err != nil {
 		return nil, err
 	}
@@ -472,7 +472,7 @@ func (s *Service) AddChatMessage(ctx context.Context, spaceId, chatId string, re
 // level up: a quote or link block the new text does not spell out is lost. A dry
 // run stops after the existence check.
 func (s *Service) EditChatMessage(ctx context.Context, spaceId, chatId, messageId string, req v2model.EditChatMessageRequest, dryRun bool) (*v2model.ChatMessageResult, error) {
-	layout, err := s.ensureChatWrite(ctx, spaceId, chatId)
+	layout, err := s.ensureChatWrite(ctx, spaceId, chatId, dryRun)
 	if err != nil {
 		return nil, err
 	}
@@ -496,7 +496,7 @@ func (s *Service) EditChatMessage(ctx context.Context, spaceId, chatId, messageI
 	}
 	warnings := append(links.Warnings("/text"), body.warnings...)
 	if chatWritesBlocks(layout) {
-		warnings = append(warnings, blocksEditWarnings(existing.Blocks)...)
+		warnings = append(warnings, blocksEditWarnings(existing.Blocks, dryRun)...)
 	}
 	content, blocks := body.content, body.blocks
 	if err := v2ValidateChatBody(layout, body, len(existing.Attachments)); err != nil {
@@ -537,7 +537,7 @@ func (s *Service) EditChatMessage(ctx context.Context, spaceId, chatId, messageI
 // the response names the ids at risk instead of hiding the irreversible
 // part behind a 200.
 func (s *Service) DeleteChatMessage(ctx context.Context, spaceId, chatId, messageId string, dryRun bool) (*v2model.ChatMessageResult, error) {
-	if _, err := s.ensureChatWrite(ctx, spaceId, chatId); err != nil {
+	if _, err := s.ensureChatWrite(ctx, spaceId, chatId, dryRun); err != nil {
 		return nil, err
 	}
 	existing, err := s.getChatMessageProto(ctx, chatId, messageId)
@@ -566,7 +566,7 @@ func (s *Service) DeleteChatMessage(ctx context.Context, spaceId, chatId, messag
 // service has no account identity to predict with, in which case added is
 // omitted with a warning instead of asserting a coin flip.
 func (s *Service) ToggleChatReaction(ctx context.Context, spaceId, chatId, messageId string, req v2model.ChatReactionRequest, dryRun bool) (*v2model.ChatReactionResult, error) {
-	if _, err := s.ensureChatWrite(ctx, spaceId, chatId); err != nil {
+	if _, err := s.ensureChatWrite(ctx, spaceId, chatId, dryRun); err != nil {
 		return nil, err
 	}
 	if req.Emoji == "" {
@@ -629,7 +629,7 @@ func (s *Service) ToggleChatReaction(ctx context.Context, spaceId, chatId, messa
 // ALL unread reactions (the backend takes no bound) and therefore rejects
 // up_to/last_state_id.
 func (s *Service) ReadChat(ctx context.Context, spaceId, chatId string, req v2model.ChatReadRequest, dryRun bool) (*v2model.ChatReadResult, error) {
-	if _, err := s.ensureChatWrite(ctx, spaceId, chatId); err != nil {
+	if _, err := s.ensureChatWrite(ctx, spaceId, chatId, dryRun); err != nil {
 		return nil, err
 	}
 	switch req.Scope {
@@ -714,6 +714,13 @@ var chatMessageLayouts = append(append([]model.ObjectTypeLayout{}, util.ChatLayo
 // 400 steers an object id to create_discussion, since the likeliest way to
 // send a page id here is wanting its comment thread.
 func (s *Service) ensureChat(ctx context.Context, spaceId, chatId string) (model.ObjectTypeLayout, error) {
+	return s.ensureChatFor(ctx, spaceId, chatId, false)
+}
+
+// ensureChatFor is ensureChat for a request in a given mode: a preview's
+// steer to an object's thread names the read that serves an existing one
+// and previews starting one, so following it writes nothing.
+func (s *Service) ensureChatFor(ctx context.Context, spaceId, chatId string, previewing bool) (model.ObjectTypeLayout, error) {
 	// the deletion probe below and every message RPC need the loaded space
 	if err := s.ensureSpaceRead(ctx, spaceId); err != nil {
 		return 0, err
@@ -726,9 +733,13 @@ func (s *Service) ensureChat(ctx context.Context, spaceId, chatId string) (model
 		return 0, v2model.ObjectDeleted(spaceId, chatId)
 	}
 	if err != nil || details.Len() == 0 {
+		create := v2model.RefCreateDiscussion(spaceId, "")
+		if previewing {
+			create = create.With("dry_run", "true")
+		}
 		return 0, v2model.NotFound(fmt.Sprintf("chat %q not found in space %q", chatId, spaceId),
 			v2model.Issue{Path: "chat_id", Message: "no chat or discussion has this id"}.
-				Hintf("list chats with %s; an object's discussion id is the discussion member of its read, or comes from %s", v2model.RefListChats(spaceId), v2model.RefCreateDiscussion(spaceId, "")))
+				Hintf("list chats with %s; an object's discussion id is the discussion member of its read, or comes from %s", v2model.RefListChats(spaceId), create))
 	}
 	layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout))
 	for _, chatLayout := range chatMessageLayouts {
@@ -739,7 +750,12 @@ func (s *Service) ensureChat(ctx context.Context, spaceId, chatId string) (model
 	issue := v2model.Issue{Path: "chat_id", Message: fmt.Sprintf("its layout is %q", layout.String())}.
 		Hintf("chat ids come from %s", v2model.RefListChats(spaceId))
 	if discussionHolderRow(details) {
-		issue = issue.Hintf("chat ids come from %s; for this object's comment thread, use the id from %s as chat_id", v2model.RefListChats(spaceId), v2model.RefCreateDiscussion(spaceId, chatId))
+		if previewing {
+			issue = issue.Hintf("chat ids come from %s; for this object's comment thread, use the discussion member of %s as chat_id, or preview starting one with %s",
+				v2model.RefListChats(spaceId), v2model.RefGetObject(spaceId, chatId), v2model.RefCreateDiscussion(spaceId, chatId).With("dry_run", "true"))
+		} else {
+			issue = issue.Hintf("chat ids come from %s; for this object's comment thread, use the id from %s as chat_id", v2model.RefListChats(spaceId), v2model.RefCreateDiscussion(spaceId, chatId))
+		}
 	}
 	return 0, v2model.ValidationFailed(fmt.Sprintf("object %q is not a chat", chatId), issue)
 }
@@ -768,14 +784,14 @@ func discussionHolderRow(details *domain.Details) bool {
 // it mutates synced state). Route-gate precedence: grant space check, then
 // the write-verb check, then the chat lookup — a read-only key is refused
 // before anything resolves.
-func (s *Service) ensureChatWrite(ctx context.Context, spaceId, chatId string) (model.ObjectTypeLayout, error) {
+func (s *Service) ensureChatWrite(ctx context.Context, spaceId, chatId string, dryRun bool) (model.ObjectTypeLayout, error) {
 	if err := s.ensureSpaceGranted(ctx, spaceId); err != nil {
 		return 0, err
 	}
 	if err := ensureWriteGranted(ctx); err != nil {
 		return 0, err
 	}
-	return s.ensureChat(ctx, spaceId, chatId)
+	return s.ensureChatFor(ctx, spaceId, chatId, dryRun)
 }
 
 // chatWritesBlocks says whether a message written into a chat of this
@@ -860,7 +876,7 @@ var markdownTextStyles = map[model.BlockContentTextStyle]bool{
 // syntax for — are dropped, and a caller
 // who merely echoed the served `text` back would not know. Served on the
 // dry run and the receipt alike.
-func blocksEditWarnings(blocks []*model.ChatMessageMessageBlock) []v2model.Issue {
+func blocksEditWarnings(blocks []*model.ChatMessageMessageBlock, dryRun bool) []v2model.Issue {
 	var lost []string
 	count := func(kind string, n int) {
 		if n > 0 {
@@ -888,10 +904,18 @@ func blocksEditWarnings(blocks []*model.ChatMessageMessageBlock) []v2model.Issue
 	if len(lost) == 0 {
 		return nil
 	}
+	if dryRun {
+		return []v2model.Issue{{
+			Path:    "/text",
+			Message: fmt.Sprintf("this edit would replace the message's blocks with the text: %s the text cannot express would be dropped", strings.Join(lost, ", ")),
+			Hint:    "quotes, links and embeds cannot be written through this API; keep the original message if they matter",
+		}}
+	}
+	// the edit is made: the original is gone, so there is nothing to keep
 	return []v2model.Issue{{
 		Path:    "/text",
-		Message: fmt.Sprintf("this edit replaces the message's blocks with the text: %s the text cannot express are dropped", strings.Join(lost, ", ")),
-		Hint:    "quotes, links and embeds cannot be written through this API; keep the original message if they matter",
+		Message: fmt.Sprintf("this edit replaced the message's blocks with the text: %s the text cannot express were dropped", strings.Join(lost, ", ")),
+		Hint:    "quotes, links and embeds cannot be written through this API, so they cannot be put back here",
 	}}
 }
 

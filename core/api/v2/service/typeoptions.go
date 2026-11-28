@@ -113,7 +113,7 @@ func (s *Service) applyDeclaredOptionsAt(defs []anyblockjson.TypeProperty, resol
 			// exists to end, and the opposite of the refusal
 			// PropertyStoredKey's own comment promises.
 			if !resolvers.CreateMissingConsent() {
-				return optionConsentErrorPending(docKey, def.Options[0].Name, defPath)
+				return optionConsentErrorPending(docKey, def.Options[0].Name, defPath, resolvers.previewing)
 			}
 			for _, opt := range def.Options {
 				if opt.Name != "" {
@@ -199,8 +199,8 @@ func declaredOptionKey(def anyblockjson.TypeProperty) string {
 // It refuses only what the resolver would refuse. A declared option already
 // present on an existing property creates nothing, so it needs no consent and
 // is not reported here.
-func (s *Service) guardDeclaredOptions(spaceId string, defs []anyblockjson.TypeProperty, path string, createMissingOptions bool) error {
-	return s.guardDeclaredOptionsAt(spaceId, defs, indexedOptionsPath(path), nil, createMissingOptions)
+func (s *Service) guardDeclaredOptions(spaceId string, defs []anyblockjson.TypeProperty, path string, createMissingOptions, dryRun bool) error {
+	return s.guardDeclaredOptionsAt(spaceId, defs, indexedOptionsPath(path), nil, createMissingOptions, dryRun)
 }
 
 // indexedOptionsPath is the pointer a definition LIST gives its entries.
@@ -213,7 +213,7 @@ func indexedOptionsPath(path string) func(int) string {
 // caller's own spelling of each entry's property. A definition document's
 // property IS the caller's spelling; an op batch resolves its entries to
 // stored keys first, and a refusal must not quote those.
-func (s *Service) guardDeclaredOptionsAt(spaceId string, defs []anyblockjson.TypeProperty, pathAt func(int) string, spellAt func(int) string, createMissingOptions bool) error {
+func (s *Service) guardDeclaredOptionsAt(spaceId string, defs []anyblockjson.TypeProperty, pathAt func(int) string, spellAt func(int) string, createMissingOptions, dryRun bool) error {
 	var declaring bool
 	for _, def := range defs {
 		if len(def.Options) > 0 {
@@ -279,7 +279,7 @@ func (s *Service) guardDeclaredOptionsAt(spaceId string, defs []anyblockjson.Typ
 			if createMissingOptions {
 				continue // the format rule above still applied; consent is granted
 			}
-			return optionConsentErrorPending(spelling, def.Options[0].Name, defPath)
+			return optionConsentErrorPending(spelling, def.Options[0].Name, defPath, dryRun)
 		}
 		// held counts each name: a declared name two options share is the
 		// resolver's ambiguity refusal, with or without consent — said HERE,
@@ -303,7 +303,7 @@ func (s *Service) guardDeclaredOptionsAt(spaceId string, defs []anyblockjson.Typ
 				return optionAmbiguityError(spelling, defPath, opt.Name, matches)
 			}
 			if !createMissingOptions && len(held[opt.Name]) == 0 {
-				return optionConsentErrorAs(spaceId, spelling, routeKey, opt.Name, defPath)
+				return optionConsentErrorAs(spaceId, spelling, routeKey, opt.Name, defPath, dryRun)
 			}
 		}
 	}

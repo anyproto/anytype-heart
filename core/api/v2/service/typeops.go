@@ -193,7 +193,7 @@ func (s *Service) updateTypeOps(ctx context.Context, spaceId string, typeObject 
 	}
 	if err := s.guardDeclaredOptionsAt(spaceId, optionDefs,
 		func(i int) string { return optionPaths[i] + "/options" },
-		func(i int) string { return optionSpellings[i] }, createMissingOptions); err != nil {
+		func(i int) string { return optionSpellings[i] }, createMissingOptions, dryRun); err != nil {
 		return nil, err
 	}
 
@@ -228,9 +228,9 @@ func (s *Service) updateTypeOps(ctx context.Context, spaceId string, typeObject 
 	if err != nil {
 		return nil, err
 	}
-	result.Warnings = append(result.Warnings, typePruneWarnings(prune, "/ops", s.servedKeySpeller(spaceId))...)
 
 	if dryRun {
+		result.Warnings = append(result.Warnings, typePruneWarnings(prune, "/ops", s.servedKeySpeller(spaceId), true)...)
 		result.DryRun = true
 		return result, nil
 	}
@@ -244,11 +244,17 @@ func (s *Service) updateTypeOps(ctx context.Context, spaceId string, typeObject 
 	// the lists first, the views second: the type's own open-time reconcile
 	// only ever ADDS a column for a property the type recommends, so pruning
 	// before the lists were written invites it straight back
-	if len(prune.Pruned) > 0 {
-		if err := s.pruneTypeDataviewColumns(ctx, spaceId, typeObject.Id, plan.removedKeys()); err != nil {
+	if len(plan.removedKeys()) > 0 {
+		// the receipt reports the plan applied under the lock, which runs
+		// whatever the read planned: another edit may have started, or
+		// stopped, arranging a view by the property since the read
+		applied, err := s.pruneTypeDataviewColumns(ctx, spaceId, typeObject.Id, plan.removedKeys())
+		if err != nil {
 			return nil, err
 		}
+		prune = applied
 	}
+	result.Warnings = append(result.Warnings, typePruneWarnings(prune, "/ops", s.servedKeySpeller(spaceId), false)...)
 	// the view half, last. Property ops wrote the lists and the prune ran, so
 	// a view op here sees the state the batch actually produced rather than
 	// one the prune is about to edit underneath it.
@@ -1165,18 +1171,22 @@ func (s *Service) typeDataviewPrunePlan(ctx context.Context, spaceId, typeId str
 	return plan, nil
 }
 
-// pruneTypeDataviewColumns applies the prune to the live type.
-func (s *Service) pruneTypeDataviewColumns(ctx context.Context, spaceId, typeId string, keys []string) error {
+// pruneTypeDataviewColumns applies the prune to the live type and returns
+// the plan it applied, computed under the lock from the state it edited.
+func (s *Service) pruneTypeDataviewColumns(ctx context.Context, spaceId, typeId string, keys []string) (template.TypeDataviewColumnPlan, error) {
+	var applied template.TypeDataviewColumnPlan
 	// a view edit needs neither restriction axis: a type carries the blocks
 	// restriction, and the native view surface does not check it either —
 	// which is how the app edits a type's views at all
 	_, err := s.mutator.MutateObject(ctx, spaceId, typeId, apicore.EditNeeds{}, func(edit apicore.ObjectEdit) error {
+		applied = template.TypeDataviewColumnPlan{}
 		block := typeDataviewBlock(edit.State)
 		if block == nil {
 			return nil
 		}
 		edited := block.Copy()
 		dv := edited.Model().GetDataview()
+		applied = template.PlanTypeDataviewColumnPrune(dv, keys)
 		changed := template.PruneTypeDataviewColumns(dv, keys)
 		// the link that had no column to begin with — the half-consistent
 		// state a client's own delete leaves — which the prune above cannot
@@ -1193,9 +1203,9 @@ func (s *Service) pruneTypeDataviewColumns(ctx context.Context, spaceId, typeId 
 		return nil
 	})
 	if err != nil {
-		return mapWriteError(spaceId, typeId, err)
+		return template.TypeDataviewColumnPlan{}, mapWriteError(spaceId, typeId, err)
 	}
-	return nil
+	return applied, nil
 }
 
 // addTypeDataviewColumns is the add direction, and the reason this channel no
@@ -1272,23 +1282,35 @@ func typeDataviewBlock(st *state.State) simple.Block {
 // typePruneWarnings renders a prune plan for the caller: path is the
 // request member the change came from, spell turns a stored relation key
 // into the spelling the surface serves (a bson stored key must never reach
-// the caller).
-func typePruneWarnings(plan template.TypeDataviewColumnPlan, path string, spell func(string) string) []v2model.Issue {
+// the caller). The plan is reported before a dry run returns, so a dry run
+// says what the real run would remove and leave, not what it did.
+func typePruneWarnings(plan template.TypeDataviewColumnPlan, path string, spell func(string) string, dryRun bool) []v2model.Issue {
 	var issues []v2model.Issue
 	if len(plan.Pruned) > 0 {
-		issues = append(issues, v2model.Issue{
-			Path:    path,
-			Message: fmt.Sprintf("columns dropped: %s", prunedPerView(plan.Pruned, spell)),
-		})
-	}
-	if len(plan.InUse) > 0 {
-		verb, left := "group, sort or filter by a removed property and were left as they are", ""
-		if len(plan.InUse) == 1 {
-			verb, left = "groups, sorts or filters by a removed property and was left as it is", ""
+		lead := "columns dropped"
+		if dryRun {
+			lead = "columns that would be removed"
 		}
 		issues = append(issues, v2model.Issue{
 			Path:    path,
-			Message: fmt.Sprintf("%s %s%s", namedViews(plan.InUse), verb, left),
+			Message: fmt.Sprintf("%s: %s", lead, prunedPerView(plan.Pruned, spell)),
+		})
+	}
+	if len(plan.InUse) > 0 {
+		// every arrangement the plan keeps a view whole for: grouping,
+		// sorting, filters, the cover and the calendar's end date
+		verb := "use a removed property for their grouping, sorting, filters, cover or end date and were left as they are"
+		switch {
+		case len(plan.InUse) == 1 && dryRun:
+			verb = "uses a removed property for its grouping, sorting, filters, cover or end date and would be left as it is"
+		case len(plan.InUse) == 1:
+			verb = "uses a removed property for its grouping, sorting, filters, cover or end date and was left as it is"
+		case dryRun:
+			verb = "use a removed property for their grouping, sorting, filters, cover or end date and would be left as they are"
+		}
+		issues = append(issues, v2model.Issue{
+			Path:    path,
+			Message: fmt.Sprintf("%s %s", namedViews(plan.InUse), verb),
 		}.Hintf("change those views with update_view through %s", v2model.NewRef(v2model.OpPatchObject)))
 	}
 	return issues

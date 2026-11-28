@@ -305,7 +305,7 @@ func (s *Service) createFromShortcut(ctx context.Context, spaceId string, fields
 	}
 	// the leading heading is the title, not the first paragraph of the body
 	promotable := name == "" && !facts.blocked
-	run, promoted, titleNotice := s.liftMarkdownTitle(spaceId, shortcut.Type, run, name, promotable)
+	run, promoted, titleNotice := s.liftMarkdownTitle(spaceId, shortcut.Type, run, name, promotable, opts.dryRun)
 	droppedLeadingBlocks := 0
 	if titleNotice != nil {
 		droppedLeadingBlocks = 1
@@ -403,8 +403,9 @@ var headingStyles = map[string]bool{"heading_1": true, "heading_2": true, "headi
 // is what the note exemption below is read from.
 //
 // It returns the blocks to keep, the name to use and the notice to attach,
-// nil when nothing was touched.
-func (s *Service) liftMarkdownTitle(spaceId, typeTerm string, run []json.RawMessage, name string, promotable bool) ([]json.RawMessage, string, *v2model.Issue) {
+// nil when nothing was touched. The notice is worded for the run: a dry run
+// says what the create would do with the heading.
+func (s *Service) liftMarkdownTitle(spaceId, typeTerm string, run []json.RawMessage, name string, promotable, dryRun bool) ([]json.RawMessage, string, *v2model.Issue) {
 	if len(run) == 0 {
 		return run, name, nil
 	}
@@ -448,15 +449,23 @@ func (s *Service) liftMarkdownTitle(spaceId, typeTerm string, run []json.RawMess
 	}
 	switch {
 	case name != "" && heading == strings.TrimSpace(name):
+		message := "the first heading repeated the object's name and was dropped"
+		if dryRun {
+			message = "the first heading repeats the object's name and would be dropped"
+		}
 		return run[1:], name, &v2model.Issue{
 			Path:    "/markdown[0]",
-			Message: "the first heading repeated the object's name and was dropped",
+			Message: message,
 			Hint:    "an object shows its name as its title, so a heading that restates it appears twice",
 		}
 	case promotable && first.Type == "heading_1" && s.typeShowsNameAsTitle(spaceId, typeTerm):
+		message := fmt.Sprintf("the first heading became the object's name: %q", heading)
+		if dryRun {
+			message = fmt.Sprintf("the first heading would become the object's name: %q", heading)
+		}
 		return run[1:], heading, &v2model.Issue{
 			Path:    "/markdown[0]",
-			Message: fmt.Sprintf("the first heading became the object's name: %q", heading),
+			Message: message,
 			Hint:    "an object shows its name as its title; send name to choose it yourself",
 		}
 	}
@@ -702,19 +711,98 @@ func docLocalIds(doc []byte) []string {
 // owns such ids (they never relabel, so its export carries them verbatim)
 // must keep working.
 func warnLabelShapedIds(body []byte) []v2model.Issue {
-	var labelLike []string
-	for _, id := range docLocalIds(body) {
-		if anyblockjson.IsCompactLabelShaped(id) {
-			labelLike = append(labelLike, strconv.Quote(id))
-		}
-	}
-	if len(labelLike) == 0 {
+	labels := labelShapedIds(body)
+	if len(labels) == 0 {
 		return nil
 	}
-	return []v2model.Issue{v2model.Issue{
-		Path:    "/blocks",
-		Message: fmt.Sprintf("ids %s look like compact labels from a default read and were adopted as this object's real ids", strings.Join(labelLike, ", ")),
-	}.Hintf("to clone with the source's real ids, read it with %s; to mint fresh ids, omit them", v2model.NewRef(v2model.OpGetObject).With("ids", "full"))}
+	// the warning describes the create, not its outcome: a dry run returns
+	// it with nothing created
+	return []v2model.Issue{labelIdIssue("ids %s look like compact labels from a default read and become this object's real ids", labels)}
+}
+
+// labelShapedIds are the body's local ids shaped like compact labels.
+func labelShapedIds(body []byte) []string {
+	var labels []string
+	for _, id := range docLocalIds(body) {
+		if anyblockjson.IsCompactLabelShaped(id) {
+			labels = append(labels, id)
+		}
+	}
+	return labels
+}
+
+// labelIdIssue is the label-adoption warning, its ids quoted into format.
+func labelIdIssue(format string, ids []string) v2model.Issue {
+	return v2model.Issue{Path: "/blocks", Message: fmt.Sprintf(format, quotedIds(ids))}.
+		Hintf("to clone with the source's real ids, read it with %s; to mint fresh ids, omit them", v2model.NewRef(v2model.OpGetObject).With("ids", "full"))
+}
+
+func quotedIds(ids []string) string {
+	quoted := make([]string, len(ids))
+	for i, id := range ids {
+		quoted[i] = strconv.Quote(id)
+	}
+	return strings.Join(quoted, ", ")
+}
+
+// labelShapedIdWarnings is warnLabelShapedIds beside an applied template.
+// The merge remints a request block whose id a block of the template already
+// holds (mergeDocumentIntoTemplate), so such an id never becomes the
+// object's: the template's own blocks say which, before the create as after
+// it, and the warnings are worded for the run. Without a template the
+// neutral warning stands; when the template cannot be read, the warning
+// qualifies itself instead of guessing.
+func (s *Service) labelShapedIdWarnings(ctx context.Context, spaceId string, body []byte, templateId string, dryRun bool) []v2model.Issue {
+	if templateId == "" {
+		return warnLabelShapedIds(body)
+	}
+	labels := labelShapedIds(body)
+	if len(labels) == 0 {
+		return nil
+	}
+	read, err := s.reader.ReadObject(ctx, spaceId, templateId)
+	if err != nil || read.Snapshot == nil {
+		if dryRun {
+			return []v2model.Issue{labelIdIssue("ids %s look like compact labels from a default read and would become this object's real ids, except any a block of the applied template already holds, which would get a fresh id", labels)}
+		}
+		return []v2model.Issue{labelIdIssue("ids %s look like compact labels from a default read and became this object's real ids, except any a block of the applied template already held, which got a fresh id", labels)}
+	}
+	held := make(map[string]bool, len(read.Snapshot.Blocks))
+	for _, block := range read.Snapshot.Blocks {
+		held[block.GetId()] = true
+	}
+	// the merge renames block ids only: a view id is never reminted
+	blockIds := map[string]bool{}
+	if parsed, perr := parseEditDoc(body); perr == nil {
+		blockIds = parsed.localBlockIds()
+	}
+	var kept, reminted []string
+	for _, id := range labels {
+		if held[id] && blockIds[id] {
+			reminted = append(reminted, id)
+		} else {
+			kept = append(kept, id)
+		}
+	}
+	var issues []v2model.Issue
+	if len(kept) > 0 {
+		format := "ids %s look like compact labels from a default read and became this object's real ids"
+		if dryRun {
+			format = "ids %s look like compact labels from a default read and would become this object's real ids"
+		}
+		issues = append(issues, labelIdIssue(format, kept))
+	}
+	if len(reminted) > 0 {
+		if dryRun {
+			issues = append(issues, v2model.Issue{Path: "/blocks", Message: fmt.Sprintf(
+				"ids %s look like compact labels from a default read; blocks of the applied template already hold them, so the request's blocks would get fresh ids", quotedIds(reminted))})
+		} else {
+			issues = append(issues, v2model.Issue{Path: "/blocks", Message: fmt.Sprintf(
+				"ids %s look like compact labels from a default read; blocks of the applied template already held them, so the request's blocks got fresh ids", quotedIds(reminted))}.
+				Hintf("read the object with %s for the ids it holds", v2model.NewRef(v2model.OpGetObject).With("ids", "full")))
+		}
+	}
+	return issues
 }
 
 // createFromDocument is the shared full-document create path: structural
@@ -849,8 +937,10 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 		// this is knowable without building the template.
 		appliedTemplate.Combined = countRequestBlocks(snapshot) > 0
 	}
-	// the label-adoption tell rides real runs and dry runs alike (C9)
-	result.Warnings = warnLabelShapedIds(body)
+	// the label-adoption tell rides real runs and dry runs alike (C9),
+	// worded for the template the create applies
+	labelWarnings := s.labelShapedIdWarnings(ctx, spaceId, body, appliedTemplate.GetId(), opts.dryRun)
+	result.Warnings = append([]v2model.Issue(nil), labelWarnings...)
 	result.Warnings = append(result.Warnings, templateWarnings...)
 	// a cross-space object link whose space reference could not be expanded
 	result.Warnings = append(result.Warnings, links.Warnings("/blocks")...)
@@ -913,6 +1003,8 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 				result.Type, appliedTemplate.GetId()),
 		}.Hintf("point default_template at a live template, or clear it, with %s", v2model.RefUpdateType(spaceId, result.Type)))
 		result.Template = nil
+		// no template was applied after all, so nothing was reminted
+		result.Warnings = append(warnLabelShapedIds(body), result.Warnings[len(labelWarnings):]...)
 		created, err = s.creator.CreateObjectFromSnapshot(ctx, spaceId, snapshot, "")
 	}
 	if err != nil {

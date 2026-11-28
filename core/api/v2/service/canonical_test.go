@@ -177,9 +177,7 @@ func TestV2HiddenHoldersVacateTheSlugNamespace(t *testing.T) {
 	})
 
 	t.Run("the visible holder still resolves by slug", func(t *testing.T) {
-		fx.mwMock.EXPECT().ObjectSetIsArchived(mock.Anything, &pb.RpcObjectSetIsArchivedRequest{
-			ContextId: "type-meeting", IsArchived: true,
-		}).Return(&pb.RpcObjectSetIsArchivedResponse{Error: &pb.RpcObjectSetIsArchivedResponseError{Code: pb.RpcObjectSetIsArchivedResponseError_NULL}})
+		fx.expectSchemaArchive("type-meeting")
 
 		result, err := fx.DeleteType(context.Background(), testSpaceId, "meeting_note", false)
 

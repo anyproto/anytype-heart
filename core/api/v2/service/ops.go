@@ -301,6 +301,25 @@ func (d *v2EditDoc) localIds() []string {
 	return ids
 }
 
+// localBlockIds is localIds without the view ids: the ids a merge into a
+// template can remint, which renames blocks only.
+func (d *v2EditDoc) localBlockIds() map[string]bool {
+	ids := map[string]bool{}
+	for i, b := range d.blocks {
+		// the visitor never fails, so a walk error leaves this block's ids
+		// out and nothing else
+		if err := walkPayloadIdSlots(b, fmt.Sprintf("blocks[%d]", i), func(slot payloadIdSlot) error {
+			if id := blockId(slot.m); id != "" && !slot.view {
+				ids[id] = true
+			}
+			return nil
+		}); err != nil {
+			continue
+		}
+	}
+	return ids
+}
+
 // subtreeEnd returns the index just past block i's contiguous descendant run.
 func (d *v2EditDoc) subtreeEnd(i int) int {
 	base := blockIndent(d.blocks[i])

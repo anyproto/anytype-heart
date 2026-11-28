@@ -196,7 +196,7 @@ func (s *Service) PatchObject(ctx context.Context, spaceId, objectId string, bod
 	// detail, not the Bin membership: the restrictions are computed from
 	// the detail, and this check exists to name THEIR refusal.
 	if isArchivedRead(cur) {
-		return nil, v2model.ObjectArchived(spaceId, objectId, deletableSbType(cur.SbType))
+		return nil, v2model.ObjectArchived(spaceId, objectId, deletableSbType(cur.SbType), dryRun)
 	}
 	// read once, shared by the probe and the apply below
 	pc, err := s.newPatchContext(spaceId, cur)
@@ -323,6 +323,8 @@ func (s *Service) guardCreateMissing(ctx context.Context, spaceId, objectId stri
 	// preview what that run would create, and a probe with a different answer
 	// previews a different request
 	probe := s.newCreatingResolvers(ctx, spaceId, true, createMissingOptions)
+	// the probe never writes, but its refusals speak for this request
+	probe.previewing = dryRun
 	probe.patch, probe.scope = pc, pc.objectScope
 	s.prewarmCreateMissing(ops, probe)
 	if err := probe.err(); err != nil {
@@ -338,7 +340,7 @@ func (s *Service) guardCreateMissing(ctx context.Context, spaceId, objectId stri
 		// fixing typos one round trip at a time is the failure mode a
 		// pre-lock guard exists to avoid. A dry run gets the same refusal:
 		// its job is to preview what the real run would do.
-		return optionConsentError(spaceId, probe.keys.PropertySlug(pending[0].Property), pending[0].Name)
+		return optionConsentError(spaceId, probe.keys.PropertySlug(pending[0].Property), pending[0].Name, dryRun)
 	}
 	if len(pending) > v2MaxCreatedOptionsPerPatch {
 		props := map[string]int{}

@@ -45,7 +45,13 @@ refused for everything made in the app. What changed:
   and every route addressing it answers 410 `object_deleted` (§0.1).
 - **Every archive receipt carries a Bin notice**: where the object went, the
   restore op, and — evaluated per object — whether this key may also delete
-  it for good (`resend with ?permanent=true`) or why not.
+  it for good (`resend with ?permanent=true`) or why not. When the
+  provenance read fails, the notice carries the restore op alone: the
+  verdict is advice, and an archive that succeeded is not failed over it. A
+  dry run's notice says what the real request does: the object can be
+  restored once it is in the Bin, and its resend is `?dry_run=true&permanent=true`,
+  which previews the delete for good (a bare `?permanent=true` copied in
+  place of the query would perform it).
 - `?skip_bin` is refused with a 400 steering to `permanent`.
 
 Sections below are kept as the record; where they say "DELETE" for the
@@ -715,11 +721,17 @@ variants, each naming what IS recorded:
 - created by another space member: `…this object was created by another
   space member. Ask them, or archive it in the app if your role permits.`
 
-Each carries `issues: [{path: "objectId", hint: "probe deletability without
-writing via DELETE …?dry_run=true; the created_date/creator properties on
-GET show who created the object"}]`, and the standard `WWW-Authenticate:
-Bearer error="insufficient_scope"` channel stays untouched (this is not a
-scope failure).
+Each carries `issues: [{path: "object_id", hint: "probe without writing by
+resending with ?dry_run=true&permanent=true; a read of the object shows who
+created it; without permanent, DELETE moves the object to the Bin"}]`; the
+probe binds permanent too, so copied in place of the query it tests the
+delete it refused rather than previewing an archive. The
+standard `WWW-Authenticate: Bearer error="insufficient_scope"` channel stays
+untouched (this is not a scope failure). A refused dry run already was the
+probe, so its hint drops the advice to resend with `?dry_run=true`, and its
+archive alternative says the dry run previews the move (GO-7616). The hint
+names the creator generically: a read spells the creator properties in the
+caller's vocabulary, which a refusal cannot know.
 
 **9.6 `?dry_run=true` (C9) is the deletability probe.** A dry run executes
 steps 1–5 — including the provenance verdict — and skips only the archive:

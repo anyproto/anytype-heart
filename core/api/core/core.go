@@ -73,6 +73,10 @@ type ObjectRead struct {
 	BlocksRefused     error
 	DetailsRefused    error
 	TypeChangeRefused error
+	// DeleteRefused is the delete restriction's verdict from the same read:
+	// what the archive and delete RPCs check, so a dry run of a delete
+	// reaches the same conclusion as the real one.
+	DeleteRefused error
 }
 
 // EditNeeds declares which object-level restriction axes an edit touches, so
@@ -418,7 +422,8 @@ type Widgets interface {
 type SpaceLoads interface {
 	// WaitLoaded returns nil once the space is loaded on this device. It
 	// waits for a load in progress for as long as ctx allows and returns the
-	// load's error, or ctx's, otherwise. For a loaded space it does not wait.
+	// load's error, or ctx's, otherwise. For a loaded space it does not wait,
+	// so a ctx already done makes it a readiness probe that answers at once.
 	WaitLoaded(ctx context.Context, spaceId string) error
 }
 
