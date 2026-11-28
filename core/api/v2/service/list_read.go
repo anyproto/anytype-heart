@@ -311,9 +311,11 @@ func (s *Service) listObjects(ctx context.Context, spaceId, listId string, want 
 		}
 		records, total, err = index.QueryAndCount(database.Query{
 			Filters: filters,
-			Sorts:   sorts,
-			Offset:  offset,
-			Limit:   limit,
+			// a stored view cannot tell an omitted date precision from
+			// false: keep the one the store implies, as the app does
+			Sorts:  database.WithIdTieBreak(database.ImplyIncludeTime(index, sorts)),
+			Offset: offset,
+			Limit:  limit,
 		})
 		if err != nil {
 			return nil, 0, false, nil, fmt.Errorf("query list %s: %w", listId, err)
@@ -334,7 +336,7 @@ func (s *Service) listObjects(ctx context.Context, spaceId, listId string, want 
 	// then would fire on every ordinary read whose filter keys the live set
 	// happens not to list.
 	if total == 0 && defaultedView != nil {
-		warnings = append(warnings, s.danglingFilterWarnings(spaceId, defaultedView)...)
+		warnings = append(warnings, s.danglingFilterWarnings(ctx, spaceId, defaultedView, len(target.dataview.Views) > 1)...)
 	}
 	return rows, total, offset+len(records) < total, warnings, nil
 }
@@ -622,24 +624,19 @@ func (b *byPrecomputedKey) Swap(i, j int) {
 	b.keys[i], b.keys[j] = b.keys[j], b.keys[i]
 }
 
-// substitutePlaceholders resolves the SPEC §6.2 dynamic placeholders in a
-// stored view's filters before execution: `_filter_template_2_` → the
-// caller's participant id, `_filter_template_1_` → the hosting object id.
-// Any other placeholder — or the user placeholder when no account identity
-// is wired — drops its leaf and degrades to a C6 warning: evaluated
-// literally it would match nothing, v1's silent-empty-result bug. The
-// snapshot is a per-read copy, so substitution never touches live state.
 // danglingFilterWarnings reports the view filters keyed on a property the
-// space no longer holds. Such a filter matches nothing, so the read comes back
-// empty — and since a stored view now applies by default, that empty page is
-// what an ordinary caller sees, with no signal that the view is the reason.
-// This file's contract is that an unresolvable filter degrades to a warning
-// and never to a silent no-match, which substitutePlaceholders already honours
-// for placeholders; a deleted property is the same failure through a different
-// door.
+// space cannot serve. The page is empty and a stored view now applies by
+// default, so without this the caller sees no rows and no reason. The warning
+// names the unavailable properties and says nothing about what the filters do.
 //
-// The store is consulted only when a view actually carries filters.
-func (s *Service) danglingFilterWarnings(spaceId string, view *model.BlockContentDataviewView) []v2model.Issue {
+// A key is available when a live relation row holds it, or when it is a
+// bundled property the store supplies without a row (done, isFavorite, dueDate
+// and the system keys); a bundled key is unavailable only when this space
+// explicitly removed it, the same verdict the write channels use. A nested path
+// such as `type.uniqueKey` is judged by its first component. The label of each
+// key is the one the views read emits for it, in the request's vocabulary. The
+// store is consulted only when a view actually carries filters.
+func (s *Service) danglingFilterWarnings(ctx context.Context, spaceId string, view *model.BlockContentDataviewView, otherViews bool) []v2model.Issue {
 	if len(view.Filters) == 0 {
 		return nil
 	}
@@ -651,7 +648,7 @@ func (s *Service) danglingFilterWarnings(spaceId string, view *model.BlockConten
 				continue
 			}
 			if node.RelationKey != "" {
-				keys[node.RelationKey] = true
+				keys[strings.SplitN(node.RelationKey, ".", 2)[0]] = true
 			}
 			walk(node.NestedFilters)
 		}
@@ -664,28 +661,55 @@ func (s *Service) danglingFilterWarnings(spaceId string, view *model.BlockConten
 	if err != nil {
 		return nil // a store hiccup must not fail the read; the rows still stand
 	}
-	for _, entry := range entries {
-		delete(keys, entry.Key)
-	}
-	if len(keys) == 0 {
+	removedSet, err := s.bundledRemovalSet(spaceId)
+	if err != nil {
 		return nil
 	}
-	missing := make([]string, 0, len(keys))
+	var unavailable []string
 	for key := range keys {
-		missing = append(missing, strconv.Quote(key))
+		if propertyKeyInstalledIn(entries, key) {
+			continue
+		}
+		if bundle.HasRelation(domain.RelationKey(key)) {
+			removed, err := s.bundledPropertyRemoved(ctx, spaceId, entries, removedSet, key)
+			if err != nil || !removed {
+				continue
+			}
+		}
+		unavailable = append(unavailable, key)
 	}
-	sort.Strings(missing)
-	noun := "a property"
-	if len(missing) > 1 {
-		noun = "properties"
+	if len(unavailable) == 0 {
+		return nil
 	}
-	return []v2model.Issue{v2model.Issue{
+	vocab := storeresolver.New(s.store.SpaceIndex(spaceId)).Options().Keys
+	if !nameKeysRequested(ctx) {
+		vocab = s.apiKeys(spaceId, vocab)
+	}
+	labels := make([]string, 0, len(unavailable))
+	for _, key := range unavailable {
+		labels = append(labels, strconv.Quote(vocab.PropertySlug(key)))
+	}
+	sort.Strings(labels)
+	issue := v2model.Issue{
 		Path: "view",
-		Message: fmt.Sprintf("the view %s filters on %s no property in this space answers to (%s), so it matches nothing",
-			describeView(view), noun, strings.Join(missing, ", ")),
-	}.Hintf("the property was probably deleted; edit the view's filters, or pass %s to read through another view", v2model.Resend("view", "<view_id>"))}
+		Message: fmt.Sprintf("view %s returned no rows. Its filters reference unavailable properties (%s)",
+			describeView(view), strings.Join(labels, ", ")),
+	}
+	if otherViews {
+		return []v2model.Issue{issue.Hintf("edit the view's filters, or pass %s to read through another view", v2model.Resend("view", "<view_id>"))}
+	}
+	return []v2model.Issue{issue.Hintf("the properties were probably deleted; edit the view's filters")}
 }
 
+// substitutePlaceholders resolves the SPEC §6.2 dynamic placeholders in a
+// stored view's filters before execution: `_filter_template_2_` → the
+// caller's participant id, `_filter_template_1_` → the hosting object id. It
+// substitutes into every string-valued leaf, whatever the property's format
+// (direct search compares the token as a literal instead).
+// Any other placeholder — or the user placeholder when no account identity
+// is wired — drops its leaf and degrades to a C6 warning, never a silent
+// comparison against the literal token (v1's silent-empty-result bug). The
+// snapshot is a per-read copy, so substitution never touches live state.
 func (s *Service) substitutePlaceholders(spaceId, hostId string, filters []*model.BlockContentDataviewFilter) ([]*model.BlockContentDataviewFilter, []v2model.Issue) {
 	var warnings []v2model.Issue
 	substitute := func(value string) (string, bool) {

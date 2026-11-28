@@ -27,9 +27,12 @@ Fulltext queue flow:
 */
 
 import (
+	"bytes"
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"slices"
 	"strings"
 	"sync"
@@ -1138,6 +1141,9 @@ func (s *dsObjectStore) QueryCrossSpace(ctx context.Context, q database.Query) (
 }
 
 func (s *dsObjectStore) QueryCrossSpaceNoWait(ctx context.Context, q database.Query) ([]database.Record, bool, error) {
+	// the proto request has no form for the id tie-break; an in-process
+	// caller marks ctx instead
+	q.Sorts = database.RestoreIdTieBreak(ctx, q.Sorts)
 	// negative paging from the wire must not disable the per-space candidate
 	// bound (a negative limit reads as unlimited downstream)
 	if q.Offset < 0 {
@@ -1258,7 +1264,7 @@ func (s *dsObjectStore) QueryCrossSpaceNoWait(ctx context.Context, q database.Qu
 				skippedSpace.Store(true)
 				return nil
 			}
-			perSlot[i] = recordsWithSpaceId(items, store.SpaceId())
+			perSlot[i] = items
 			succeeded[i] = true
 			return nil
 		})
@@ -1270,18 +1276,18 @@ func (s *dsObjectStore) QueryCrossSpaceNoWait(ctx context.Context, q database.Qu
 		allStoresLoaded = false
 	}
 
-	var records []database.Record
+	var records []originRecord
 	queried := make([]spaceindex.Store, 0, len(candidates))
 	for i, store := range candidates {
 		if !succeeded[i] {
 			continue
 		}
 		queried = append(queried, store)
-		records = append(records, perSlot[i]...)
+		records = appendOrigin(records, perSlot[i], store.SpaceId())
 	}
 
 	s.sortMergedRecords(records, q, queried)
-	return paginateMerged(records, q), allStoresLoaded, nil
+	return paginateMerged(recordsWithSpaceId(records), q), allStoresLoaded, nil
 }
 
 // paginateMerged applies the caller's offset/limit to the merge-sorted record
@@ -1329,11 +1335,29 @@ func (s *dsObjectStore) queryCrossSpaceFulltext(ctx context.Context, q database.
 		budget = 2000
 	}
 
+	// a paged caller that asked for a total order (the id tie-break) must
+	// find the same candidates at every page size: one lookahead doc tells
+	// whether the budget cut split a score tie, whose tied docs the index
+	// picks by its own choice (spaceindex.SettledFulltextResults)
+	settle := needed > 0 && database.HasIdTieBreak(q.Sorts)
 	skipped := false
 	for {
-		matches, err := s.fts.Search("", q.TextQuery, budget, false)
+		ask := budget
+		if settle {
+			ask++
+		}
+		matches, err := s.fts.Search("", q.TextQuery, ask, false)
 		if err != nil {
 			return nil, false, fmt.Errorf("global fulltext search: %w", err)
+		}
+		indexExhausted := len(matches) < ask
+		// one ranking over every space: the tie spans the spaces too
+		settledAbove := math.Inf(-1)
+		if len(matches) > budget {
+			if boundary := spaceindex.MinDocScore(matches[:budget]); matches[budget].Score >= boundary && budget < 2000 {
+				settledAbove = boundary
+			}
+			matches = matches[:budget]
 		}
 
 		perSpace := make(map[string][]*ftsearch.DocumentMatch)
@@ -1350,29 +1374,28 @@ func (s *dsObjectStore) queryCrossSpaceFulltext(ctx context.Context, q database.
 		}
 		slices.Sort(spaceIds)
 
-		var records []database.Record
+		var records []originRecord
 		queried := make([]spaceindex.Store, 0, len(spaceIds))
 		for _, spaceId := range spaceIds {
 			if err := ctx.Err(); err != nil {
 				return nil, false, fmt.Errorf("cross-space fulltext: %w", err)
 			}
 			store := storeBySpace[spaceId]
-			items, err := s.resolveSpaceFulltext(store, q, perSpace[spaceId], needed)
+			items, err := s.resolveSpaceFulltext(store, q, perSpace[spaceId], settledAbove, needed)
 			if err != nil {
 				log.Error("cross-space fulltext: resolve space", zap.String("spaceId", spaceId), zap.Error(err))
 				skipped = true
 				continue
 			}
 			queried = append(queried, store)
-			records = append(records, items...)
+			records = appendOrigin(records, items, spaceId)
 		}
 
 		s.sortMergedRecords(records, q, queried)
 
 		pageFilled := needed == 0 || len(records) >= needed
-		indexExhausted := len(matches) < budget
 		if pageFilled || indexExhausted || budget >= 2000 {
-			return records, skipped, nil
+			return recordsWithSpaceId(records), skipped, nil
 		}
 		budget *= 2
 		if budget > 2000 {
@@ -1384,12 +1407,14 @@ func (s *dsObjectStore) queryCrossSpaceFulltext(ctx context.Context, q database.
 // resolveSpaceFulltext groups one space's doc matches into per-object results
 // and resolves them against the space's store (details, filters, injections,
 // final score). enforceMinScore is off: the matches carry no highlights, and
-// the near-zero-score gate needs them to decide fairly.
-func (s *dsObjectStore) resolveSpaceFulltext(store spaceindex.Store, q database.Query, matches []*ftsearch.DocumentMatch, needed int) ([]database.Record, error) {
+// the near-zero-score gate needs them to decide fairly. Only results scoring
+// above settledAbove are kept (spaceindex.SettledFulltextResults).
+func (s *dsObjectStore) resolveSpaceFulltext(store spaceindex.Store, q database.Query, matches []*ftsearch.DocumentMatch, settledAbove float64, needed int) ([]database.Record, error) {
 	results, err := spaceindex.GroupFulltextResults(matches, false)
 	if err != nil {
 		return nil, fmt.Errorf("group fulltext results: %w", err)
 	}
+	results = spaceindex.SettledFulltextResults(results, settledAbove)
 	arena := s.arenaPool.Get()
 	defer s.arenaPool.Put(arena)
 	filters, err := database.NewFilters(q, store, arena, &collate.Buffer{})
@@ -1402,7 +1427,7 @@ func (s *dsObjectStore) resolveSpaceFulltext(store spaceindex.Store, q database.
 	if err != nil {
 		return nil, fmt.Errorf("resolve fulltext candidates: %w", err)
 	}
-	return recordsWithSpaceId(items, store.SpaceId()), nil
+	return items, nil
 }
 
 // sortMergedRecords restores a global order over records merged from several
@@ -1410,39 +1435,80 @@ func (s *dsObjectStore) resolveSpaceFulltext(store spaceindex.Store, q database.
 // database.InjectDefaultOrder supplies the implicit score-first order of
 // fulltext queries and database.NewSetOrder the per-sort includeTime and
 // custom-order handling — without this the per-space cut and the merged
-// order disagree and offset paging duplicates and drops records. Relation
-// formats and option/object order maps are resolved across all queried
-// stores (an option or linked object lives only in its record's own space).
-// Ties end on the object id so the order is stable across calls.
-func (s *dsObjectStore) sortMergedRecords(records []database.Record, q database.Query, queried []spaceindex.Store) {
+// order disagree and offset paging duplicates and drops records. A plain
+// cut is merged on each record's store key under its own space's order; a
+// fulltext cut by Order.Compare, with relation formats and option/object
+// order maps resolved across all queried stores. Ties end on the object id
+// so the order is stable across calls. Each record is compared as its store
+// cut it: before its spaceId is filled in (recordsWithSpaceId), which an
+// older row lacks.
+func (s *dsObjectStore) sortMergedRecords(records []originRecord, q database.Query, queried []spaceindex.Store) {
 	if len(records) < 2 {
 		return
 	}
-	var order database.Order
+	byId := func(a, b originRecord) int {
+		return strings.Compare(a.record.Details.GetString(bundle.RelationKeyId), b.record.Details.GetString(bundle.RelationKeyId))
+	}
 	sorts := database.InjectDefaultOrder(q, q.Sorts)
-	if len(sorts) > 0 && len(queried) > 0 {
+	if len(sorts) == 0 || len(queried) == 0 {
+		slices.SortStableFunc(records, byId)
+		return
+	}
+	if q.TextQuery != "" {
+		// a fulltext cut is ordered in memory, by Order.Compare
 		arena := s.arenaPool.Get()
 		defer s.arenaPool.Put(arena)
-		order = database.NewSetOrder(unionOrderStore{stores: queried}, arena, &collate.Buffer{}, sorts)
+		order := database.NewSetOrder(unionOrderStore{stores: queried}, arena, &collate.Buffer{}, sorts)
+		slices.SortStableFunc(records, func(a, b originRecord) int {
+			return cmp.Or(order.Compare(a.record.Details, b.record.Details), byId(a, b))
+		})
+		return
 	}
-	slices.SortStableFunc(records, func(a, b database.Record) int {
-		if order != nil {
-			if comp := order.Compare(a.Details, b.Details); comp != 0 {
-				return comp
-			}
+	// a plain cut is the store's own sort, which Order.Compare does not
+	// always reproduce (a day-only date sort places an empty value
+	// differently): merge on the keys the store sorted by, each built with
+	// its own space's order. One order over all spaces would resolve an
+	// object or option a space does not hold from another space, and so
+	// reorder that space's cut
+	keyers := make(map[string]*database.SortKeyer, len(queried))
+	for _, store := range queried {
+		keyers[store.SpaceId()] = database.NewSortKeyer(store, sorts)
+	}
+	for i := range records {
+		if keyer := keyers[records[i].spaceId]; keyer != nil {
+			records[i].key = keyer.Key(records[i].record.Details)
 		}
-		return strings.Compare(a.Details.GetString(bundle.RelationKeyId), b.Details.GetString(bundle.RelationKeyId))
+	}
+	slices.SortStableFunc(records, func(a, b originRecord) int {
+		return cmp.Or(bytes.Compare(a.key, b.key), byId(a, b))
 	})
+}
+
+// originRecord is a record as its space's store returned it, with the space
+// it came from and, for a plain merge, its sort key.
+type originRecord struct {
+	spaceId string
+	record  database.Record
+	key     []byte
+}
+
+func appendOrigin(out []originRecord, records []database.Record, spaceId string) []originRecord {
+	for _, record := range records {
+		out = append(out, originRecord{spaceId: spaceId, record: record})
+	}
+	return out
 }
 
 // The origin is the queried store, including for older rows without spaceId.
 // Copy the details so this response decoration never changes cached records.
-func recordsWithSpaceId(records []database.Record, spaceId string) []database.Record {
-	for i := range records {
-		records[i].Details = records[i].Details.Copy()
-		records[i].Details.SetString(bundle.RelationKeySpaceId, spaceId)
+func recordsWithSpaceId(records []originRecord) []database.Record {
+	out := make([]database.Record, len(records))
+	for i, record := range records {
+		out[i] = record.record
+		out[i].Details = record.record.Details.Copy()
+		out[i].Details.SetString(bundle.RelationKeySpaceId, record.spaceId)
 	}
-	return records
+	return out
 }
 
 // unionOrderStore lets the merge's order builder resolve relation formats and
@@ -1452,6 +1518,13 @@ func recordsWithSpaceId(records []database.Record, spaceId string) []database.Re
 // delegate per store and concatenate.
 type unionOrderStore struct {
 	stores []spaceindex.Store
+}
+
+// NewUnionOrderStore returns the order store of several spaces: an order
+// built over it resolves relation formats, options and linked objects
+// across all of them, as the cross-space full-text merge does.
+func NewUnionOrderStore(stores []spaceindex.Store) database.ObjectStore {
+	return unionOrderStore{stores: stores}
 }
 
 func (u unionOrderStore) SpaceId() string {

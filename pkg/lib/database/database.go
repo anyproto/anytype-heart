@@ -1,8 +1,10 @@
 package database
 
 import (
+	"context"
 	"fmt"
 	"math"
+	"slices"
 	"time"
 
 	"github.com/anyproto/any-store/v2/anyenc"
@@ -69,6 +71,9 @@ type SortRequest struct {
 	Id             string
 	EmptyPlacement model.BlockContentDataviewSortEmptyType
 	NoCollate      bool
+	// idTieBreak marks the raw-id sort WithIdTieBreak appends (IdTieBreak).
+	// It has no wire form: SortsFromProto never sets it, so no request can.
+	idTieBreak bool
 }
 
 type Query struct {
@@ -171,6 +176,109 @@ func hasDefaultFilters(filters []FilterRequest) (bool, bool, bool) {
 // candidate cut and the merged order disagree and offset paging breaks.
 func InjectDefaultOrder(qry Query, sorts []SortRequest) []SortRequest {
 	return injectDefaultOrder(qry, sorts)
+}
+
+// IdTieBreak is the sort WithIdTieBreak appends: the raw object id, compared
+// byte-wise. An id sort an app or a view sends is an object sort (NewKeyOrder):
+// by name in memory, a tie in the store, which reads no single reference.
+// Only this sort, marked in a field no request can set, compares the raw id.
+func IdTieBreak(direction model.BlockContentDataviewSortType) SortRequest {
+	return SortRequest{RelationKey: bundle.RelationKeyId, Type: direction, idTieBreak: true}
+}
+
+// IsIdTieBreak reports whether sort orders by the raw object id.
+func IsIdTieBreak(sort SortRequest) bool {
+	return sort.idTieBreak
+}
+
+// HasIdTieBreak reports whether sorts hold the raw object id, so that the
+// order they give is total within one space.
+func HasIdTieBreak(sorts []SortRequest) bool {
+	return slices.ContainsFunc(sorts, IsIdTieBreak)
+}
+
+type idTieBreakKey struct{}
+
+// ContextWithIdTieBreak marks ctx for an in-process cross-space search whose
+// sorts end on the id tie-break. Its request is proto, which has no form for
+// the mark: under this ctx the store restores it (RestoreIdTieBreak). A
+// request from outside the process never carries the mark.
+func ContextWithIdTieBreak(ctx context.Context) context.Context {
+	return context.WithValue(ctx, idTieBreakKey{}, true)
+}
+
+// RestoreIdTieBreak returns sorts with their last sort turned back into the
+// id tie-break when ctx was marked by ContextWithIdTieBreak and that sort is
+// an ascending or descending id sort; otherwise sorts as given.
+func RestoreIdTieBreak(ctx context.Context, sorts []SortRequest) []SortRequest {
+	if marked, _ := ctx.Value(idTieBreakKey{}).(bool); !marked || len(sorts) == 0 {
+		return sorts
+	}
+	last := sorts[len(sorts)-1]
+	if last.RelationKey != bundle.RelationKeyId ||
+		(last.Type != model.BlockContentDataviewSort_Asc && last.Type != model.BlockContentDataviewSort_Desc) {
+		return sorts
+	}
+	out := slices.Clone(sorts)
+	out[len(out)-1] = IdTieBreak(last.Type)
+	return out
+}
+
+// WithIdTieBreak returns sorts with the raw object id appended (IdTieBreak),
+// unless they already hold it. Offset paging needs a total order. Rows that
+// tie on every sort have none, and the store orders them by plan: a reverse
+// index scan yields them by id descending, an in-memory sort by id ascending,
+// and which plan runs depends on offset+limit. One page can then repeat a row
+// that another page never serves.
+//
+// The id runs in the direction of the last sort. Every index entry ends with
+// the id ascending, so an index that served the sorts still serves them, and
+// both plans agree. After a relevance sort the id runs ascending, the order
+// GroupFulltextResults gives tied matches.
+//
+// A caller's own id sort is an object sort, which ties every row in the
+// store, so the raw id is still appended after it. The precision of a date sort is kept as given. Note that the
+// store implies includeTime for a date sort only while it is the only sort:
+// a caller that cannot tell an omitted precision from false applies
+// ImplyIncludeTime first.
+func WithIdTieBreak(sorts []SortRequest) []SortRequest {
+	if HasIdTieBreak(sorts) {
+		return sorts
+	}
+	direction := model.BlockContentDataviewSort_Asc
+	if n := len(sorts); n > 0 && sorts[n-1].Type == model.BlockContentDataviewSort_Desc && !isScoreSort(sorts[n-1]) {
+		direction = model.BlockContentDataviewSort_Desc
+	}
+	out := make([]SortRequest, len(sorts), len(sorts)+1)
+	copy(out, sorts)
+	return append(out, IdTieBreak(direction))
+}
+
+// ImplyIncludeTime returns sorts with includeTime set on a lone date sort:
+// the precision the store implies for it (isSingleDateSort). A stored view's
+// sorts cannot tell an omitted precision from false, and a view's default
+// sort (lastModifiedDate) stores no format either: the format comes from
+// store, as the app fills it in before it runs the view. This keeps a view
+// ordered as the app shows it once WithIdTieBreak appends a sort.
+func ImplyIncludeTime(store ObjectStore, sorts []SortRequest) []SortRequest {
+	if len(sorts) != 1 || sorts[0].IncludeTime {
+		return sorts
+	}
+	format := sorts[0].Format
+	if stored, err := store.GetRelationFormatByKey(sorts[0].RelationKey); err == nil {
+		format = stored
+	}
+	if format != model.RelationFormat_date {
+		return sorts
+	}
+	out := slices.Clone(sorts)
+	out[0].Format = model.RelationFormat_date
+	out[0].IncludeTime = true
+	return out
+}
+
+func isScoreSort(sort SortRequest) bool {
+	return sort.RelationKey == bundle.RelationKey_score || sort.RelationKey == bundle.RelationKey_final_score
 }
 
 func injectDefaultOrder(qry Query, sorts []SortRequest) []SortRequest {

@@ -165,7 +165,7 @@ func (s *Service) newCreatingResolvers(ctx context.Context, spaceId string, dryR
 // but a corruption: the slug of a BSON-keyed relation is unknown to the
 // bundled table, so `manual_property` imported as the literal stored key
 // `manual_property` — a dataview naming a relation key no relation object
-// owns (columns unbind, filters match nothing, silently). In the other
+// owns (columns unbind, filters read a key nothing carries, silently). In the other
 // direction the bundled table over-reaches: a space holding a live relation
 // STORED under `due_date` had that key rewritten to bundled `dueDate` and the
 // value landed on the wrong property, even though canonicalizeDocumentKeys
