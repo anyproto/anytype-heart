@@ -3,9 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -13,6 +11,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -84,7 +83,7 @@ func TestScratchGuard(t *testing.T) {
 	home, err := os.UserHomeDir()
 	require.NoError(t, err)
 	assert.Contains(t, home, "anytype-mcp-home-", "the tests' own home is a scratch folder")
-	assert.Contains(t, store.Open("dev").Dir(), "anytype-mcp-home-")
+	assert.Contains(t, store.Open("dev").Path(), "anytype-mcp-home-")
 }
 
 // binaries builds the two shipped variants, once: the default build and
@@ -127,16 +126,22 @@ func (r result) json(t *testing.T) map[string]any {
 	return m
 }
 
-// env is one scratch home with its own item store.
+// env is one scratch home and the environment a child gets.
 type env struct {
 	t    *testing.T
 	bin  string
 	home string
+	// key is ANYTYPE_API_KEY; unset with noKey
+	key   string
+	noKey bool
+	extra []string
 }
 
 func newEnv(t *testing.T) *env {
 	dev, _ := binaries(t)
-	return &env{t: t, bin: dev, home: t.TempDir()}
+	home := t.TempDir()
+	profileHome(t, home)
+	return &env{t: t, bin: dev, home: home, key: canary}
 }
 
 // childEnv is the whole environment of a child: built from scratch, never
@@ -144,6 +149,24 @@ func newEnv(t *testing.T) *env {
 // a full-tier serve without --files-dir makes its files folder there.
 func childEnv(home string) []string {
 	return []string{"HOME=" + home, "USERPROFILE=" + home, "TMPDIR=" + home, "TMP=" + home, "TEMP=" + home}
+}
+
+func (e *env) environ() []string {
+	vars := append(childEnv(e.home), e.extra...)
+	if !e.noKey {
+		vars = append(vars, "ANYTYPE_API_KEY="+e.key)
+	}
+	return vars
+}
+
+// endpointPath is the development build's endpoint file.
+func (e *env) endpointPath() string { return store.OpenAt(e.home, store.NamespaceDev).Path() }
+
+// writeEndpoint writes the endpoint file as the desktop app does.
+func (e *env) writeEndpoint(port int) {
+	e.t.Helper()
+	require.NoError(e.t, os.MkdirAll(filepath.Dir(e.endpointPath()), 0o700))
+	require.NoError(e.t, os.WriteFile(e.endpointPath(), []byte(fmt.Sprintf(`{"v":1,"port":%d}`, port)), 0o600))
 }
 
 // holders lists every file under the home whose bytes contain the canary.
@@ -162,17 +185,20 @@ func (e *env) holders() []string {
 	return holders
 }
 
-func (e *env) items() string { return filepath.Join(e.home, ".anytype", "ai-connect", "items-dev") }
-
 func (e *env) run(stdin string, args ...string) result {
 	e.t.Helper()
-	return runIn(e.t, e.home, e.bin, stdin, args...)
+	return runWith(e.t, e.environ(), e.bin, stdin, args...)
 }
 
 func runIn(t *testing.T, home, bin, stdin string, args ...string) result {
 	t.Helper()
+	return runWith(t, childEnv(home), bin, stdin, args...)
+}
+
+func runWith(t *testing.T, vars []string, bin, stdin string, args ...string) result {
+	t.Helper()
 	cmd := exec.Command(bin, args...)
-	cmd.Env = childEnv(home)
+	cmd.Env = vars
 	cmd.Stdin = strings.NewReader(stdin)
 	var out, errb bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errb
@@ -186,33 +212,32 @@ func runIn(t *testing.T, home, bin, stdin string, args ...string) result {
 	for _, a := range cmd.Args {
 		require.NotContains(t, a, canary, "the key must never be an argument")
 	}
-	for _, kv := range cmd.Env {
-		require.NotContains(t, kv, canary, "the key must never be in the environment")
-	}
+	// H1 case 16: the key is in no output
+	assert.NotContains(t, out.String(), canary, "the key on stdout")
+	assert.NotContains(t, errb.String(), canary, "the key on stderr")
 	return result{code: code, stdout: out.String(), stderr: errb.String()}
 }
 
-func payload(key, account string, port int, tier string) string {
-	b, _ := json.Marshal(map[string]any{"key": key, "account": account, "port": port, "tier": tier})
-	return string(b) + "\n"
+// groupWritable opens a path to others the way each OS spells it: a mode
+// bit on Unix, a grant to Users on Windows.
+func groupWritable(t *testing.T, path string) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		out, err := exec.Command("icacls", path, "/grant", "*S-1-5-32-545:M").CombinedOutput()
+		require.NoError(t, err, string(out))
+		return
+	}
+	fi, err := os.Stat(path)
+	require.NoError(t, err)
+	require.NoError(t, os.Chmod(path, fi.Mode().Perm()|0o020))
 }
 
-func (e *env) set(expect, key, account string, port int, tier string) result {
-	return e.run(payload(key, account, port, tier), "key", "set", "--connection", "conn-a", "--expect", expect)
-}
-
-func (e *env) check() result { return e.run("", "key", "check", "--connection", "conn-a") }
-
-func (e *env) retarget(expect, account, port, tier string) result {
-	return e.run("", "key", "retarget", "--connection", "conn-a", "--expect", expect, "--account", account, "--port", port, "--tier", tier)
-}
-
-func (e *env) del(expect, account string) result {
-	return e.run("", "key", "delete", "--connection", "conn-a", "--expect", expect, "--account", account)
-}
-
-func stamp(r map[string]any) string {
-	return fmt.Sprintf("%s@%d", r["fingerprint"], int64(r["rev"].(float64)))
+// darwinACL adds a macOS ACL entry and removes all of them at cleanup.
+func darwinACL(t *testing.T, entry, path string) {
+	t.Helper()
+	out, err := exec.Command("/bin/chmod", "+a", entry, path).CombinedOutput()
+	require.NoError(t, err, string(out))
+	t.Cleanup(func() { _ = exec.Command("/bin/chmod", "-N", path).Run() })
 }
 
 func TestVersionAndNamespaces(t *testing.T) {
@@ -232,550 +257,71 @@ func TestVersionAndNamespaces(t *testing.T) {
 	}
 	assert.Contains(t, runIn(t, home, dev, "", "version").stdout, "dev namespace")
 
-	t.Run("dev and release write to different folders and can't see each other's item", func(t *testing.T) {
-		set := func(bin, key string) result {
-			return runIn(t, home, bin, payload(key, "A", 1, "small"), "key", "set", "--connection", "conn-a", "--expect", "absent")
-		}
-		check := func(bin string) result { return runIn(t, home, bin, "", "key", "check", "--connection", "conn-a") }
-		require.Equal(t, exitOK, set(dev, canary).code)
-		assert.Equal(t, exitNoItem, check(release).code)
-		require.Equal(t, exitOK, set(release, canary+"r").code)
-		assert.Equal(t, "release", check(release).json(t)["namespace"])
-		assert.NotEqual(t, check(dev).json(t)["fingerprint"], check(release).json(t)["fingerprint"])
-		base := filepath.Join(home, ".anytype", "ai-connect")
-		for _, p := range []string{filepath.Join(base, "items-dev", "conn-a.item"), filepath.Join(base, "items", "conn-a.item")} {
-			_, err := os.Stat(p)
-			require.NoError(t, err, p)
-		}
+	t.Run("dev and release read different endpoint files", func(t *testing.T) {
+		e := newEnv(t)
+		e.writeEndpoint(4000)
+		assert.Equal(t, `{"ok":true,"port":4000}`, strings.TrimSpace(runIn(t, e.home, dev, "", "endpoint").stdout))
+		r := runIn(t, e.home, release, "", "endpoint")
+		assert.Equal(t, exitInternal, r.code)
+		assert.Equal(t, "missing", r.json(t)["reason"])
+		assert.Equal(t, filepath.Join(e.home, ".anytype", "ai-connect", "endpoint.json"), r.json(t)["path"])
 	})
 
-	t.Run("there are no override flags and no interactive mode", func(t *testing.T) {
+	t.Run("there are no override flags", func(t *testing.T) {
 		for _, bin := range []string{dev, release} {
-			for _, flag := range []string{"--port", "--tier", "--store-dir", "--lock-dir"} {
-				assert.Equal(t, exitUsage, runIn(t, home, bin, "", "serve", "--connection", "x", flag, "1").code, flag)
-				assert.Equal(t, exitUsage, runIn(t, home, bin, "", "key", "check", "--connection", "x", flag, "1").code, flag)
+			for _, flag := range []string{"--port", "--connection", "--store-dir", "--lock-dir", "--key"} {
+				assert.Equal(t, exitUsage, runIn(t, home, bin, "", "serve", flag, "1").code, flag)
+				assert.Equal(t, exitUsage, runIn(t, home, bin, "", "endpoint", flag, "1").code, flag)
 			}
-			r := runIn(t, home, bin, payload("k", "A", 1, "small"), "key", "set", "--connection", "x", "--expect", "absent", "--interactive")
-			assert.Equal(t, exitUsage, r.code)
+			assert.Equal(t, exitUsage, runIn(t, home, bin, "", "serve", "--tier", "medium").code)
+			assert.Equal(t, exitUsage, runIn(t, home, bin, "", "serve", "extra").code)
 		}
 	})
 }
 
-func TestKeyVerbs(t *testing.T) {
-	t.Run("set, check, retarget, delete", func(t *testing.T) {
-		e := newEnv(t)
-		r := e.check()
-		assert.Equal(t, exitNoItem, r.code)
-		assert.Equal(t, false, r.json(t)["present"])
-		assert.Equal(t, "ok", r.json(t)["store"])
-		assert.Equal(t, "file", r.json(t)["kind"])
-
-		r = e.set("absent", canary, "AccountOne", 31009, "full")
-		require.Equal(t, exitOK, r.code, r.stderr)
-		first := r.json(t)
-		assert.Equal(t, true, first["ok"])
-		assert.Equal(t, store.Fingerprint(canary), first["fingerprint"])
-		assert.EqualValues(t, 1, first["rev"])
-
-		r = e.check()
-		require.Equal(t, exitOK, r.code)
-		c := r.json(t)
-		assert.Equal(t, true, c["present"])
-		assert.Equal(t, "AccountOne", c["account"])
-		assert.EqualValues(t, 31009, c["port"])
-		assert.Equal(t, "full", c["tier"])
-		assert.Equal(t, "dev", c["namespace"])
-		assert.Equal(t, stamp(first), stamp(c))
-
-		r = e.retarget(stamp(first), "AccountOne", "40000", "full")
-		require.Equal(t, exitOK, r.code, r.stderr)
-		second := r.json(t)
-		assert.EqualValues(t, 2, second["rev"])
-		assert.Equal(t, first["fingerprint"], second["fingerprint"], "a retarget keeps the key")
-		assert.EqualValues(t, 40000, e.check().json(t)["port"])
-
-		// the same retarget again: its precondition is stale
-		assert.Equal(t, exitPrecondition, e.retarget(stamp(first), "AccountOne", "40000", "full").code)
-
-		// rotation
-		r = e.set(stamp(second), canary+"2", "AccountOne", 40000, "full")
-		require.Equal(t, exitOK, r.code, r.stderr)
-		third := r.json(t)
-		assert.EqualValues(t, 3, third["rev"])
-		assert.NotEqual(t, second["fingerprint"], third["fingerprint"])
-
-		assert.Equal(t, exitPrecondition, e.del(stamp(second), "AccountOne").code, "stale state")
-		assert.Equal(t, exitPrecondition, e.del(stamp(third), "AccountTwo").code, "not the owner")
-		assert.Equal(t, exitOK, e.check().code, "a refused delete changes nothing")
-		r = e.del(stamp(third), "AccountOne")
-		assert.Equal(t, exitOK, r.code)
-		assert.Equal(t, true, r.json(t)["ok"])
-		assert.Equal(t, exitNoItem, e.check().code)
-		assert.Equal(t, exitNoItem, e.del(stamp(third), "AccountOne").code, "an absent item is exit 3")
-	})
-
-	t.Run("preconditions", func(t *testing.T) {
-		e := newEnv(t)
-		assert.Equal(t, exitPrecondition, e.set(store.Fingerprint(canary)+"@1", canary, "A", 1, "small").code, "expected an item, found none")
-		require.Equal(t, exitOK, e.set("absent", canary, "A", 1, "small").code)
-		assert.Equal(t, exitPrecondition, e.set("absent", canary, "A", 1, "small").code, "expected none, found one")
-		assert.Equal(t, exitPrecondition, e.set(store.Fingerprint(canary)+"@2", canary, "A", 1, "small").code, "wrong rev")
-		assert.Equal(t, exitPrecondition, e.set(store.Fingerprint("other")+"@1", canary, "A", 1, "small").code, "wrong fingerprint")
-		assert.Equal(t, exitPrecondition, e.retarget(store.Fingerprint(canary)+"@1", "B", "2", "small").code, "not the owner")
-		assert.EqualValues(t, 1, e.check().json(t)["rev"], "nothing changed")
-	})
-
-	t.Run("usage and invalid input", func(t *testing.T) {
-		e := newEnv(t)
-		for _, args := range [][]string{
-			{},
-			{"nope"},
-			{"key"},
-			{"key", "frobnicate"},
-			{"key", "check"},
-			{"key", "check", "--connection", "Bad_ID"},
-			{"key", "check", "--connection", "../x"},
-			{"key", "set", "--connection", "conn-a"},
-			{"key", "set", "--connection", "conn-a", "--expect", "whatever"},
-			{"key", "retarget", "--connection", "conn-a", "--expect", "absent", "--account", "A", "--port", "1", "--tier", "small"},
-			{"key", "retarget", "--connection", "conn-a", "--expect", "0123456789abcdef@1", "--account", "A", "--port", "1", "--tier", "huge"},
-			{"key", "delete", "--connection", "conn-a", "--expect", "0123456789abcdef@1"},
-			{"key", "check", "--connection", "conn-a", "--key", "x"},
-			{"key", "header", "--connection", "conn-a"},
-			{"serve"},
-			{"serve", "--connection", "conn-a", "extra"},
-			{"version", "--nope"},
-		} {
-			assert.Equal(t, exitUsage, e.run("", args...).code, "%v", args)
-		}
-		good := strings.TrimSuffix(payload(canary, "A", 1, "small"), "\n")
-		for name, in := range map[string]string{
-			"empty":                 "",
-			"not JSON":              "hello\n",
-			"unknown field":         `{"key":"k","account":"A","port":1,"tier":"small","extra":1}` + "\n",
-			"no key":                payload("", "A", 1, "small"),
-			"bad tier":              payload("k", "A", 1, "medium"),
-			"bad port":              payload("k", "A", 0, "small"),
-			"no account":            payload("k", "", 1, "small"),
-			"key with a newline":    `{"key":"a\nb","account":"A","port":1,"tier":"small"}` + "\n",
-			"followed by x":         good + "x\n",
-			"followed by an object": good + "\n" + good + "\n",
-			"one byte too long":     good + strings.Repeat(" ", maxPayload+1-len(good)),
-			"cut at the limit":      `{"key":"` + strings.Repeat("k", maxPayload),
-		} {
-			r := e.run(in, "key", "set", "--connection", "conn-a", "--expect", "absent")
-			assert.Equal(t, exitInvalidInput, r.code, name)
-			assert.NotContains(t, r.stdout+r.stderr, canary, name)
-		}
-		assert.Equal(t, exitNoItem, e.check().code, "nothing was written")
-		_, err := os.Stat(filepath.Join(e.home, ".anytype"))
-		assert.ErrorIs(t, err, os.ErrNotExist, "a refused payload creates nothing")
-		r := e.run(good+"  \n\n", "key", "set", "--connection", "conn-a", "--expect", "absent")
-		assert.Equal(t, exitOK, r.code, "trailing white space is fine")
-	})
-
-	t.Run("an invalid stored value counts as absent and is replaced by key set", func(t *testing.T) {
-		e := newEnv(t)
-		good := strings.TrimSuffix(payload(canary, "A", 1, "small"), "\n")
-		item := filepath.Join(e.items(), "conn-a.item")
-		for _, bad := range []string{"garbage", `{"v":1,"rev":1,"key":"k","account":"A","port":1,"tier":"small"}x`, good, strings.Repeat("x", 5000)} {
-			// the file key set made is rewritten in place, so it keeps the
-			// owner, mode and (on Windows) descriptor the reader insists on
-			require.Equal(t, exitOK, e.set("absent", canary, "A", 1, "small").code)
-			fh, err := os.OpenFile(item, os.O_WRONLY|os.O_TRUNC, 0)
-			require.NoError(t, err)
-			_, err = fh.WriteString(bad)
-			require.NoError(t, err)
-			require.NoError(t, fh.Close())
-
-			r := e.check()
-			assert.Equal(t, exitNoItem, r.code, r.stderr)
-			assert.Equal(t, true, r.json(t)["invalid"])
-			assert.Equal(t, false, r.json(t)["present"])
-			r = e.set("absent", canary, "A", 1, "small")
-			require.Equal(t, exitOK, r.code, r.stderr)
-			assert.EqualValues(t, 1, r.json(t)["rev"])
-			require.Equal(t, exitOK, e.del(stamp(r.json(t)), "A").code)
-		}
-	})
-
-	t.Run("an item that was not made by the forwarder's own write is denied, not read", func(t *testing.T) {
-		e := newEnv(t)
-		require.Equal(t, exitOK, e.run(payload("k", "A", 1, "small"), "key", "set", "--connection", "other", "--expect", "absent").code)
-		// a plain file: on Windows it inherits the folder's access list, on
-		// Unix it is given a mode others can read
-		item := filepath.Join(e.items(), "conn-a.item")
-		require.NoError(t, os.WriteFile(item, []byte(strings.TrimSpace(payload(canary, "A", 1, "small"))), 0o644))
-		require.NoError(t, os.Chmod(item, 0o644))
-		r := e.check()
-		assert.Equal(t, exitTemporary, r.code)
-		assert.Equal(t, "denied", r.json(t)["store"])
-		assert.Contains(t, r.stderr, "conn-a.item", "the message names the path")
-	})
-
-	t.Run("a rotation to the largest key of characters JSON escapes", func(t *testing.T) {
-		e := newEnv(t)
-		r := e.set("absent", canary, "A", 1, "small")
-		require.Equal(t, exitOK, r.code)
-		for _, ch := range []string{"&", `"`, "<"} {
-			key := strings.Repeat(ch, store.MaxKeyBytes)
-			r = e.set(stamp(r.json(t)), key, "A", 1, "small")
-			require.Equal(t, exitOK, r.code, "%s: %s", ch, r.stderr)
-			c := e.check()
-			require.Equal(t, exitOK, c.code, ch)
-			assert.Equal(t, true, c.json(t)["present"])
-			assert.Equal(t, store.Fingerprint(key), c.json(t)["fingerprint"])
-		}
-		r = e.set(stamp(r.json(t)), strings.Repeat("k", store.MaxKeyBytes+1), "A", 1, "small")
-		assert.Equal(t, exitInvalidInput, r.code, "refused before anything is replaced")
-		assert.Equal(t, exitOK, e.check().code)
-	})
-
-	t.Run("after a delete no file holds the key, a crashed rotation's temp file included", func(t *testing.T) {
-		e := newEnv(t)
-		r := e.set("absent", canary, "A", 1, "small")
-		require.Equal(t, exitOK, r.code)
-		leftover := filepath.Join(e.items(), "conn-a.00112233aabbccdd.tmp")
-		require.NoError(t, os.WriteFile(leftover, []byte(`{"key":"`+canary+`-candidate"}`), 0o600))
-		require.Equal(t, exitOK, e.del(stamp(r.json(t)), "A").code)
-		assert.Empty(t, e.holders(), "no file under the home holds the key")
-		_, err := os.Lstat(leftover)
-		assert.ErrorIs(t, err, os.ErrNotExist)
-	})
-
-	t.Run("the key is in no output and in no file but its own item", func(t *testing.T) {
-		e := newEnv(t)
-		outputs := []result{
-			e.set("absent", canary, "A", 1, "small"),
-			e.check(),
-			e.set("absent", canary, "A", 1, "small"),
-			e.run(`{"key":"`+canary+`","oops":1}`+"\n", "key", "set", "--connection", "conn-a", "--expect", "absent"),
-			e.retarget(store.Fingerprint(canary)+"@1", "A", "2", "small"),
-		}
-		for _, r := range outputs {
-			assert.NotContains(t, r.stdout, canary)
-			assert.NotContains(t, r.stderr, canary)
-		}
-		holders := e.holders()
-		assert.Equal(t, []string{filepath.Join(e.items(), "conn-a.item")}, holders)
-	})
-}
-
-// TestStoreRulesThroughTheVerbs: a folder or an item that fails a safety
-// rule is exit 7 for every verb, changes nothing, and names the rule on
-// stderr; serve starts not connected.
-func TestStoreRulesThroughTheVerbs(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("modes are a Unix rule; the Windows descriptors are tested in the store package")
-	}
-	all := func(e *env, st string) []result {
-		return []result{
-			e.check(),
-			e.set(st, canary+"x", "A", 1, "small"),
-			e.retarget(st, "A", "2", "small"),
-			e.del(st, "A"),
-		}
-	}
-	seeded := func(t *testing.T) (*env, string, []byte) {
-		e := newEnv(t)
-		require.Equal(t, exitOK, e.set("absent", canary, "A", 1, "small").code)
-		raw, err := os.ReadFile(filepath.Join(e.items(), "conn-a.item"))
-		require.NoError(t, err)
-		return e, stamp(e.check().json(t)), raw
-	}
-	untouched := func(t *testing.T, e *env, before []byte) {
-		t.Helper()
-		raw, err := os.ReadFile(filepath.Join(e.items(), "conn-a.item"))
-		require.NoError(t, err)
-		assert.Equal(t, before, raw, "the item is untouched")
-	}
-	serveNotConnected := func(t *testing.T, e *env) {
-		t.Helper()
-		r := e.run(initLine+"\n", "serve", "--connection", "conn-a")
-		assert.Equal(t, exitOK, r.code)
-		assert.Contains(t, r.stdout, `"code":-32001`)
-	}
-
-	for name, breakIt := range map[string]func(t *testing.T, e *env) (restore func()){
-		"the items folder at 0755": func(t *testing.T, e *env) func() {
-			require.NoError(t, os.Chmod(e.items(), 0o755))
-			return func() { _ = os.Chmod(e.items(), 0o700) }
-		},
-		"a group-writable ancestor": func(t *testing.T, e *env) func() {
-			dot := filepath.Join(e.home, ".anytype")
-			require.NoError(t, os.Chmod(dot, 0o775))
-			return func() { _ = os.Chmod(dot, 0o700) }
-		},
-		"the item at 0644": func(t *testing.T, e *env) func() {
-			item := filepath.Join(e.items(), "conn-a.item")
-			require.NoError(t, os.Chmod(item, 0o644))
-			return func() { _ = os.Chmod(item, 0o600) }
-		},
-	} {
-		t.Run(name+": denied", func(t *testing.T) {
-			e, st, before := seeded(t)
-			restore := breakIt(t, e)
-			for i, r := range all(e, st) {
-				assert.Equal(t, exitTemporary, r.code, "verb %d", i)
-				assert.Equal(t, "denied", r.json(t)["store"], "verb %d", i)
-				assert.Contains(t, r.stderr, "denied", "the rule is named on stderr")
-				assert.Contains(t, r.stderr, e.home, "and so is the path")
-				assert.NotContains(t, r.stdout+r.stderr, canary)
-			}
-			assert.Nil(t, e.check().json(t)["present"], "present is null: the store could not say")
-			serveNotConnected(t, e)
-			restore()
-			untouched(t, e, before)
-			assert.Equal(t, st, stamp(e.check().json(t)))
-		})
-	}
-
-	t.Run("a home its group can write is a normal setup and works", func(t *testing.T) {
-		e, st, _ := seeded(t)
-		require.NoError(t, os.Chmod(e.home, 0o775))
-		assert.Equal(t, exitOK, e.check().code)
-		assert.Equal(t, exitOK, e.retarget(st, "A", "2", "small").code)
-	})
-
-	t.Run("a home that is a symlink is denied and nothing is created behind it", func(t *testing.T) {
-		e := newEnv(t)
-		link := filepath.Join(t.TempDir(), "home")
-		require.NoError(t, os.Symlink(e.home, link))
-		r := runIn(t, link, e.bin, payload(canary, "A", 1, "small"), "key", "set", "--connection", "conn-a", "--expect", "absent")
-		assert.Equal(t, exitTemporary, r.code)
-		assert.Equal(t, "denied", r.json(t)["store"])
-		assert.Contains(t, r.stderr, link)
-		_, err := os.Lstat(filepath.Join(e.home, ".anytype"))
-		assert.ErrorIs(t, err, os.ErrNotExist)
-	})
-
-	t.Run("the items folder at 000: unreachable", func(t *testing.T) {
-		if os.Geteuid() == 0 {
-			t.Skip("root reads everything")
-		}
-		e, st, before := seeded(t)
-		// 000 fails the "exactly 0700" rule before anything is opened
-		require.NoError(t, os.Chmod(e.items(), 0o000))
-		for i, r := range all(e, st) {
-			assert.Equal(t, exitTemporary, r.code, "verb %d", i)
-			assert.Contains(t, []any{"denied", "unreachable"}, r.json(t)["store"], "verb %d", i)
-		}
-		serveNotConnected(t, e)
-		require.NoError(t, os.Chmod(e.items(), 0o700))
-		untouched(t, e, before)
-	})
-
-	t.Run("an item symlink is refused and its target is not read", func(t *testing.T) {
-		e, st, _ := seeded(t)
-		item := filepath.Join(e.items(), "conn-a.item")
-		target := filepath.Join(e.home, "elsewhere.item")
-		require.NoError(t, os.Rename(item, target))
-		require.NoError(t, os.Symlink(target, item))
-		for i, r := range all(e, st) {
-			assert.Equal(t, exitTemporary, r.code, "verb %d", i)
-		}
-		raw, err := os.ReadFile(target)
-		require.NoError(t, err)
-		assert.Contains(t, string(raw), canary, "the target is untouched")
-		serveNotConnected(t, e)
-	})
-}
-
-// readBackFails is a store whose reads fail once a write has gone through.
-type readBackFails struct {
-	*store.Mem
-	wrote bool
-}
-
-func (s *readBackFails) Write(ctx context.Context, id string, value []byte) error {
-	s.wrote = true
-	return s.Mem.Write(ctx, id, value)
-}
-
-func (s *readBackFails) Read(ctx context.Context, id string) ([]byte, error) {
-	if s.wrote {
-		return nil, store.Temporary(store.ReasonUnreachable, errors.New("read-back failed"))
-	}
-	return s.Mem.Read(ctx, id)
-}
-
-// takenThenFails is a store that reports a write it took as unconfirmed.
-type takenThenFails struct{ *store.Mem }
-
-func (s *takenThenFails) Write(ctx context.Context, id string, value []byte) error {
-	if err := s.Mem.Write(ctx, id, value); err != nil {
-		return err
-	}
-	return &store.UnconfirmedError{Err: errors.New("folder sync failed")}
-}
-
-// TestExitSevenMeansNothingWasWritten: once the store has taken a write,
-// a failure is "unconfirmed" with exit 1, never "try again".
-func TestExitSevenMeansNothingWasWritten(t *testing.T) {
-	next := store.Item{V: 1, Rev: 1, Key: canary, Account: "A", Port: 1, Tier: "small"}
-	for name, st := range map[string]store.Store{
-		"the read-back fails":           &readBackFails{Mem: store.NewMem()},
-		"the read-back shows something": &writesElse{Mem: store.NewMem()},
-	} {
-		t.Run(name, func(t *testing.T) {
-			var out, errb bytes.Buffer
-			e := &keyEnv{st: st, stdout: &out, stderr: &errb}
-			code := e.set(context.Background(), keyFlags{connection: "c", expect: "absent"},
-				setPayload{Key: next.Key, Account: next.Account, Port: next.Port, Tier: next.Tier})
-			assert.Equal(t, exitInternal, code)
-			var line map[string]any
-			require.NoError(t, json.Unmarshal(out.Bytes(), &line))
-			assert.Equal(t, false, line["ok"])
-			assert.Equal(t, true, line["unconfirmed"])
-			assert.NotContains(t, out.String()+errb.String(), canary)
-		})
-	}
-
-	t.Run("the item holds the new key", func(t *testing.T) {
-		st := &readBackFails{Mem: store.NewMem()}
-		var out, errb bytes.Buffer
-		e := &keyEnv{st: st, stdout: &out, stderr: &errb}
-		require.Equal(t, exitInternal, e.commit(context.Background(), "c", next))
-		raw, err := st.Mem.Read(context.Background(), "c")
-		require.NoError(t, err)
-		got, err := store.DecodeItem(raw)
-		require.NoError(t, err)
-		assert.Equal(t, next, got)
-	})
-
-	t.Run("a write the store refused is exit 7 and nothing changed", func(t *testing.T) {
-		st := store.NewMem()
-		st.SetFail(store.Temporary(store.ReasonUnreachable, errors.New("disk")))
-		var out, errb bytes.Buffer
-		e := &keyEnv{st: st, stdout: &out, stderr: &errb}
-		assert.Equal(t, exitTemporary, e.commit(context.Background(), "c", next))
-		assert.NotContains(t, out.String(), "unconfirmed")
-	})
-}
-
-// deleteUnconfirmed removes the item and then can't confirm it.
-type deleteUnconfirmed struct{ *store.Mem }
-
-func (s *deleteUnconfirmed) Delete(ctx context.Context, id string) error {
-	if err := s.Mem.Delete(ctx, id); err != nil {
-		return err
-	}
-	return &store.UnconfirmedError{Err: errors.New("folder sync failed")}
-}
-
-func TestDeleteReceipt(t *testing.T) {
-	it := store.Item{V: 1, Rev: 1, Key: canary, Account: "A", Port: 1, Tier: "small"}
-	flags := keyFlags{connection: "c", expect: it.Stamp(), account: "A"}
-
-	t.Run("an error after the unlink, with the item provably gone, is ok", func(t *testing.T) {
-		st := &deleteUnconfirmed{Mem: store.NewMem()}
-		st.Put("c", it)
-		var out, errb bytes.Buffer
-		e := &keyEnv{st: st, stdout: &out, stderr: &errb}
-		assert.Equal(t, exitOK, e.remove(context.Background(), flags))
-		assert.JSONEq(t, `{"ok":true}`, out.String())
-	})
-
-	t.Run("a delete the store refused is exit 7 and the item stays", func(t *testing.T) {
-		st := &refusesDelete{Mem: store.NewMem()}
-		st.Put("c", it)
-		var out, errb bytes.Buffer
-		e := &keyEnv{st: st, stdout: &out, stderr: &errb}
-		assert.Equal(t, exitTemporary, e.remove(context.Background(), flags))
-		assert.NotContains(t, out.String(), "unconfirmed")
-		_, err := st.Mem.Read(context.Background(), "c")
-		assert.NoError(t, err)
-	})
-}
-
-// refusesDelete fails a delete before it changes anything (a leftover it
-// could not sweep).
-type refusesDelete struct{ *store.Mem }
-
-func (s *refusesDelete) Delete(context.Context, string) error {
-	return store.Temporary(store.ReasonUnreachable, errors.New("a temp file could not be removed"))
-}
-
-// writesElse stores something other than what it was given.
-type writesElse struct{ *store.Mem }
-
-func (s *writesElse) Write(ctx context.Context, id string, _ []byte) error {
-	other := store.Item{V: 1, Rev: 9, Key: "someone-else", Account: "B", Port: 2, Tier: "full"}
-	raw, _ := other.Encode()
-	return s.Mem.Write(ctx, id, raw)
-}
-
-// TestTwoProcessesOneConnection races real processes on one item: the
-// lock and the fp@rev precondition let exactly one of each pair win.
-func TestTwoProcessesOneConnection(t *testing.T) {
-	race := func(a, b func() result) (result, result) {
-		var ra, rb result
-		var wg sync.WaitGroup
-		wg.Add(2)
-		go func() { defer wg.Done(); ra = a() }()
-		go func() { defer wg.Done(); rb = b() }()
-		wg.Wait()
-		return ra, rb
-	}
-	for round := 0; round < 5; round++ {
-		t.Run("set against set from absent", func(t *testing.T) {
-			e := newEnv(t)
-			ra, rb := race(
-				func() result { return e.set("absent", canary+"a", "A", 1, "small") },
-				func() result { return e.set("absent", canary+"b", "B", 2, "small") })
-			assert.ElementsMatch(t, []int{exitOK, exitPrecondition}, []int{ra.code, rb.code})
-			assert.EqualValues(t, 1, e.check().json(t)["rev"])
-		})
-		t.Run("two retargets from the same rev", func(t *testing.T) {
-			e := newEnv(t)
-			require.Equal(t, exitOK, e.set("absent", canary, "A", 1, "small").code)
-			st := stamp(e.check().json(t))
-			ra, rb := race(
-				func() result { return e.retarget(st, "A", "1001", "small") },
-				func() result { return e.retarget(st, "A", "1002", "small") })
-			assert.ElementsMatch(t, []int{exitOK, exitPrecondition}, []int{ra.code, rb.code})
-			c := e.check().json(t)
-			assert.EqualValues(t, 2, c["rev"])
-			want := 1001
-			if rb.code == exitOK {
-				want = 1002
-			}
-			assert.EqualValues(t, want, c["port"])
-		})
-		t.Run("set against delete", func(t *testing.T) {
-			e := newEnv(t)
-			require.Equal(t, exitOK, e.set("absent", canary, "A", 1, "small").code)
-			st := stamp(e.check().json(t))
-			ra, rb := race(
-				func() result { return e.set(st, canary+"2", "A", 1, "small") },
-				func() result { return e.del(st, "A") })
-			assert.ElementsMatch(t, []int{exitOK, exitPrecondition}, []int{ra.code, rb.code})
-			if ra.code == exitOK {
-				assert.EqualValues(t, 2, e.check().json(t)["rev"])
-			} else {
-				assert.Equal(t, exitNoItem, e.check().code)
-			}
-		})
-	}
-}
-
-// heartStub answers like heart's full tier and counts what reaches it.
+// heartStub answers like heart's full tier and its three /v2 file routes,
+// and counts what reaches it.
 type heartStub struct {
 	srv  *httptest.Server
 	hits atomic.Int32
 	auth atomic.Value
 	// tools makes tools/list answer a list; session makes initialize open
-	// a session, as a curated tier does
+	// a session, as a curated tier does; reject answers 401 to everything
 	tools   atomic.Bool
 	session atomic.Bool
+	reject  atomic.Bool
+	// files are the file objects heart holds, by id
+	files map[string]string
 }
 
 func newHeartStub(t *testing.T) *heartStub {
-	h := &heartStub{}
+	h := &heartStub{files: map[string]string{}}
 	h.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h.hits.Add(1)
 		h.auth.Store(r.Header.Get("Authorization"))
 		body, _ := io.ReadAll(r.Body)
+		if h.reject.Load() {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = io.WriteString(w, `{"object":"error","status":401,"code":"unauthorized","message":"invalid api key"}`)
+			return
+		}
+		if parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/v2/spaces/s/"), "/"); strings.HasPrefix(r.URL.Path, "/v2/") {
+			w.Header().Set("Content-Type", "application/json")
+			switch {
+			case r.Method == http.MethodGet && len(parts) == 2 && parts[0] == "objects":
+				_, _ = fmt.Fprintf(w, `{"object":"object","properties":{"name":%q,"file_ext":"txt"}}`, parts[1])
+			case r.Method == http.MethodGet && len(parts) == 3 && parts[0] == "files":
+				w.Header().Set("Content-Type", "text/plain")
+				_, _ = io.WriteString(w, h.files[parts[1]])
+			case r.Method == http.MethodPost && len(parts) == 1 && parts[0] == "files":
+				w.WriteHeader(http.StatusCreated)
+				_, _ = io.WriteString(w, `{"object":"file","id":"uploaded"}`)
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+			return
+		}
 		var msg struct {
 			ID     json.RawMessage `json:"id"`
 			Method string          `json:"method"`
@@ -795,6 +341,9 @@ func newHeartStub(t *testing.T) *heartStub {
 		}
 		if msg.Method == "tools/list" && h.tools.Load() {
 			result["tools"] = []any{map[string]any{"name": "list_spaces"}}
+		}
+		if msg.Method == "tools/call" {
+			result["content"] = []any{map[string]any{"type": "text", "text": "done"}}
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{"jsonrpc": "2.0", "id": msg.ID, "result": result})
 	}))
@@ -833,19 +382,21 @@ type child struct {
 	stdin  io.WriteCloser
 	stdout *bufio.Reader
 	outW   io.Closer
+	out    *lockedBuffer
 	stderr *lockedBuffer
 	done   chan error
 }
 
-func (e *env) serve(extra ...string) *child {
-	cmd := exec.Command(e.bin, append([]string{"serve", "--connection", "conn-a"}, extra...)...)
-	cmd.Env = childEnv(e.home)
+func (e *env) serve(args ...string) *child {
+	cmd := exec.Command(e.bin, append([]string{"serve"}, args...)...)
+	cmd.Env = e.environ()
 	stdin, err := cmd.StdinPipe()
 	require.NoError(e.t, err)
 	outR, outW, err := os.Pipe()
 	require.NoError(e.t, err)
 	cmd.Stdout = outW
-	c := &child{t: e.t, cmd: cmd, stdin: stdin, stdout: bufio.NewReader(outR), outW: outR, stderr: &lockedBuffer{}, done: make(chan error, 1)}
+	c := &child{t: e.t, cmd: cmd, stdin: stdin, outW: outR, out: &lockedBuffer{}, stderr: &lockedBuffer{}, done: make(chan error, 1)}
+	c.stdout = bufio.NewReader(io.TeeReader(outR, c.out))
 	cmd.Stderr = c.stderr
 	require.NoError(e.t, cmd.Start())
 	_ = outW.Close()
@@ -853,6 +404,11 @@ func (e *env) serve(extra ...string) *child {
 	e.t.Cleanup(func() {
 		_ = cmd.Process.Kill()
 		_ = outR.Close()
+		// H1 case 16: the key is in no output
+		if !e.noKey && e.key != "" {
+			assert.NotContains(e.t, c.out.String(), e.key, "the key on stdout")
+			assert.NotContains(e.t, c.stderr.String(), e.key, "the key on stderr")
+		}
 	})
 	return c
 }
@@ -894,6 +450,13 @@ func (c *child) wait() int {
 	return -1
 }
 
+// close ends stdin and waits for a clean exit.
+func (c *child) close() {
+	c.t.Helper()
+	require.NoError(c.t, c.stdin.Close())
+	assert.Equal(c.t, 0, c.wait())
+}
+
 func errCode(m map[string]any) int {
 	e, _ := m["error"].(map[string]any)
 	if e == nil {
@@ -902,55 +465,551 @@ func errCode(m map[string]any) int {
 	return int(e["code"].(float64))
 }
 
+func errMessage(m map[string]any) string {
+	e, _ := m["error"].(map[string]any)
+	if e == nil {
+		return ""
+	}
+	s, _ := e["message"].(string)
+	return s
+}
+
+func toolText(m map[string]any) string {
+	r, _ := m["result"].(map[string]any)
+	content, _ := r["content"].([]any)
+	if len(content) == 0 {
+		return ""
+	}
+	s, _ := content[0].(map[string]any)["text"].(string)
+	return s
+}
+
 const initLine = `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"t","version":"1"}}}`
+
+const callLine = `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"x","arguments":{}}}`
+
+// H1 case 1: a key that is missing, empty, the unresolved bundle field,
+// too long or not visible ASCII: -32001, nothing reaches heart, and so it
+// stays after the endpoint appears.
+func TestH1_01_BadKeyIsNeverSent(t *testing.T) {
+	for name, key := range map[string]*string{
+		"missing":                nil,
+		"empty":                  ptr(""),
+		"${user_config.api_key}": ptr("${user_config.api_key}"),
+		"1025 characters":        ptr(strings.Repeat("k", 1025)),
+		"a control character":    ptr("CANARY-key\x01-0123456789"),
+		"a space":                ptr("CANARY key 0123456789"),
+		"not ASCII":              ptr("CANARY-kéy-0123456789"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			e := newEnv(t)
+			e.noKey = key == nil
+			if key != nil {
+				e.key = *key
+			}
+			heart := newHeartStub(t)
+			c := e.serve("--tier", "full")
+			m := c.call(initLine)
+			assert.Equal(t, -32001, errCode(m))
+			assert.Contains(t, errMessage(m), "Anytype is not connected: the app passed")
+			e.writeEndpoint(heart.port())
+			time.Sleep(1100 * time.Millisecond)
+			assert.Equal(t, -32001, errCode(c.call(initLine)))
+			assert.Equal(t, -32001, errCode(c.call(callLine)))
+			c.close()
+			assert.Zero(t, heart.hits.Load(), "nothing reached heart")
+			assert.Contains(t, c.stderr.String(), "not connected until restart: the app passed")
+			if key != nil && len(*key) > 8 {
+				assert.NotContains(t, c.stderr.String(), *key)
+			}
+		})
+	}
+
+	t.Run("1024 visible characters are a key", func(t *testing.T) {
+		e := newEnv(t)
+		e.key = strings.Repeat("k", 1024)
+		heart := newHeartStub(t)
+		e.writeEndpoint(heart.port())
+		c := e.serve()
+		assert.Zero(t, errCode(c.call(initLine)))
+		assert.Equal(t, "Bearer "+e.key, heart.auth.Load())
+		c.close()
+	})
+}
+
+func ptr(s string) *string { return &s }
+
+// H1 case 2: an encrypted value is named as such, once, and never shown.
+func TestH1_02_EncryptedValue(t *testing.T) {
+	const value = "__encrypted__:AAAAQUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVo="
+	e := newEnv(t)
+	e.key = value
+	heart := newHeartStub(t)
+	e.writeEndpoint(heart.port())
+	c := e.serve()
+	m := c.call(initLine)
+	assert.Equal(t, -32001, errCode(m))
+	assert.Contains(t, errMessage(m), "the app passed an encrypted value instead of the key")
+	assert.Equal(t, -32001, errCode(c.call(callLine)))
+	c.close()
+	stderr := c.stderr.String()
+	assert.Equal(t, 1, strings.Count(stderr, "the app passed an encrypted value instead of the key"), stderr)
+	for _, part := range []string{value, strings.TrimPrefix(value, "__encrypted__:"), "QUJDREVG"} {
+		assert.NotContains(t, stderr, part)
+		assert.NotContains(t, c.out.String(), part)
+	}
+	assert.Zero(t, heart.hits.Load(), "in no request")
+}
+
+// H1 case 3: no endpoint at start, then one: the first request gets
+// -32001, a later one succeeds without a restart, and the full tier lists
+// both file tools.
+func TestH1_03_EndpointAppearsWithoutRestart(t *testing.T) {
+	e := newEnv(t)
+	heart := newHeartStub(t)
+	heart.tools.Store(true)
+	c := e.serve("--tier", "full", "--files-dir", filepath.Join(e.home, "files"))
+	m := c.call(initLine)
+	assert.Equal(t, -32001, errCode(m))
+	assert.Equal(t, "Anytype can't be reached: open Anytype", errMessage(m))
+	assert.Zero(t, heart.hits.Load())
+
+	e.writeEndpoint(heart.port())
+	require.Eventually(t, func() bool { return errCode(c.call(initLine)) == 0 }, 5*time.Second, 200*time.Millisecond)
+	list := c.call(toolsLine)
+	require.Zero(t, errCode(list), "%v", list)
+	raw, _ := json.Marshal(list)
+	assert.Contains(t, string(raw), `"download_file"`)
+	assert.Contains(t, string(raw), `"upload_local_file"`)
+	c.close()
+	assert.Contains(t, c.stderr.String(), "missing: "+filepath.Join(e.home, ".anytype"))
+	assert.Contains(t, c.stderr.String(), "endpoint: port "+strconv.Itoa(heart.port()))
+}
+
+// verdict is what serve makes of a home, and what the endpoint verb says.
+type verdict struct {
+	serveOK bool
+	stderr  string
+	verb    map[string]any
+	code    int
+}
+
+func (e *env) verdict(t *testing.T) verdict {
+	t.Helper()
+	c := e.serve()
+	m := c.call(initLine)
+	c.close()
+	r := e.run("", "endpoint")
+	return verdict{serveOK: errCode(m) == 0, stderr: c.stderr.String(), verb: r.json(t), code: r.code}
+}
+
+// agree asserts that serve and the verb reach the same verdict: both
+// accept, or both refuse and serve's stderr names the verb's path and rule.
+func (v verdict) agree(t *testing.T, ok bool, reason string) {
+	t.Helper()
+	assert.Equal(t, ok, v.serveOK, "serve: %s", v.stderr)
+	assert.Equal(t, ok, v.verb["ok"], "%v", v.verb)
+	if ok {
+		assert.Equal(t, 0, v.code)
+		assert.Len(t, v.verb, 2, "ok and port")
+		return
+	}
+	assert.Equal(t, 1, v.code)
+	assert.Equal(t, reason, v.verb["reason"], "%v", v.verb)
+	path, _ := v.verb["path"].(string)
+	assert.NotEmpty(t, path)
+	assert.Contains(t, v.stderr, path)
+	if rule, _ := v.verb["rule"].(string); rule != "" {
+		assert.Contains(t, v.stderr, rule)
+	}
+}
+
+// H1 case 5: an unsafe .anytype or ai-connect that already exists is
+// refused with its rule and path on stderr; a stock macOS home (everyone
+// deny delete) and a normal Windows profile are accepted.
+func TestH1_05_UnsafeFoldersAndStockHomes(t *testing.T) {
+	for _, name := range []string{".anytype", "ai-connect"} {
+		t.Run("an unsafe "+name, func(t *testing.T) {
+			e := newEnv(t)
+			heart := newHeartStub(t)
+			e.writeEndpoint(heart.port())
+			dir := filepath.Join(e.home, ".anytype")
+			if name == "ai-connect" {
+				dir = filepath.Dir(e.endpointPath())
+			}
+			groupWritable(t, dir)
+			v := e.verdict(t)
+			v.agree(t, false, "denied")
+			assert.Equal(t, dir, v.verb["path"])
+			assert.Contains(t, v.verb["rule"], "folder on the endpoint path")
+			assert.Zero(t, heart.hits.Load())
+		})
+	}
+
+	t.Run("a stock home of this OS", func(t *testing.T) {
+		e := newEnv(t)
+		heart := newHeartStub(t)
+		if runtime.GOOS == "darwin" {
+			darwinACL(t, "everyone deny delete", e.home)
+		}
+		// on Windows the scratch home is a normal profile folder: every
+		// folder and the file inherit the user's, SYSTEM's and
+		// Administrators' entries
+		e.writeEndpoint(heart.port())
+		e.verdict(t).agree(t, true, "")
+		assert.NotZero(t, heart.hits.Load())
+	})
+}
+
+// H1 case 6: the endpoint verb reaches serve's verdict in the states of
+// cases 3 to 5, as one JSON line.
+func TestH1_06_EndpointVerb(t *testing.T) {
+	heart := newHeartStub(t)
+	type state struct {
+		set    func(t *testing.T, e *env)
+		ok     bool
+		reason string
+	}
+	states := map[string]state{
+		"no endpoint yet": {func(*testing.T, *env) {}, false, "missing"},
+		"written":         {func(t *testing.T, e *env) { e.writeEndpoint(heart.port()) }, true, ""},
+		"deleted": {func(t *testing.T, e *env) {
+			e.writeEndpoint(heart.port())
+			require.NoError(t, os.Remove(e.endpointPath()))
+		}, false, "missing"},
+		"not an endpoint": {func(t *testing.T, e *env) {
+			e.writeEndpoint(heart.port())
+			require.NoError(t, os.WriteFile(e.endpointPath(), []byte(`{"v":2,"port":1}`), 0o600))
+		}, false, "invalid"},
+		"group-writable": {func(t *testing.T, e *env) {
+			e.writeEndpoint(heart.port())
+			groupWritable(t, e.endpointPath())
+		}, false, "denied"},
+		"an unsafe .anytype": {func(t *testing.T, e *env) {
+			e.writeEndpoint(heart.port())
+			groupWritable(t, filepath.Join(e.home, ".anytype"))
+		}, false, "denied"},
+	}
+	if runtime.GOOS != "windows" {
+		states["made a symlink"] = state{func(t *testing.T, e *env) {
+			e.writeEndpoint(heart.port())
+			good := filepath.Join(e.home, "good.json")
+			require.NoError(t, os.Rename(e.endpointPath(), good))
+			require.NoError(t, os.Symlink(good, e.endpointPath()))
+		}, false, "denied"}
+	}
+	if runtime.GOOS == "darwin" {
+		states["given a macOS ACL"] = state{func(t *testing.T, e *env) {
+			e.writeEndpoint(heart.port())
+			darwinACL(t, "everyone allow read", e.endpointPath())
+		}, false, "denied"}
+		states["a stock macOS home"] = state{func(t *testing.T, e *env) {
+			darwinACL(t, "everyone deny delete", e.home)
+			e.writeEndpoint(heart.port())
+		}, true, ""}
+	}
+	for name, s := range states {
+		t.Run(name, func(t *testing.T) {
+			e := newEnv(t)
+			s.set(t, e)
+			v := e.verdict(t)
+			v.agree(t, s.ok, s.reason)
+			r := e.run("", "endpoint")
+			assert.Equal(t, 1, strings.Count(r.stdout, "\n"), "one line")
+			assert.False(t, strings.HasPrefix(r.stdout, " "))
+			if s.ok {
+				assert.Equal(t, fmt.Sprintf(`{"ok":true,"port":%d}`, heart.port()), strings.TrimSpace(r.stdout))
+			}
+		})
+	}
+	t.Run("it takes no arguments", func(t *testing.T) {
+		assert.Equal(t, exitUsage, newEnv(t).run("", "endpoint", "x").code)
+	})
+}
+
+// H1 case 7: run from under <home>/.anytype, the verb also judges its own
+// executable and the folders down to it; run from elsewhere it does not.
+func TestH1_07_EndpointVerbJudgesItsExecutable(t *testing.T) {
+	dev, _ := binaries(t)
+	install := func(t *testing.T, dir string) string {
+		t.Helper()
+		require.NoError(t, os.MkdirAll(dir, 0o700))
+		raw, err := os.ReadFile(dev)
+		require.NoError(t, err)
+		path := filepath.Join(dir, exe("anytype-mcp"))
+		require.NoError(t, os.WriteFile(path, raw, 0o700))
+		return path
+	}
+	verb := func(t *testing.T, e *env, bin string) result {
+		t.Helper()
+		return runWith(t, e.environ(), bin, "", "endpoint")
+	}
+	hurts := map[string]func(t *testing.T, e *env, bin string) string{
+		"bin open to others": func(t *testing.T, e *env, bin string) string {
+			groupWritable(t, filepath.Dir(bin))
+			return filepath.Dir(bin)
+		},
+		"an executable with two links": func(t *testing.T, e *env, bin string) string {
+			require.NoError(t, os.Link(bin, filepath.Join(e.home, exe("copy"))))
+			return bin
+		},
+	}
+	if runtime.GOOS == "darwin" {
+		hurts["bin with an ACL that lets another user write"] = func(t *testing.T, e *env, bin string) string {
+			darwinACL(t, "everyone allow add_file,delete_child", filepath.Dir(bin))
+			return filepath.Dir(bin)
+		}
+	}
+	for name, hurt := range hurts {
+		t.Run(name, func(t *testing.T) {
+			e := newEnv(t)
+			e.writeEndpoint(4000)
+			bin := install(t, filepath.Join(e.home, ".anytype", "bin"))
+			assert.Equal(t, `{"ok":true,"port":4000}`, strings.TrimSpace(verb(t, e, bin).stdout), "a sound copy")
+			path := hurt(t, e, bin)
+			r := verb(t, e, bin)
+			assert.Equal(t, exitInternal, r.code)
+			m := r.json(t)
+			assert.Equal(t, "denied", m["reason"])
+			// the verb may name it resolved (Windows 8.3 temp folders)
+			assert.Equal(t, resolved(t, path), resolved(t, m["path"].(string)), "names bin or the executable")
+			assert.NotEmpty(t, m["rule"])
+			// the endpoint file itself is fine
+			assert.Equal(t, 0, e.run("", "endpoint").code)
+		})
+	}
+
+	t.Run("outside .anytype the executable is not judged", func(t *testing.T) {
+		e := newEnv(t)
+		e.writeEndpoint(4000)
+		bin := install(t, filepath.Join(t.TempDir(), "elsewhere"))
+		require.NoError(t, os.Link(bin, filepath.Join(filepath.Dir(bin), exe("copy"))))
+		groupWritable(t, filepath.Dir(bin))
+		assert.Equal(t, `{"ok":true,"port":4000}`, strings.TrimSpace(verb(t, e, bin).stdout))
+	})
+}
+
+func resolved(t *testing.T, path string) string {
+	t.Helper()
+	real, err := filepath.EvalSymlinks(path)
+	require.NoError(t, err)
+	return real
+}
+
+// Theme C: the verb judges the path it was started by, as it is spelled:
+// a link on it or another spelling of .anytype is refused, and the path
+// must name the file that runs.
+func TestH1R1_C_EndpointJudgesTheLaunchPath(t *testing.T) {
+	dev, _ := binaries(t)
+	raw, err := os.ReadFile(dev)
+	require.NoError(t, err)
+	put := func(t *testing.T, dir string) string {
+		t.Helper()
+		require.NoError(t, os.MkdirAll(dir, 0o700))
+		path := filepath.Join(dir, exe("anytype-mcp"))
+		require.NoError(t, os.WriteFile(path, raw, 0o700))
+		return path
+	}
+	link := func(t *testing.T, target, name string) {
+		t.Helper()
+		if err := os.Symlink(target, name); err != nil {
+			t.Skipf("no symlinks here: %v", err)
+		}
+	}
+	verdict := func(t *testing.T, e *env, argv0, path string) map[string]any {
+		t.Helper()
+		cmd := &exec.Cmd{Path: path, Args: []string{argv0, "endpoint"}, Env: e.environ()}
+		out, _ := cmd.Output()
+		var m map[string]any
+		require.NoError(t, json.Unmarshal(out, &m), "%q", out)
+		return m
+	}
+	setup := func(t *testing.T) (*env, string) {
+		e := newEnv(t)
+		e.writeEndpoint(4000)
+		return e, filepath.Join(e.home, ".anytype", "bin")
+	}
+	denied := func(t *testing.T, m map[string]any, path, rule string) {
+		t.Helper()
+		assert.Equal(t, "denied", m["reason"], "%v", m)
+		assert.Equal(t, path, m["path"])
+		assert.Contains(t, m["rule"], rule)
+	}
+
+	t.Run("a sound copy, started by its path", func(t *testing.T) {
+		e, bin := setup(t)
+		path := put(t, bin)
+		assert.Equal(t, true, verdict(t, e, path, path)["ok"])
+	})
+	t.Run("the installed name is a link to a sound copy outside", func(t *testing.T) {
+		e, bin := setup(t)
+		outside := put(t, filepath.Join(t.TempDir(), "real"))
+		require.NoError(t, os.MkdirAll(bin, 0o700))
+		path := filepath.Join(bin, exe("anytype-mcp"))
+		link(t, outside, path)
+		denied(t, verdict(t, e, path, path), path, "not a regular file")
+	})
+	t.Run("bin is a link to a folder outside", func(t *testing.T) {
+		e, bin := setup(t)
+		outside := filepath.Dir(put(t, filepath.Join(t.TempDir(), "real")))
+		require.NoError(t, os.MkdirAll(filepath.Dir(bin), 0o700))
+		link(t, outside, bin)
+		path := filepath.Join(bin, exe("anytype-mcp"))
+		denied(t, verdict(t, e, path, path), bin, "not a real directory")
+	})
+	t.Run("a path outside that leads into .anytype through a link", func(t *testing.T) {
+		e, bin := setup(t)
+		put(t, bin)
+		alias := filepath.Join(t.TempDir(), "alias")
+		link(t, bin, alias)
+		path := filepath.Join(alias, exe("anytype-mcp"))
+		denied(t, verdict(t, e, path, path), path, "another spelling or through a link")
+	})
+	t.Run("another case of .anytype on a volume that ignores case", func(t *testing.T) {
+		e, bin := setup(t)
+		put(t, bin)
+		path := filepath.Join(e.home, ".Anytype", "bin", exe("anytype-mcp"))
+		if _, err := os.Stat(path); err != nil {
+			t.Skip("this volume tells cases apart")
+		}
+		denied(t, verdict(t, e, path, path), path, "")
+	})
+	t.Run("a start path that names another file than the one running", func(t *testing.T) {
+		e, bin := setup(t)
+		running := put(t, bin)
+		other := put(t, filepath.Join(e.home, ".anytype", "bin2"))
+		denied(t, verdict(t, e, other, running), other, "not the file this process runs")
+	})
+}
+
+// Theme G: the start path is judged as it is spelled: ".." in it is
+// refused, and so is another case of .anytype that a later link leads out
+// of again.
+func TestH1R2_G_LaunchPathAsSpelled(t *testing.T) {
+	dev, _ := binaries(t)
+	raw, err := os.ReadFile(dev)
+	require.NoError(t, err)
+	run := func(t *testing.T, e *env, argv0, path string) map[string]any {
+		t.Helper()
+		out, _ := (&exec.Cmd{Path: path, Args: []string{argv0, "endpoint"}, Env: e.environ()}).Output()
+		var m map[string]any
+		require.NoError(t, json.Unmarshal(out, &m), "%q", out)
+		return m
+	}
+	t.Run("a start path with ..", func(t *testing.T) {
+		e := newEnv(t)
+		e.writeEndpoint(4000)
+		bin := filepath.Join(e.home, ".anytype", "bin")
+		require.NoError(t, os.MkdirAll(filepath.Join(e.home, ".anytype", "shared", "child"), 0o700))
+		require.NoError(t, os.MkdirAll(bin, 0o700))
+		path := filepath.Join(bin, exe("anytype-mcp"))
+		require.NoError(t, os.WriteFile(path, raw, 0o700))
+		sep := string(filepath.Separator)
+		argv0 := filepath.Join(e.home, ".anytype", "shared", "child") + sep + ".." + sep + ".." + sep + "bin" + sep + exe("anytype-mcp")
+		m := run(t, e, argv0, path)
+		assert.Equal(t, "denied", m["reason"], "%v", m)
+		assert.Contains(t, m["rule"], "not clean and absolute")
+	})
+	t.Run("another case of .anytype, then a link out to a shared folder", func(t *testing.T) {
+		e := newEnv(t)
+		e.writeEndpoint(4000)
+		shared := filepath.Join(t.TempDir(), "shared")
+		require.NoError(t, os.MkdirAll(shared, 0o777))
+		path := filepath.Join(shared, exe("anytype-mcp"))
+		require.NoError(t, os.WriteFile(path, raw, 0o700))
+		require.NoError(t, os.MkdirAll(filepath.Join(e.home, ".anytype"), 0o700))
+		if err := os.Symlink(shared, filepath.Join(e.home, ".anytype", "bin")); err != nil {
+			t.Skipf("no symlinks here: %v", err)
+		}
+		alias := filepath.Join(e.home, ".Anytype", "bin", exe("anytype-mcp"))
+		if _, err := os.Stat(alias); err != nil {
+			t.Skip("this volume tells cases apart")
+		}
+		m := run(t, e, alias, alias)
+		assert.Equal(t, "denied", m["reason"], "%v", m)
+		assert.Equal(t, alias, m["path"])
+		assert.Contains(t, m["rule"], "another spelling or through a link")
+	})
+}
+
+// Theme J: an install outside .anytype reached through a junction is not
+// refused (Windows only: elsewhere nothing makes a junction).
+func TestH1R2_J_InstallBeneathAJunction(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("junctions are a Windows thing")
+	}
+	dev, _ := binaries(t)
+	raw, err := os.ReadFile(dev)
+	require.NoError(t, err)
+	e := newEnv(t)
+	e.writeEndpoint(4000)
+	real := filepath.Join(t.TempDir(), "real")
+	require.NoError(t, os.MkdirAll(filepath.Join(real, "app"), 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(real, "app", exe("anytype-mcp")), raw, 0o700))
+	link := filepath.Join(t.TempDir(), "link")
+	out, err := exec.Command("cmd", "/c", "mklink", "/J", link, real).CombinedOutput()
+	if err != nil {
+		t.Skipf("no junctions here: %v: %s", err, out)
+	}
+	path := filepath.Join(link, "app", exe("anytype-mcp"))
+	r := runWith(t, e.environ(), path, "", "endpoint")
+	assert.Equal(t, `{"ok":true,"port":4000}`, strings.TrimSpace(r.stdout), r.stderr)
+}
+
+// H1 case 16: the key is in no output and no file, through a whole
+// session: MCP, a download, a refused download that carried the key, an
+// upload and a rejected key.
+func TestH1_16_KeyNeverInOutputOrFiles(t *testing.T) {
+	e := newEnv(t)
+	heart := newHeartStub(t)
+	heart.tools.Store(true)
+	heart.files["note"] = "plain bytes"
+	heart.files["leak"] = "config: " + canary
+	e.writeEndpoint(heart.port())
+	folder := filepath.Join(e.home, "files")
+	c := e.serve("--tier", "full", "--files-dir", folder)
+	require.Zero(t, errCode(c.call(initLine)))
+	require.Zero(t, errCode(c.call(toolsLine)))
+	assert.Equal(t, "done", toolText(c.call(callLine)))
+	tool := func(name string, args string) map[string]any {
+		return c.call(`{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"` + name + `","arguments":` + args + `}}`)
+	}
+	assert.Contains(t, toolText(tool("download_file", `{"space_id":"s","file_id":"note"}`)), "note.txt")
+	assert.Contains(t, toolText(tool("download_file", `{"space_id":"s","file_id":"leak"}`)), "was not saved")
+	require.NoError(t, os.WriteFile(filepath.Join(folder, "up.txt"), []byte("hello"), 0o600))
+	assert.Contains(t, toolText(tool("upload_local_file", `{"space_id":"s","path":"up.txt"}`)), "uploaded")
+	heart.reject.Store(true)
+	assert.Contains(t, errMessage(c.call(callLine)), "no longer accepts this key")
+	c.close()
+	assert.Equal(t, "Bearer "+canary, heart.auth.Load())
+	assert.Empty(t, e.holders(), "no file under the home holds the key")
+}
 
 func TestServeProcess(t *testing.T) {
 	t.Run("forwards over real pipes; stdin EOF exits 0; the key is in no output", func(t *testing.T) {
 		e := newEnv(t)
 		heart := newHeartStub(t)
-		require.Equal(t, exitOK, e.set("absent", canary, "A", heart.port(), "full").code)
+		e.writeEndpoint(heart.port())
 		c := e.serve()
 		m := c.call(initLine)
 		require.Zero(t, errCode(m), "%v", m)
 		assert.Equal(t, "2025-06-18", m["result"].(map[string]any)["protocolVersion"])
 		assert.Zero(t, errCode(c.call(`{"jsonrpc":"2.0","id":2,"method":"tools/list"}`)))
 		assert.Equal(t, "Bearer "+canary, heart.auth.Load())
-		require.NoError(t, c.stdin.Close())
-		assert.Equal(t, 0, c.wait())
-		assert.NotContains(t, c.stderr.String(), canary)
+		c.close()
 		assert.NotEmpty(t, c.stderr.String())
 	})
 
-	t.Run("a serve started with no item never adopts one, whoever connects later", func(t *testing.T) {
-		e := newEnv(t)
-		heart := newHeartStub(t)
-		c := e.serve()
-		assert.Equal(t, -32001, errCode(c.call(initLine)))
-		// another account connects under the same connection id
-		require.Equal(t, exitOK, e.set("absent", canary, "AccountTwo", heart.port(), "full").code)
-		time.Sleep(50 * time.Millisecond)
-		assert.Equal(t, -32001, errCode(c.call(initLine)))
-		assert.Equal(t, -32001, errCode(c.call(`{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"x"}}`)))
-		assert.Zero(t, heart.hits.Load(), "this process sent heart nothing")
-		require.NoError(t, c.stdin.Close())
-		assert.Equal(t, 0, c.wait())
-
-		// a restart is the recovery
-		c = e.serve()
-		assert.Zero(t, errCode(c.call(initLine)))
-		assert.NotZero(t, heart.hits.Load())
-	})
-
-	t.Run("a running serve follows a retarget to another port without a restart", func(t *testing.T) {
+	t.Run("a running serve follows the endpoint to another port without a restart", func(t *testing.T) {
 		e := newEnv(t)
 		first, second := newHeartStub(t), newHeartStub(t)
-		r := e.set("absent", canary, "A", first.port(), "full")
-		require.Equal(t, exitOK, r.code)
+		e.writeEndpoint(first.port())
 		c := e.serve()
 		require.Zero(t, errCode(c.call(initLine)))
 		first.srv.Close()
-		require.Equal(t, exitOK, e.retarget(stamp(r.json(t)), "A", strconv.Itoa(second.port()), "full").code)
-		// the first port now refuses; the item is re-read and the request retried
+		e.writeEndpoint(second.port())
+		// the first port now refuses; the endpoint is read again and the request retried
 		require.Eventually(t, func() bool {
 			return errCode(c.call(`{"jsonrpc":"2.0","id":2,"method":"tools/list"}`)) == 0
 		}, 10*time.Second, 100*time.Millisecond)
@@ -987,13 +1046,11 @@ func TestServeProcess(t *testing.T) {
 		_, p, _ := net.SplitHostPort(srv.Listener.Addr().String())
 		port, _ := strconv.Atoi(p)
 		e := newEnv(t)
-		require.Equal(t, exitOK, e.set("absent", canary, "A", port, "full").code)
+		e.writeEndpoint(port)
 		c := e.serve()
 		require.Zero(t, errCode(c.call(initLine)))
 		<-extra
-		require.NoError(t, c.stdin.Close())
-		assert.Equal(t, 0, c.wait())
-		assert.NotContains(t, c.stderr.String(), canary)
+		c.close()
 		assert.NotContains(t, c.stderr.String(), "Unsolicited")
 	})
 
@@ -1003,7 +1060,7 @@ func TestServeProcess(t *testing.T) {
 	t.Run("SIGTERM exits within the deadline", func(t *testing.T) {
 		e := newEnv(t)
 		heart := newHeartStub(t)
-		require.Equal(t, exitOK, e.set("absent", canary, "A", heart.port(), "full").code)
+		e.writeEndpoint(heart.port())
 		c := e.serve()
 		require.Zero(t, errCode(c.call(initLine)))
 		require.NoError(t, c.cmd.Process.Signal(syscall.SIGTERM))
@@ -1013,7 +1070,7 @@ func TestServeProcess(t *testing.T) {
 	t.Run("a closed stdout with stdin open ends the process: SIGPIPE is ignored", func(t *testing.T) {
 		e := newEnv(t)
 		heart := newHeartStub(t)
-		require.Equal(t, exitOK, e.set("absent", canary, "A", heart.port(), "full").code)
+		e.writeEndpoint(heart.port())
 		c := e.serve()
 		require.Zero(t, errCode(c.call(initLine)))
 		require.NoError(t, c.outW.Close())
@@ -1021,4 +1078,24 @@ func TestServeProcess(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 1, c.wait(), "an exit code, not death by signal")
 	})
+}
+
+// profileHome gives a scratch home a normal Windows profile's access list
+// (the user, SYSTEM and Administrators, inherited by what is made in it),
+// so no test depends on what the runner's temporary folder hands down.
+// Elsewhere a scratch home is already a normal one.
+func profileHome(t *testing.T, home string) {
+	t.Helper()
+	if runtime.GOOS != "windows" {
+		return
+	}
+	me, err := user.Current()
+	require.NoError(t, err)
+	for _, args := range [][]string{
+		{home, "/grant:r", "*" + me.Uid + ":(OI)(CI)F", "*S-1-5-18:(OI)(CI)F", "*S-1-5-32-544:(OI)(CI)F"},
+		{home, "/inheritance:r"},
+	} {
+		out, err := exec.Command("icacls", args...).CombinedOutput()
+		require.NoError(t, err, string(out))
+	}
 }

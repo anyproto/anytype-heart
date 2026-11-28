@@ -12,245 +12,236 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func mode(t *testing.T, path string) os.FileMode {
-	fi, err := os.Lstat(path)
-	require.NoError(t, err)
-	return fi.Mode().Perm()
-}
+// privateHome: a scratch home on Unix is already a normal one.
+func privateHome(*testing.T, string) {}
 
-func TestFileModes(t *testing.T) {
-	old := syscall.Umask(0)
-	defer syscall.Umask(old)
+// seeded is a sound endpoint file.
+func seeded(t *testing.T) *File {
 	f := newFile(t)
-	require.NoError(t, f.Write(ctx, "a", []byte("x")))
-	assert.Equal(t, os.FileMode(0o700), mode(t, f.Dir()))
-	assert.Equal(t, os.FileMode(0o700), mode(t, filepath.Dir(f.Dir())))
-	assert.Equal(t, os.FileMode(0o600), mode(t, filepath.Join(f.Dir(), "a.item")))
-	unlock, err := f.Lock(ctx, "a")
+	write(t, f, `{"v":1,"port":31009}`)
+	_, err := f.Read(ctx)
 	require.NoError(t, err)
-	unlock()
-	assert.Equal(t, os.FileMode(0o600), mode(t, filepath.Join(f.Dir(), "a.lock")))
+	return f
 }
 
-// refusedEverything asserts the folder rule failed: nothing is read,
-// written or deleted.
-func refusedEverything(t *testing.T, f *File, why string) {
+// foreign makes one path belong to another user, as the rules see it.
+func foreign(f *File, path string) {
+	me := os.Geteuid()
+	f.OwnerRule(func(p string) int {
+		if p == path {
+			return me + 1
+		}
+		return me
+	})
+}
+
+func deniedOn(t *testing.T, err error, path, rule string) {
 	t.Helper()
-	_, err := f.Read(ctx, "a")
-	requireDenied(t, err, why+": read")
-	requireDenied(t, f.Write(ctx, "a", []byte("new")), why+": write")
-	requireDenied(t, f.Delete(ctx, "a"), why+": delete")
-	requireDenied(t, f.Probe(ctx), why+": probe")
-	_, err = f.Lock(ctx, "a")
-	requireDenied(t, err, why+": lock")
+	e := requireReason(t, err, ReasonDenied, rule)
+	assert.Equal(t, path, e.Path)
+	assert.Contains(t, e.Rule, rule)
 }
 
-func TestFileFolderRule(t *testing.T) {
-	seeded := func(t *testing.T) (*File, string) {
-		f := newFile(t)
-		require.NoError(t, f.Write(ctx, "a", []byte("kept")))
-		return f, filepath.Join(f.Dir(), "a.item")
+// .anytype and ai-connect: real directories of this user that nobody
+// else can write. Their mode is otherwise free.
+func TestFolderRule(t *testing.T) {
+	for _, mode := range []os.FileMode{0o700, 0o755, 0o711} {
+		f := seeded(t)
+		require.NoError(t, os.Chmod(filepath.Dir(f.Path()), mode))
+		_, err := f.Read(ctx)
+		assert.NoError(t, err, "%o", mode)
 	}
-	kept := func(t *testing.T, item string) {
-		t.Helper()
-		raw, err := os.ReadFile(item)
-		require.NoError(t, err)
-		assert.Equal(t, "kept", string(raw), "the item is untouched")
-	}
-
-	t.Run("the items folder at 0755", func(t *testing.T) {
-		f, item := seeded(t)
-		require.NoError(t, os.Chmod(f.Dir(), 0o755))
-		refusedEverything(t, f, "0755")
-		kept(t, item)
-	})
-
-	t.Run("a group-writable ancestor", func(t *testing.T) {
-		f, item := seeded(t)
-		require.NoError(t, os.Chmod(filepath.Join(f.home, ".anytype"), 0o770))
-		refusedEverything(t, f, "group-writable ancestor")
-		kept(t, item)
-	})
-
-	t.Run("the items folder is a symlink", func(t *testing.T) {
-		f, _ := seeded(t)
-		real := f.Dir() + "-real"
-		require.NoError(t, os.Rename(f.Dir(), real))
-		require.NoError(t, os.Symlink(real, f.Dir()))
-		refusedEverything(t, f, "folder symlink")
-		kept(t, filepath.Join(real, "a.item"))
-	})
-
-	t.Run("an ancestor is a symlink", func(t *testing.T) {
-		f, _ := seeded(t)
-		dot := filepath.Join(f.home, ".anytype")
-		real := filepath.Join(f.home, "elsewhere")
-		require.NoError(t, os.Rename(dot, real))
-		require.NoError(t, os.Symlink(real, dot))
-		refusedEverything(t, f, "ancestor symlink")
-		kept(t, filepath.Join(real, "ai-connect", "items-dev", "a.item"))
-	})
-
-	t.Run("a folder owned by another user", func(t *testing.T) {
-		f, item := seeded(t)
-		f.uid = func() int { return os.Geteuid() + 1 }
-		refusedEverything(t, f, "wrong owner")
-		kept(t, item)
-	})
-
-	t.Run("a new store is not created inside a folder that fails the rule", func(t *testing.T) {
-		f := newFile(t)
-		dot := filepath.Join(f.home, ".anytype")
-		require.NoError(t, os.Mkdir(dot, 0o777))
-		require.NoError(t, os.Chmod(dot, 0o777))
-		requireDenied(t, f.Write(ctx, "a", []byte("x")), "world-writable ancestor")
-		_, err := os.Lstat(filepath.Join(dot, "ai-connect"))
-		require.ErrorIs(t, err, os.ErrNotExist)
-	})
-}
-
-func TestFileItemRule(t *testing.T) {
-	f := newFile(t)
-	require.NoError(t, f.Write(ctx, "seed", []byte("x")))
-	dir := f.Dir()
-	item := func(id string) string { return filepath.Join(dir, id+".item") }
-	outside := filepath.Join(f.home, "outside")
-	require.NoError(t, os.WriteFile(outside, []byte("secret elsewhere"), 0o600))
-
-	plant := map[string]func(t *testing.T, path string){
-		"a symlink to a file outside the folder": func(t *testing.T, path string) {
-			require.NoError(t, os.Symlink(outside, path))
-		},
-		"a symlink to an item inside the folder": func(t *testing.T, path string) {
-			require.NoError(t, os.Symlink("seed.item", path))
-		},
-		"mode 0644": func(t *testing.T, path string) {
-			require.NoError(t, os.WriteFile(path, []byte("x"), 0o644))
-			require.NoError(t, os.Chmod(path, 0o644))
-		},
-		"mode 0400": func(t *testing.T, path string) {
-			require.NoError(t, os.WriteFile(path, []byte("x"), 0o600))
-			require.NoError(t, os.Chmod(path, 0o400))
-		},
-		"a hard link (two links)": func(t *testing.T, path string) {
-			require.NoError(t, os.WriteFile(path, []byte("x"), 0o600))
-			require.NoError(t, os.Link(path, filepath.Join(f.home, "second-link")))
-		},
-		"a FIFO": func(t *testing.T, path string) {
-			require.NoError(t, syscall.Mkfifo(path, 0o600))
-		},
-		"a directory": func(t *testing.T, path string) {
-			require.NoError(t, os.Mkdir(path, 0o700))
-		},
-	}
-	n := 0
-	for name, do := range plant {
-		n++
-		id := "case" + string(rune('a'+n))
+	for _, name := range []string{".anytype", "ai-connect"} {
 		t.Run(name, func(t *testing.T) {
-			do(t, item(id))
-			done := make(chan error, 1)
-			go func() {
-				_, err := f.Read(ctx, id)
-				done <- err
-			}()
-			requireDenied(t, <-done, name)
+			for mode, rule := range map[os.FileMode]string{0o775: "writable by others", 0o707: "writable by others"} {
+				f := seeded(t)
+				dir := filepath.Join(f.home, ".anytype")
+				if name == "ai-connect" {
+					dir = filepath.Dir(f.Path())
+				}
+				require.NoError(t, os.Chmod(dir, mode))
+				_, err := f.Read(ctx)
+				deniedOn(t, err, dir, rule)
+			}
+
+			f := seeded(t)
+			dir := filepath.Join(f.home, ".anytype")
+			if name == "ai-connect" {
+				dir = filepath.Dir(f.Path())
+			}
+			foreign(f, dir)
+			_, err := f.Read(ctx)
+			deniedOn(t, err, dir, "belongs to another user")
+
+			real := dir + "-real"
+			require.NoError(t, os.Rename(dir, real))
+			require.NoError(t, os.Symlink(real, dir))
+			_, err = OpenAt(f.home, NamespaceDev).Read(ctx)
+			deniedOn(t, err, dir, "not a real directory")
 		})
 	}
-
-	t.Run("an item owned by another user", func(t *testing.T) {
-		g := newFile(t)
-		require.NoError(t, g.Write(ctx, "a", []byte("x")))
-		calls := 0
-		// the four folders pass (home included); the item's owner differs
-		g.uid = func() int {
-			calls++
-			if calls > 4 {
-				return os.Geteuid() + 1
-			}
-			return os.Geteuid()
-		}
-		_, err := g.Read(ctx, "a")
-		requireDenied(t, err, "wrong item owner")
-	})
-
-	t.Run("a lock that is not a regular file", func(t *testing.T) {
-		require.NoError(t, os.Symlink(outside, filepath.Join(dir, "linked.lock")))
-		_, err := f.Lock(ctx, "linked")
-		requireDenied(t, err, "lock symlink")
-	})
-
-	raw, err := os.ReadFile(outside)
-	require.NoError(t, err)
-	assert.Equal(t, "secret elsewhere", string(raw))
 }
 
-func TestFileUnreadableFolder(t *testing.T) {
+// The file: regular, one link, this user's, nobody else may write it.
+// Others may read it: it holds no secret.
+func TestFileRule(t *testing.T) {
+	for _, mode := range []os.FileMode{0o600, 0o644, 0o400} {
+		f := seeded(t)
+		require.NoError(t, os.Chmod(f.Path(), mode))
+		_, err := f.Read(ctx)
+		assert.NoError(t, err, "%o", mode)
+	}
+	for name, hurt := range map[string]func(t *testing.T, f *File) string{
+		"group-writable": func(t *testing.T, f *File) string {
+			require.NoError(t, os.Chmod(f.Path(), 0o660))
+			return "writable by others"
+		},
+		"other-writable": func(t *testing.T, f *File) string {
+			require.NoError(t, os.Chmod(f.Path(), 0o602))
+			return "writable by others"
+		},
+		"a symlink to a sound file": func(t *testing.T, f *File) string {
+			good := filepath.Join(t.TempDir(), "good.json")
+			require.NoError(t, os.WriteFile(good, []byte(`{"v":1,"port":1}`), 0o600))
+			require.NoError(t, os.Remove(f.Path()))
+			require.NoError(t, os.Symlink(good, f.Path()))
+			return "not a regular file"
+		},
+		"a FIFO": func(t *testing.T, f *File) string {
+			require.NoError(t, os.Remove(f.Path()))
+			require.NoError(t, syscall.Mkfifo(f.Path(), 0o600))
+			return "not a regular file"
+		},
+		"a folder": func(t *testing.T, f *File) string {
+			require.NoError(t, os.Remove(f.Path()))
+			require.NoError(t, os.Mkdir(f.Path(), 0o700))
+			return "not a regular file"
+		},
+		"two links": func(t *testing.T, f *File) string {
+			require.NoError(t, os.Link(f.Path(), filepath.Join(f.home, "second")))
+			return "more than one link"
+		},
+		"owned by another user": func(t *testing.T, f *File) string {
+			foreign(f, f.Path())
+			return "belongs to another user"
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := seeded(t)
+			rule := hurt(t, f)
+			_, err := f.Read(ctx)
+			deniedOn(t, err, f.Path(), rule)
+			assert.Contains(t, err.Error(), "the endpoint file")
+		})
+	}
+}
+
+func TestUnreadableFolder(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("root reads everything")
 	}
-	f := newFile(t)
-	require.NoError(t, f.Write(ctx, "a", []byte("x")))
-	require.NoError(t, os.Chmod(f.Dir(), 0o000))
-	t.Cleanup(func() { _ = os.Chmod(f.Dir(), 0o700) })
-	_, err := f.Read(ctx, "a")
-	require.True(t, IsTemporary(err), "try again, never 'gone': %v", err)
-	require.True(t, IsTemporary(f.Write(ctx, "a", []byte("y"))))
-	require.True(t, IsTemporary(f.Delete(ctx, "a")))
+	f := seeded(t)
+	dir := filepath.Dir(f.Path())
+	require.NoError(t, os.Chmod(dir, 0o000))
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
+	_, err := f.Read(ctx)
+	requireReason(t, err, ReasonUnreachable, "an unreadable folder")
 }
 
-// L4: the chain starts at home. No other user may own it or be able to
-// replace it with a link; its mode is not judged.
-func TestFileHomeRule(t *testing.T) {
-	t.Run("a group-writable home is a normal setup", func(t *testing.T) {
-		f := newFile(t)
-		require.NoError(t, os.Chmod(f.home, 0o775))
-		require.NoError(t, f.Write(ctx, "a", []byte("x")))
-		raw, err := f.Read(ctx, "a")
-		require.NoError(t, err)
-		assert.Equal(t, "x", string(raw))
-	})
+// The chain starts at home: no other user may own it or swap it for a
+// link; its mode is not judged.
+func TestHomeRule(t *testing.T) {
+	f := seeded(t)
+	require.NoError(t, os.Chmod(f.home, 0o775))
+	_, err := f.Read(ctx)
+	require.NoError(t, err, "a group-writable home is a normal setup")
 
-	t.Run("a home owned by another user", func(t *testing.T) {
-		f := newFile(t)
-		require.NoError(t, f.Write(ctx, "a", []byte("kept")))
-		mine := os.Geteuid()
-		calls := 0
-		// only the first check of each walk (home) sees another owner
-		f.uid = func() int {
-			calls++
-			if calls%4 == 1 {
-				return mine + 1
+	foreign(f, f.home)
+	_, err = f.Read(ctx)
+	deniedOn(t, err, f.home, "belongs to another user")
+
+	real := seeded(t)
+	link := filepath.Join(t.TempDir(), "home")
+	require.NoError(t, os.Symlink(real.home, link))
+	_, err = OpenAt(link, NamespaceDev).Read(ctx)
+	deniedOn(t, err, link, "not a real directory")
+}
+
+// The endpoint verb's rule for its own executable under .anytype: the
+// folders down to it are strict folders, the file a strict file.
+func TestCheckExecutableRules(t *testing.T) {
+	setup := func(t *testing.T) (*File, string) {
+		f := seeded(t)
+		bin := filepath.Join(f.home, ".anytype", "bin")
+		require.NoError(t, os.Mkdir(bin, 0o700))
+		exe := filepath.Join(bin, "anytype-mcp")
+		require.NoError(t, os.WriteFile(exe, []byte("binary"), 0o755))
+		require.NoError(t, f.CheckExecutable(exe, exe))
+		return f, exe
+	}
+	t.Run("a group-writable bin", func(t *testing.T) {
+		f, exe := setup(t)
+		require.NoError(t, os.Chmod(filepath.Dir(exe), 0o775))
+		deniedOn(t, f.CheckExecutable(exe, exe), filepath.Dir(exe), "writable by others")
+	})
+	t.Run("bin owned by another user", func(t *testing.T) {
+		f, exe := setup(t)
+		foreign(f, filepath.Dir(exe))
+		deniedOn(t, f.CheckExecutable(exe, exe), filepath.Dir(exe), "belongs to another user")
+	})
+	t.Run("a group-writable .anytype", func(t *testing.T) {
+		f, exe := setup(t)
+		require.NoError(t, os.Chmod(filepath.Join(f.home, ".anytype"), 0o775))
+		deniedOn(t, f.CheckExecutable(exe, exe), filepath.Join(f.home, ".anytype"), "writable by others")
+	})
+	t.Run("an executable with two links", func(t *testing.T) {
+		f, exe := setup(t)
+		require.NoError(t, os.Link(exe, filepath.Join(f.home, "copy")))
+		deniedOn(t, f.CheckExecutable(exe, exe), exe, "the forwarder's executable has more than one link")
+	})
+	t.Run("a group-writable executable", func(t *testing.T) {
+		f, exe := setup(t)
+		require.NoError(t, os.Chmod(exe, 0o775))
+		deniedOn(t, f.CheckExecutable(exe, exe), exe, "writable by others")
+	})
+	t.Run("a launch path that reaches .anytype through a link is refused, not judged resolved", func(t *testing.T) {
+		f, exe := setup(t)
+		for _, alias := range []string{filepath.Join(t.TempDir(), "bin"), filepath.Join(t.TempDir(), "anytype-mcp")} {
+			target := filepath.Dir(exe)
+			if filepath.Base(alias) == "anytype-mcp" {
+				target = exe
 			}
-			return mine
+			require.NoError(t, os.Symlink(target, alias))
+			launch := alias
+			if filepath.Base(alias) == "bin" {
+				launch = filepath.Join(alias, "anytype-mcp")
+			}
+			// the path passes no .anytype by its spelling; the file it runs
+			// really lies there
+			deniedOn(t, f.CheckExecutable(launch, exe), exe, "another spelling or through a link")
 		}
-		_, err := f.Read(ctx, "a")
-		requireDenied(t, err, "foreign home")
-		assert.Contains(t, err.Error(), f.home, "the message names the path")
-		assert.Contains(t, err.Error(), "belongs to another user", "and the rule")
-		calls = 0
-		requireDenied(t, f.Write(ctx, "a", []byte("new")), "foreign home")
-		calls = 0
-		requireDenied(t, f.Delete(ctx, "a"), "foreign home")
-		raw, err := os.ReadFile(filepath.Join(f.Dir(), "a.item"))
-		require.NoError(t, err)
-		assert.Equal(t, "kept", string(raw))
-	})
-
-	t.Run("a home that is a symlink", func(t *testing.T) {
-		real := t.TempDir()
+		// a home spelled through a link while the path is spelled resolved
 		link := filepath.Join(t.TempDir(), "home")
-		require.NoError(t, os.Symlink(real, link))
-		f := OpenAt(link, NamespaceDev)
-		requireDenied(t, f.Write(ctx, "a", []byte("x")), "home symlink")
-		_, err := os.Lstat(filepath.Join(real, ".anytype"))
-		require.ErrorIs(t, err, os.ErrNotExist, "nothing was created behind the link")
+		require.NoError(t, os.Symlink(f.home, link))
+		real, err := filepath.EvalSymlinks(exe)
+		require.NoError(t, err)
+		deniedOn(t, OpenAt(link, NamespaceDev).CheckExecutable(real, exe), real, "another spelling or through a link")
 	})
-
-	t.Run("a home that does not exist is never created", func(t *testing.T) {
-		f := OpenAt(filepath.Join(t.TempDir(), "nobody"), NamespaceDev)
-		require.True(t, IsTemporary(f.Write(ctx, "a", []byte("x"))))
-		_, err := os.Lstat(f.home)
-		require.ErrorIs(t, err, os.ErrNotExist)
+	t.Run("a bin that is a link to a folder outside", func(t *testing.T) {
+		f, exe := setup(t)
+		outside := filepath.Join(t.TempDir(), "outside")
+		require.NoError(t, os.Mkdir(outside, 0o700))
+		require.NoError(t, os.Rename(exe, filepath.Join(outside, "anytype-mcp")))
+		require.NoError(t, os.Remove(filepath.Dir(exe)))
+		require.NoError(t, os.Symlink(outside, filepath.Dir(exe)))
+		deniedOn(t, f.CheckExecutable(exe, filepath.Join(outside, "anytype-mcp")), filepath.Dir(exe), "not a real directory")
+	})
+	t.Run("an executable that is a symlink", func(t *testing.T) {
+		f, exe := setup(t)
+		real := filepath.Join(t.TempDir(), "real")
+		require.NoError(t, os.WriteFile(real, []byte("binary"), 0o755))
+		require.NoError(t, os.Remove(exe))
+		require.NoError(t, os.Symlink(real, exe))
+		deniedOn(t, f.CheckExecutable(exe, exe), exe, "not a regular file")
 	})
 }

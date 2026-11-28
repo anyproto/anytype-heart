@@ -1,6 +1,6 @@
 # anytype-mcp, the stdio forwarder AI apps start (cmd/anytype-mcp). Each target builds it twice:
-#   <os-arch>-mcp-dev      the default build: the development namespace (items folder items-dev)
-#   <os-arch>-mcp-release  the production namespace (items), fixed at link time; only release and
+#   <os-arch>-mcp-dev      the default build: the development namespace (endpoint-dev.json)
+#   <os-arch>-mcp-release  the production namespace (endpoint.json), fixed at link time; only release and
 #                          nightly desktop builds pick this one
 # All five are static, built without cgo, so any host builds any target.
 # The binaries are not signed here: anytype-ts CI signs them with the app.

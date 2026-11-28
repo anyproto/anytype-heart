@@ -16,34 +16,37 @@ import (
 
 	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/contract"
 	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/internal/files"
-	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/internal/store"
 )
 
 // Texts a person or a model reads.
 const (
-	msgReconnect = "Anytype is not connected to this app. Open Anytype ▸ Settings ▸ AI apps and reconnect, then restart this app."
-	msgRejected  = "Anytype no longer accepts this connection's key. Open Anytype ▸ Settings ▸ AI apps and reconnect."
-	msgStart     = "Anytype is not running. Start Anytype and try again."
-	msgTooOld    = "This Anytype is too old for this connection. Update Anytype."
-	msgBusy      = "The connection is busy: too many requests are waiting. Try again."
-	msgForbidden = "This connection's key does not allow that. Change its access in Anytype ▸ Settings ▸ AI apps."
-	msgHeartBusy = "Anytype is busy with other calls from this connection. Try again in a moment."
-	msgExpired   = "The Anytype session expired and a new one was started. Anything remembered from earlier calls is gone: re-read your targets, then call again. This call did not run."
-	msgNoRenew   = "The Anytype session expired and could not be renewed. This call did not run. Try again."
-	msgUnknown   = "Anytype did not confirm the outcome of this call. It may or may not have been applied: check before retrying."
-	msgNoAnswer  = "Anytype did not answer this request."
-	msgNotInit   = "Send initialize first."
-	msgTooLarge  = "The message is larger than 8 MiB."
-	msgWithheld  = "Anytype's reply contained this connection's key and was withheld."
+	msgNoKey       = "Anytype is not connected: %s. Give this app its key from Anytype ▸ Settings ▸ AI apps, then restart it."
+	msgUnreachable = "Anytype can't be reached: open Anytype"
+	msgRejected    = "Anytype no longer accepts this key: reconnect in Anytype and give the app the new key"
+	msgTooOld      = "This Anytype is too old for this connection. Update Anytype."
+	msgBusy        = "The connection is busy: too many requests are waiting. Try again."
+	msgForbidden   = "This connection's key does not allow that. Change its access in Anytype ▸ Settings ▸ AI apps."
+	msgHeartBusy   = "Anytype is busy with other calls from this connection. Try again in a moment."
+	msgExpired     = "The Anytype session expired and a new one was started. Anything remembered from earlier calls is gone: re-read your targets, then call again. This call did not run."
+	msgNoRenew     = "The Anytype session expired and could not be renewed. This call did not run. Try again."
+	msgUnknown     = "Anytype did not confirm the outcome of this call. It may or may not have been applied: check before retrying."
+	msgNoAnswer    = "Anytype did not answer this request."
+	msgNotInit     = "Send initialize first."
+	msgTooLarge    = "The message is larger than 8 MiB."
+	msgWithheld    = "Anytype's reply contained this connection's key and was withheld."
 )
 
 // Options configure one serve run.
 type Options struct {
-	ConnectionID string
-	Store        store.Store
-	In           io.Reader
-	Out          io.Writer
-	Log          io.Writer
+	// Key is the bearer from the environment, Tier the route segment; both
+	// are fixed for the life of the process. Endpoint is where the port is
+	// read before every authenticated request.
+	Key      string
+	Tier     string
+	Endpoint Endpoint
+	In       io.Reader
+	Out      io.Writer
+	Log      io.Writer
 	// Files is the folder of the full tier's local file tools, already
 	// opened (serve --files-dir). Without it a full-tier connection gets a
 	// private temporary folder of its own. Serve closes it.
@@ -55,7 +58,7 @@ type Options struct {
 	ShutdownDeadline time.Duration
 	StdoutStall      time.Duration
 	ErrorBodyWait    time.Duration
-	StoreTimeout     time.Duration
+	ReadTimeout      time.Duration
 	TransferTimeout  time.Duration
 	// FileGrace is how long a file transfer that was told to stop may
 	// take to unwind before its worker answers without it.
@@ -88,8 +91,11 @@ func (o *Options) defaults() {
 	if o.ErrorBodyWait == 0 {
 		o.ErrorBodyWait = 5 * time.Second
 	}
-	if o.StoreTimeout == 0 {
-		o.StoreTimeout = contract.StoreReadTimeout
+	if o.ReadTimeout == 0 {
+		o.ReadTimeout = contract.EndpointReadTimeout
+	}
+	if o.Tier == "" {
+		o.Tier = "full"
 	}
 	if o.TransferTimeout == 0 {
 		o.TransferTimeout = contract.TransferTimeout
@@ -188,7 +194,7 @@ func Serve(ctx context.Context, o Options) int {
 	s := &server{
 		o:        o,
 		log:      log,
-		conn:     &connection{id: o.ConnectionID, st: o.Store, now: o.Now, maxAge: o.RefreshAfter, timeout: o.StoreTimeout, log: log},
+		conn:     newConnection(o, log),
 		up:       &upstream{client: o.httpClient, timeout: o.ExchangeTimeout, errBodyFor: o.ErrorBodyWait},
 		out:      make(chan *reply, contract.QueueSize),
 		queue:    make(chan *call, contract.QueueSize),
@@ -202,25 +208,6 @@ func Serve(ctx context.Context, o Options) int {
 	if o.onServer != nil {
 		o.onServer(s)
 	}
-	// the one read that decides this process's fate may stall (a network
-	// home): a signal must still end the process, so the read runs beside
-	// the wait. Nothing else starts before it returns: the reader and the
-	// workers never run on an empty snapshot.
-	started := make(chan struct{})
-	go func() {
-		defer close(started)
-		s.conn.start(ctx)
-	}()
-	select {
-	case <-started:
-	case <-ctx.Done():
-		log.printf("shutdown: signal before the item was read")
-		deadline, cancel := context.WithTimeout(context.Background(), o.ShutdownDeadline)
-		defer cancel()
-		log.close(deadline)
-		return 0
-	}
-
 	defer s.openFiles()()
 	go s.writer()
 	go s.watchStdout()
@@ -256,7 +243,7 @@ func Serve(ctx context.Context, o Options) int {
 	}
 	defer cancel()
 
-	// the rest may block on heart or on the store: it gets what is left of
+	// the rest may block on heart or on the endpoint: it gets what is left of
 	// the deadline and is abandoned after it
 	finished := make(chan struct{})
 	go func() {
@@ -355,7 +342,7 @@ func (s *server) openFiles() func() {
 			_ = dir.Close()
 		}
 	}
-	if s.conn.pinnedTier() != "full" {
+	if s.o.Tier != "full" || !s.conn.connected() {
 		return release
 	}
 	if dir == nil {
@@ -560,7 +547,7 @@ func (s *server) dispatch(m *message) {
 	}
 	switch {
 	case !connected:
-		s.send(errorReply(m.id, codeNotConnected, msgReconnect))
+		s.send(s.notConnected(m.id))
 		return
 	case !initialized && m.method == "ping":
 		s.send(mustResult(m.id))
@@ -690,28 +677,36 @@ func (s *server) run(c *call) {
 
 // forwardQuiet passes a notification or a client response on. heart
 // answers 202; nothing is written to stdout whatever happens. A refused
-// connection sent nothing, so the item is re-read and the message tried
-// once more.
+// connection sent nothing, so the endpoint is read again and the message
+// tried once more.
 func (s *server) forwardQuiet(c *call) {
-	snap, err := s.conn.current(c.ctx)
+	snap, err := s.conn.gate(c.ctx)
 	if err != nil {
+		s.log.printf("%s not delivered: Anytype can't be reached", describeKind(c.msg))
 		return
 	}
 	sess := s.session()
-	ex := s.up.do(c.ctx, http.MethodPost, snap, sess.id, sess.version, c.msg.raw)
-	if ex.out == outRefused {
+	// every attempt that carries a session id goes only to the port that
+	// opened the session
+	send := func(snap snapshot) (exchange, bool) {
+		if sess.id != "" && sess.snap.port != snap.port {
+			s.log.printf("%s not delivered: its session is on a port Anytype has left", describeKind(c.msg))
+			return exchange{}, false
+		}
+		return s.up.do(c.ctx, http.MethodPost, snap, sess.id, sess.version, c.msg.raw), true
+	}
+	ex, sent := send(snap)
+	if sent && ex.out == outRefused {
 		if snap, err = s.conn.refresh(c.ctx); err != nil {
 			return
 		}
-		ex = s.up.do(c.ctx, http.MethodPost, snap, sess.id, sess.version, c.msg.raw)
+		ex, sent = send(snap)
 	}
 	switch {
+	case !sent:
+		// logged by send
 	case ex.out != outReply:
 		s.log.printf("%s not delivered", describeKind(c.msg))
-	case ex.status == http.StatusUnauthorized:
-		if _, err := s.conn.refresh(c.ctx); err != nil {
-			s.log.printf("%s refused: the connection is gone", describeKind(c.msg))
-		}
 	case ex.status >= 300:
 		s.log.printf("%s refused: HTTP %d", describeKind(c.msg), ex.status)
 	}
@@ -754,8 +749,13 @@ func (s *server) expiredReply(id json.RawMessage) *reply {
 	return r
 }
 
+// notConnected answers a request the gate stopped: a bad key, or an
+// endpoint that can't be read right now.
 func (s *server) notConnected(id json.RawMessage) *reply {
-	return errorReply(id, codeNotConnected, msgReconnect)
+	if !s.conn.connected() {
+		return errorReply(id, codeNotConnected, fmt.Sprintf(msgNoKey, s.conn.dead))
+	}
+	return errorReply(id, codeNotConnected, msgUnreachable)
 }
 
 // unconfirmed answers a request whose outcome nobody can know.
@@ -787,29 +787,37 @@ func (s *server) handle(c *call) *reply {
 			return s.local.call(c, name, params)
 		}
 	}
-	snap, err := s.conn.current(c.ctx)
+	snap, err := s.conn.gate(c.ctx)
 	if err != nil {
 		return s.notConnected(m.id)
 	}
 	refused, renewed := false, false
 	for {
+		if sess.id != "" && sess.snap.port != snap.port {
+			// a session lives on the port that opened it: on another one
+			// it is gone, as if heart had answered 404
+			if r := s.sessionGone(c, &sess, &snap, &renewed); r != nil {
+				return r
+			}
+			continue
+		}
 		ex := s.up.do(c.ctx, http.MethodPost, snap, sess.id, sess.version, m.raw)
 		if c.canceled.Load() && !isInit {
 			return nil
 		}
 		switch ex.out {
 		case outRefused:
-			// nothing was sent: re-read the item and try once more
+			// nothing was sent: read the endpoint again and try once more
+			if refused {
+				return s.notConnected(m.id)
+			}
 			next, err := s.conn.refresh(c.ctx)
 			if err != nil {
 				return s.notConnected(m.id)
 			}
-			if !refused {
-				refused = true
-				snap = next
-				continue
-			}
-			return errorReply(m.id, codeNotConnected, msgStart)
+			refused = true
+			snap = next
+			continue
 		case outLost:
 			s.log.printf("%s: no reply from Anytype", m.method)
 			return unconfirmed(m)
@@ -819,11 +827,7 @@ func (s *server) handle(c *call) *reply {
 		case st == http.StatusOK:
 			return s.relay(c, snap, ex)
 		case st == http.StatusUnauthorized:
-			// the request failed and is never replayed; the next one runs
-			// on whatever the item says now
-			if _, err := s.conn.refresh(c.ctx); err != nil {
-				return s.notConnected(m.id)
-			}
+			// the request failed and is never replayed
 			return errorReply(m.id, codeNotConnected, msgRejected)
 		case st == http.StatusForbidden:
 			if isTool {
@@ -834,20 +838,8 @@ func (s *server) handle(c *call) *reply {
 			if sess.id == "" {
 				return errorReply(m.id, codeMethodNotFound, msgTooOld)
 			}
-			if err := s.renew(c.ctx, sess.id); err != nil {
-				return s.renewFailed(m, err)
-			}
-			if isTool {
-				// never replayed, and never on the new session
-				return s.expiredReply(m.id)
-			}
-			if renewed {
-				return errorReply(m.id, codeInternal, msgNoAnswer)
-			}
-			renewed = true
-			sess = s.session()
-			if snap, err = s.conn.current(c.ctx); err != nil {
-				return s.notConnected(m.id)
+			if r := s.sessionGone(c, &sess, &snap, &renewed); r != nil {
+				return r
 			}
 			continue
 		case st == http.StatusBadRequest || st == http.StatusRequestTimeout || st == http.StatusRequestEntityTooLarge:
@@ -881,6 +873,32 @@ func (s *server) handle(c *call) *reply {
 			return unconfirmed(m)
 		}
 	}
+}
+
+// sessionGone handles a session that is gone (heart's 404, or one opened
+// on another port than the endpoint names now): one renewal per request,
+// and a tool call is never replayed, nor run on the new session. It
+// returns the reply that ends the request, or nil to send it again on the
+// new session.
+func (s *server) sessionGone(c *call, sess *session, snap *snapshot, renewed *bool) *reply {
+	m := c.msg
+	if *renewed {
+		return errorReply(m.id, codeInternal, msgNoAnswer)
+	}
+	if err := s.renew(c.ctx, sess.id); err != nil {
+		return s.renewFailed(m, err)
+	}
+	if m.method == "tools/call" {
+		return s.expiredReply(m.id)
+	}
+	*renewed = true
+	*sess = s.session()
+	next, err := s.conn.gate(c.ctx)
+	if err != nil {
+		return s.notConnected(m.id)
+	}
+	*snap = next
+	return nil
 }
 
 // carriesKey reports whether a body would put the key in front of the
@@ -1032,7 +1050,11 @@ func (s *server) adoptInitialize(m *message, snap snapshot, ex exchange, result 
 	s.initialized = true
 	// resetPending stays as it is: only the written warning clears the
 	// gate, or a tools/call sent before the client read the warning could
-	// run on this new session with targets from the old one
+	// run on this new session with targets from the old one. A session
+	// that replaces one opened on another port sets it, as a renewal does.
+	if old.id != "" && old.snap.port != snap.port {
+		s.resetPending = true
+	}
 	s.mu.Unlock()
 	if old.id != "" && old.id != ex.session {
 		// a replaced initialize ends the session it replaced
@@ -1049,7 +1071,7 @@ var (
 
 func (s *server) renewFailed(m *message, err error) *reply {
 	switch {
-	case errors.Is(err, errNotConnected):
+	case errors.Is(err, errNotConnected), errors.Is(err, errUnreachable):
 		return s.notConnected(m.id)
 	case errors.Is(err, errRenewRejected):
 		return errorReply(m.id, codeNotConnected, msgRejected)
@@ -1079,10 +1101,6 @@ func (s *server) renew(ctx context.Context, stale string) error {
 	if current != stale {
 		return nil
 	}
-	snap, err := s.conn.current(ctx)
-	if err != nil {
-		return err
-	}
 	id, err := json.Marshal(fmt.Sprintf("anytype-mcp-renew-%d", n))
 	if err != nil {
 		return errRenewFailed
@@ -1095,7 +1113,19 @@ func (s *server) renew(ctx context.Context, stale string) error {
 	if err != nil {
 		return errRenewFailed
 	}
+	// the gate right before the send: encoding a large body takes time
+	snap, err := s.conn.gate(ctx)
+	if err != nil {
+		return err
+	}
 	ex := s.up.do(ctx, http.MethodPost, snap, "", "", body)
+	if ex.out == outRefused {
+		// nothing was sent: read the endpoint again and try once more
+		if snap, err = s.conn.refresh(ctx); err != nil {
+			return err
+		}
+		ex = s.up.do(ctx, http.MethodPost, snap, "", "", body)
+	}
 	if ex.out != outReply {
 		return errRenewFailed
 	}
@@ -1107,17 +1137,11 @@ func (s *server) renew(ctx context.Context, stale string) error {
 		s.log.printf("session renewal failed: HTTP %d", status)
 		return err
 	}
-	rejected := func(status int) error {
-		if _, err := s.conn.refresh(ctx); err != nil {
-			return fail(status, err)
-		}
-		return fail(status, errRenewRejected)
-	}
 	switch {
 	case ex.status == http.StatusNotFound:
 		return fail(ex.status, errRenewTooOld)
 	case ex.status == http.StatusUnauthorized:
-		return rejected(ex.status)
+		return fail(ex.status, errRenewRejected)
 	case ex.status != http.StatusOK || ex.bodyErr != nil || !ex.isJSON || ex.session == "":
 		return fail(ex.status, errRenewFailed)
 	}
@@ -1134,9 +1158,9 @@ func (s *server) renew(ctx context.Context, stale string) error {
 	}
 	opened.version = res.ProtocolVersion
 	// the first leg may have taken a long time: the second is sent only
-	// if the item still names the port and key the session was opened on
-	if !s.stillHome(ctx, snap) {
-		return fail(ex.status, errRenewFailed)
+	// if the endpoint still names the port the session was opened on
+	if err := s.conn.gateAt(ctx, snap); err != nil {
+		return fail(ex.status, err)
 	}
 	note := []byte(`{"jsonrpc":"2.0","method":"notifications/initialized"}`)
 	ack := s.up.do(ctx, http.MethodPost, snap, opened.id, opened.version, note)
@@ -1144,7 +1168,7 @@ func (s *server) renew(ctx context.Context, stale string) error {
 	case ack.out != outReply:
 		return fail(0, errRenewFailed)
 	case ack.status == http.StatusUnauthorized:
-		return rejected(ack.status)
+		return fail(ack.status, errRenewRejected)
 	case ack.status != http.StatusAccepted:
 		return fail(ack.status, errRenewFailed)
 	}
@@ -1189,19 +1213,17 @@ func (s *server) closeDrop() {
 	}
 }
 
-// stillHome reports whether the item still names the port and key of
-// snap, re-reading it when the last read is old. Every authenticated
-// follow-up on a session (a DELETE, the renewal's notification) is sent
-// only while this holds: the bearer never goes to a port Anytype has left,
-// where another user's program may now listen.
+// stillHome is the gate for a session's follow-ups (a DELETE, the
+// renewal's notification): it passes only while the endpoint still names
+// the port the session was opened on. The bearer never goes to a port
+// Anytype has left, where another user's program may now listen.
 func (s *server) stillHome(ctx context.Context, snap snapshot) bool {
-	cur, ok := s.conn.confirmed(ctx)
-	return ok && cur.port == snap.port && cur.key == snap.key
+	return s.conn.gateAt(ctx, snap) == nil
 }
 
 // cleaner ends dropped sessions one at a time, each with the snapshot that
-// opened it and only while the item still names that snapshot's port and
-// key; otherwise heart's idle timeout ends the session. Cleanup adds one
+// opened it and only while the endpoint still names that snapshot's port;
+// otherwise heart's idle timeout ends the session. Cleanup adds one
 // call to the four workers and stays under heart's limit per key. It
 // outlives the run: shutdown closes the queue and waits for it within the
 // deadline.
@@ -1219,9 +1241,8 @@ func (s *server) cleaner() {
 }
 
 // endSession makes the one DELETE attempt of shutdown, and only where the
-// session lives: the item is re-read if the last read is old, and the
-// DELETE is sent only if the item still names the port and key the session
-// was opened with. Otherwise heart's idle timeout ends it; the bearer is
+// session lives: the DELETE passes the gate and is sent only if the
+// endpoint still names the port the session was opened with. Otherwise heart's idle timeout ends it; the bearer is
 // never sent to a port Anytype has left.
 func (s *server) endSession(ctx context.Context) {
 	sess := s.session()

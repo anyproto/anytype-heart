@@ -345,8 +345,9 @@ func (l *localTools) minutes() int {
 
 // call runs one local tool to its single reply; nil when the request was
 // canceled or the forwarder is stopping. The whole transfer runs on the
-// snapshot it started with and ends within the transfer deadline. Failures
-// the model can act on are tool results.
+// port it started with, each of its requests behind the gate, and ends
+// within the transfer deadline. Failures the model can act on are tool
+// results.
 func (l *localTools) call(c *call, name string, params map[string]json.RawMessage) *reply {
 	id := c.msg.id
 	l.running.Add(1)
@@ -360,7 +361,7 @@ func (l *localTools) call(c *call, name string, params map[string]json.RawMessag
 		l.running.Add(-1)
 		return toolErrorReply(id, fmt.Sprintf("the files folder %s does not answer: earlier transfers are still stuck in it. Restart this app.", l.dir.Path()))
 	}
-	snap, err := l.s.conn.current(c.ctx)
+	snap, err := l.s.conn.gate(c.ctx)
 	if err != nil {
 		l.running.Add(-1)
 		return l.s.notConnected(id)
@@ -431,8 +432,10 @@ func (l *localTools) call(c *call, name string, params map[string]json.RawMessag
 		return r
 	case c.ctx.Err() != nil:
 		return nil
-	case errors.Is(err, errNotConnected):
-		return l.s.notConnected(id)
+	case errors.Is(err, errUnreachable), errors.Is(err, errRefused):
+		return toolErrorReply(id, msgUnreachable)
+	case errors.Is(err, errMoved):
+		return toolErrorReply(id, "Anytype moved to another port during the transfer, which was stopped. Try again.")
 	case errors.As(err, &failure):
 		if failure.whole {
 			return toolErrorReply(id, failure.text)
@@ -479,9 +482,20 @@ func segment(args map[string]json.RawMessage, key string) (raw, escaped string, 
 // errRefused: the connection could not be made; nothing was sent.
 var errRefused = errors.New("connection refused")
 
+// notSent reports a request that never left: the gate stopped it or the
+// connection could not be made.
+func notSent(err error) bool {
+	return errors.Is(err, errRefused) || errors.Is(err, errUnreachable) || errors.Is(err, errMoved)
+}
+
 // request sends one REST request on the loopback client: no redirects, no
-// proxy, 127.0.0.1 only. The caller closes the body.
+// proxy, 127.0.0.1 only. It passes the gate first, on the port the
+// transfer started on: a transfer is never sent anywhere else. The caller
+// closes the body.
 func (l *localTools) request(ctx context.Context, method string, snap snapshot, path string, body io.Reader, header map[string]string) (*http.Response, error) {
+	if err := l.s.conn.gateAt(ctx, snap); err != nil {
+		return nil, err
+	}
 	req, err := http.NewRequestWithContext(ctx, method, fmt.Sprintf("http://%s:%d%s", loopback, snap.port, path), body)
 	if err != nil {
 		return nil, err
@@ -494,8 +508,8 @@ func (l *localTools) request(ctx context.Context, method string, snap snapshot, 
 	if err != nil {
 		var de *dialError
 		if errors.As(err, &de) && ctx.Err() == nil {
-			// §2.4: the next transfer runs on what the item says now
-			l.s.conn.refresh(ctx) //nolint:errcheck // a dead connection answers the next call itself
+			// the next request goes where the endpoint says now
+			l.s.conn.refresh(ctx) //nolint:errcheck // the next request passes the gate itself
 			return nil, errRefused
 		}
 		return nil, err
@@ -510,11 +524,7 @@ func (l *localTools) refusedStatus(ctx context.Context, snap snapshot, resp *htt
 	case st >= 300 && st < 400:
 		return failf("Anytype answered HTTP %d with a redirect, which is not followed", st)
 	case st == http.StatusUnauthorized:
-		// the transfer failed; the next one runs on whatever the item
-		// says now
-		if _, err := l.s.conn.refresh(ctx); err != nil {
-			return errNotConnected
-		}
+		// the transfer failed and is never replayed
 		return failf("%s", msgRejected)
 	}
 	return &toolFailure{whole: true,
@@ -631,17 +641,19 @@ func wholeNumber(raw json.RawMessage) (int64, bool) {
 	return int64(f), true
 }
 
-// errCarriesKey: the download's bytes contain the connection's key.
-var errCarriesKey = errors.New("the download contains the connection's key")
+// errCarriesKey: the transfer's bytes contain the connection's key.
+var errCarriesKey = errors.New("the file contains the connection's key")
 
-// keyGuard passes a download through and stops it when the key shows up
+// keyGuard passes a transfer through and stops it when the key shows up
 // in it: as it is, or behind JSON's escapes, whichever of them a writer
 // chose (\u0041 for a letter, \/ for a slash), as the transport's own
-// check reads a reply. The key never rests in a file the forwarder wrote.
-// Both forms are matched across reads: a tail of each is kept.
+// check reads a reply. The key never rests in a file the forwarder wrote,
+// nor leaves in an upload. Both forms are matched across reads: a tail of
+// each is kept. hit is set once it has stopped a transfer.
 type keyGuard struct {
 	src io.Reader
 	key []byte
+	hit atomic.Bool
 	// the last len(key)-1 bytes of the stream, as they are and unescaped
 	raw, plain []byte
 	// an escape that has begun and not ended: the backslash and what
@@ -650,10 +662,9 @@ type keyGuard struct {
 	scratch []byte
 }
 
-func newKeyGuard(src io.Reader, key string) io.Reader {
-	if key == "" {
-		return src
-	}
+// newKeyGuard guards src; the key is never empty (a connection without a
+// valid key sends nothing).
+func newKeyGuard(src io.Reader, key string) *keyGuard {
 	return &keyGuard{src: src, key: []byte(key)}
 }
 
@@ -731,6 +742,7 @@ func (g *keyGuard) Read(p []byte) (int, error) {
 	if n > 0 {
 		raw := append(g.raw, p[:n]...) //nolint:gocritic // a new window per read, by design
 		if bytes.Contains(raw, g.key) {
+			g.hit.Store(true)
 			return 0, errCarriesKey
 		}
 		g.raw = keep(raw, len(g.key)-1)
@@ -742,6 +754,7 @@ func (g *keyGuard) Read(p []byte) (int, error) {
 			g.scratch = g.unescape(g.scratch, p[:n])
 		}
 		if bytes.Contains(g.scratch, g.key) {
+			g.hit.Store(true)
 			return 0, errCarriesKey
 		}
 		g.plain = keep(g.scratch, len(g.key)-1)
@@ -779,9 +792,6 @@ func (l *localTools) download(ctx context.Context, snap snapshot, args map[strin
 		return "", nil, ctx.Err()
 	}
 	resp, err := l.request(ctx, http.MethodGet, snap, "/v2/spaces/"+space+"/files/"+file+"/content"+query, nil, nil)
-	if errors.Is(err, errRefused) {
-		return "", nil, failf("%s", msgStart)
-	}
 	if err != nil {
 		return "", nil, err
 	}
@@ -844,8 +854,8 @@ var fileExtRe = regexp.MustCompile(`^[A-Za-z0-9]{1,16}$`)
 // would only send the bearer the same way again.
 func (l *localTools) objectName(ctx context.Context, snap snapshot, space, file string) (stem, ext string, err error) {
 	resp, err := l.request(ctx, http.MethodGet, snap, "/v2/spaces/"+space+"/objects/"+file, nil, nil)
-	if errors.Is(err, errRefused) {
-		return "", "", failf("%s", msgStart)
+	if notSent(err) {
+		return "", "", err
 	}
 	if err != nil {
 		return "", "", nil //nolint:nilerr // the name is optional
@@ -908,10 +918,11 @@ func fileName(disposition, stem, ext, mediaType, fileID string) string {
 }
 
 // multipartBody is a multipart/form-data body with one "file" part,
-// streamed from the open file. sent turns true once the whole body has
-// been handed to the HTTP client.
+// streamed from the open file through a key guard. sent turns true once
+// the whole body has been handed to the HTTP client.
 type multipartBody struct {
 	io.Reader
+	guard       *keyGuard
 	contentType string
 	sent        atomic.Bool
 }
@@ -934,7 +945,7 @@ func uuid4() (string, error) {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16]), nil
 }
 
-func newMultipartBody(file io.Reader, filename string) (*multipartBody, error) {
+func newMultipartBody(file io.Reader, filename, key string) (*multipartBody, error) {
 	id, err := uuid4()
 	if err != nil {
 		return nil, err
@@ -946,10 +957,8 @@ func newMultipartBody(file io.Reader, filename string) (*multipartBody, error) {
 	head := "--" + boundary + "\r\nContent-Disposition: form-data; name=\"file\"; filename=\"" + quoted + "\"\r\n" +
 		"Content-Type: application/octet-stream\r\n\r\n"
 	tail := "\r\n--" + boundary + "--\r\n"
-	return &multipartBody{
-		Reader:      io.MultiReader(strings.NewReader(head), file, strings.NewReader(tail)),
-		contentType: "multipart/form-data; boundary=" + boundary,
-	}, nil
+	guard := newKeyGuard(io.MultiReader(strings.NewReader(head), file, strings.NewReader(tail)), key)
+	return &multipartBody{Reader: guard, guard: guard, contentType: "multipart/form-data; boundary=" + boundary}, nil
 }
 
 func (l *localTools) upload(ctx context.Context, snap snapshot, args map[string]json.RawMessage) (string, json.RawMessage, error) {
@@ -981,7 +990,10 @@ func (l *localTools) upload(ctx context.Context, snap snapshot, args map[string]
 		return "", nil, err
 	}
 	defer file.Close()
-	form, err := newMultipartBody(file, name)
+	// the guard reads the whole body as it goes out, the part head with
+	// the file name included: a body that holds the key is cut off before
+	// its end, so heart stores nothing
+	form, err := newMultipartBody(file, name, snap.key)
 	if err != nil {
 		return "", nil, err
 	}
@@ -1000,9 +1012,15 @@ func (l *localTools) upload(ctx context.Context, snap snapshot, args map[string]
 	resp, err := l.request(ctx, http.MethodPost, snap, "/v2/spaces/"+space+"/files"+query, io.NopCloser(form),
 		map[string]string{"Content-Type": form.contentType, "Idempotency-Key": idempotency})
 	switch {
-	case errors.Is(err, errRefused):
-		// a connection that never opened sent nothing
-		return "", nil, failf("%s", msgStart)
+	case form.guard.hit.Load():
+		if err == nil {
+			_ = resp.Body.Close()
+		}
+		l.s.log.printf("%s: the file contained the connection's key and was not uploaded", toolUpload)
+		return "", nil, failf("The file contains this connection's key and was not uploaded.")
+	case notSent(err):
+		// a request that never left sent nothing
+		return "", nil, err
 	case err != nil && ctx.Err() == nil:
 		// one lost after that may have stored the file
 		return "", nil, failf("the upload outcome is unconfirmed: the connection to Anytype closed before it answered. %s", msgCheckSpace)

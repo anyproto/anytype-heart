@@ -581,3 +581,29 @@ func TestSafeName(t *testing.T) {
 		}
 	})
 }
+
+// Theme K: where the open folder really lies decides, not the path it was
+// opened by: a link swapped in between the lookup and the open (another
+// user renaming entries in a shared parent) can't pin a folder inside
+// Anytype's own.
+func TestH1R2_K_PinnedFolderIsJudgedByItsHandle(t *testing.T) {
+	base := t.TempDir()
+	anytype := filepath.Join(base, "home", ".anytype")
+	inside := filepath.Join(anytype, "ai-connect")
+	require.NoError(t, os.MkdirAll(inside, 0o700))
+	elsewhere := filepath.Join(base, "shared", "files")
+	require.NoError(t, os.MkdirAll(elsewhere, 0o700))
+	root, err := os.OpenRoot(inside)
+	require.NoError(t, err)
+	info, err := root.Stat(".")
+	require.NoError(t, err)
+	// the folder that was opened is inside .anytype; its path says elsewhere
+	d := &Dir{path: elsewhere, root: root, info: info}
+	defer d.Close()
+	assert.True(t, d.overlaps(anytype))
+	assert.True(t, d.overlaps(filepath.Join(base, "home")), "nor around it")
+
+	plain, err := Open(elsewhere, anytype)
+	require.NoError(t, err)
+	assert.NoError(t, plain.Close())
+}

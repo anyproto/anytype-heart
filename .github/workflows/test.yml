@@ -138,7 +138,7 @@ jobs:
       - uses: seriousben/go-patch-cover-action@v1
 
   # cmd/anytype-mcp natively on the other two systems it ships for (macOS is the unit-test job
-  # above): the item store's rules differ per OS, modes on Unix and owner and DACL on Windows.
+  # above): the endpoint file's rules differ per OS, modes on Unix and owner and DACL on Windows.
   anytype-mcp:
     name: anytype-mcp ${{ matrix.os }}
     runs-on: ${{ matrix.os }}

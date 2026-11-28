@@ -58,8 +58,9 @@ type Dir struct {
 // whatever its permissions, and is never changed. The path may be spelled
 // through links (macOS /tmp): it is resolved once, here, and the resolved
 // directory is the one pinned for the life of the process. It must not
-// overlap any of the avoid folders (Anytype's own, where the connection
-// keys live): not one of them, not inside one, not around one.
+// overlap any of the avoid folders (Anytype's own, where its endpoint
+// file and the forwarder live): not one of them, not inside one, not
+// around one.
 func Open(path string, avoid ...string) (*Dir, error) {
 	if !filepath.IsAbs(path) {
 		return nil, fmt.Errorf("the files folder must be an absolute path: %s", path)
@@ -186,9 +187,16 @@ func (d *Dir) overlaps(other string) bool {
 	if climb(other, d.info) || climb(physical(other), d.info) {
 		return true
 	}
-	// the folder is inside other
-	if fi, err := os.Stat(other); err == nil && climb(d.path, fi) {
-		return true
+	// the folder is inside other: up from where it is spelled, and up from
+	// where the open folder really lies; a folder whose place can't be
+	// told counts as inside
+	if fi, err := os.Stat(other); err == nil {
+		if climb(d.path, fi) {
+			return true
+		}
+		if in, err := below(d.root, fi); err != nil || in {
+			return true
+		}
 	}
 	return false
 }

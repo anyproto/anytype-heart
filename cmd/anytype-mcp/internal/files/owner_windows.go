@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
+
+	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/internal/store"
 )
 
 // Windows has no non-blocking open of a file by name, and no FIFOs in a
@@ -116,4 +119,27 @@ func checkFolder(h *os.File, _ os.FileInfo, path string) error {
 		return fmt.Errorf("the files folder grants access to another account (%s): %s", sid.String(), path)
 	}
 	return nil
+}
+
+// below reports whether the open folder lies inside target. Where it
+// really lies is asked of its handle: a junction as the last component of
+// the path the user gave stays unresolved in its spelling.
+func below(root *os.Root, target os.FileInfo) (bool, error) {
+	fh, err := root.Open(".")
+	if err != nil {
+		return false, err
+	}
+	defer fh.Close()
+	real, err := store.FinalPath(fh)
+	if err != nil {
+		return false, err
+	}
+	for dir := filepath.Dir(real); ; dir = filepath.Dir(dir) {
+		if fi, err := os.Stat(dir); err == nil && os.SameFile(fi, target) {
+			return true, nil
+		}
+		if filepath.Dir(dir) == dir {
+			return false, nil
+		}
+	}
 }

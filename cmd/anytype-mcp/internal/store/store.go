@@ -1,19 +1,18 @@
-// Package store is the forwarder's item store: one private file per
-// connection in a per-user Anytype folder, read and written only through
-// the forwarder's verbs. The forwarder runs as its caller, so it reads only
-// what its caller could read: there is no keychain item that would give it
-// more rights than whoever started it.
+// Package store reads the endpoint file: the one non-secret file that
+// tells the forwarder which port the local Anytype listens on. The desktop
+// app writes it; the forwarder only reads it, and only through the safety
+// rules of file.go, because the bearer goes wherever the file points. The
+// forwarder runs as its caller, so it reads only what its caller could.
 package store
 
 import (
-	"context"
 	"errors"
 	"fmt"
 )
 
 // Namespaces. The namespace is fixed when the binary is linked; the
-// development one is the default, so a local build can never create or
-// read a production item.
+// development one is the default, so a local build never follows a
+// production Anytype.
 const (
 	NamespaceDev     = "dev"
 	NamespaceRelease = "release"
@@ -28,87 +27,71 @@ func NormalizeNamespace(ns string) string {
 	return NamespaceDev
 }
 
-// FolderName is the items folder of a namespace, under
+// FileName is the endpoint file of a namespace, in
 // <home>/.anytype/ai-connect. These names never change.
-func FolderName(ns string) string {
+func FileName(ns string) string {
 	if NormalizeNamespace(ns) == NamespaceRelease {
-		return "items"
+		return "endpoint.json"
 	}
-	return "items-dev"
+	return "endpoint-dev.json"
 }
 
-// ErrNotFound: the store answered and holds no item for the connection.
-var ErrNotFound = errors.New("no item for this connection")
-
-// TemporaryError is a store that can't serve right now: a folder or item
-// that fails a safety rule, or one that can't be reached. It always means
-// "nothing was read or written, try again" and never "the item is gone".
-type TemporaryError struct {
-	Reason string
-	Err    error
-}
-
-func (e *TemporaryError) Error() string {
-	if e.Err != nil {
-		return fmt.Sprintf("item store not ready (%s): %v", e.Reason, e.Err)
-	}
-	return fmt.Sprintf("item store not ready (%s)", e.Reason)
-}
-
-func (e *TemporaryError) Unwrap() error { return e.Err }
-
-// Temporary builds a TemporaryError.
-func Temporary(reason string, err error) error {
-	return &TemporaryError{Reason: reason, Err: err}
-}
-
-// IsTemporary reports whether err is a TemporaryError.
-func IsTemporary(err error) bool {
-	var t *TemporaryError
-	return errors.As(err, &t)
-}
-
-// Reasons a store reports in a TemporaryError.
+// Reasons an endpoint read fails. None of them is final: the next request
+// reads again.
 const (
-	// ReasonDenied: a folder or the item fails a safety rule (a link, a
-	// foreign owner, a mode that lets others in).
+	// ReasonMissing: a folder on the path or the file does not exist.
+	ReasonMissing = "missing"
+	// ReasonInvalid: the file is not an endpoint this binary reads.
+	ReasonInvalid = "invalid"
+	// ReasonDenied: a folder, the file or the forwarder's own executable
+	// fails a safety rule (a link, a foreign owner, a mode or an ACL that
+	// lets others in).
 	ReasonDenied = "denied"
-	// ReasonUnreachable: any other failure to read or write.
+	// ReasonUnreachable: any other failure to read, the read timeout
+	// included.
 	ReasonUnreachable = "unreachable"
 )
 
-// denied is a failed safety rule. The text names the rule, never a value.
-func denied(rule string) error { return Temporary(ReasonDenied, errors.New(rule)) }
-
-func unreachable(err error) error { return Temporary(ReasonUnreachable, err) }
-
-// UnconfirmedError is a change the store took (the new item is in place,
-// or the item is gone) that then failed to confirm. It is never "nothing
-// was changed".
-type UnconfirmedError struct{ Err error }
-
-func (e *UnconfirmedError) Error() string {
-	return fmt.Sprintf("the item was changed but not confirmed: %v", e.Err)
+// Error is a failed read. Path is the component it failed on and Rule the
+// rule that failed; neither ever carries file content.
+type Error struct {
+	Reason string
+	Path   string
+	Rule   string
+	Err    error
 }
 
-func (e *UnconfirmedError) Unwrap() error { return e.Err }
+func (e *Error) Error() string {
+	msg := e.Reason
+	if e.Rule != "" {
+		msg += ": " + e.Rule
+	}
+	if e.Path != "" {
+		msg += ": " + e.Path
+	}
+	if e.Err != nil {
+		msg = fmt.Sprintf("%s (%v)", msg, e.Err)
+	}
+	return msg
+}
 
-// Store holds one opaque value per connection id.
-type Store interface {
-	// Kind names the backend.
-	Kind() string
-	// Probe reports whether the store is usable: nil or a TemporaryError.
-	Probe(ctx context.Context) error
-	// Read returns the value, ErrNotFound, ErrInvalidItem (a value too
-	// large to be an item) or a TemporaryError.
-	Read(ctx context.Context, id string) ([]byte, error)
-	// Write replaces the item atomically. A TemporaryError means nothing
-	// was written; an UnconfirmedError means the new value is in place.
-	Write(ctx context.Context, id string, value []byte) error
-	// Delete removes the item; ErrNotFound when there is none. An
-	// UnconfirmedError means the item is gone.
-	Delete(ctx context.Context, id string) error
-	// Lock takes the connection's exclusive lock, which serializes the
-	// verbs of cooperating Anytype profiles.
-	Lock(ctx context.Context, id string) (unlock func(), err error)
+func (e *Error) Unwrap() error { return e.Err }
+
+// AsError is err as an *Error; an error of any other kind is unreachable.
+func AsError(err error) *Error {
+	var e *Error
+	if errors.As(err, &e) {
+		return e
+	}
+	return &Error{Reason: ReasonUnreachable, Err: err}
+}
+
+func deniedAt(path, rule string) error { return &Error{Reason: ReasonDenied, Path: path, Rule: rule} }
+
+func missing(path string) error { return &Error{Reason: ReasonMissing, Path: path} }
+
+func invalid(path, rule string) error { return &Error{Reason: ReasonInvalid, Path: path, Rule: rule} }
+
+func unreachable(path string, err error) error {
+	return &Error{Reason: ReasonUnreachable, Path: path, Err: err}
 }

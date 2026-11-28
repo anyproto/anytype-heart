@@ -3,38 +3,33 @@ package store
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
-	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
-
-	"github.com/gofrs/flock"
 )
 
-// File is the item store: <home>/.anytype/ai-connect/<items folder>, one
-// <id>.item per connection, with <id>.lock beside it. Every file the
-// forwarder opens is inside that one folder, and the folder and its
-// ancestors are checked before every use (the folder rule); an item is
-// checked again through its open handle (the item rule). A check that
-// fails reads, writes and deletes nothing.
+// MaxFileBytes bounds the endpoint file: a longer file is not an endpoint.
+const MaxFileBytes = 256
+
+// File is the endpoint file: <home>/.anytype/ai-connect/<FileName>. The
+// folders on its path are checked before every read (the folder rule) and
+// the file again through its open handle (the file rule). A check that
+// fails reads nothing.
 type File struct {
 	home    string
 	homeErr error
-	folder  string
+	name    string
 
-	// uid replaces the effective user id in the owner checks; tests use
-	// it because a non-root process can't chown.
-	uid func() int //nolint:unused // read by the Unix rules only
-	// hook fails a write at a named stage; tests only.
-	hook func(stage string) error
+	// uid is the user each path must belong to; tests replace it because
+	// a non-root process can't chown.
+	uid func(path string) int //nolint:unused // read by the Unix rules only
 }
 
-// Open returns the store of a namespace under the user's home directory,
-// which comes from os.UserHomeDir and nothing else.
+// Open returns the endpoint file of a namespace under the user's home
+// directory, which comes from os.UserHomeDir and nothing else.
 func Open(namespace string) *File {
 	home, err := os.UserHomeDir()
 	f := OpenAt(home, namespace)
@@ -44,360 +39,225 @@ func Open(namespace string) *File {
 	return f
 }
 
-// OpenAt returns the store of a namespace under an explicit home.
+// OpenAt returns the endpoint file of a namespace under an explicit home.
 func OpenAt(home, namespace string) *File {
-	return &File{home: home, folder: FolderName(namespace), uid: os.Geteuid}
+	return &File{home: home, name: FileName(namespace), uid: func(string) int { return os.Geteuid() }}
 }
 
-func (f *File) Kind() string { return "file" }
+// OwnerRule replaces the uid each path must belong to. It exists for tests
+// of the owner rule; no flag, file or environment variable reaches it.
+func (f *File) OwnerRule(uid func(path string) int) { f.uid = uid }
 
-// FailAt installs a function that can fail a write or a delete at a named
-// stage. It exists for tests of what the verbs report; no flag, file or
-// environment variable reaches it.
-func (f *File) FailAt(hook func(stage string) error) { f.hook = hook }
+// Path is the endpoint file's path.
+func (f *File) Path() string { return filepath.Join(f.home, ".anytype", "ai-connect", f.name) }
 
-// Dir is the items folder.
-func (f *File) Dir() string {
-	return filepath.Join(f.home, ".anytype", "ai-connect", f.folder)
-}
+// anytype is <home>/.anytype.
+func (f *File) anytype() string { return filepath.Join(f.home, ".anytype") }
 
-func itemName(id string) string { return id + ".item" }
-
-// folder kinds on the item path: the folder rule differs for each.
+// folder kinds: the folder rule differs for each.
 const (
-	kindHome    = iota // the user's home: exists already, never created
-	kindAnytype        // .anytype and ai-connect
-	kindItems          // the items folder
+	kindHome   = iota // the user's home: its mode is not judged
+	kindStrict        // .anytype, ai-connect and the folders below .anytype
 )
 
-// checked applies the folder rule to the whole chain, home first, and
-// returns the items folder. No other OS user may be able to rename or
-// replace a folder on the item path. With create unset, a missing folder
-// is ErrNotFound and nothing is made; home itself is never created.
-func (f *File) checked(create bool) (string, error) {
-	if f.homeErr != nil {
-		return "", unreachable(f.homeErr)
-	}
-	items := f.Dir()
-	chain := []struct {
-		dir  string
-		kind int
-	}{
-		{f.home, kindHome},
-		{filepath.Dir(filepath.Dir(items)), kindAnytype},
-		{filepath.Dir(items), kindAnytype},
-		{items, kindItems},
-	}
-	for _, c := range chain {
-		fi, err := os.Lstat(c.dir)
-		if errors.Is(err, os.ErrNotExist) && c.kind != kindHome {
-			if !create {
-				return "", ErrNotFound
-			}
-			if err := f.mkdir(c.dir, c.kind); err != nil && !errors.Is(err, os.ErrExist) {
-				return "", unreachable(err)
-			}
-			// a new folder is durable before anything is written into it
-			if err := f.stage("sync-parent"); err != nil {
-				return "", unreachable(err)
-			}
-			if err := syncParent(filepath.Dir(c.dir)); err != nil {
-				return "", unreachable(err)
-			}
-			fi, err = os.Lstat(c.dir)
+// checkChain applies the folder rule to each folder, in order: home's
+// own rule to home, the strict one to every other. A missing folder is
+// ReasonMissing.
+func (f *File) checkChain(dirs ...string) error {
+	for _, dir := range dirs {
+		fi, err := os.Lstat(dir)
+		if errors.Is(err, os.ErrNotExist) {
+			return missing(dir)
 		}
 		if err != nil {
-			return "", unreachable(err)
+			return unreachable(dir, err)
 		}
-		if err := f.checkDir(c.dir, fi, c.kind); err != nil {
-			return "", err
+		kind := kindStrict
+		if dir == f.home {
+			kind = kindHome
 		}
-	}
-	return items, nil
-}
-
-// deniedAt is a failed rule on a path: the message names both.
-func deniedAt(path, rule string) error { return denied(rule + ": " + path) }
-
-func (f *File) Probe(context.Context) error {
-	_, err := f.checked(false)
-	if errors.Is(err, ErrNotFound) {
-		return nil
-	}
-	return err
-}
-
-func (f *File) Read(_ context.Context, id string) ([]byte, error) {
-	dir, err := f.checked(false)
-	if err != nil {
-		return nil, err
-	}
-	return f.readItem(dir, itemName(id))
-}
-
-// readChecked reads an opened, checked item: at most MaxItemBytes.
-func readChecked(fh *os.File) ([]byte, error) {
-	data, err := io.ReadAll(io.LimitReader(fh, MaxItemBytes+1))
-	if err != nil {
-		return nil, unreachable(err)
-	}
-	if len(data) > MaxItemBytes {
-		return nil, ErrInvalidItem
-	}
-	return data, nil
-}
-
-func (f *File) stage(name string) error {
-	if f.hook == nil {
-		return nil
-	}
-	return f.hook(name)
-}
-
-// Write replaces the item: a new private temp file, synced, renamed over
-// the item, then made durable. Any failure before the rename removes the
-// temp file and is temporary: nothing was written. After a successful
-// write the item is the only file that holds this connection's key.
-func (f *File) Write(ctx context.Context, id string, value []byte) error {
-	dir, err := f.checked(true)
-	if err != nil {
-		return err
-	}
-	if err := f.sweep(dir, id); err != nil {
-		return err
-	}
-	suffix := make([]byte, 8)
-	if _, err := rand.Read(suffix); err != nil {
-		return unreachable(err)
-	}
-	tmp := id + "." + hex.EncodeToString(suffix) + ".tmp"
-	fh, err := f.createPrivate(dir, tmp)
-	if err != nil {
-		return err
-	}
-	fail := func(err error) error {
-		// the temp file holds the key and must not stay; a leftover is
-		// swept by the next write or delete
-		ignore(fh.Close())
-		ignore(removeIn(dir, tmp))
-		if IsTemporary(err) {
+		if err := f.checkDir(dir, fi, kind); err != nil {
 			return err
 		}
-		return unreachable(err)
-	}
-	if _, err := fh.Write(value); err != nil {
-		return fail(err)
-	}
-	if err := fh.Sync(); err != nil {
-		return fail(err)
-	}
-	if err := fh.Close(); err != nil {
-		return fail(err)
-	}
-	if err := f.stage("before-rename"); err != nil {
-		return fail(err)
-	}
-	// the commit point: nothing is replaced once the caller's deadline has
-	// passed
-	if !commitAllowed(ctx) {
-		return fail(errors.New("the deadline passed before the item was replaced"))
-	}
-	err = renameIn(dir, tmp, itemName(id))
-	if err == nil {
-		err = f.stage("rename-result")
-	}
-	if err != nil {
-		// an error from the rename does not prove the rename did not
-		// happen (a network home): the item itself says which it was
-		switch f.holds(dir, id, value) {
-		case holdsNew:
-		case holdsOther:
-			return fail(err)
-		default:
-			ignore(removeIn(dir, tmp))
-			return &UnconfirmedError{Err: err}
-		}
-	}
-	// from here the new item is in place
-	if err := f.stage("after-rename"); err != nil {
-		return &UnconfirmedError{Err: err}
-	}
-	if err := settle(dir, itemName(id)); err != nil {
-		return &UnconfirmedError{Err: err}
 	}
 	return nil
 }
 
-// sweep removes this connection's temp files left by a crash: each holds
-// a whole item, key included, and none is ever read. A leftover that
-// can't be removed fails the verb before it changes anything.
-func (f *File) sweep(dir, id string) error {
-	if err := f.stage("sweep"); err != nil {
-		return unreachable(err)
+// Read reads the port: home, .anytype and ai-connect pass the folder rule,
+// the file passes the file rule, and it holds exactly {"v":1,"port":N}.
+func (f *File) Read(context.Context) (int, error) {
+	if f.homeErr != nil {
+		return 0, unreachable("", f.homeErr)
 	}
-	entries, err := os.ReadDir(dir)
+	dir := filepath.Dir(f.Path())
+	if err := f.checkChain(f.home, f.anytype(), dir); err != nil {
+		return 0, err
+	}
+	fh, err := f.openChecked(dir, f.name, "the endpoint file")
 	if err != nil {
-		return unreachable(err)
+		return 0, err
 	}
-	for _, e := range entries {
-		name := e.Name()
-		if !strings.HasPrefix(name, id+".") || !strings.HasSuffix(name, ".tmp") {
+	defer fh.Close()
+	data, err := io.ReadAll(io.LimitReader(fh, MaxFileBytes+1))
+	if err != nil {
+		return 0, unreachable(f.Path(), err)
+	}
+	port, rule := parse(data)
+	if rule != "" {
+		return 0, invalid(f.Path(), rule)
+	}
+	return port, nil
+}
+
+// parse reads {"v":1,"port":N}: one object and nothing after it, v exactly
+// 1, port 1–65535, each named exactly and once; other members are
+// ignored. It returns the rule that failed, never the content.
+func parse(data []byte) (int, string) {
+	const notObject = "the endpoint file is not one JSON object"
+	if len(data) > MaxFileBytes {
+		return 0, "the endpoint file is larger than 256 bytes"
+	}
+	dec := json.NewDecoder(bytes.NewReader(data))
+	if tok, err := dec.Token(); err != nil || tok != json.Delim('{') {
+		return 0, notObject
+	}
+	var v, port *int
+	for dec.More() {
+		tok, err := dec.Token()
+		name, ok := tok.(string)
+		if err != nil || !ok {
+			return 0, notObject
+		}
+		var into **int
+		switch name {
+		case "v":
+			into = &v
+		case "port":
+			into = &port
+		default:
+			var skip json.RawMessage
+			if dec.Decode(&skip) != nil {
+				return 0, notObject
+			}
 			continue
 		}
-		if err := removeIn(dir, name); err != nil && !errors.Is(err, os.ErrNotExist) {
-			return unreachable(err)
+		if *into != nil {
+			return 0, "the endpoint file names " + name + " twice"
 		}
-	}
-	return nil
-}
-
-// ignore drops the error of a best-effort cleanup step.
-func ignore(error) {}
-
-// Delete removes the item and every temp file of the connection, and
-// makes that durable: after it no file holds this connection's key. A
-// failure after the item is gone is unconfirmed, never "try again".
-func (f *File) Delete(ctx context.Context, id string) error {
-	dir, err := f.checked(false)
-	if err != nil {
-		return err
-	}
-	if err := f.sweep(dir, id); err != nil {
-		return err
-	}
-	if !commitAllowed(ctx) {
-		return unreachable(errors.New("the deadline passed before the item was removed"))
-	}
-	err = removeIn(dir, itemName(id))
-	if errors.Is(err, os.ErrNotExist) {
-		return ErrNotFound
-	}
-	if err == nil {
-		err = f.stage("unlink-result")
-	}
-	if err != nil {
-		// as with the rename: the item says whether the unlink happened
-		switch f.holds(dir, id, nil) {
-		case holdsNothing:
-		case holdsOther:
-			return unreachable(err)
-		default:
-			return &UnconfirmedError{Err: err}
+		var n int
+		if dec.Decode(&n) != nil {
+			return 0, notObject
 		}
+		*into = &n
 	}
-	if err := f.stage("after-unlink"); err != nil {
-		return &UnconfirmedError{Err: err}
+	if tok, err := dec.Token(); err != nil || tok != json.Delim('}') {
+		return 0, notObject
 	}
-	if err := syncDir(dir); err != nil {
-		return &UnconfirmedError{Err: err}
+	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
+		return 0, notObject
 	}
-	return nil
-}
-
-// Lock takes <id>.lock in the items folder.
-func (f *File) Lock(ctx context.Context, id string) (func(), error) {
-	dir, err := f.checked(true)
-	if err != nil {
-		return nil, err
-	}
-	path := filepath.Join(dir, id+".lock")
-	if fi, err := os.Lstat(path); err == nil && !fi.Mode().IsRegular() {
-		return nil, denied("the lock is not a regular file")
-	}
-	lock := flock.New(path, flock.SetPermissions(0o600))
-	ok, err := lock.TryLockContext(ctx, 25*time.Millisecond)
-	if err != nil || !ok {
-		ignore(lock.Close())
-		return nil, unreachable(errors.New("another process holds this connection's lock"))
-	}
-	return func() { ignore(lock.Unlock()) }, nil
-}
-
-// renameIn replaces the item with os.Root.Rename, which on Windows is a
-// POSIX-semantics replace: it works while a reader holds the old item
-// open. busy says whether a failure is worth retrying (Windows: a handle
-// that denies delete sharing); the retry is bounded.
-func renameIn(dir, from, to string) error {
-	root, err := os.OpenRoot(dir)
-	if err != nil {
-		return err
-	}
-	defer root.Close()
-	deadline := time.Now().Add(busyRetryFor)
-	for {
-		err = root.Rename(from, to)
-		if err == nil || !busy(err) || time.Now().After(deadline) {
-			return err
-		}
-		time.Sleep(25 * time.Millisecond)
-	}
-}
-
-// removeIn removes a name in the folder, with the same bounded retry.
-func removeIn(dir, name string) error {
-	root, err := os.OpenRoot(dir)
-	if err != nil {
-		return err
-	}
-	defer root.Close()
-	deadline := time.Now().Add(busyRetryFor)
-	for {
-		err = root.Remove(name)
-		if err == nil || !busy(err) || time.Now().After(deadline) {
-			return err
-		}
-		time.Sleep(25 * time.Millisecond)
-	}
-}
-
-// busyRetryFor bounds the wait for a file something else holds open.
-const busyRetryFor = 2 * time.Second
-
-// what the item path holds after an operation that reported an error
-const (
-	holdsUnknown = iota // it can't be read: nothing is proven
-	holdsNew            // exactly the value that was being written
-	holdsOther          // some other item: the operation did not happen
-	holdsNothing        // no item
-)
-
-// holds re-reads the item to learn whether an operation that reported an
-// error took effect anyway.
-func (f *File) holds(dir, id string, value []byte) int {
-	if err := f.stage("holds"); err != nil {
-		return holdsUnknown
-	}
-	data, err := f.readItem(dir, itemName(id))
 	switch {
-	case errors.Is(err, ErrNotFound):
-		if value == nil {
-			return holdsNothing
+	case v == nil || *v != 1:
+		return 0, "the endpoint file's version is not 1"
+	case port == nil || *port < 1 || *port > 65535:
+		return 0, "the endpoint file's port is not between 1 and 65535"
+	}
+	return *port, ""
+}
+
+// CheckExecutable is the endpoint verb's rule for the program an AI app
+// would give its key to. launch is the path this process was started by,
+// as the caller spelled it; running is the file the system says it runs.
+// launch must be clean and absolute: a ".." or "." would hide the folders
+// it really passes. When it is spelled under <home>/.anytype, exactly as
+// the home is spelled, every folder from .anytype down to it passes the
+// folder rule and the file itself the file rule, none of them followed,
+// and it must be the running file. A launch path that passes .anytype
+// under another spelling (a link, another case, an 8.3 name) is refused,
+// and so is a running file that really lies in it. Elsewhere nothing is
+// judged; what lies above .anytype falls under the home rule. Every
+// failure is ReasonDenied.
+func (f *File) CheckExecutable(launch, running string) error {
+	err := f.checkExecutable(launch, running)
+	if err == nil {
+		return nil
+	}
+	e := AsError(err)
+	rule := e.Rule
+	if rule == "" {
+		rule = "the forwarder's executable can't be checked (" + e.Reason + ")"
+		if e.Err != nil {
+			rule += ": " + e.Err.Error()
 		}
-		return holdsOther
-	case err == nil && value != nil && bytes.Equal(data, value):
-		return holdsNew
-	case err == nil || errors.Is(err, ErrInvalidItem):
-		return holdsOther
 	}
-	return holdsUnknown
+	return &Error{Reason: ReasonDenied, Path: e.Path, Rule: rule}
 }
 
-type commitGateKey struct{}
-
-// WithCommitGate attaches a gate that a write or a delete asks at its
-// commit point, just before the item is replaced or removed. A gate that
-// says no stops the operation with nothing changed: the key verbs use it
-// so that nothing is written after their deadline.
-func WithCommitGate(ctx context.Context, allow func() bool) context.Context {
-	return context.WithValue(ctx, commitGateKey{}, allow)
+func (f *File) checkExecutable(launch, running string) error {
+	if f.homeErr != nil {
+		return unreachable("", f.homeErr)
+	}
+	if !filepath.IsAbs(launch) || filepath.Clean(launch) != launch {
+		return deniedAt(launch, "the path that started the forwarder is not clean and absolute")
+	}
+	top := f.anytype()
+	if strings.HasPrefix(launch, top+string(filepath.Separator)) {
+		var dirs []string
+		for dir := filepath.Dir(launch); len(dir) >= len(top); dir = filepath.Dir(dir) {
+			dirs = append([]string{dir}, dirs...)
+		}
+		if err := f.checkChain(dirs...); err != nil {
+			return err
+		}
+		fh, err := f.openChecked(filepath.Dir(launch), filepath.Base(launch), "the forwarder's executable")
+		if err != nil {
+			return err
+		}
+		defer fh.Close()
+		checked, err := fh.Stat()
+		if err != nil {
+			return unreachable(launch, err)
+		}
+		if fi, err := os.Stat(running); err != nil || !os.SameFile(checked, fi) {
+			return deniedAt(launch, "the forwarder's executable is not the file this process runs")
+		}
+		return nil
+	}
+	anytype, err := os.Stat(top)
+	if err != nil {
+		return unreachable(top, err)
+	}
+	const alias = "the forwarder's executable lies in .anytype under another spelling or through a link"
+	// spelled elsewhere: no folder the path passes may be .anytype, checked
+	// for each folder as it is spelled, before a later link can lead away
+	if passes(filepath.Dir(launch), anytype) {
+		return deniedAt(launch, alias)
+	}
+	// and the running file must not really lie in it
+	fh, err := os.Open(running)
+	if err != nil {
+		return unreachable(running, err)
+	}
+	defer fh.Close()
+	real, err := FinalPath(fh)
+	if err != nil {
+		return unreachable(running, err)
+	}
+	if passes(filepath.Dir(real), anytype) {
+		return deniedAt(running, alias)
+	}
+	return nil
 }
 
-func commitAllowed(ctx context.Context) bool {
-	if ctx.Err() != nil {
-		return false
+// passes reports whether dir or a folder above it is the folder target,
+// by identity.
+func passes(dir string, target os.FileInfo) bool {
+	for ; ; dir = filepath.Dir(dir) {
+		if fi, err := os.Stat(dir); err == nil && os.SameFile(fi, target) {
+			return true
+		}
+		if filepath.Dir(dir) == dir {
+			return false
+		}
 	}
-	if allow, ok := ctx.Value(commitGateKey{}).(func() bool); ok {
-		return allow()
-	}
-	return true
 }

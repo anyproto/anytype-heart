@@ -385,27 +385,6 @@ func TestSessions(t *testing.T) {
 			return false
 		}, 3*time.Second, 5*time.Millisecond)
 	})
-
-	t.Run("a changed key on a curated tier opens a new session with the warning", func(t *testing.T) {
-		h := start(t)
-		h.initialize()
-		const next = "CANARY-second-key-abcdefghijklmnopqrstuvwxyz"
-		h.heart.mu.Lock()
-		h.heart.key = next
-		// heart binds a session to the key that opened it
-		h.heart.sessions = map[string]bool{}
-		h.heart.mu.Unlock()
-		it := h.item()
-		it.Key, it.Rev = next, it.Rev+1
-		h.st.Put(testConn, it)
-		h.clock.advance(6 * time.Second)
-
-		g := h.call(toolCall(1))
-		assert.True(t, g.isError(), g.raw)
-		assert.Contains(t, g.text(), "session expired")
-		h.warned()
-		assert.False(t, h.call(toolCall(2)).isError())
-	})
 }
 
 func TestBoundsAndCancellation(t *testing.T) {

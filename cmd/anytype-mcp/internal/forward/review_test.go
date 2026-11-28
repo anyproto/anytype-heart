@@ -16,7 +16,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/contract"
-	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/internal/store"
 )
 
 // holdWriter passes writes through, except that a write matching hold
@@ -215,28 +214,13 @@ func TestSessionOwnership(t *testing.T) {
 		h := start(t)
 		h.initialize()
 		moved := newFakeHeart(t)
-		it := h.item()
-		it.Port, it.Rev = moved.port(), it.Rev+1
-		h.st.Put(testConn, it)
-		h.clock.advance(6 * time.Second)
+		h.retarget(moved)
 		require.NoError(t, h.in.Close())
 		assert.Equal(t, 0, h.waitExit())
 		assert.Zero(t, h.deletes(""), "the bearer never goes to the port Anytype left")
 		for _, r := range moved.requests() {
 			assert.NotEqual(t, http.MethodDelete, r.Method)
 		}
-	})
-
-	t.Run("a rotated key: the old session's DELETE is not sent with the new key", func(t *testing.T) {
-		h := start(t)
-		h.initialize()
-		it := h.item()
-		it.Key, it.Rev = "CANARY-rotated-key-abcdefghijklmnopqrstuvwx", it.Rev+1
-		h.st.Put(testConn, it)
-		h.clock.advance(6 * time.Second)
-		require.NoError(t, h.in.Close())
-		h.waitExit()
-		assert.Zero(t, h.deletes(""))
 	})
 
 	t.Run("a client initialize during a renewal keeps its session; the renewal's is ended", func(t *testing.T) {
@@ -497,12 +481,7 @@ func TestKeyInA200ReplyIsWithheld(t *testing.T) {
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			h := start(t, withTier("full"), func(h *harness) {
-				h.heart.key = tc.key
-				it := h.item()
-				it.Key = tc.key
-				h.st.Put(testConn, it)
-			})
+			h := start(t, withTier("full"), withKey(tc.key), func(h *harness) { h.heart.key = tc.key })
 			h.initialize()
 			h.heart.setHook(func(w http.ResponseWriter, r *http.Request, rec recorded) bool {
 				if rec.RPC != "tools/call" && rec.RPC != "tools/list" {
@@ -628,23 +607,8 @@ func TestNotificationSurvivesAPortMove(t *testing.T) {
 	h.initialize()
 	moved := newFakeHeart(t)
 	h.stopHeart()
-	it := h.item()
-	it.Port, it.Rev = moved.port(), it.Rev+1
-	h.st.Put(testConn, it)
+	h.ep.set(moved.port())
 	h.send(`{"jsonrpc":"2.0","method":"notifications/roots/list_changed"}`)
 	require.Eventually(t, func() bool { return moved.count("notifications/roots/list_changed") == 1 }, 3*time.Second, 5*time.Millisecond)
 	h.silent()
-}
-
-// the K1 rule the transport relies on, stated once more at this level
-func TestOnlyConfirmedAbsenceEndsAConnection(t *testing.T) {
-	h := start(t)
-	h.initialize()
-	h.st.SetReadFail(store.Temporary(store.ReasonUnreachable, nil))
-	h.clock.advance(6 * time.Second)
-	require.Nil(t, h.call(ping(1)).Error)
-	h.st.SetReadFail(nil)
-	h.st.Remove(testConn)
-	h.clock.advance(6 * time.Second)
-	assert.Equal(t, codeNotConnected, h.call(ping(2)).Error.Code)
 }

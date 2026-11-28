@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -24,8 +25,8 @@ const (
 	// included. core/api/wrapper alone would bring 447 packages.
 	maxDeps = 260
 	// maxNonStdDeps bounds what is not the standard library: this
-	// command's five packages, the lock library and x/sys.
-	maxNonStdDeps = 8
+	// command's five packages and x/sys.
+	maxNonStdDeps = 7
 )
 
 // shipped are the five targets the forwarder is built for, all without cgo.
@@ -129,7 +130,8 @@ func sources(t *testing.T) []string {
 			}
 			return nil
 		}
-		if strings.HasSuffix(path, ".go") && !strings.HasSuffix(path, "_test.go") {
+		// assembly ships too (the Darwin ACL trampoline)
+		if (strings.HasSuffix(path, ".go") && !strings.HasSuffix(path, "_test.go")) || strings.HasSuffix(path, ".s") {
 			files = append(files, filepath.ToSlash(path))
 		}
 		return nil
@@ -204,7 +206,6 @@ func TestRevGuard(t *testing.T) {
 
 	t.Run("the real module list names the dependencies with their versions", func(t *testing.T) {
 		list := strings.Join(modules(t), "\n")
-		assert.Contains(t, list, "github.com/gofrs/flock@v")
 		assert.Contains(t, list, "golang.org/x/sys@v")
 		assert.NotContains(t, list, "keychain")
 		assert.NotContains(t, list, "wincred")
@@ -232,5 +233,67 @@ func TestRevGuard(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "3 aaa\n", string(raw), "a refused update writes nothing")
 		require.NoError(t, updateLock(lock, 4, "bbb"))
+	})
+}
+
+// allowedEnv is everything the forwarder reads from its environment
+// itself; the standard library adds the home and temp folders (HOME,
+// USERPROFILE, TMPDIR, TMP, TEMP).
+var allowedEnv = []string{"ANYTYPE_API_KEY", "ANYTYPE_MCP_FILES_DIR"}
+
+// H1 case 15: only the allowed environment names are read; the key verbs
+// and --connection are gone (exit 2); no lock library is linked; the rev
+// marker can be grepped from the built file and equals version --json.
+func TestH1_15_Guard(t *testing.T) {
+	t.Run("only the allowed environment names", func(t *testing.T) {
+		call := regexp.MustCompile(`\b(?:os|syscall)\.(Getenv|LookupEnv|Environ|Unsetenv|Setenv|Clearenv|ExpandEnv|Expand)\(([^)]*)\)`)
+		seen := map[string]bool{}
+		for _, src := range sources(t) {
+			name, _, _ := strings.Cut(src, "\n")
+			for _, m := range call.FindAllStringSubmatch(src, -1) {
+				arg := strings.Trim(m[2], `"`)
+				require.Contains(t, []string{"Getenv", "Unsetenv"}, m[1], "%s: %s", name, m[0])
+				require.Contains(t, allowedEnv, arg, "%s reads %s", name, m[0])
+				seen[arg] = true
+			}
+		}
+		assert.Len(t, seen, len(allowedEnv), "each allowed name is read")
+	})
+
+	t.Run("the key verbs and --connection are usage errors", func(t *testing.T) {
+		dev, _ := binaries(t)
+		home := t.TempDir()
+		for _, args := range [][]string{
+			{"key", "set", "--connection", "c", "--expect", "absent"},
+			{"key", "check", "--connection", "c"},
+			{"key", "retarget"}, {"key", "delete"}, {"key"},
+			{"serve", "--connection", "c"},
+			{"endpoint", "--connection", "c"},
+		} {
+			r := runIn(t, home, dev, "", args...)
+			assert.Equal(t, exitUsage, r.code, "%v", args)
+			assert.Empty(t, r.stdout, "%v", args)
+		}
+		_, err := os.Lstat(filepath.Join(home, ".anytype"))
+		assert.True(t, os.IsNotExist(err), "nothing was written")
+	})
+
+	t.Run("no lock library is linked", func(t *testing.T) {
+		assert.NotContains(t, strings.Join(modules(t), "\n"), "gofrs/flock")
+	})
+
+	t.Run("the rev marker is in the built file and equals version --json", func(t *testing.T) {
+		dev, release := binaries(t)
+		marker := regexp.MustCompile(`anytype-mcp-rev:([0-9]+)`)
+		for _, bin := range []string{dev, release} {
+			raw, err := os.ReadFile(bin)
+			require.NoError(t, err)
+			found := marker.FindAllSubmatch(raw, -1)
+			require.Len(t, found, 1, "grep -a anytype-mcp-rev: finds exactly one marker in %s", bin)
+			assert.Equal(t, strconv.Itoa(Rev), string(found[0][1]))
+			m := runIn(t, t.TempDir(), bin, "", "version", "--json").json(t)
+			assert.EqualValues(t, Rev, m["rev"])
+			assert.Equal(t, fmt.Sprintf("anytype-mcp-rev:%d", Rev), revMarker)
+		}
 	})
 }

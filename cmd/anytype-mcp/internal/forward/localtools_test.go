@@ -23,7 +23,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/contract"
-	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/internal/store"
 )
 
 var pdf = map[string]fakeFile{"file-1": {name: "report.pdf", mediaType: "application/pdf", bytes: []byte("%PDF-1.7 hello")}}
@@ -234,8 +233,8 @@ func TestLocalToolsListing(t *testing.T) {
 		assert.Empty(t, h.entries())
 	})
 
-	t.Run("without an item there is no folder and no tool", func(t *testing.T) {
-		h := start(t, withoutItem(), withTempFiles())
+	t.Run("without a valid key there is no folder and no tool", func(t *testing.T) {
+		h := start(t, withKey(""), withTempFiles())
 		g := h.call(namedCall(2, "download_file", map[string]any{"space_id": "s", "file_id": "f"}))
 		require.NotNil(t, g.Error)
 		assert.Equal(t, codeNotConnected, g.Error.Code)
@@ -644,22 +643,15 @@ func TestDownloadFile(t *testing.T) {
 		h.noSecret()
 	})
 
-	t.Run("a rejected key fails this transfer and the next one runs on the new item", func(t *testing.T) {
+	t.Run("a rejected key fails this transfer: no content request follows", func(t *testing.T) {
 		h := fileTools(t, withFiles(pdf))
-		const next = "NEXT-key-0123456789abcdefghijklmnopqrstuvwxyz"
-		h.heart.mu.Lock()
-		h.heart.key = next
-		h.heart.mu.Unlock()
-		h.st.Put(testConn, store.Item{V: 1, Rev: 2, Key: next, Account: testAccount, Port: h.heart.port(), Tier: "full"})
+		h.heart.setKey("NEXT-key-0123456789abcdefghijklmnopqrstuvwxyz")
 		g := h.tool("download_file", map[string]any{"space_id": "s", "file_id": "file-1"})
 		assert.True(t, g.isError())
 		assert.Equal(t, msgRejected, g.text())
 		assert.Empty(t, h.entries())
-		require.Len(t, h.rest(), 1, "the rejected name lookup ends the transfer: no content request follows")
+		require.Len(t, h.rest(), 1, "the rejected name lookup ends the transfer")
 		assert.Equal(t, "/v2/spaces/s/objects/file-1", h.rest()[0].Path)
-		g = h.tool("download_file", map[string]any{"space_id": "s", "file_id": "file-1"})
-		require.False(t, g.isError(), g.text())
-		assert.Equal(t, "Bearer "+next, h.rest()[len(h.rest())-1].Auth)
 	})
 
 	t.Run("reports an unreachable Anytype in band", func(t *testing.T) {
@@ -667,7 +659,7 @@ func TestDownloadFile(t *testing.T) {
 		h.stopHeart()
 		g := h.tool("download_file", map[string]any{"space_id": "s", "file_id": "file-1"})
 		assert.True(t, g.isError())
-		assert.Equal(t, msgStart, g.text())
+		assert.Equal(t, msgUnreachable, g.text())
 	})
 
 	t.Run("a file that contains the key is not saved", func(t *testing.T) {
@@ -1086,7 +1078,7 @@ func TestUploadLocalFile(t *testing.T) {
 		h.stopHeart()
 		g := h.tool("upload_local_file", map[string]any{"space_id": "s", "path": "a.txt"})
 		assert.True(t, g.isError())
-		assert.Equal(t, msgStart, g.text())
+		assert.Equal(t, msgUnreachable, g.text())
 	})
 
 	t.Run("only heart's own receipt is a success", func(t *testing.T) {
@@ -1228,22 +1220,21 @@ func TestUploadLocalFile(t *testing.T) {
 		}()
 		h := fileTools(t, withTransferTimeout(400*time.Millisecond))
 		h.put("big.bin", make([]byte, 64<<20))
-		h.st.Put(testConn, store.Item{V: 1, Rev: 2, Key: canaryKey, Account: testAccount, Port: ln.Addr().(*net.TCPAddr).Port, Tier: "full"})
+		h.ep.set(ln.Addr().(*net.TCPAddr).Port)
 		h.clock.advance(time.Minute)
 		g := h.tool("upload_local_file", map[string]any{"space_id": "s", "path": "big.bin"})
 		assert.True(t, g.isError())
 		assert.Equal(t, "the transfer did not finish within 1 minutes", g.text())
 	})
 
-	t.Run("a receipt is honoured although the key was rotated while the upload ran", func(t *testing.T) {
+	t.Run("a receipt is honoured although the endpoint moved while the upload ran", func(t *testing.T) {
 		h := fileTools(t)
 		h.put("a.txt", []byte("x"))
-		const next = "NEXT-key-0123456789abcdefghijklmnopqrstuvwxyz"
 		h.heart.setHook(func(_ http.ResponseWriter, r *http.Request, _ recorded) bool {
 			if r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/v2/") {
-				// heart has taken the upload under the old key; the item
-				// moves on before the receipt arrives
-				h.st.Put(testConn, store.Item{V: 1, Rev: 2, Key: next, Account: testAccount, Port: h.heart.port(), Tier: "full"})
+				// heart has taken the upload; the endpoint moves on before
+				// the receipt arrives
+				h.ep.set(1)
 				h.clock.advance(time.Minute)
 			}
 			return false
@@ -1252,20 +1243,6 @@ func TestUploadLocalFile(t *testing.T) {
 		require.False(t, g.isError(), g.text())
 		assert.Equal(t, "uploaded-file-id", g.structured(t)["id"])
 		assert.Len(t, h.posts(), 1)
-	})
-
-	t.Run("a key rotated before the upload is the one that is sent", func(t *testing.T) {
-		h := fileTools(t)
-		h.put("a.txt", []byte("x"))
-		const next = "NEXT-key-0123456789abcdefghijklmnopqrstuvwxyz"
-		h.heart.mu.Lock()
-		h.heart.key = next
-		h.heart.mu.Unlock()
-		h.st.Put(testConn, store.Item{V: 1, Rev: 2, Key: next, Account: testAccount, Port: h.heart.port(), Tier: "full"})
-		h.clock.advance(time.Minute)
-		g := h.tool("upload_local_file", map[string]any{"space_id": "s", "path": "a.txt"})
-		require.False(t, g.isError(), g.text())
-		assert.Equal(t, "Bearer "+next, h.posts()[0].Auth)
 	})
 
 	t.Run("a receipt carrying the key is withheld", func(t *testing.T) {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"runtime/debug"
+	"strconv"
 	"strings"
 
 	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/internal/store"
@@ -15,16 +16,22 @@ import (
 // The desktop app never replaces a stable copy with a lower Rev, and the
 // Claude bundle's version is 2.<Rev>.0. guard_test.go fails when the
 // sources or a dependency version change without a bump.
-const Rev = 5
+const Rev = 6
+
+// revMarker is Rev as a plain string in every build, for any OS, so the
+// revision of a file can be read with grep -a without running it. It is
+// a variable, so the linker keeps it whole; version reports the number it
+// carries, and a test pins it to Rev.
+var revMarker = "anytype-mcp-rev:6"
 
 // Set at link time (-ldflags -X main.…).
 //
 // linkNamespace is the whole marker, so the namespace of any build, for any
 // OS, can be read off the file: "anytype-mcp-namespace:release" is linked
 // only into the binary that release and nightly desktop builds pick. The
-// namespace picks the items folder (items or items-dev), so every other
-// build can't see a production item. There is no flag and no environment
-// variable.
+// namespace picks the endpoint file (endpoint.json or endpoint-dev.json),
+// so every other build never follows a production Anytype. There is no
+// flag and no environment variable.
 var (
 	linkNamespace = namespaceMarker + store.NamespaceDev
 	version       = "dev"
@@ -44,7 +51,14 @@ type versionInfo struct {
 }
 
 func currentVersion() versionInfo {
-	info := versionInfo{Version: version, Rev: Rev, Namespace: store.NormalizeNamespace(namespace), Impl: "go"}
+	// split at the colon: the marker's prefix is never a string of its own
+	// in the binary, so grep -a finds the marker and nothing else
+	_, number, _ := strings.Cut(revMarker, ":")
+	rev, err := strconv.Atoi(number)
+	if err != nil {
+		rev = 0 // a marker that is not a number is no revision; a test pins it to Rev
+	}
+	info := versionInfo{Version: version, Rev: rev, Namespace: store.NormalizeNamespace(namespace), Impl: "go"}
 	if bi, ok := debug.ReadBuildInfo(); ok {
 		for _, s := range bi.Settings {
 			if s.Key == "vcs.revision" {

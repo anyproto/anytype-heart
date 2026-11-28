@@ -2,7 +2,6 @@ package store
 
 import (
 	"context"
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,230 +13,190 @@ import (
 
 var ctx = context.Background()
 
-// newFile returns a store under a scratch home: an explicit root, never
-// the developer's home.
+// newFile returns the endpoint file under a scratch home, never the
+// developer's, with its folders made as the desktop app makes them and no
+// file yet.
 func newFile(t *testing.T) *File {
 	home := t.TempDir()
-	// macOS temp folders sit behind a symlink; the store only looks at its
-	// own three folders
-	return OpenAt(home, NamespaceDev)
+	privateHome(t, home)
+	f := OpenAt(home, NamespaceDev)
+	require.NoError(t, os.MkdirAll(filepath.Dir(f.Path()), 0o700))
+	return f
 }
 
-func requireDenied(t *testing.T, err error, msg string) {
+func write(t *testing.T, f *File, content string) {
 	t.Helper()
-	var te *TemporaryError
-	require.ErrorAs(t, err, &te, msg)
-	require.Equal(t, ReasonDenied, te.Reason, "%s: %v", msg, err)
+	require.NoError(t, os.WriteFile(f.Path(), []byte(content), 0o600))
 }
 
-func tempFiles(t *testing.T, dir string) []string {
-	entries, err := os.ReadDir(dir)
-	require.NoError(t, err)
-	var out []string
-	for _, e := range entries {
-		if strings.HasSuffix(e.Name(), ".tmp") {
-			out = append(out, e.Name())
+func requireReason(t *testing.T, err error, reason, msg string) *Error {
+	t.Helper()
+	var e *Error
+	require.ErrorAs(t, err, &e, msg)
+	require.Equal(t, reason, e.Reason, "%s: %v", msg, err)
+	return e
+}
+
+func TestNamespaces(t *testing.T) {
+	assert.Equal(t, "endpoint.json", FileName(NamespaceRelease))
+	assert.Equal(t, "endpoint-dev.json", FileName(NamespaceDev))
+	assert.Equal(t, "endpoint-dev.json", FileName("anything else"))
+	assert.Equal(t, filepath.Join("h", ".anytype", "ai-connect", "endpoint.json"), OpenAt("h", NamespaceRelease).Path())
+}
+
+func TestReadFormat(t *testing.T) {
+	for content, port := range map[string]int{
+		`{"v":1,"port":31009}`:             31009,
+		"{\"port\": 1, \"v\": 1}\n":        1,
+		`{"v":1,"port":65535,"extra":"x"}`: 65535,
+	} {
+		f := newFile(t)
+		write(t, f, content)
+		got, err := f.Read(ctx)
+		require.NoError(t, err, content)
+		assert.Equal(t, port, got, content)
+	}
+	for content, rule := range map[string]string{
+		``:                       "not one JSON object",
+		`garbage`:                "not one JSON object",
+		`[1]`:                    "not one JSON object",
+		`{"v":1,"port":1}{}`:     "not one JSON object",
+		`{"v":1,"port":"31009"}`: "not one JSON object",
+		`{"v":1,"port":1.5}`:     "not one JSON object",
+		`{"port":1}`:             "version is not 1",
+		`{"v":2,"port":1}`:       "version is not 1",
+		`{"v":1}`:                "port is not between 1 and 65535",
+		`{"v":1,"port":0}`:       "port is not between 1 and 65535",
+		`{"v":1,"port":65536}`:   "port is not between 1 and 65535",
+		`{"v":1,"port":1}` + strings.Repeat(" ", 241): "larger than 256 bytes",
+	} {
+		f := newFile(t)
+		write(t, f, content)
+		_, err := f.Read(ctx)
+		e := requireReason(t, err, ReasonInvalid, content)
+		assert.Contains(t, e.Rule, rule, content)
+		assert.Equal(t, f.Path(), e.Path)
+	}
+}
+
+func TestReadMissing(t *testing.T) {
+	home := t.TempDir()
+	privateHome(t, home)
+	f := OpenAt(home, NamespaceDev)
+	for _, missing := range []string{filepath.Join(home, ".anytype"), filepath.Dir(f.Path()), f.Path()} {
+		_, err := f.Read(ctx)
+		e := requireReason(t, err, ReasonMissing, missing)
+		assert.Equal(t, missing, e.Path)
+		require.NoError(t, os.MkdirAll(missing, 0o700))
+		if missing == f.Path() {
+			require.NoError(t, os.Remove(missing))
 		}
 	}
-	return out
+	write(t, f, `{"v":1,"port":7}`)
+	port, err := f.Read(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 7, port)
+
+	_, err = OpenAt(filepath.Join(home, "nobody"), NamespaceDev).Read(ctx)
+	requireReason(t, err, ReasonMissing, "a home that does not exist")
 }
 
-func TestFileRoundTrip(t *testing.T) {
+func TestCheckExecutablePlaces(t *testing.T) {
 	f := newFile(t)
-	require.NoError(t, f.Probe(ctx), "a store nobody has used yet is usable")
-	_, err := f.Read(ctx, "a")
-	require.ErrorIs(t, err, ErrNotFound)
-	require.ErrorIs(t, f.Delete(ctx, "a"), ErrNotFound)
-	_, err = os.Lstat(filepath.Join(f.home, ".anytype"))
-	require.ErrorIs(t, err, os.ErrNotExist, "reading creates nothing")
-
-	require.NoError(t, f.Write(ctx, "a", []byte("one")))
-	require.NoError(t, f.Write(ctx, "a", []byte("two")))
-	raw, err := f.Read(ctx, "a")
-	require.NoError(t, err)
-	assert.Equal(t, "two", string(raw))
-	assert.Empty(t, tempFiles(t, f.Dir()))
-	assert.Equal(t, "items-dev", filepath.Base(f.Dir()))
-	assert.NotEqual(t, f.Dir(), OpenAt(f.home, NamespaceRelease).Dir(), "the namespaces use different folders")
-	_, err = OpenAt(f.home, NamespaceRelease).Read(ctx, "a")
-	require.ErrorIs(t, err, ErrNotFound, "the release namespace can't see a development item")
-
-	require.NoError(t, f.Delete(ctx, "a"))
-	_, err = f.Read(ctx, "a")
-	require.ErrorIs(t, err, ErrNotFound)
-
-	unlock, err := f.Lock(ctx, "a")
-	require.NoError(t, err)
-	unlock()
+	exe := func(path string) string {
+		require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
+		require.NoError(t, os.WriteFile(path, []byte("binary"), 0o700))
+		return path
+	}
+	self := func(path string) error { return f.CheckExecutable(path, path) }
+	// outside .anytype the executable is not judged
+	assert.NoError(t, self(exe(filepath.Join(t.TempDir(), "anytype-mcp"))))
+	assert.NoError(t, self(exe(filepath.Join(f.home, ".anytype-other", "anytype-mcp"))))
+	assert.NoError(t, self(exe(filepath.Join(f.home, "anytype-mcp"))))
+	// under it, a sound copy passes, at any depth
+	assert.NoError(t, self(exe(filepath.Join(f.home, ".anytype", "bin", "anytype-mcp"))))
+	assert.NoError(t, self(exe(filepath.Join(f.home, ".anytype", "anytype-mcp"))))
+	assert.NoError(t, self(exe(filepath.Join(f.home, ".anytype", "a", "b", "anytype-mcp"))))
 }
 
-func TestFileTooLargeIsNotAnItem(t *testing.T) {
+// COR-09: whatever fails in the executable's check is denied, with its
+// path, never "missing" as if the endpoint were.
+func TestH1R1_COR09_ExecutableFailuresAreDenied(t *testing.T) {
 	f := newFile(t)
-	require.NoError(t, f.Write(ctx, "a", []byte(strings.Repeat("x", MaxItemBytes+1))))
-	_, err := f.Read(ctx, "a")
-	require.ErrorIs(t, err, ErrInvalidItem)
+	gone := filepath.Join(f.home, ".anytype", "bin", "gone")
+	require.NoError(t, os.Mkdir(filepath.Dir(gone), 0o700))
+	e := requireReason(t, f.CheckExecutable(gone, gone), ReasonDenied, "a missing copy")
+	assert.Equal(t, gone, e.Path)
+	assert.NotEmpty(t, e.Rule)
+	outside := filepath.Join(t.TempDir(), "gone")
+	requireReason(t, f.CheckExecutable(outside, outside), ReasonDenied, "a path whose place can't be established")
 }
 
-func TestFileWriteFailures(t *testing.T) {
-	t.Run("a failed rename leaves the old item and no temp file", func(t *testing.T) {
-		f := newFile(t)
-		require.NoError(t, f.Write(ctx, "a", []byte("old")))
-		f.hook = func(stage string) error {
-			if stage == "before-rename" {
-				return errors.New("injected")
-			}
-			return nil
-		}
-		err := f.Write(ctx, "a", []byte("new"))
-		require.True(t, IsTemporary(err), "nothing was written: %v", err)
-		f.hook = nil
-		raw, err := f.Read(ctx, "a")
-		require.NoError(t, err)
-		assert.Equal(t, "old", string(raw))
-		assert.Empty(t, tempFiles(t, f.Dir()))
-	})
-
-	t.Run("a failure after the rename is unconfirmed, and the new item is in place", func(t *testing.T) {
-		f := newFile(t)
-		require.NoError(t, f.Write(ctx, "a", []byte("old")))
-		f.hook = func(stage string) error {
-			if stage == "after-rename" {
-				return errors.New("injected")
-			}
-			return nil
-		}
-		err := f.Write(ctx, "a", []byte("new"))
-		var unconfirmed *UnconfirmedError
-		require.ErrorAs(t, err, &unconfirmed)
-		assert.False(t, IsTemporary(err))
-		raw, err := f.Read(ctx, "a")
-		require.NoError(t, err)
-		assert.Equal(t, "new", string(raw))
-	})
-
-	t.Run("a stale temp file is removed by the next write and never read", func(t *testing.T) {
-		f := newFile(t)
-		require.NoError(t, f.Write(ctx, "a", []byte("one")))
-		stale := filepath.Join(f.Dir(), "a.0011223344556677.tmp")
-		other := filepath.Join(f.Dir(), "ab.0011223344556677.tmp")
-		require.NoError(t, os.WriteFile(stale, []byte("a crashed write, key included"), 0o600))
-		require.NoError(t, os.WriteFile(other, []byte("another connection's"), 0o600))
-		raw, err := f.Read(ctx, "a")
-		require.NoError(t, err)
-		assert.Equal(t, "one", string(raw))
-		require.NoError(t, f.Write(ctx, "a", []byte("two")))
-		_, err = os.Lstat(stale)
-		require.ErrorIs(t, err, os.ErrNotExist)
-		_, err = os.Lstat(other)
-		require.NoError(t, err, "only this connection's leftovers are swept")
-	})
+// Theme C: the path the caller started the forwarder by is judged as it
+// is spelled, and must be the running file.
+func TestH1R1_C_LaunchPathIsTheRunningFile(t *testing.T) {
+	f := newFile(t)
+	put := func(path string) string {
+		require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
+		require.NoError(t, os.WriteFile(path, []byte("binary"), 0o700))
+		return path
+	}
+	launch := put(filepath.Join(f.home, ".anytype", "bin", "anytype-mcp"))
+	other := put(filepath.Join(f.home, ".anytype", "bin2", "anytype-mcp"))
+	outside := put(filepath.Join(t.TempDir(), "anytype-mcp"))
+	require.NoError(t, f.CheckExecutable(launch, launch))
+	for _, running := range []string{other, outside} {
+		e := requireReason(t, f.CheckExecutable(launch, running), ReasonDenied, running)
+		assert.Equal(t, launch, e.Path)
+		assert.Contains(t, e.Rule, "not the file this process runs")
+	}
+	// a running file in .anytype that the launch path does not show
+	e := requireReason(t, f.CheckExecutable(outside, launch), ReasonDenied, "unseen")
+	assert.Equal(t, launch, e.Path)
+	assert.Contains(t, e.Rule, "another spelling or through a link")
 }
 
-// L8: a receipt means the change is durable and the item is the only file
-// that holds the key (or no file at all after a delete).
-func TestFileReceipts(t *testing.T) {
-	failAt := func(stage string) func(string) error {
-		return func(s string) error {
-			if s == stage {
-				return errors.New("injected at " + stage)
-			}
-			return nil
+// COR-08: v and port are matched by their exact names, once each.
+func TestH1R1_COR08_ExactMembers(t *testing.T) {
+	for content, rule := range map[string]string{
+		`{"v":2,"V":1,"port":31009}`:      "version is not 1",
+		`{"V":1,"PORT":31009}`:            "version is not 1",
+		`{"v":1,"Port":31009}`:            "port is not between",
+		`{"v":1,"port":1,"port":2}`:       "names port twice",
+		`{"v":1,"v":1,"port":1}`:          "names v twice",
+		`{"v":1,"port":1,"x":{"port":2}}`: "",
+	} {
+		f := newFile(t)
+		write(t, f, content)
+		port, err := f.Read(ctx)
+		if rule == "" {
+			require.NoError(t, err, content)
+			assert.Equal(t, 1, port)
+			continue
 		}
+		e := requireReason(t, err, ReasonInvalid, content)
+		assert.Contains(t, e.Rule, rule, content)
 	}
-	leftover := func(t *testing.T, f *File) string {
-		p := filepath.Join(f.Dir(), "a.0011223344556677.tmp")
-		require.NoError(t, os.WriteFile(p, []byte("a crashed rotation, candidate key included"), 0o600))
-		return p
-	}
-
-	t.Run("delete removes a crashed rotation's temp file too", func(t *testing.T) {
-		f := newFile(t)
-		require.NoError(t, f.Write(ctx, "a", []byte("one")))
-		stale := leftover(t, f)
-		require.NoError(t, f.Delete(ctx, "a"))
-		_, err := os.Lstat(stale)
-		require.ErrorIs(t, err, os.ErrNotExist)
-		assert.Empty(t, tempFiles(t, f.Dir()))
-	})
-
-	t.Run("a failed folder sync after the unlink is unconfirmed, and the item is gone", func(t *testing.T) {
-		f := newFile(t)
-		require.NoError(t, f.Write(ctx, "a", []byte("one")))
-		f.hook = failAt("after-unlink")
-		err := f.Delete(ctx, "a")
-		var unconfirmed *UnconfirmedError
-		require.ErrorAs(t, err, &unconfirmed)
-		f.hook = nil
-		_, err = f.Read(ctx, "a")
-		require.ErrorIs(t, err, ErrNotFound)
-	})
-
-	t.Run("a sweep that fails stops the verb before it changes anything", func(t *testing.T) {
-		f := newFile(t)
-		require.NoError(t, f.Write(ctx, "a", []byte("one")))
-		stale := leftover(t, f)
-		f.hook = failAt("sweep")
-		require.True(t, IsTemporary(f.Delete(ctx, "a")))
-		require.True(t, IsTemporary(f.Write(ctx, "a", []byte("two"))))
-		f.hook = nil
-		raw, err := f.Read(ctx, "a")
-		require.NoError(t, err)
-		assert.Equal(t, "one", string(raw), "the item is unchanged")
-		_, err = os.Lstat(stale)
-		require.NoError(t, err)
-	})
-
-	t.Run("a new folder that can't be made durable: nothing is written", func(t *testing.T) {
-		f := newFile(t)
-		f.hook = failAt("sync-parent")
-		require.True(t, IsTemporary(f.Write(ctx, "a", []byte("one"))))
-		f.hook = nil
-		_, err := f.Read(ctx, "a")
-		require.ErrorIs(t, err, ErrNotFound)
-	})
 }
 
-// M3 at the store: an error reported by the rename or the unlink is
-// settled by what the item path holds.
-func TestFileSettlesReportedErrors(t *testing.T) {
-	fail := func(stages ...string) func(string) error {
-		return func(s string) error {
-			for _, stage := range stages {
-				if s == stage {
-					return errors.New("injected at " + stage)
-				}
-			}
-			return nil
-		}
+// Theme G: a launch path that is not clean and absolute is refused before
+// anything is cleaned away from it.
+func TestH1R2_G_LaunchPathMustBeClean(t *testing.T) {
+	f := newFile(t)
+	bin := filepath.Join(f.home, ".anytype", "bin")
+	require.NoError(t, os.MkdirAll(filepath.Join(f.home, ".anytype", "shared", "child"), 0o700))
+	require.NoError(t, os.MkdirAll(bin, 0o700))
+	exe := filepath.Join(bin, "anytype-mcp")
+	require.NoError(t, os.WriteFile(exe, []byte("binary"), 0o700))
+	require.NoError(t, f.CheckExecutable(exe, exe))
+	sep := string(filepath.Separator)
+	for _, launch := range []string{
+		filepath.Join(f.home, ".anytype", "shared", "child") + sep + ".." + sep + ".." + sep + "bin" + sep + "anytype-mcp",
+		filepath.Join(f.home, ".anytype") + sep + "." + sep + "bin" + sep + "anytype-mcp",
+		bin + sep + sep + "anytype-mcp",
+		filepath.Join(".anytype", "bin", "anytype-mcp"),
+	} {
+		e := requireReason(t, f.CheckExecutable(launch, exe), ReasonDenied, launch)
+		assert.Contains(t, e.Rule, "not clean and absolute", launch)
 	}
-	t.Run("the rename took effect: the write succeeded", func(t *testing.T) {
-		f := newFile(t)
-		require.NoError(t, f.Write(ctx, "a", []byte("old")))
-		f.FailAt(fail("rename-result"))
-		require.NoError(t, f.Write(ctx, "a", []byte("new")))
-		assert.Empty(t, tempFiles(t, f.Dir()))
-	})
-	t.Run("the rename took effect and the item can't be read: unconfirmed", func(t *testing.T) {
-		f := newFile(t)
-		f.FailAt(fail("rename-result", "holds"))
-		var unconfirmed *UnconfirmedError
-		require.ErrorAs(t, f.Write(ctx, "a", []byte("new")), &unconfirmed)
-	})
-	t.Run("the unlink took effect: the delete succeeded", func(t *testing.T) {
-		f := newFile(t)
-		require.NoError(t, f.Write(ctx, "a", []byte("old")))
-		f.FailAt(fail("unlink-result"))
-		require.NoError(t, f.Delete(ctx, "a"))
-	})
-	t.Run("a closed commit gate stops a write and a delete with nothing changed", func(t *testing.T) {
-		f := newFile(t)
-		require.NoError(t, f.Write(ctx, "a", []byte("old")))
-		closed := WithCommitGate(ctx, func() bool { return false })
-		require.True(t, IsTemporary(f.Write(closed, "a", []byte("new"))))
-		require.True(t, IsTemporary(f.Delete(closed, "a")))
-		raw, err := f.Read(ctx, "a")
-		require.NoError(t, err)
-		assert.Equal(t, "old", string(raw))
-		assert.Empty(t, tempFiles(t, f.Dir()))
-	})
 }

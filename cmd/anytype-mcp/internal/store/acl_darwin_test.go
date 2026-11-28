@@ -53,59 +53,52 @@ func TestACLReading(t *testing.T) {
 	require.Error(t, err)
 }
 
-// L3: any ACL on the Anytype folders or the item is refused; home may
-// carry deny entries only.
+// Any ACL on .anytype, ai-connect, the folders below .anytype, the
+// endpoint file or the executable is refused; home may carry deny entries
+// only.
 func TestFileACLRule(t *testing.T) {
 	const share = "everyone allow read,list,search,file_inherit,directory_inherit"
 
 	t.Run("a home with the stock deny entry works", func(t *testing.T) {
-		f := newFile(t)
+		f := seeded(t)
 		chmodACL(t, "everyone deny delete", f.home)
-		require.NoError(t, f.Write(ctx, "a", []byte("x")))
-		raw, err := f.Read(ctx, "a")
+		_, err := f.Read(ctx)
 		require.NoError(t, err)
-		assert.Equal(t, "x", string(raw))
-		require.NoError(t, f.Delete(ctx, "a"))
 	})
 
 	t.Run("a shared home (an allow entry) is refused", func(t *testing.T) {
-		f := newFile(t)
+		f := seeded(t)
 		chmodACL(t, share, f.home)
-		requireDenied(t, f.Write(ctx, "a", []byte("x")), "allow entry on home")
-		_, err := os.Lstat(filepath.Join(f.home, ".anytype"))
-		require.ErrorIs(t, err, os.ErrNotExist)
+		_, err := f.Read(ctx)
+		deniedOn(t, err, f.home, "ACL that grants access")
 	})
 
-	t.Run("an allow entry on ai-connect: nothing is read, written or deleted", func(t *testing.T) {
-		f := newFile(t)
-		require.NoError(t, f.Write(ctx, "a", []byte("kept")))
-		dir := filepath.Dir(f.Dir())
-		chmodACL(t, share, dir)
-		_, err := f.Read(ctx, "a")
-		requireDenied(t, err, "read")
-		assert.Contains(t, err.Error(), "has an ACL")
-		assert.Contains(t, err.Error(), dir)
-		requireDenied(t, f.Write(ctx, "a", []byte("new")), "write")
-		requireDenied(t, f.Delete(ctx, "a"), "delete")
-		raw, err := os.ReadFile(filepath.Join(f.Dir(), "a.item"))
-		require.NoError(t, err)
-		assert.Equal(t, "kept", string(raw))
+	for _, entry := range []string{share, "everyone deny delete"} {
+		t.Run("ai-connect with "+entry, func(t *testing.T) {
+			f := seeded(t)
+			dir := filepath.Dir(f.Path())
+			chmodACL(t, entry, dir)
+			_, err := f.Read(ctx)
+			deniedOn(t, err, dir, "has an ACL")
+		})
+	}
+
+	t.Run("an allow entry on the file alone", func(t *testing.T) {
+		f := seeded(t)
+		chmodACL(t, "everyone allow read", f.Path())
+		_, err := f.Read(ctx)
+		deniedOn(t, err, f.Path(), "the endpoint file has an ACL")
 	})
 
-	t.Run("a deny entry on an Anytype folder is refused too: no ACL at all", func(t *testing.T) {
-		f := newFile(t)
-		require.NoError(t, f.Write(ctx, "a", []byte("x")))
-		chmodACL(t, "everyone deny delete", f.Dir())
-		_, err := f.Read(ctx, "a")
-		requireDenied(t, err, "deny entry on items")
-	})
-
-	t.Run("an allow entry on the item alone", func(t *testing.T) {
-		f := newFile(t)
-		require.NoError(t, f.Write(ctx, "a", []byte("x")))
-		chmodACL(t, "everyone allow read", filepath.Join(f.Dir(), "a.item"))
-		_, err := f.Read(ctx, "a")
-		requireDenied(t, err, "item ACL")
-		assert.Contains(t, err.Error(), "the item has an ACL")
+	t.Run("bin that grants another user write, and an executable with an ACL", func(t *testing.T) {
+		f := seeded(t)
+		bin := filepath.Join(f.home, ".anytype", "bin")
+		require.NoError(t, os.Mkdir(bin, 0o700))
+		exe := filepath.Join(bin, "anytype-mcp")
+		require.NoError(t, os.WriteFile(exe, []byte("binary"), 0o755))
+		chmodACL(t, "everyone allow read", exe)
+		deniedOn(t, f.CheckExecutable(exe, exe), exe, "the forwarder's executable has an ACL")
+		chmodACL(t, "everyone allow add_file,delete_child", bin)
+		deniedOn(t, f.CheckExecutable(exe, exe), bin, "has an ACL")
 	})
 }

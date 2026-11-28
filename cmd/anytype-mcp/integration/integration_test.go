@@ -62,14 +62,22 @@ type client struct {
 	nextID int
 }
 
-// childEnv is a child's whole environment: a scratch home and nothing
-// from this process.
-func childEnv(home string) []string {
-	return []string{"HOME=" + home, "USERPROFILE=" + home, "TMPDIR=" + home, "TMP=" + home, "TEMP=" + home}
+// childEnv is a child's whole environment: a scratch home, the key, and
+// nothing from this process.
+func childEnv(home, key string) []string {
+	return []string{"HOME=" + home, "USERPROFILE=" + home, "TMPDIR=" + home, "TMP=" + home, "TEMP=" + home, "ANYTYPE_API_KEY=" + key}
+}
+
+// writeEndpoint writes the development build's endpoint file as the
+// desktop app does.
+func writeEndpoint(t *testing.T, home string, port int) {
+	dir := filepath.Join(home, ".anytype", "ai-connect")
+	require.NoError(t, os.MkdirAll(dir, 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "endpoint-dev.json"), []byte(fmt.Sprintf(`{"v":1,"port":%d}`, port)), 0o600))
 }
 
 // TestMain is the scratch guard: HOME points at a fresh temp folder before
-// any test runs, so nothing here can reach the developer's item store.
+// any test runs, so nothing here can reach the developer's Anytype folder.
 // The go tool's own folders are pinned first; they default to the home.
 func TestMain(m *testing.M) {
 	for _, name := range []string{"GOCACHE", "GOMODCACHE", "GOPATH", "GOFLAGS", "GOPROXY", "GOPRIVATE", "GOTOOLCHAIN"} {
@@ -89,9 +97,9 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func startForwarder(t *testing.T, bin, home, connection string, extra ...string) *client {
-	cmd := exec.Command(bin, append([]string{"serve", "--connection", connection}, extra...)...)
-	cmd.Env = childEnv(home)
+func startForwarder(t *testing.T, bin, home, key, tier string, extra ...string) *client {
+	cmd := exec.Command(bin, append([]string{"serve", "--tier", tier}, extra...)...)
+	cmd.Env = childEnv(home, key)
 	stdin, err := cmd.StdinPipe()
 	require.NoError(t, err)
 	out, err := cmd.StdoutPipe()
@@ -262,22 +270,6 @@ func buildForwarder(t *testing.T) string {
 	return bin
 }
 
-func runVerb(t *testing.T, bin, home, stdin string, args ...string) (map[string]any, int) {
-	cmd := exec.Command(bin, args...)
-	cmd.Env = childEnv(home)
-	cmd.Stdin = strings.NewReader(stdin)
-	out, err := cmd.Output()
-	code := 0
-	if err != nil {
-		ee, ok := err.(*exec.ExitError)
-		require.True(t, ok, "%v", err)
-		code = ee.ExitCode()
-	}
-	var m map[string]any
-	_ = json.Unmarshal(bytes.TrimSpace(out), &m)
-	return m, code
-}
-
 // TestForwarderAgainstHeart: the built child over real pipes, an MCP
 // client on one side and a throwaway heart on the other. Per tier:
 // initialize, notifications/initialized, tools/list (the same list heart
@@ -301,18 +293,11 @@ func TestForwarderAgainstHeart(t *testing.T) {
 	require.NotEqual(t, 31009, port)
 
 	bin := buildForwarder(t)
-	// the item store lives in a scratch home; the children get no other
-	// environment and no flags
-	store := t.TempDir()
-	set := func(connection, tier string, port int) string {
-		payload, _ := json.Marshal(map[string]any{"key": heart.APIKey, "account": heart.AccountId, "port": port, "tier": tier})
-		m, code := runVerb(t, bin, store, string(payload)+"\n", "key", "set", "--connection", connection, "--expect", "absent")
-		require.Equal(t, 0, code, "key set: %v", m)
-		return fmt.Sprintf("%s@%d", m["fingerprint"], int64(m["rev"].(float64)))
-	}
-	for _, tier := range []string{"small", "large", "full"} {
-		set("it-"+tier, tier, port)
-	}
+	// the endpoint file lives in a scratch home; the children get the key
+	// in their environment and nothing else from this process
+	home := t.TempDir()
+	writeEndpoint(t, home, port)
+	key := heart.APIKey
 
 	var outputs []*client
 	for _, tier := range []string{"small", "large", "full"} {
@@ -326,7 +311,7 @@ func TestForwarderAgainstHeart(t *testing.T) {
 			if tier == "full" {
 				extra = []string{"--files-dir", filesDir}
 			}
-			c := startForwarder(t, bin, store, "it-"+tier, extra...)
+			c := startForwarder(t, bin, home, key, tier, extra...)
 			outputs = append(outputs, c)
 
 			init := c.request("initialize", initParams)
@@ -397,7 +382,7 @@ func TestForwarderAgainstHeart(t *testing.T) {
 
 	t.Run("an id with HTML characters comes back as this request's result", func(t *testing.T) {
 		// heart echoes the id with & < > escaped; it is still this reply
-		c := startForwarder(t, bin, store, "it-full")
+		c := startForwarder(t, bin, home, key, "full")
 		outputs = append(outputs, c)
 		require.Nil(t, c.request("initialize", initParams).Error)
 		r := c.requestAs(`"a&b<c>"`, "tools/call", map[string]any{"name": "list_spaces", "arguments": map[string]any{}})
@@ -409,31 +394,40 @@ func TestForwarderAgainstHeart(t *testing.T) {
 		assert.Equal(t, 0, c.close())
 	})
 
-	t.Run("a running forwarder follows a retarget: the old port dies, the next request succeeds", func(t *testing.T) {
-		// the item first names a loopback relay to heart, so the port the
-		// child starts on can be taken away
+	t.Run("a running forwarder follows the endpoint: the old port dies, the next request succeeds", func(t *testing.T) {
+		// the endpoint first names a loopback relay to heart, so the port
+		// the child starts on can be taken away
 		relay := newRelay(t, port)
-		stamp := set("it-relay", "full", relay.port)
-		c := startForwarder(t, bin, store, "it-relay")
+		moving := t.TempDir()
+		writeEndpoint(t, moving, relay.port)
+		c := startForwarder(t, bin, moving, key, "full")
 		outputs = append(outputs, c)
 		require.Nil(t, c.request("initialize", initParams).Error)
 		require.Nil(t, c.request("tools/list", nil).Error)
 		require.NotZero(t, relay.accepted.Load(), "the child really went through the relay")
 
-		m, code := runVerb(t, bin, store, "", "key", "retarget", "--connection", "it-relay", "--expect", stamp,
-			"--account", heart.AccountId, "--port", strconv.Itoa(port), "--tier", "full")
-		require.Equal(t, 0, code, "%v", m)
+		writeEndpoint(t, moving, port)
 		relay.close()
 		time.Sleep(300 * time.Millisecond) // the child's idle connection notices the close
 
-		// the same child: refused on the old port, re-reads the item, retries on heart's
+		// the same child: refused on the old port, reads the endpoint again, retries on heart's
 		r := c.request("tools/list", nil)
 		require.Nil(t, r.Error, "%+v", r.Error)
 		assert.Equal(t, 0, c.close())
 	})
 
+	t.Run("no endpoint: open Anytype, and nothing is sent", func(t *testing.T) {
+		c := startForwarder(t, bin, t.TempDir(), key, "full")
+		outputs = append(outputs, c)
+		r := c.request("initialize", initParams)
+		require.NotNil(t, r.Error)
+		assert.Equal(t, -32001, r.Error.Code)
+		assert.Equal(t, "Anytype can't be reached: open Anytype", r.Error.Message)
+		assert.Equal(t, 0, c.close())
+	})
+
 	t.Run("a revoked key gets the 401 reply", func(t *testing.T) {
-		c := startForwarder(t, bin, store, "it-full")
+		c := startForwarder(t, bin, home, key, "full")
 		outputs = append(outputs, c)
 		require.Nil(t, c.request("initialize", initParams).Error)
 		require.Nil(t, c.request("tools/list", nil).Error)

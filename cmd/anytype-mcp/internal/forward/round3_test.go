@@ -10,58 +10,58 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/internal/store"
 )
 
-// blockingStore's reads never return while blocked is set.
-type blockingStore struct {
-	store.Store
+// blockingEndpoint's reads never return while blocked is set.
+type blockingEndpoint struct {
+	Endpoint
 	blocked atomic.Bool
 	forever chan struct{}
 	stuck   atomic.Int32
 }
 
-func (b *blockingStore) Read(ctx context.Context, id string) ([]byte, error) {
+func (b *blockingEndpoint) Read(ctx context.Context) (int, error) {
 	if b.blocked.Load() {
 		b.stuck.Add(1)
 		<-b.forever
 	}
-	return b.Store.Read(ctx, id)
+	return b.Endpoint.Read(ctx)
 }
 
-func withBlockingStore(b *blockingStore, blockedAtStart bool) hopt {
+func withBlockingEndpoint(b *blockingEndpoint, blockedAtStart bool) hopt {
 	return withOptions(func(o *Options) {
-		b.Store = o.Store
+		b.Endpoint = o.Endpoint
 		b.forever = make(chan struct{})
 		b.blocked.Store(blockedAtStart)
-		o.Store = b
-		o.StoreTimeout = 100 * time.Millisecond
+		o.Endpoint = b
+		o.ReadTimeout = 100 * time.Millisecond
 	})
 }
 
-// M1: store I/O can never strand the forwarder past its deadlines.
+// M1: endpoint I/O can never strand the forwarder past its deadlines.
 func TestStuckStoreDoesNotStrandServe(t *testing.T) {
-	t.Run("a read that never returns: requests go on with the last snapshot, EOF still exits", func(t *testing.T) {
-		b := &blockingStore{}
-		h := start(t, withBlockingStore(b, false))
+	t.Run("a read that never returns: not connected after the timeout, nothing sent, EOF still exits", func(t *testing.T) {
+		b := &blockingEndpoint{}
+		h := start(t, withBlockingEndpoint(b, false))
 		t.Cleanup(func() { close(b.forever) })
 		h.initialize()
+		sent := len(h.heart.requests())
 		b.blocked.Store(true)
 		h.clock.advance(6 * time.Second)
 
 		began := time.Now()
 		got := h.call(toolCall(1))
-		assert.Nil(t, got.Error, got.raw)
-		assert.False(t, got.isError(), got.raw)
+		require.NotNil(t, got.Error, got.raw)
+		assert.Equal(t, codeNotConnected, got.Error.Code)
+		assert.Equal(t, msgUnreachable, got.Error.Message)
 		assert.Less(t, time.Since(began), 2*time.Second, "waited for the read timeout, not for the read")
-		require.Eventually(t, func() bool { return strings.Contains(h.log.String(), "keeping the last snapshot") },
+		require.Eventually(t, func() bool { return strings.Contains(h.log.String(), "did not answer in time") },
 			3*time.Second, 5*time.Millisecond)
 
 		// the stuck read is not waited for again, and not started twice
 		h.clock.advance(6 * time.Second)
 		began = time.Now()
-		assert.False(t, h.call(toolCall(2)).isError())
+		assert.Equal(t, codeNotConnected, h.call(toolCall(2)).Error.Code)
 		assert.Less(t, time.Since(began), 80*time.Millisecond)
 		assert.EqualValues(t, 1, b.stuck.Load(), "one abandoned read, not one per request")
 
@@ -70,12 +70,12 @@ func TestStuckStoreDoesNotStrandServe(t *testing.T) {
 		require.NoError(t, h.in.Close())
 		assert.Equal(t, 0, h.waitExit())
 		assert.Less(t, time.Since(began), 2*time.Second, "EOF shuts down within the deadline")
-		assert.Zero(t, h.deletes(""), "the item could not be re-read, so no bearer was sent at shutdown")
+		assert.Len(t, h.heart.requests(), sent, "nothing was sent, no DELETE at shutdown either")
 	})
 
-	t.Run("a first read that never returns: not connected after the timeout, and a signal still exits", func(t *testing.T) {
-		b := &blockingStore{}
-		h := start(t, withBlockingStore(b, true))
+	t.Run("a read that never returns from the first request on: not connected, and a signal still exits", func(t *testing.T) {
+		b := &blockingEndpoint{}
+		h := start(t, withBlockingEndpoint(b, true))
 		t.Cleanup(func() { close(b.forever) })
 		began := time.Now()
 		got := h.call(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`)
@@ -87,23 +87,21 @@ func TestStuckStoreDoesNotStrandServe(t *testing.T) {
 		assert.Equal(t, 0, h.waitExit())
 	})
 
-	t.Run("a late read's answer is used by the next attempt", func(t *testing.T) {
-		b := &blockingStore{}
-		h := start(t, withBlockingStore(b, false), withTier("full"))
+	t.Run("after a late read the next attempt reads afresh", func(t *testing.T) {
+		b := &blockingEndpoint{}
+		h := start(t, withBlockingEndpoint(b, false), withTier("full"))
 		h.initialize()
 		moved := newFakeHeart(t)
-		it := h.item()
-		it.Port, it.Rev = moved.port(), it.Rev+1
-		h.st.Put(testConn, it)
+		h.ep.set(moved.port())
 		b.blocked.Store(true)
 		h.clock.advance(6 * time.Second)
-		require.False(t, h.call(toolCall(1)).isError(), "still on the old snapshot")
+		require.NotNil(t, h.call(toolCall(1)).Error, "never the old port")
 		b.blocked.Store(false)
 		close(b.forever) // the stuck read comes back with the new port
-		h.clock.advance(6 * time.Second)
 		require.Eventually(t, func() bool {
 			h.clock.advance(6 * time.Second)
-			return !h.call(toolCall("again")).isError() && moved.count("tools/call") > 0
+			g := h.call(toolCall("again"))
+			return g.Error == nil && !g.isError() && moved.count("tools/call") > 0
 		}, 3*time.Second, 20*time.Millisecond)
 	})
 }

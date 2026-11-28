@@ -1,27 +1,26 @@
 // Command anytype-mcp is the stdio side of an AI app's connection to
 // Anytype: it forwards MCP messages from stdin to the local Anytype's
-// /mcp/<tier> endpoint and owns the one private file that holds the
-// connection's key.
+// /mcp/<tier> endpoint with the key the AI app gives it.
 //
-//	anytype-mcp serve    --connection <id> [--files-dir DIR]
-//	anytype-mcp key set      --connection <id> --expect absent|<fp>@<rev>   # payload on stdin
-//	anytype-mcp key retarget --connection <id> --expect <fp>@<rev> --account <id> --port N --tier T
-//	anytype-mcp key delete   --connection <id> --expect <fp>@<rev> --account <id>
-//	anytype-mcp key check    --connection <id>
+//	anytype-mcp serve [--tier small|large|full] [--files-dir DIR]
+//	anytype-mcp endpoint
 //	anytype-mcp version [--json]
 //
-// The item is one private file per connection under the user's home
-// (internal/store); the forwarder runs as its caller and reads only what
-// its caller could. The key never appears in arguments, the environment or
-// logs. Nothing but the home directory steers the binary: there are no
-// override flags and no test build. serve --files-dir names the one local
-// folder the full tier's file tools may touch; without it they get a new
-// private temporary folder per process. It imports nothing from heart beyond
-// its own packages.
+// The key comes from ANYTYPE_API_KEY, read once and unset; it never
+// appears in arguments, files or logs. The port comes from the endpoint
+// file the desktop app writes (internal/store), read before every request
+// that carries the key and only through its safety rules. serve
+// --files-dir (or ANYTYPE_MCP_FILES_DIR) names the one local folder the
+// full tier's file tools may touch; without it they get a new private
+// temporary folder per process. endpoint runs serve's read once and says
+// whether serve would find Anytype safely. Nothing else steers the binary:
+// no override flags and no test build. It imports nothing from heart
+// beyond its own packages.
 package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -29,8 +28,12 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"slices"
+	"strings"
 	"syscall"
+	"time"
 
+	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/contract"
 	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/internal/files"
 	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/internal/forward"
 	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/internal/store"
@@ -39,22 +42,16 @@ import (
 // Exit codes. They are a contract with the desktop app.
 const (
 	exitOK       = 0
-	exitInternal = 1
+	exitInternal = 1 // serve: replies were lost; endpoint: the read failed
 	exitUsage    = 2
-	exitNoItem   = 3
-	// 4 is reserved (it once meant "no key store") and never returned.
-	exitPrecondition = 5
+	// 3, 4, 5 and 7 belonged to the removed key verbs and are never
+	// returned.
 	exitInvalidInput = 6
-	// exitTemporary: nothing was read or written; try again.
-	exitTemporary = 7
 )
 
 const usage = `usage:
-  anytype-mcp serve    --connection <id> [--files-dir DIR]
-  anytype-mcp key set      --connection <id> --expect absent|<fp>@<rev>   (payload on stdin)
-  anytype-mcp key retarget --connection <id> --expect <fp>@<rev> --account <id> --port N --tier T
-  anytype-mcp key delete   --connection <id> --expect <fp>@<rev> --account <id>
-  anytype-mcp key check    --connection <id>
+  anytype-mcp serve [--tier small|large|full] [--files-dir DIR]   (key in ANYTYPE_API_KEY)
+  anytype-mcp endpoint
   anytype-mcp version [--json]
 `
 
@@ -70,8 +67,8 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	switch args[0] {
 	case "serve":
 		return serveCmd(args[1:], stdin, stdout, stderr)
-	case "key":
-		return keyCmd(args[1:], stdin, stdout, stderr)
+	case "endpoint":
+		return endpointCmd(args[1:], stdout, stderr)
 	case "version":
 		return versionCmd(args[1:], stdout, stderr)
 	}
@@ -95,32 +92,43 @@ func usageError(stderr io.Writer, msg string) int {
 }
 
 func serveCmd(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
+	// the key is read once and leaves the process environment at once
+	key := os.Getenv("ANYTYPE_API_KEY")
+	_ = os.Unsetenv("ANYTYPE_API_KEY")
+
 	fs := newFlags("serve", stderr)
-	connection := fs.String("connection", "", "connection id")
+	tier := fs.String("tier", "full", "small, large or full")
 	filesDir := fs.String("files-dir", "", "absolute path of the folder for the full tier's file tools")
 	if err := fs.Parse(args); err != nil || fs.NArg() != 0 {
 		return exitUsage
 	}
-	if !store.ValidConnectionID(*connection) {
-		return usageError(stderr, "--connection must match ^[a-z0-9-]{1,64}$")
+	if !slices.Contains(contract.Tiers, *tier) {
+		return usageError(stderr, "--tier must be small, large or full")
 	}
-	// the folder is fixed here, before anything is read from stdin
-	var dir *files.Dir
-	given := false
+	// the folder is fixed here, before anything is read from stdin. The
+	// flag wins over the bundle's optional field, which arrives unresolved
+	// when the user left it out.
+	folder, given := *filesDir, false
 	fs.Visit(func(f *flag.Flag) { given = given || f.Name == "files-dir" })
+	what := "--files-dir"
+	if !given {
+		env := os.Getenv("ANYTYPE_MCP_FILES_DIR")
+		folder, given, what = env, env != "" && env != "${user_config.files_dir}", "ANYTYPE_MCP_FILES_DIR"
+	}
+	var dir *files.Dir
 	if given {
-		if !filepath.IsAbs(*filesDir) {
-			return usageError(stderr, "--files-dir must be an absolute path")
+		if !filepath.IsAbs(folder) {
+			return usageError(stderr, what+" must be an absolute path")
 		}
-		// never Anytype's own folder, where the connection keys live, nor
-		// a folder around it (the home folder)
+		// never Anytype's own folder, nor a folder around it (the home
+		// folder)
 		var avoid []string
 		if home, err := os.UserHomeDir(); err == nil && filepath.IsAbs(home) {
 			avoid = append(avoid, filepath.Join(home, ".anytype"))
 		}
 		var err error
-		if dir, err = files.Open(*filesDir, avoid...); err != nil {
-			fmt.Fprintf(stderr, "anytype-mcp: --files-dir: %v\n", err)
+		if dir, err = files.Open(folder, avoid...); err != nil {
+			fmt.Fprintf(stderr, "anytype-mcp: %s: %v\n", what, err)
 			return exitInvalidInput
 		}
 	}
@@ -134,11 +142,84 @@ func serveCmd(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	return forward.Serve(ctx, forward.Options{
-		ConnectionID: *connection,
-		Store:        store.Open(namespace),
-		Files:        dir,
-		In:           stdin,
-		Out:          stdout,
-		Log:          stderr,
+		Key:      key,
+		Tier:     *tier,
+		Endpoint: store.Open(namespace),
+		Files:    dir,
+		In:       stdin,
+		Out:      stdout,
+		Log:      stderr,
 	})
+}
+
+type endpointResult struct {
+	OK     bool   `json:"ok"`
+	Port   int    `json:"port,omitempty"`
+	Reason string `json:"reason,omitempty"`
+	Path   string `json:"path,omitempty"`
+	Rule   string `json:"rule,omitempty"`
+}
+
+// checkSelf judges the program the caller would name in a config: the
+// path it started this process by, exactly as it spelled it (a bare name
+// found on PATH leaves only the file the system reports), and that
+// running file.
+func checkSelf(f *store.File) error {
+	running, err := os.Executable()
+	if err != nil {
+		return &store.Error{Reason: store.ReasonDenied, Rule: "the forwarder can't tell which file it runs: " + err.Error()}
+	}
+	// taken as it is: CheckExecutable refuses one that is not clean and
+	// absolute, rather than cleaning away a folder it passes
+	launch := os.Args[0]
+	if !strings.ContainsAny(launch, `/\`) {
+		launch = running
+	}
+	return f.CheckExecutable(launch, running)
+}
+
+// endpointCmd is serve's read, once: one JSON line, exit 0 when serve
+// would find Anytype safely, 1 when it would not. It also judges its own
+// executable (checkSelf), since that is the program an AI app would give
+// its key to.
+func endpointCmd(args []string, stdout, stderr io.Writer) int {
+	fs := newFlags("endpoint", stderr)
+	if err := fs.Parse(args); err != nil || fs.NArg() != 0 {
+		return exitUsage
+	}
+	f := store.Open(namespace)
+	type read struct {
+		port int
+		err  error
+	}
+	done := make(chan read, 1)
+	go func() {
+		port, err := f.Read(context.Background())
+		if err == nil {
+			err = checkSelf(f)
+		}
+		done <- read{port, err}
+	}()
+	var r read
+	select {
+	case r = <-done:
+	case <-time.After(contract.EndpointReadTimeout):
+		r.err = &store.Error{Reason: store.ReasonUnreachable, Rule: "the endpoint file did not answer in time"}
+	}
+	out := endpointResult{OK: r.err == nil, Port: r.port}
+	code := exitOK
+	if r.err != nil {
+		e := store.AsError(r.err)
+		out = endpointResult{Reason: e.Reason, Path: e.Path, Rule: e.Rule}
+		if out.Rule == "" && e.Err != nil {
+			out.Rule = e.Err.Error()
+		}
+		code = exitInternal
+	}
+	line, err := json.Marshal(out)
+	if err != nil {
+		return exitInternal
+	}
+	fmt.Fprintln(stdout, string(line))
+	return code
 }

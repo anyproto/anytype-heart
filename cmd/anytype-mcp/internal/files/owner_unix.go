@@ -7,6 +7,8 @@ import (
 	"os"
 	"syscall"
 
+	"golang.org/x/sys/unix"
+
 	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/internal/store"
 )
 
@@ -49,4 +51,41 @@ func checkFolder(h *os.File, fi os.FileInfo, path string) error {
 		return fmt.Errorf("the files folder has an access list (ACL) that grants access: %s", path)
 	}
 	return nil
+}
+
+// below reports whether the open folder lies inside target, by the
+// folder's real parents: ".." of an open directory is its parent whatever
+// a path to it says now, so a link swapped in while the folder was being
+// opened hides nothing.
+func below(root *os.Root, target os.FileInfo) (bool, error) {
+	dir, err := root.Open(".")
+	if err != nil {
+		return false, err
+	}
+	at, err := dir.Stat()
+	for err == nil {
+		var fd int
+		fd, err = unix.Openat(int(dir.Fd()), "..", unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC, 0)
+		_ = dir.Close()
+		if err != nil {
+			return false, err
+		}
+		dir = os.NewFile(uintptr(fd), "..")
+		var up os.FileInfo
+		if up, err = dir.Stat(); err != nil {
+			break
+		}
+		if os.SameFile(up, target) {
+			_ = dir.Close()
+			return true, nil
+		}
+		if os.SameFile(up, at) {
+			// the root is its own parent
+			_ = dir.Close()
+			return false, nil
+		}
+		at = up
+	}
+	_ = dir.Close()
+	return false, err
 }

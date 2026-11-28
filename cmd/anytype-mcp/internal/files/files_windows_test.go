@@ -133,3 +133,23 @@ func TestJunctions(t *testing.T) {
 		}
 	})
 }
+
+// Theme D: a junction outside Anytype's folder that leads into it (or
+// around it) is refused like the folder itself.
+func TestH1R1_D_JunctionIntoAnytype(t *testing.T) {
+	base := t.TempDir()
+	home := filepath.Join(base, "home")
+	anytype := filepath.Join(home, ".anytype")
+	require.NoError(t, os.MkdirAll(filepath.Join(anytype, "ai-connect"), 0o700))
+	for name, target := range map[string]string{
+		"into ai-connect": filepath.Join(anytype, "ai-connect"),
+		"onto .anytype":   anytype,
+		"around it":       home,
+	} {
+		link := filepath.Join(base, "link "+name)
+		junction(t, target, link)
+		_, err := Open(link, anytype)
+		require.Error(t, err, name)
+		assert.Contains(t, err.Error(), "apart from Anytype's own folder", name)
+	}
+}

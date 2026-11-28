@@ -26,7 +26,7 @@ func (e *dialError) Error() string { return e.err.Error() }
 func (e *dialError) Unwrap() error { return e.err }
 
 // newHTTPClient builds the only client the bearer ever travels on: literal
-// 127.0.0.1, no proxy, no redirects.
+// 127.0.0.1, no proxy, no redirects, no reused connections.
 func newHTTPClient() *http.Client {
 	dialer := &net.Dialer{Timeout: 5 * time.Second}
 	tr := &http.Transport{
@@ -42,10 +42,11 @@ func newHTTPClient() *http.Client {
 			}
 			return conn, nil
 		},
-		MaxIdleConns:        contract.Workers * 2,
-		MaxIdleConnsPerHost: contract.Workers * 2,
-		IdleConnTimeout:     60 * time.Second,
-		DisableCompression:  true,
+		// one connection per request: Go's transport replays a request
+		// only on a connection it reused, and a replay would carry the
+		// bearer past the gate
+		DisableKeepAlives:  true,
+		DisableCompression: true,
 	}
 	return &http.Client{
 		Transport:     tr,

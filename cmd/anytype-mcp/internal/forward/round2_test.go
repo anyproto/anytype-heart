@@ -22,9 +22,7 @@ import (
 func uesc(r rune) string { return `\` + fmt.Sprintf("u%04x", r) }
 
 func (h *harness) retarget(to *fakeHeart) {
-	it := h.item()
-	it.Port, it.Rev = to.port(), it.Rev+1
-	h.st.Put(testConn, it)
+	h.ep.set(to.port())
 	h.clock.advance(6 * time.Second)
 }
 
@@ -201,29 +199,28 @@ func TestKeyWithheldHoweverItIsSpelled(t *testing.T) {
 	})
 }
 
-// stuckStore's first read never returns until released.
-type stuckStore struct {
-	*store.Mem
-	release chan struct{}
-}
+// stuckEndpoint's reads never return until released.
+type stuckEndpoint struct{ release chan struct{} }
 
-func (s *stuckStore) Read(ctx context.Context, id string) ([]byte, error) {
+func (s *stuckEndpoint) Read(context.Context) (int, error) {
 	<-s.release
-	return s.Mem.Read(ctx, id)
+	return 0, &store.Error{Reason: store.ReasonMissing}
 }
 
-// L9: shutdown covers the first read and hands off late sessions.
+// L9: shutdown covers a stalled read and hands off late sessions.
 func TestShutdownEdges(t *testing.T) {
-	t.Run("a signal ends the process while the first read of the item is stalled", func(t *testing.T) {
-		st := &stuckStore{Mem: store.NewMem(), release: make(chan struct{})}
+	t.Run("a signal ends the process while a read of the endpoint is stalled", func(t *testing.T) {
+		st := &stuckEndpoint{release: make(chan struct{})}
 		t.Cleanup(func() { close(st.release) })
 		ctx, cancel := context.WithCancel(context.Background())
 		exit := make(chan int, 1)
 		inR, inW := io.Pipe()
 		t.Cleanup(func() { _ = inW.Close() })
 		go func() {
-			exit <- Serve(ctx, Options{ConnectionID: testConn, Store: st, In: inR, Out: io.Discard, ShutdownDeadline: time.Second})
+			exit <- Serve(ctx, Options{Key: canaryKey, Endpoint: st, In: inR, Out: io.Discard, ShutdownDeadline: time.Second})
 		}()
+		_, err := io.WriteString(inW, `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`+"\n")
+		require.NoError(t, err)
 		time.Sleep(50 * time.Millisecond)
 		began := time.Now()
 		cancel()

@@ -25,13 +25,13 @@ const (
 	SessionHeader  = "Mcp-Session-Id"
 	ProtocolHeader = "MCP-Protocol-Version"
 
-	// RefreshAfter is how old the last read of the item may be before a
-	// request re-reads it.
+	// RefreshAfter is how old the last good read of the endpoint file may
+	// be before a request reads it again.
 	RefreshAfter = 5 * time.Second
-	// StoreReadTimeout bounds one read of the item. A read that takes
-	// longer (a stalled network home) counts as "can't be read right now"
-	// for that attempt and is never waited for again.
-	StoreReadTimeout = 5 * time.Second
+	// EndpointReadTimeout bounds one read of the endpoint file. A read that
+	// takes longer (a stalled network home) counts as "can't be read right
+	// now" for that attempt and is never waited for again.
+	EndpointReadTimeout = 5 * time.Second
 	// ExchangeTimeout bounds one upstream exchange including its body.
 	ExchangeTimeout = 120 * time.Second
 	// TransferTimeout bounds one local file transfer, body included.

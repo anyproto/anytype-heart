@@ -8,9 +8,10 @@
 #   check-server-archives.sh verify <version> <release dir> <digests dir>
 #       Opens the five final archives and asserts, for each: the member names; the execute bit; the
 #       architecture; static linkage of the linux binaries; each binary's digest against its build
-#       output (server-<os-arch>.sha256, found anywhere under the digests dir); and the
-#       namespace each anytype-mcp carries, by the marker linked into it and, where this host can run
-#       the binary, by what `version --json` reports.
+#       output (server-<os-arch>.sha256, found anywhere under the digests dir); the namespace
+#       each anytype-mcp carries, by the marker linked into it; the revision, by its marker
+#       (anytype-mcp-rev:<n>), the same in every anytype-mcp of the release; and, where this host
+#       can run the binary, that `version --json` reports both.
 set -euo pipefail
 
 targets=(darwin-amd64 darwin-arm64 linux-amd64 linux-arm64 windows-amd64)
@@ -113,10 +114,19 @@ for target in "${targets[@]}"; do
     if [ "$ns" = dev ] && [ "$has_release" = yes ]; then
       fail "$target: anytype-mcp-dev carries the release namespace"
     fi
+    # the revision is linked in once, so the desktop can read it off any slice without running it
+    revs=$(LC_ALL=C grep -ao 'anytype-mcp-rev:[0-9][0-9]*' "$bin" || true)
+    [ "$(printf '%s\n' "$revs" | grep -c .)" = 1 ] || fail "$target: anytype-mcp-$ns does not carry exactly one rev marker"
+    rev=${revs#anytype-mcp-rev:}
+    if [ -z "${release_rev:-}" ]; then
+      release_rev=$rev
+    fi
+    [ "$rev" = "$release_rev" ] || fail "$target: anytype-mcp-$ns is rev $rev, another anytype-mcp is rev $release_rev"
     if [ "$target" = "$host" ]; then
       reported=$("$bin" version --json)
       echo "anytype-mcp-$ns reports $reported"
       echo "$reported" | grep -q "\"namespace\":\"$ns\"" || fail "$target: anytype-mcp-$ns reports another namespace"
+      echo "$reported" | grep -q "\"rev\":$rev," || fail "$target: anytype-mcp-$ns reports another rev than its marker $rev"
     fi
   done
 done

@@ -10,7 +10,11 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"os/exec"
+	"os/user"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -18,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/contract"
@@ -25,11 +30,7 @@ import (
 	"github.com/anyproto/anytype-heart/cmd/anytype-mcp/internal/store"
 )
 
-const (
-	canaryKey   = "CANARY-key-0123456789abcdefghijklmnopqrstuv"
-	testAccount = "AccountOne"
-	testConn    = "claude-desktop"
-)
+const canaryKey = "CANARY-key-0123456789abcdefghijklmnopqrstuv"
 
 type recorded struct {
 	Method  string
@@ -65,6 +66,8 @@ type fakeHeart struct {
 	tools    []any
 	files    map[string]fakeFile
 	reqs     []recorded
+	// stored counts uploads heart received whole and stored
+	stored int
 	// hook may take a request over; it returns true when it answered.
 	hook func(w http.ResponseWriter, r *http.Request, rec recorded) bool
 }
@@ -104,6 +107,19 @@ func (h *fakeHeart) count(rpc string) int {
 	return n
 }
 
+// setKey makes heart take another key than the one it took so far.
+func (h *fakeHeart) setKey(key string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.key = key
+}
+
+func (h *fakeHeart) storedUploads() int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.stored
+}
+
 func (h *fakeHeart) expireSessions() {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -122,7 +138,7 @@ func rpcResult(w http.ResponseWriter, id json.RawMessage, result any) {
 }
 
 func (h *fakeHeart) serve(w http.ResponseWriter, r *http.Request) {
-	body, _ := io.ReadAll(r.Body)
+	body, readErr := io.ReadAll(r.Body)
 	var msg struct {
 		ID     json.RawMessage `json:"id"`
 		Method string          `json:"method"`
@@ -138,6 +154,10 @@ func (h *fakeHeart) serve(w http.ResponseWriter, r *http.Request) {
 	h.reqs = append(h.reqs, rec)
 	hook, key := h.hook, h.key
 	h.mu.Unlock()
+	if readErr != nil {
+		// the client broke the body off: heart acts on nothing
+		return
+	}
 	if hook != nil && hook(w, r, rec) {
 		return
 	}
@@ -255,6 +275,9 @@ func (h *fakeHeart) serveREST(w http.ResponseWriter, r *http.Request) {
 			_, _ = io.WriteString(w, `{"dry_run":true}`)
 			return
 		}
+		h.mu.Lock()
+		h.stored++
+		h.mu.Unlock()
 		w.WriteHeader(http.StatusCreated)
 		_, _ = io.WriteString(w, `{"object":"file","id":"uploaded-file-id"}`)
 	default:
@@ -285,9 +308,49 @@ type clock struct{ offset atomic.Int64 }
 func (c *clock) now() time.Time          { return time.Now().Add(time.Duration(c.offset.Load())) }
 func (c *clock) advance(d time.Duration) { c.offset.Add(int64(d)) }
 
+// memEndpoint is an endpoint file in memory: a port, or a failure. Port 0
+// reads as a missing file.
+type memEndpoint struct {
+	mu    sync.Mutex
+	port  int
+	err   error
+	reads int
+}
+
+func (m *memEndpoint) Read(context.Context) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.reads++
+	switch {
+	case m.err != nil:
+		return 0, m.err
+	case m.port == 0:
+		return 0, &store.Error{Reason: store.ReasonMissing, Path: "endpoint.json"}
+	}
+	return m.port, nil
+}
+
+func (m *memEndpoint) set(port int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.port, m.err = port, nil
+}
+
+func (m *memEndpoint) fail(err error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.err = err
+}
+
+func (m *memEndpoint) readCount() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.reads
+}
+
 type harness struct {
 	t     *testing.T
-	st    *store.Mem
+	ep    *memEndpoint
 	heart *fakeHeart
 	clock *clock
 	in    *io.PipeWriter
@@ -308,29 +371,48 @@ type harness struct {
 
 type hopt func(*harness)
 
-func withTier(tier string) hopt {
+func withTier(tier string) hopt { return func(h *harness) { h.opts.Tier = tier } }
+
+// withKey starts the forwarder with another key than the one heart takes.
+func withKey(key string) hopt { return func(h *harness) { h.opts.Key = key } }
+
+func withoutEndpoint() hopt { return func(h *harness) { h.ep.set(0) } }
+
+// withFileEndpoint reads the port from a real endpoint file under a
+// scratch home, written as the desktop app writes it, naming heart.
+func withFileEndpoint(out **store.File) hopt {
 	return func(h *harness) {
-		h.st.Put(testConn, store.Item{V: 1, Rev: 1, Key: canaryKey, Account: testAccount, Port: h.heart.port(), Tier: tier})
+		home := h.t.TempDir()
+		profileHome(h.t, home)
+		f := store.OpenAt(home, store.NamespaceDev)
+		writeEndpointFile(h.t, f.Path(), h.heart.port())
+		h.opts.Endpoint = f
+		*out = f
 	}
 }
 
-func withoutItem() hopt { return func(h *harness) { h.st.Remove(testConn) } }
+func writeEndpointFile(t *testing.T, path string, port int) {
+	t.Helper()
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
+	require.NoError(t, os.WriteFile(path, []byte(fmt.Sprintf(`{"v":1,"port":%d}`, port)), 0o600))
+}
 
 // withTempFiles leaves the folder of the file tools to Serve.
 func withTempFiles() hopt { return func(h *harness) { h.tempFiles = true } }
 
 func withOptions(f func(*Options)) hopt { return func(h *harness) { f(&h.opts) } }
 
-// start runs Serve over pipes against a fake heart; the item is a small
-// tier connection unless an option says otherwise.
+// start runs Serve over pipes against a fake heart: a small tier, the
+// key heart takes and an endpoint that names heart, unless an option says
+// otherwise. At cleanup the key must be on neither stdout nor stderr.
 func start(t *testing.T, opts ...hopt) *harness {
-	h := &harness{t: t, st: store.NewMem(), heart: newFakeHeart(t), clock: &clock{},
+	h := &harness{t: t, ep: &memEndpoint{}, heart: newFakeHeart(t), clock: &clock{},
 		all: &syncBuffer{}, log: &syncBuffer{}, exit: make(chan int, 1), done: make(chan struct{}), lines: make(chan string, 256)}
-	withTier("small")(h)
+	h.ep.set(h.heart.port())
 	inR, inW := io.Pipe()
 	outR, outW := io.Pipe()
 	h.in, h.outR = inW, outR
-	h.opts = Options{ConnectionID: testConn, Store: h.st, In: inR, Out: outW, Log: h.log, Now: h.clock.now,
+	h.opts = Options{Key: canaryKey, Tier: "small", Endpoint: h.ep, In: inR, Out: outW, Log: h.log, Now: h.clock.now,
 		ShutdownDeadline: 2 * time.Second, httpClient: newHTTPClient()}
 	for _, o := range opts {
 		o(h)
@@ -367,6 +449,11 @@ func start(t *testing.T, opts ...hopt) *harness {
 		select {
 		case <-h.done:
 		case <-time.After(5 * time.Second):
+		}
+		// H1 case 16: never the key on stdout or stderr
+		if h.opts.Key != "" {
+			assert.NotContains(t, h.all.String(), h.opts.Key, "the key on stdout")
+			assert.NotContains(t, h.log.String(), h.opts.Key, "the key on stderr")
 		}
 	})
 	return h
@@ -499,4 +586,24 @@ func (h *harness) waitExit() int {
 func toolCall(id any) string {
 	b, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": id, "method": "tools/call", "params": map[string]any{"name": "x", "arguments": map[string]any{}}})
 	return string(b)
+}
+
+// profileHome gives a scratch home a normal Windows profile's access list
+// (the user, SYSTEM and Administrators, inherited by what is made in it),
+// so no test depends on what the runner's temporary folder hands down.
+// Elsewhere a scratch home is already a normal one.
+func profileHome(t *testing.T, home string) {
+	t.Helper()
+	if runtime.GOOS != "windows" {
+		return
+	}
+	me, err := user.Current()
+	require.NoError(t, err)
+	for _, args := range [][]string{
+		{home, "/grant:r", "*" + me.Uid + ":(OI)(CI)F", "*S-1-5-18:(OI)(CI)F", "*S-1-5-32-544:(OI)(CI)F"},
+		{home, "/inheritance:r"},
+	} {
+		out, err := exec.Command("icacls", args...).CombinedOutput()
+		require.NoError(t, err, string(out))
+	}
 }
