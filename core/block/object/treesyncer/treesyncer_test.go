@@ -114,7 +114,6 @@ func TestTreeSyncer(t *testing.T) {
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, existingId).Return(fx.existingMock, nil)
 		fx.existingMock.EXPECT().SyncWithPeer(gomock.Any(), pr).Return(nil)
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(fx.missingMock, nil)
-		fx.missingMock.EXPECT().IsDerived().Return(true)
 		fx.missingMock.EXPECT().Len().Return(1)
 		fx.missingMock.EXPECT().Root().Return(&objecttree.Change{Id: "id"})
 		fx.missingMock.EXPECT().Id().Return("id")
@@ -138,7 +137,7 @@ func TestTreeSyncer(t *testing.T) {
 		fx.existingMock.EXPECT().SyncWithPeer(gomock.Any(), pr).Return(nil)
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(fx.missingMock, nil)
 		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{peerId})
-		fx.missingMock.EXPECT().IsDerived().Return(false)
+		fx.missingMock.EXPECT().Len().Return(2)
 		fx.syncDetailsUpdater.EXPECT().UpdateSpaceDetails([]string{existingId}, []string{missingId}, spaceId)
 		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, []string{existingId}).Return()
 		err := fx.SyncAll(context.Background(), pr, []string{existingId}, []string{missingId})
@@ -157,7 +156,7 @@ func TestTreeSyncer(t *testing.T) {
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, existingId).Return(fx.existingMock, nil)
 		fx.existingMock.EXPECT().SyncWithPeer(gomock.Any(), pr).Return(nil)
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(fx.missingMock, nil)
-		fx.missingMock.EXPECT().IsDerived().Return(false)
+		fx.missingMock.EXPECT().Len().Return(2)
 		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{})
 		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, []string{existingId}).Return()
 
@@ -177,7 +176,7 @@ func TestTreeSyncer(t *testing.T) {
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, existingId).Return(fx.existingMock, nil)
 		fx.existingMock.EXPECT().SyncWithPeer(gomock.Any(), pr).Return(nil)
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(fx.missingMock, nil)
-		fx.missingMock.EXPECT().IsDerived().Return(false)
+		fx.missingMock.EXPECT().Len().Return(2)
 		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{})
 		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, []string{existingId, existingId}).Return()
 
@@ -226,7 +225,7 @@ func TestTreeSyncer(t *testing.T) {
 			<-ch
 			return fx.missingMock, nil
 		})
-		fx.missingMock.EXPECT().IsDerived().AnyTimes().Return(false)
+		fx.missingMock.EXPECT().Len().AnyTimes().Return(2)
 		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{})
 		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, []string{existingId}).Return()
 
@@ -254,7 +253,7 @@ func TestTreeSyncer(t *testing.T) {
 			mutex.Unlock()
 			return fx.missingMock, nil
 		})
-		fx.missingMock.EXPECT().IsDerived().Return(false)
+		fx.missingMock.EXPECT().Len().Return(2)
 		fx.nodeConf.EXPECT().NodeIds(spaceId).Return(nil)
 		var existing []string
 		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, mock.Anything).RunAndReturn(func(s string, strings []string) {
@@ -291,6 +290,99 @@ func TestTreeSyncer(t *testing.T) {
 		require.NoError(t, fx.RefreshTrees([]string{existingId}))
 		<-ch
 	})
+}
+
+func TestRequestTreeSyncsCachedRoots(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		derived  bool
+		length   int
+		rootId   string
+		wantSync bool
+	}{
+		{name: "ordinary cached root", length: 1, rootId: "object", wantSync: true},
+		{name: "derived cached root", derived: true, length: 1, rootId: "object", wantSync: true},
+		{name: "complete ordinary tree", length: 2, rootId: "object"},
+		{name: "complete derived tree", derived: true, length: 2, rootId: "object"},
+		{name: "single non-root snapshot", length: 1, rootId: "snapshot"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fx := newFixture(t, "space")
+			t.Cleanup(func() { require.NoError(t, fx.Close(context.Background())) })
+			pr := rpctest.MockPeer{}
+			fx.treeManager.EXPECT().GetTree(gomock.Any(), "space", "object").Return(fx.missingMock, nil)
+			// Both kinds of root must sync. This remains optional because the
+			// decision must not depend on whether the object is derived.
+			fx.missingMock.EXPECT().IsDerived().AnyTimes().Return(tc.derived)
+			fx.missingMock.EXPECT().Len().Return(tc.length)
+			if tc.length == 1 {
+				fx.missingMock.EXPECT().Root().Return(&objecttree.Change{Id: tc.rootId})
+				fx.missingMock.EXPECT().Id().Return("object")
+			}
+			if tc.wantSync {
+				fx.missingMock.EXPECT().SyncWithPeer(gomock.Any(), pr).Return(nil)
+			}
+
+			fx.requestTree(pr, "object")
+		})
+	}
+}
+
+func TestRequestTreeLoadFailureDoesNotSync(t *testing.T) {
+	fx := newFixture(t, "space")
+	t.Cleanup(func() { require.NoError(t, fx.Close(context.Background())) })
+	fx.treeManager.EXPECT().GetTree(gomock.Any(), "space", "object").Return(nil, fmt.Errorf("load failed"))
+
+	fx.requestTree(rpctest.MockPeer{}, "object")
+}
+
+func TestSyncAllRetriesCachedRootAfterQueueFailure(t *testing.T) {
+	fx := newFixture(t, "space")
+	t.Cleanup(func() { require.NoError(t, fx.Close(context.Background())) })
+	pr := rpctest.MockPeer{}
+	fx.treeManager.EXPECT().GetTree(gomock.Any(), "space", "object").Return(fx.missingMock, nil).Times(2)
+	fx.missingMock.EXPECT().Len().Return(1).Times(2)
+	fx.missingMock.EXPECT().Root().Return(&objecttree.Change{Id: "object"}).Times(2)
+	fx.missingMock.EXPECT().Id().Return("object").Times(2)
+	fx.nodeConf.EXPECT().NodeIds("space").Return(nil).Times(2)
+	fx.syncStatus.EXPECT().RemoveAllExcept(pr.Id(), mock.Anything).Return().Times(2)
+	attempts := make(chan error, 2)
+	queueErr := fmt.Errorf("queue unavailable")
+	gomock.InOrder(
+		fx.missingMock.EXPECT().SyncWithPeer(gomock.Any(), pr).DoAndReturn(func(context.Context, peer.Peer) error {
+			attempts <- queueErr
+			return queueErr
+		}),
+		fx.missingMock.EXPECT().SyncWithPeer(gomock.Any(), pr).DoAndReturn(func(context.Context, peer.Peer) error {
+			attempts <- nil
+			return nil
+		}),
+	)
+	fx.StartSync()
+
+	for attempt := 0; attempt < 2; attempt++ {
+		require.NoError(t, fx.SyncAll(context.Background(), pr, nil, []string{"object"}))
+		select {
+		case err := <-attempts:
+			if attempt == 0 {
+				require.ErrorIs(t, err, queueErr)
+			} else {
+				require.NoError(t, err)
+			}
+		case <-time.After(time.Second):
+			t.Fatal("cached root did not queue a sync request")
+		}
+		// Wait until the executor releases this id, so the following diff
+		// round proves a failed attempt did not leave it permanently queued.
+		require.Eventually(t, func() bool {
+			fx.Lock()
+			exec := fx.requestPools[pr.Id()]
+			fx.Unlock()
+			exec.Lock()
+			defer exec.Unlock()
+			return len(exec.objs) == 0
+		}, time.Second, time.Millisecond)
+	}
 }
 
 func TestPrioritizeFront(t *testing.T) {

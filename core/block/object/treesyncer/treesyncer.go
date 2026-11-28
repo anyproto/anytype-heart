@@ -330,11 +330,13 @@ func (t *treeSyncer) requestTree(p peer.Peer, id string) {
 		log.Debug("loaded missing tree")
 	}
 	tr.Lock()
-	if objecttree.IsEmptyDerivedTree(tr) {
-		tr.Unlock()
+	// GetTree can return a locally cached root even when the peer advertises
+	// newer heads. Every root-only tree needs a sync request, not just derived
+	// trees; otherwise ordinary objects stay empty and missing in each diff.
+	empty := objecttree.IsEmptyTree(tr)
+	tr.Unlock()
+	if empty {
 		t.pingTree(p, tr)
-	} else {
-		tr.Unlock()
 	}
 }
 
